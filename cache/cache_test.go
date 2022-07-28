@@ -1,0 +1,146 @@
+package cache
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+)
+
+type readerMock struct {
+	mock.Mock
+}
+
+func (r *readerMock) ReadApplications() ([]*repository.Application, error) {
+	args := r.Called()
+
+	return args.Get(0).([]*repository.Application), args.Error(1)
+}
+
+func (r *readerMock) ReadBlockchains() ([]*repository.Blockchain, error) {
+	args := r.Called()
+
+	return args.Get(0).([]*repository.Blockchain), args.Error(1)
+}
+
+func (r *readerMock) ReadLoadBalancers() ([]*repository.LoadBalancer, error) {
+	args := r.Called()
+
+	return args.Get(0).([]*repository.LoadBalancer), args.Error(1)
+}
+
+func (r *readerMock) ReadUsers() ([]*repository.User, error) {
+	args := r.Called()
+
+	return args.Get(0).([]*repository.User), args.Error(1)
+}
+
+func TestCache_SetCache(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := &readerMock{}
+
+	readerMock.On("ReadApplications").Return([]*repository.Application{
+		{
+			ID:     "5f62b7d8be3591c4dea8566d",
+			UserID: "60ecb2bf67774900350d9c43",
+		},
+		{
+			ID:     "5f62b7d8be3591c4dea8566a",
+			UserID: "60ecb2bf67774900350d9c43",
+		},
+		{
+			ID:     "5f62b7d8be3591c4dea8566f",
+			UserID: "60ecb2bf67774900350d9c44",
+		},
+	}, nil)
+
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+		{
+			ID: "0021",
+		},
+	}, nil)
+
+	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+		{
+			ID: "60ecb2bf67774900350d9c42",
+			ApplicationIDs: []string{
+				"5f62b7d8be3591c4dea8566d",
+				"5f62b7d8be3591c4dea8566a",
+			},
+		},
+	}, nil)
+
+	readerMock.On("ReadUsers").Return([]*repository.User{
+		{
+			ID: "60ecb2bf67774900350d9c43",
+		},
+	}, nil)
+
+	cache := NewCache(readerMock)
+
+	err := cache.SetCache()
+	c.NoError(err)
+
+	c.NotEmpty(cache.GetApplication("5f62b7d8be3591c4dea8566d"))
+	c.Len(cache.GetApplications(), 3)
+	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 2)
+
+	c.NotEmpty(cache.GetBlockchain("0021"))
+	c.Len(cache.GetBlockchains(), 1)
+
+	c.NotEmpty(cache.GetLoadBalancer("60ecb2bf67774900350d9c42"))
+	c.Len(cache.GetLoadBalancers(), 1)
+
+	c.NotEmpty(cache.GetUser("60ecb2bf67774900350d9c43"))
+	c.Len(cache.GetUsers(), 1)
+}
+
+func TestCache_SetCacheFailure(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := &readerMock{}
+
+	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
+
+	cache := NewCache(readerMock)
+
+	err := cache.SetCache()
+	c.EqualError(err, "error on applications")
+
+	readerMock.On("ReadApplications").Return([]*repository.Application{
+		{
+			ID:     "5f62b7d8be3591c4dea8566d",
+			UserID: "60ecb2bf67774900350d9c43",
+		},
+	}, nil)
+
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
+
+	err = cache.SetCache()
+	c.EqualError(err, "error on blockchains")
+
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+		{
+			ID: "0021",
+		},
+	}, nil)
+
+	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{}, errors.New("error on loadbalancers")).Once()
+
+	err = cache.SetCache()
+	c.EqualError(err, "error on loadbalancers")
+
+	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+		{
+			ID: "60ecb2bf67774900350d9c42",
+		},
+	}, nil)
+
+	readerMock.On("ReadUsers").Return([]*repository.User{}, errors.New("error on users")).Once()
+
+	err = cache.SetCache()
+	c.EqualError(err, "error on users")
+}
