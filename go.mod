@@ -1,4 +1,4 @@
-module github.com/pokt-foundation/pocket-http-driver
+module github.com/pokt-foundation/pocket-http-db
 
 go 1.18
 
