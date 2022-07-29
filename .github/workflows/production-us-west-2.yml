@@ -1,0 +1,55 @@
+name: Production deployment us-west-2
+
+on:
+  push:
+    branches: [add-deployment-files]
+
+jobs:
+  deploy:
+    name: Postgres HTTP API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR (API)
+        id: build-image-api
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: postgres-api
+          IMAGE_TAG: latest
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+      - name: Fill in the new image ID / us-west-2 - collector
+        id: task-def-us-west-2-api
+        uses: aws-actions/amazon-ecs-render-task-definition@master
+        with:
+          task-definition: .aws/ecs-task-definition.json
+          container-name: postgres-api
+          image: ${{ steps.build-image-collector.outputs.image }}
+          environment-variables: |
+            PORT=${{ secrets.PORT }}
+            CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
+
+      - name: Deploy / us-west-2
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
+          service: postgres-api
+          cluster: postgres-api
+          wait-for-service-stability: true
