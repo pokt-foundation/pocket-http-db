@@ -40,5 +40,6 @@ func main() {
 
 	http.Handle("/", r)
 
+	log.Printf("Postgres API running in port: %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
