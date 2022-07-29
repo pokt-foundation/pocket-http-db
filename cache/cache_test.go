@@ -5,42 +5,13 @@ import (
 	"testing"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
-
-type readerMock struct {
-	mock.Mock
-}
-
-func (r *readerMock) ReadApplications() ([]*repository.Application, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.Application), args.Error(1)
-}
-
-func (r *readerMock) ReadBlockchains() ([]*repository.Blockchain, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.Blockchain), args.Error(1)
-}
-
-func (r *readerMock) ReadLoadBalancers() ([]*repository.LoadBalancer, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.LoadBalancer), args.Error(1)
-}
-
-func (r *readerMock) ReadUsers() ([]*repository.User, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.User), args.Error(1)
-}
 
 func TestCache_SetCache(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &readerMock{}
+	readerMock := &ReaderMock{}
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
@@ -101,7 +72,7 @@ func TestCache_SetCache(t *testing.T) {
 func TestCache_SetCacheFailure(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &readerMock{}
+	readerMock := &ReaderMock{}
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
 
