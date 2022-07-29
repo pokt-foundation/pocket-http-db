@@ -35,13 +35,13 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Fill in the new image ID / us-west-2 - collector
+      - name: Fill in the new image ID / us-west-2 - API
         id: task-def-us-west-2-api
         uses: aws-actions/amazon-ecs-render-task-definition@master
         with:
           task-definition: .aws/ecs-task-definition.json
           container-name: postgres-api
-          image: ${{ steps.build-image-collector.outputs.image }}
+          image: ${{ steps.build-image-api.outputs.image }}
           environment-variables: |
             PORT=${{ secrets.PORT }}
             CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
