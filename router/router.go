@@ -10,7 +10,7 @@ import (
 
 // Router struct handler for router requests
 type Router struct {
-	cache *cache.Cache
+	Cache *cache.Cache
 }
 
 // NewRouter returns router instance
@@ -23,7 +23,7 @@ func NewRouter(reader cache.Reader) (*Router, error) {
 	}
 
 	return &Router{
-		cache: cache,
+		Cache: cache,
 	}, nil
 }
 
@@ -47,47 +47,47 @@ func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.cache.GetApplications())
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplications())
 }
 
 func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.cache.GetApplication(vars["id"]))
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplication(vars["id"]))
 }
 
 func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.cache.GetApplicationsByUserID(vars["id"]))
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplicationsByUserID(vars["id"]))
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.cache.GetBlockchain(vars["id"]))
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchain(vars["id"]))
 }
 
 func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.cache.GetBlockchains())
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchains())
 }
 
 func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.cache.GetLoadBalancer(vars["id"]))
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancer(vars["id"]))
 }
 
 func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.cache.GetLoadBalancers())
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancers())
 }
 
 func (rt *Router) GetUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.cache.GetUser(vars["id"]))
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetUser(vars["id"]))
 }
 
 func (rt *Router) GetUsers(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.cache.GetUsers())
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetUsers())
 }
