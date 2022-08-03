@@ -45,6 +45,7 @@ jobs:
           environment-variables: |
             PORT=${{ secrets.PORT }}
             CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
+            API_KEYS=${{ secrets.API_KEYS }}
 
       - name: Deploy / us-west-2
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
