@@ -6,6 +6,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
+	"github.com/pokt-foundation/pocket-http-db/environment"
+)
+
+var (
+	apiKeys = environment.GetStringMap("API_KEYS", "", ",")
 )
 
 // Router struct handler for router requests
@@ -36,6 +41,29 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (rt *Router) AuthorizationHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This is the path of the health check endpoint
+		if r.URL.Path == "/" {
+			h.ServeHTTP(w, r)
+
+			return
+		}
+
+		if !apiKeys[r.Header.Get("Authorization")] {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, err := w.Write([]byte("Unauthorized"))
+			if err != nil {
+				panic(err)
+			}
+
+			return
+		}
+
+		h.ServeHTTP(w, r)
+	})
 }
 
 func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {

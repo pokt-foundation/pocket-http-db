@@ -3,6 +3,7 @@ package environment
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 // GetString gets the environment var as a string
@@ -28,4 +29,18 @@ func GetInt64(varName string, defaultValue int64) int64 {
 	}
 
 	return iVal
+}
+
+// GetStringMap gets the environment var as a string map
+func GetStringMap(varName, defaultValue, separator string) map[string]bool {
+	rawString := GetString(varName, defaultValue)
+	stringSlice := strings.Split(rawString, separator)
+
+	stringMap := make(map[string]bool, len(stringSlice))
+
+	for _, singleString := range stringSlice {
+		stringMap[singleString] = true
+	}
+
+	return stringMap
 }
