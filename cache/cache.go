@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"sync"
+
 	"github.com/pokt-foundation/portal-api-go/repository"
 )
 
@@ -18,12 +20,16 @@ type Cache struct {
 	applicationsMap         map[string]*repository.Application
 	applicationsMapByUserID map[string][]*repository.Application
 	applications            []*repository.Application
+	applicationsMux         sync.Mutex
 	blockchainsMap          map[string]*repository.Blockchain
 	blockchains             []*repository.Blockchain
+	blockchainsMux          sync.Mutex
 	loadBalancersMap        map[string]*repository.LoadBalancer
 	loadBalancers           []*repository.LoadBalancer
+	loadBalancersMux        sync.Mutex
 	usersMap                map[string]*repository.User
 	users                   []*repository.User
+	usersMux                sync.Mutex
 }
 
 // NewCache returns cache instance from reader interface
@@ -92,6 +98,9 @@ func (c *Cache) setApplications() error {
 		applicationsMapByUserID[application.UserID] = append(applicationsMapByUserID[application.UserID], application)
 	}
 
+	c.applicationsMux.Lock()
+	defer c.applicationsMux.Unlock()
+
 	c.applications = applications
 	c.applicationsMap = applicationsMap
 	c.applicationsMapByUserID = applicationsMapByUserID
@@ -111,6 +120,9 @@ func (c *Cache) setBlockchains() error {
 		blockchainsMap[blockchain.ID] = blockchain
 	}
 
+	c.blockchainsMux.Lock()
+	defer c.blockchainsMux.Unlock()
+
 	c.blockchains = blockchains
 	c.blockchainsMap = blockchainsMap
 
@@ -125,6 +137,8 @@ func (c *Cache) setLoadBalancers() error {
 
 	loadBalancersMap := make(map[string]*repository.LoadBalancer)
 
+	c.applicationsMux.Lock()
+
 	for i, loadBalancer := range loadBalancers {
 		for _, appID := range loadBalancer.ApplicationIDs {
 			loadBalancer.Applications = append(loadBalancer.Applications, c.applicationsMap[appID])
@@ -133,6 +147,11 @@ func (c *Cache) setLoadBalancers() error {
 		loadBalancers[i] = loadBalancer
 		loadBalancersMap[loadBalancer.ID] = loadBalancer
 	}
+
+	c.applicationsMux.Unlock()
+
+	c.loadBalancersMux.Lock()
+	defer c.loadBalancersMux.Unlock()
 
 	c.loadBalancers = loadBalancers
 	c.loadBalancersMap = loadBalancersMap
@@ -151,6 +170,9 @@ func (c *Cache) setUsers() error {
 	for _, user := range users {
 		userMap[user.ID] = user
 	}
+
+	c.usersMux.Lock()
+	defer c.usersMux.Unlock()
 
 	c.users = users
 	c.usersMap = userMap

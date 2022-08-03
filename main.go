@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/environment"
@@ -12,20 +15,22 @@ import (
 
 var (
 	port             = environment.GetString("PORT", "8080")
+	cacheRefresh     = environment.GetInt64("CACHE_REFRESH", 10)
 	connectionString = environment.GetString("CONNECTION_STRING", "")
 )
 
-func main() {
-	driver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
-	if err != nil {
-		panic(err)
-	}
+func cacheHandler(router *router.Router) {
+	for {
+		time.Sleep(time.Duration(cacheRefresh) * time.Minute)
 
-	router, err := router.NewRouter(driver)
-	if err != nil {
-		panic(err)
+		err := router.Cache.SetCache()
+		if err != nil {
+			fmt.Printf("Cache refresh failed with error: %s", err.Error())
+		}
 	}
+}
 
+func httpHandler(router *router.Router) {
 	r := mux.NewRouter()
 	r.HandleFunc("/", router.HealthCheck)
 	r.HandleFunc("/blockchain", router.GetBlockchains)
@@ -41,4 +46,25 @@ func main() {
 	http.Handle("/", r)
 
 	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+
+func main() {
+	driver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
+	if err != nil {
+		panic(err)
+	}
+
+	router, err := router.NewRouter(driver)
+	if err != nil {
+		panic(err)
+	}
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go httpHandler(router)
+	go cacheHandler(router)
+
+	wg.Wait()
 }
