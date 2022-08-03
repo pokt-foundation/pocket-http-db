@@ -43,6 +43,8 @@ func httpHandler(router *router.Router) {
 	r.HandleFunc("/user/{id}", router.GetUser)
 	r.HandleFunc("/user/{id}/application", router.GetApplicationByUserID)
 
+	r.Use(router.AuthorizationHandler)
+
 	http.Handle("/", r)
 
 	log.Fatal(http.ListenAndServe(":"+port, nil))

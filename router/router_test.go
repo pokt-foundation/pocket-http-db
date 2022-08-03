@@ -82,6 +82,8 @@ func newTestRouter() (*mux.Router, error) {
 	r.HandleFunc("/user/{id}", router.GetUser)
 	r.HandleFunc("/user/{id}/application", router.GetApplicationByUserID)
 
+	r.Use(router.AuthorizationHandler)
+
 	return r, nil
 }
 
@@ -133,6 +135,14 @@ func TestRouter_GetApplications(t *testing.T) {
 	c.NoError(err)
 
 	c.Equal(expectedBody, rr.Body.Bytes())
+
+	req.Header.Set("Authorization", "wrong")
+
+	rr = httptest.NewRecorder()
+
+	router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusUnauthorized, rr.Code)
 }
 
 func TestRouter_GetApplication(t *testing.T) {
