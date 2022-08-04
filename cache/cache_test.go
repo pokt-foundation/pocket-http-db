@@ -36,7 +36,8 @@ func TestCache_SetCache(t *testing.T) {
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
 		{
-			ID: "60ecb2bf67774900350d9c42",
+			ID:     "60ecb2bf67774900350d9c42",
+			UserID: "60ecb35fts687463gh2h72gs",
 			ApplicationIDs: []string{
 				"5f62b7d8be3591c4dea8566d",
 				"5f62b7d8be3591c4dea8566a",
@@ -64,6 +65,7 @@ func TestCache_SetCache(t *testing.T) {
 
 	c.NotEmpty(cache.GetLoadBalancer("60ecb2bf67774900350d9c42"))
 	c.Len(cache.GetLoadBalancers(), 1)
+	c.Len(cache.GetLoadBalancersByUserID("60ecb35fts687463gh2h72gs"), 1)
 
 	c.NotEmpty(cache.GetUser("60ecb2bf67774900350d9c43"))
 	c.Len(cache.GetUsers(), 1)
