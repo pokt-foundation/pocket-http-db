@@ -42,6 +42,7 @@ func httpHandler(router *router.Router) {
 	r.HandleFunc("/user", router.GetUsers)
 	r.HandleFunc("/user/{id}", router.GetUser)
 	r.HandleFunc("/user/{id}/application", router.GetApplicationByUserID)
+	r.HandleFunc("/user/{id}/load_balancer", router.GetLoadBalancerByUserID)
 
 	r.Use(router.AuthorizationHandler)
 

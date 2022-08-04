@@ -16,20 +16,21 @@ type Reader interface {
 
 // Cache struct handler for cache operations
 type Cache struct {
-	reader                  Reader
-	applicationsMap         map[string]*repository.Application
-	applicationsMapByUserID map[string][]*repository.Application
-	applications            []*repository.Application
-	applicationsMux         sync.Mutex
-	blockchainsMap          map[string]*repository.Blockchain
-	blockchains             []*repository.Blockchain
-	blockchainsMux          sync.Mutex
-	loadBalancersMap        map[string]*repository.LoadBalancer
-	loadBalancers           []*repository.LoadBalancer
-	loadBalancersMux        sync.Mutex
-	usersMap                map[string]*repository.User
-	users                   []*repository.User
-	usersMux                sync.Mutex
+	reader                   Reader
+	applicationsMap          map[string]*repository.Application
+	applicationsMapByUserID  map[string][]*repository.Application
+	applications             []*repository.Application
+	applicationsMux          sync.Mutex
+	blockchainsMap           map[string]*repository.Blockchain
+	blockchains              []*repository.Blockchain
+	blockchainsMux           sync.Mutex
+	loadBalancersMap         map[string]*repository.LoadBalancer
+	loadBalancersMapByUserID map[string][]*repository.LoadBalancer
+	loadBalancers            []*repository.LoadBalancer
+	loadBalancersMux         sync.Mutex
+	usersMap                 map[string]*repository.User
+	users                    []*repository.User
+	usersMux                 sync.Mutex
 }
 
 // NewCache returns cache instance from reader interface
@@ -72,6 +73,10 @@ func (c *Cache) GetLoadBalancer(loadBalancerID string) *repository.LoadBalancer 
 // GetLoadBalancers returns all Loadbalancers on cache
 func (c *Cache) GetLoadBalancers() []*repository.LoadBalancer {
 	return c.loadBalancers
+}
+
+func (c *Cache) GetLoadBalancersByUserID(userID string) []*repository.LoadBalancer {
+	return c.loadBalancersMapByUserID[userID]
 }
 
 // GetUser returns User from cache by userID
