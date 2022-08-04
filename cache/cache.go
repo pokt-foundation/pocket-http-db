@@ -141,6 +141,7 @@ func (c *Cache) setLoadBalancers() error {
 	}
 
 	loadBalancersMap := make(map[string]*repository.LoadBalancer)
+	loadBalancersMapByUserID := make(map[string][]*repository.LoadBalancer)
 
 	c.applicationsMux.Lock()
 
@@ -151,6 +152,7 @@ func (c *Cache) setLoadBalancers() error {
 
 		loadBalancers[i] = loadBalancer
 		loadBalancersMap[loadBalancer.ID] = loadBalancer
+		loadBalancersMapByUserID[loadBalancer.UserID] = append(loadBalancersMapByUserID[loadBalancer.UserID], loadBalancer)
 	}
 
 	c.applicationsMux.Unlock()
@@ -160,6 +162,7 @@ func (c *Cache) setLoadBalancers() error {
 
 	c.loadBalancers = loadBalancers
 	c.loadBalancersMap = loadBalancersMap
+	c.loadBalancersMapByUserID = loadBalancersMapByUserID
 
 	return nil
 }
