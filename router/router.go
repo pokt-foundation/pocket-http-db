@@ -90,6 +90,12 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplicationsByUserID(vars["id"]))
 }
 
+func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancersByUserID(vars["id"]))
+}
+
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
