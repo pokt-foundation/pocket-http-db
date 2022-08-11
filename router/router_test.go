@@ -179,6 +179,15 @@ func TestRouter_GetApplication(t *testing.T) {
 	c.NoError(err)
 
 	c.Equal(expectedBody, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodGet, "/application/5f62b7d8be3591c3dea8566d", nil)
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
 }
 
 func TestRouter_CreateApplication(t *testing.T) {
@@ -331,6 +340,15 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 	c.NoError(err)
 
 	c.Equal(expectedBody, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodGet, "/user/61ecb2bf67774900350d9c43/application", nil)
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
 }
 
 func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
@@ -354,6 +372,15 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 	c.NoError(err)
 
 	c.Equal("60ecb2bf67774900350d9c42", marshaledBody[0].ID)
+
+	req, err = http.NewRequest(http.MethodGet, "/user/60ecb2bf67774900350d9d43/load_balancer", nil)
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
 }
 
 func TestRouter_GetBlockchains(t *testing.T) {
@@ -405,6 +432,15 @@ func TestRouter_GetBlockchain(t *testing.T) {
 	c.NoError(err)
 
 	c.Equal(expectedBody, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodGet, "/blockchain/00210", nil)
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
 }
 
 func TestRouter_GetLoadBalancers(t *testing.T) {
@@ -453,6 +489,15 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	c.NoError(err)
 
 	c.Equal("60ecb2bf67774900350d9c42", marshaledBody.ID)
+
+	req, err = http.NewRequest(http.MethodGet, "/load_balancer/60fcb2bf67774900350d9c42", nil)
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
 }
 
 func TestRouter_CreateLoadBalancer(t *testing.T) {
@@ -622,4 +667,13 @@ func TestRouter_GetUser(t *testing.T) {
 	c.NoError(err)
 
 	c.Equal(expectedBody, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodGet, "/user/61ecb2bf67774900350d9c43", nil)
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
 }

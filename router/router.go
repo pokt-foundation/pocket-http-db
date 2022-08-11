@@ -118,7 +118,15 @@ func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplication(vars["id"]))
+	app := rt.Cache.GetApplication(vars["id"])
+
+	if app == nil {
+		respondWithError(w, http.StatusNotFound, "application not found")
+
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, app)
 }
 
 func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
@@ -203,19 +211,43 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplicationsByUserID(vars["id"]))
+	apps := rt.Cache.GetApplicationsByUserID(vars["id"])
+
+	if len(apps) == 0 {
+		respondWithError(w, http.StatusNotFound, "applications not found")
+
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, apps)
 }
 
 func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancersByUserID(vars["id"]))
+	lbs := rt.Cache.GetLoadBalancersByUserID(vars["id"])
+
+	if len(lbs) == 0 {
+		respondWithError(w, http.StatusNotFound, "load balancers not found")
+
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, lbs)
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchain(vars["id"]))
+	blockchain := rt.Cache.GetBlockchain(vars["id"])
+
+	if blockchain == nil {
+		respondWithError(w, http.StatusNotFound, "blockchain not found")
+
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, blockchain)
 }
 
 func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +257,15 @@ func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancer(vars["id"]))
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+
+	if lb == nil {
+		respondWithError(w, http.StatusNotFound, "load balancer not found")
+
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, lb)
 }
 
 func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
@@ -306,7 +346,15 @@ func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) GetUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetUser(vars["id"]))
+	user := rt.Cache.GetUser(vars["id"])
+
+	if user == nil {
+		respondWithError(w, http.StatusNotFound, "user not found")
+
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, user)
 }
 
 func (rt *Router) GetUsers(w http.ResponseWriter, r *http.Request) {
