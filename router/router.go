@@ -49,6 +49,7 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	rt.Router.HandleFunc("/blockchain/{id}", rt.GetBlockchain).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application", rt.GetApplications).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application", rt.CreateApplication).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/application/limits", rt.GetApplicationsLimits).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application/{id}", rt.GetApplication).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application/{id}", rt.UpdateApplication).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/load_balancer", rt.GetLoadBalancers).Methods(http.MethodGet)
@@ -113,6 +114,21 @@ func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplications())
+}
+
+func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) {
+	apps := rt.Cache.GetApplications()
+
+	var appsLimits []repository.AppLimits
+
+	for _, app := range apps {
+		appsLimits = append(appsLimits, repository.AppLimits{
+			AppID:      app.ID,
+			DailyLimit: app.Limits.DailyLimit,
+		})
+	}
+
+	respondWithJSON(w, http.StatusOK, appsLimits)
 }
 
 func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
