@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/environment"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
@@ -31,22 +30,7 @@ func cacheHandler(router *router.Router) {
 }
 
 func httpHandler(router *router.Router) {
-	r := mux.NewRouter()
-	r.HandleFunc("/", router.HealthCheck)
-	r.HandleFunc("/blockchain", router.GetBlockchains)
-	r.HandleFunc("/blockchain/{id}", router.GetBlockchain)
-	r.HandleFunc("/application", router.GetApplications)
-	r.HandleFunc("/application/{id}", router.GetApplication)
-	r.HandleFunc("/load_balancer", router.GetLoadBalancers)
-	r.HandleFunc("/load_balancer/{id}", router.GetLoadBalancer)
-	r.HandleFunc("/user", router.GetUsers)
-	r.HandleFunc("/user/{id}", router.GetUser)
-	r.HandleFunc("/user/{id}/application", router.GetApplicationByUserID)
-	r.HandleFunc("/user/{id}/load_balancer", router.GetLoadBalancerByUserID)
-
-	r.Use(router.AuthorizationHandler)
-
-	http.Handle("/", r)
+	http.Handle("/", router.Router)
 
 	log.Printf("Postgres API running in port: %s\n", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
@@ -58,7 +42,7 @@ func main() {
 		panic(err)
 	}
 
-	router, err := router.NewRouter(driver)
+	router, err := router.NewRouter(driver, driver)
 	if err != nil {
 		panic(err)
 	}

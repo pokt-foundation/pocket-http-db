@@ -113,6 +113,54 @@ func (c *Cache) setApplications() error {
 	return nil
 }
 
+// AddApplication adds application to cache
+func (c *Cache) AddApplication(app *repository.Application) {
+	c.applications = append(c.applications, app)
+	c.applicationsMap[app.ID] = app
+	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
+}
+
+// UpdateApplication updates application saved in cache
+func (c *Cache) UpdateApplication(app *repository.Application, oldUserID string) {
+	c.applications = updateApplicationFromSlice(app, c.applications)
+
+	c.applicationsMap[app.ID] = app
+
+	c.applicationsMapByUserID[oldUserID] = deleteApplicationFromSlice(app.ID, c.applicationsMapByUserID[oldUserID])
+	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
+
+	for i := 0; i < len(c.loadBalancers); i++ {
+		updateApplicationFromSlice(app, c.loadBalancers[i].Applications)
+	}
+}
+
+func deleteApplicationFromSlice(appID string, apps []*repository.Application) []*repository.Application {
+	for i := 0; i < len(apps); i++ {
+		if apps[i].ID == appID {
+			apps[i] = apps[len(apps)-1]
+			apps = apps[:len(apps)-1]
+
+			break
+		}
+	}
+
+	return apps
+}
+
+func updateApplicationFromSlice(updatedApp *repository.Application, apps []*repository.Application) []*repository.Application {
+	for i := 0; i < len(apps); i++ {
+		if apps[i].ID == updatedApp.ID {
+			apps[i] = apps[len(apps)-1]
+			apps = apps[:len(apps)-1]
+			apps = append(apps, updatedApp)
+
+			break
+		}
+	}
+
+	return apps
+}
+
 func (c *Cache) setBlockchains() error {
 	blockchains, err := c.reader.ReadBlockchains()
 	if err != nil {
@@ -150,6 +198,8 @@ func (c *Cache) setLoadBalancers() error {
 			loadBalancer.Applications = append(loadBalancer.Applications, c.applicationsMap[appID])
 		}
 
+		loadBalancer.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
+
 		loadBalancers[i] = loadBalancer
 		loadBalancersMap[loadBalancer.ID] = loadBalancer
 		loadBalancersMapByUserID[loadBalancer.UserID] = append(loadBalancersMapByUserID[loadBalancer.UserID], loadBalancer)
@@ -165,6 +215,50 @@ func (c *Cache) setLoadBalancers() error {
 	c.loadBalancersMapByUserID = loadBalancersMapByUserID
 
 	return nil
+}
+
+// AddLoadBalancer adds load balancer to cache
+func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
+	c.loadBalancers = append(c.loadBalancers, lb)
+	c.loadBalancersMap[lb.ID] = lb
+	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], lb)
+}
+
+// UpdateLoadBalancer updates load balancer saved in cache
+func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer, oldUserID string) {
+	c.loadBalancers = updateLoadBalancerFromSlice(lb, c.loadBalancers)
+
+	c.loadBalancersMap[lb.ID] = lb
+
+	c.loadBalancersMapByUserID[oldUserID] = deleteLoadBalancerFromSlice(lb.ID, c.loadBalancersMapByUserID[oldUserID])
+	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], lb)
+}
+
+func deleteLoadBalancerFromSlice(lbID string, lbs []*repository.LoadBalancer) []*repository.LoadBalancer {
+	for i := 0; i < len(lbs); i++ {
+		if lbs[i].ID == lbID {
+			lbs[i] = lbs[len(lbs)-1]
+			lbs = lbs[:len(lbs)-1]
+
+			break
+		}
+	}
+
+	return lbs
+}
+
+func updateLoadBalancerFromSlice(updatedlb *repository.LoadBalancer, lbs []*repository.LoadBalancer) []*repository.LoadBalancer {
+	for i := 0; i < len(lbs); i++ {
+		if lbs[i].ID == updatedlb.ID {
+			lbs[i] = lbs[len(lbs)-1]
+			lbs = lbs[:len(lbs)-1]
+			lbs = append(lbs, updatedlb)
+
+			break
+		}
+	}
+
+	return lbs
 }
 
 func (c *Cache) setUsers() error {
