@@ -49,6 +49,9 @@ func newTestRouter() (*Router, error) {
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
+			Limits: repository.AppLimits{
+				DailyLimit: 1000000,
+			},
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -134,6 +137,9 @@ func TestRouter_GetApplications(t *testing.T) {
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
+			Limits: repository.AppLimits{
+				DailyLimit: 1000000,
+			},
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -157,6 +163,40 @@ func TestRouter_GetApplications(t *testing.T) {
 	c.Equal(http.StatusUnauthorized, rr.Code)
 }
 
+func TestRouter_GetApplicationsLimits(t *testing.T) {
+	c := require.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/application/limits", nil)
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	expectedBody, err := json.Marshal([]*repository.AppLimits{
+		{
+			AppID:      "5f62b7d8be3591c4dea8566d",
+			DailyLimit: 1000000,
+		},
+		{
+			AppID:      "5f62b7d8be3591c4dea8566a",
+			DailyLimit: 0,
+		},
+		{
+			AppID:      "5f62b7d8be3591c4dea8566f",
+			DailyLimit: 0,
+		},
+	})
+	c.NoError(err)
+
+	c.Equal(expectedBody, rr.Body.Bytes())
+}
+
 func TestRouter_GetApplication(t *testing.T) {
 	c := require.New(t)
 
@@ -175,6 +215,9 @@ func TestRouter_GetApplication(t *testing.T) {
 	expectedBody, err := json.Marshal(&repository.Application{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
+		Limits: repository.AppLimits{
+			DailyLimit: 1000000,
+		},
 	})
 	c.NoError(err)
 
@@ -331,6 +374,9 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
+			Limits: repository.AppLimits{
+				DailyLimit: 1000000,
+			},
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
