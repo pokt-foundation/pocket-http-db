@@ -124,6 +124,7 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 	for _, app := range apps {
 		appsLimits = append(appsLimits, repository.AppLimits{
 			AppID:      app.ID,
+			PublicKey:  app.FreeTierApplicationAccount.PublicKey,
 			DailyLimit: app.Limits.DailyLimit,
 		})
 	}
