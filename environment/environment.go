@@ -4,6 +4,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	// autoload env vars
+	_ "github.com/joho/godotenv/autoload"
 )
 
 // GetString gets the environment var as a string
