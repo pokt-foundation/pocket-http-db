@@ -42,50 +42,80 @@ func NewCache(reader Reader) *Cache {
 
 // GetApplication returns Application from cache by applicationID
 func (c *Cache) GetApplication(applicationID string) *repository.Application {
+	c.applicationsMux.Lock()
+	defer c.applicationsMux.Unlock()
+
 	return c.applicationsMap[applicationID]
 }
 
 // GetApplicationsByUserID returns Applications from cache by userID
 func (c *Cache) GetApplicationsByUserID(userID string) []*repository.Application {
+	c.applicationsMux.Lock()
+	defer c.applicationsMux.Unlock()
+
 	return c.applicationsMapByUserID[userID]
 }
 
 // GetApplications returns all Applications in cache
 func (c *Cache) GetApplications() []*repository.Application {
+	c.applicationsMux.Lock()
+	defer c.applicationsMux.Unlock()
+
 	return c.applications
 }
 
 // GetBlockchain returns Blockchain from cache by blockchainID
 func (c *Cache) GetBlockchain(blockchainID string) *repository.Blockchain {
+	c.blockchainsMux.Lock()
+	defer c.blockchainsMux.Unlock()
+
 	return c.blockchainsMap[blockchainID]
 }
 
 // GetBlockchains returns all Blockchains from cache
 func (c *Cache) GetBlockchains() []*repository.Blockchain {
+	c.blockchainsMux.Lock()
+	defer c.blockchainsMux.Unlock()
+
 	return c.blockchains
 }
 
 // GetLoadBalancer returns Loadbalancer by loadbalancerID
 func (c *Cache) GetLoadBalancer(loadBalancerID string) *repository.LoadBalancer {
+	c.loadBalancersMux.Lock()
+	defer c.loadBalancersMux.Unlock()
+
 	return c.loadBalancersMap[loadBalancerID]
 }
 
 // GetLoadBalancers returns all Loadbalancers on cache
 func (c *Cache) GetLoadBalancers() []*repository.LoadBalancer {
+	c.loadBalancersMux.Lock()
+	defer c.loadBalancersMux.Unlock()
+
 	return c.loadBalancers
 }
 
 func (c *Cache) GetLoadBalancersByUserID(userID string) []*repository.LoadBalancer {
+	c.loadBalancersMux.Lock()
+	defer c.loadBalancersMux.Unlock()
+
 	return c.loadBalancersMapByUserID[userID]
 }
 
 // GetUser returns User from cache by userID
 func (c *Cache) GetUser(userID string) *repository.User {
+	c.usersMux.Lock()
+	defer c.usersMux.Unlock()
+
 	return c.usersMap[userID]
 }
 
 // GetUsers returns all Users in cache
 func (c *Cache) GetUsers() []*repository.User {
+	c.usersMux.Lock()
+	defer c.usersMux.Unlock()
+
 	return c.users
 }
 
@@ -115,6 +145,9 @@ func (c *Cache) setApplications() error {
 
 // AddApplication adds application to cache
 func (c *Cache) AddApplication(app *repository.Application) {
+	c.applicationsMux.Lock()
+	defer c.applicationsMux.Unlock()
+
 	c.applications = append(c.applications, app)
 	c.applicationsMap[app.ID] = app
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
@@ -122,12 +155,19 @@ func (c *Cache) AddApplication(app *repository.Application) {
 
 // UpdateApplication updates application saved in cache
 func (c *Cache) UpdateApplication(app *repository.Application, oldUserID string) {
+	c.applicationsMux.Lock()
+
 	c.applications = updateApplicationFromSlice(app, c.applications)
 
 	c.applicationsMap[app.ID] = app
 
 	c.applicationsMapByUserID[oldUserID] = deleteApplicationFromSlice(app.ID, c.applicationsMapByUserID[oldUserID])
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
+
+	c.applicationsMux.Unlock()
+
+	c.loadBalancersMux.Lock()
+	defer c.loadBalancersMux.Unlock()
 
 	for i := 0; i < len(c.loadBalancers); i++ {
 		updateApplicationFromSlice(app, c.loadBalancers[i].Applications)
@@ -219,6 +259,9 @@ func (c *Cache) setLoadBalancers() error {
 
 // AddLoadBalancer adds load balancer to cache
 func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
+	c.loadBalancersMux.Lock()
+	defer c.loadBalancersMux.Unlock()
+
 	c.loadBalancers = append(c.loadBalancers, lb)
 	c.loadBalancersMap[lb.ID] = lb
 	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], lb)
@@ -226,6 +269,9 @@ func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
 
 // UpdateLoadBalancer updates load balancer saved in cache
 func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer, oldUserID string) {
+	c.loadBalancersMux.Lock()
+	defer c.loadBalancersMux.Unlock()
+
 	c.loadBalancers = updateLoadBalancerFromSlice(lb, c.loadBalancers)
 
 	c.loadBalancersMap[lb.ID] = lb
