@@ -219,6 +219,9 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		if updateInput.NotificationSettings != nil {
 			app.NotificationSettings = *updateInput.NotificationSettings
 		}
+		if updateInput.AppLimits != nil {
+			app.Limits = *updateInput.AppLimits
+		}
 	}
 
 	rt.Cache.UpdateApplication(app)

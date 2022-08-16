@@ -316,6 +316,9 @@ func TestRouter_UpdateApplication(t *testing.T) {
 		NotificationSettings: &repository.NotificationSettings{
 			Half: true,
 		},
+		AppLimits: &repository.AppLimits{
+			DailyLimit: 250000,
+		},
 	}
 
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
