@@ -18,8 +18,10 @@ var (
 type Writer interface {
 	WriteLoadBalancer(loadBalancer *repository.LoadBalancer) (*repository.LoadBalancer, error)
 	UpdateLoadBalancer(id string, options *repository.UpdateLoadBalancer) error
+	RemoveLoadBalancer(id string) error
 	WriteApplication(app *repository.Application) (*repository.Application, error)
 	UpdateApplication(id string, options *repository.UpdateApplication) error
+	RemoveApplication(id string) error
 }
 
 // Router struct handler for router requests
@@ -178,7 +180,6 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	app := rt.Cache.GetApplication(vars["id"])
 	if app == nil {
 		respondWithError(w, http.StatusNotFound, "application not found")
-
 		return
 	}
 
@@ -189,38 +190,38 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&updateInput)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
-
 		return
 	}
 
 	defer r.Body.Close()
 
-	err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+	if updateInput.Remove {
+		err = rt.Writer.RemoveApplication(vars["id"])
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
-		return
+		app.Status = repository.AwaitingGracePeriod
+	} else {
+		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		if updateInput.Name != "" {
+			app.Name = updateInput.Name
+		}
+		if updateInput.GatewaySettings != nil {
+			app.GatewaySettings = *updateInput.GatewaySettings
+		}
+		if updateInput.NotificationSettings != nil {
+			app.NotificationSettings = *updateInput.NotificationSettings
+		}
 	}
 
-	oldUserID := app.UserID
-
-	if updateInput.Name != "" {
-		app.Name = updateInput.Name
-	}
-
-	if updateInput.UserID != "" {
-		app.UserID = updateInput.UserID
-	}
-
-	if updateInput.Status != "" {
-		app.Status = updateInput.Status
-	}
-
-	if updateInput.GatewaySettings != nil {
-		app.GatewaySettings = *updateInput.GatewaySettings
-	}
-
-	rt.Cache.UpdateApplication(app, oldUserID)
+	rt.Cache.UpdateApplication(app)
 
 	respondWithJSON(w, http.StatusOK, app)
 }
@@ -232,7 +233,6 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 
 	if len(apps) == 0 {
 		respondWithError(w, http.StatusNotFound, "applications not found")
-
 		return
 	}
 
@@ -246,7 +246,6 @@ func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request
 
 	if len(lbs) == 0 {
 		respondWithError(w, http.StatusNotFound, "load balancers not found")
-
 		return
 	}
 
@@ -260,7 +259,6 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	if blockchain == nil {
 		respondWithError(w, http.StatusNotFound, "blockchain not found")
-
 		return
 	}
 
@@ -317,7 +315,6 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 	if lb == nil {
 		respondWithError(w, http.StatusNotFound, "load balancer not found")
-
 		return
 	}
 
@@ -328,30 +325,35 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&updateInput)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
-
 		return
 	}
 
 	defer r.Body.Close()
 
-	err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+	if updateInput.Remove {
+		err = rt.Writer.RemoveLoadBalancer(vars["id"])
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
-		return
+		oldUserID := lb.UserID
+		lb.UserID = ""
+
+		rt.Cache.DeleteLoadBalancer(lb, oldUserID)
+	} else {
+		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		if updateInput.Name != "" {
+			lb.Name = updateInput.Name
+		}
+
+		rt.Cache.UpdateLoadBalancer(lb)
 	}
-
-	oldUserID := lb.UserID
-
-	if updateInput.Name != "" {
-		lb.Name = updateInput.Name
-	}
-
-	if updateInput.UserID != "" {
-		lb.UserID = updateInput.UserID
-	}
-
-	rt.Cache.UpdateLoadBalancer(lb, oldUserID)
 
 	respondWithJSON(w, http.StatusOK, lb)
 }

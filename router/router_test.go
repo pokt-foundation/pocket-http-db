@@ -30,6 +30,12 @@ func (w *writerMock) UpdateLoadBalancer(id string, options *repository.UpdateLoa
 	return args.Error(0)
 }
 
+func (w *writerMock) RemoveLoadBalancer(id string) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
 func (w *writerMock) WriteApplication(app *repository.Application) (*repository.Application, error) {
 	args := w.Called()
 
@@ -37,6 +43,12 @@ func (w *writerMock) WriteApplication(app *repository.Application) (*repository.
 }
 
 func (w *writerMock) UpdateApplication(id string, options *repository.UpdateApplication) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
+func (w *writerMock) RemoveApplication(id string) error {
 	args := w.Called()
 
 	return args.Error(0)
@@ -297,10 +309,12 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	rawUpdateInput := &repository.UpdateApplication{
 		Name:   "pablo",
-		UserID: "6025be31e1261e00308bfa3a",
 		Status: repository.Orphaned,
 		GatewaySettings: &repository.GatewaySettings{
 			SecretKey: "1234",
+		},
+		NotificationSettings: &repository.NotificationSettings{
+			Half: true,
 		},
 	}
 
@@ -349,6 +363,64 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	rr = httptest.NewRecorder()
 
 	writerMock.On("UpdateApplication", mock.Anything).Return(errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_RemoveApplication(t *testing.T) {
+	c := require.New(t)
+
+	rawRemoveInput := &repository.UpdateApplication{
+		Remove: true,
+	}
+
+	updateInputToSend, err := json.Marshal(rawRemoveInput)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	writerMock := &writerMock{}
+
+	writerMock.On("RemoveApplication", mock.Anything).Return(nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("RemoveApplication", mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -609,8 +681,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateLoadBalancer{
-		Name:   "pablo",
-		UserID: "60ddc61b6e29c3003378361D",
+		Name: "pablo",
 	}
 
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
@@ -662,6 +733,53 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_RemoveLoadBalancer(t *testing.T) {
+	c := require.New(t)
+
+	rawUpdateInput := &repository.UpdateLoadBalancer{
+		Remove: true,
+	}
+
+	updateInputToSend, err := json.Marshal(rawUpdateInput)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	writerMock := &writerMock{}
+
+	writerMock.On("RemoveLoadBalancer", mock.Anything).Return(nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
 }
 
 func TestRouter_GetUsers(t *testing.T) {
