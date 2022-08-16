@@ -16,3 +16,4 @@
 
 .env
 pocket-http-db
+tmp/*

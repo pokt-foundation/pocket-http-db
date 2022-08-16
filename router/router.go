@@ -180,7 +180,6 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	app := rt.Cache.GetApplication(vars["id"])
 	if app == nil {
 		respondWithError(w, http.StatusNotFound, "application not found")
-
 		return
 	}
 
@@ -191,19 +190,25 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&updateInput)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
-
 		return
 	}
 
 	defer r.Body.Close()
 
-	var writeErr error
 	if updateInput.Remove {
-		writeErr = rt.Writer.RemoveApplication(vars["id"])
+		err = rt.Writer.RemoveApplication(vars["id"])
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
 		app.Status = "AWAITING_GRACE_PERIOD"
 	} else {
-		writeErr = rt.Writer.UpdateApplication(vars["id"], &updateInput)
+		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
 		if updateInput.Name != "" {
 			app.Name = updateInput.Name
@@ -215,15 +220,8 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			app.NotificationSettings = *updateInput.NotificationSettings
 		}
 	}
-	if writeErr != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
 
-		return
-	}
-
-	oldUserID := app.UserID
-
-	rt.Cache.UpdateApplication(app, oldUserID)
+	rt.Cache.UpdateApplication(app, app.UserID)
 
 	respondWithJSON(w, http.StatusOK, app)
 }
@@ -235,7 +233,6 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 
 	if len(apps) == 0 {
 		respondWithError(w, http.StatusNotFound, "applications not found")
-
 		return
 	}
 
@@ -249,7 +246,6 @@ func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request
 
 	if len(lbs) == 0 {
 		respondWithError(w, http.StatusNotFound, "load balancers not found")
-
 		return
 	}
 
@@ -263,7 +259,6 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	if blockchain == nil {
 		respondWithError(w, http.StatusNotFound, "blockchain not found")
-
 		return
 	}
 
@@ -339,22 +334,24 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	oldUserID := lb.UserID
 
-	var writeErr error
 	if updateInput.Remove {
-		writeErr = rt.Writer.RemoveLoadBalancer(vars["id"])
+		err = rt.Writer.RemoveLoadBalancer(vars["id"])
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
 		lb.UserID = ""
 	} else {
-		writeErr = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
+		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
 
 		if updateInput.Name != "" {
 			lb.Name = updateInput.Name
 		}
-	}
-	if writeErr != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
-
-		return
 	}
 
 	rt.Cache.UpdateLoadBalancer(lb, oldUserID)
