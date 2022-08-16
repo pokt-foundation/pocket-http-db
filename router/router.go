@@ -2,6 +2,7 @@ package router
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -315,7 +316,6 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 	if lb == nil {
 		respondWithError(w, http.StatusNotFound, "load balancer not found")
-
 		return
 	}
 
@@ -323,10 +323,11 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 
+	fmt.Println("BODY", r.Body, updateInput)
 	err := decoder.Decode(&updateInput)
+	fmt.Println("BODY AFTER", r.Body, updateInput, err)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
-
 		return
 	}
 

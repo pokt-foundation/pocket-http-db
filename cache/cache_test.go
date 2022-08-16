@@ -192,14 +192,13 @@ func TestCache_UpdateApplication(t *testing.T) {
 	c.NoError(err)
 
 	cache.UpdateApplication(&repository.Application{
-		ID:     "5f62b7d8be3591c4dea8566a",
-		UserID: "60ecb2bf67774900350d9c44",
-		Name:   "papolo",
-	}, "60ecb2bf67774900350d9c43")
+		ID:   "5f62b7d8be3591c4dea8566a",
+		Name: "papolo",
+	})
 
 	c.Len(cache.GetApplications(), 3)
-	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 1)
-	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c44"), 2)
+	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 2)
+	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c44"), 1)
 	c.Equal("papolo", cache.GetApplication("5f62b7d8be3591c4dea8566a").Name)
 	c.Equal("papolo", cache.GetLoadBalancer("60ecb2bf67774900350d9c42").Applications[1].Name)
 }
@@ -264,13 +263,48 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 	c.NoError(err)
 
 	cache.UpdateLoadBalancer(&repository.LoadBalancer{
-		ID:     "5f62b7d8be3591c4dea8566a",
-		UserID: "60ecb2bf67774900350d9c44",
+		ID:   "5f62b7d8be3591c4dea8566a",
+		Name: "papolo",
+	})
+
+	c.Len(cache.GetLoadBalancers(), 3)
+	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 2)
+	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c44"), 1)
+	c.Equal("papolo", cache.GetLoadBalancer("5f62b7d8be3591c4dea8566a").Name)
+}
+
+func TestCache_DeleteLoadBalancer(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := &ReaderMock{}
+
+	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+		{
+			ID:     "5f62b7d8be3591c4dea8566d",
+			UserID: "60ecb2bf67774900350d9c43",
+		},
+		{
+			ID:     "5f62b7d8be3591c4dea8566a",
+			UserID: "60ecb2bf67774900350d9c43",
+		},
+		{
+			ID:     "5f62b7d8be3591c4dea8566f",
+			UserID: "60ecb2bf67774900350d9c44",
+		},
+	}, nil)
+
+	cache := NewCache(readerMock)
+
+	err := cache.setLoadBalancers()
+	c.NoError(err)
+
+	cache.DeleteLoadBalancer(&repository.LoadBalancer{
+		ID:     "5f62b7d8be3591c4dea8566d",
+		UserID: "",
 		Name:   "papolo",
 	}, "60ecb2bf67774900350d9c43")
 
-	c.Len(cache.GetLoadBalancers(), 3)
+	c.Len(cache.GetLoadBalancers(), 2)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 1)
-	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c44"), 2)
-	c.Equal("papolo", cache.GetLoadBalancer("5f62b7d8be3591c4dea8566a").Name)
+	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c44"), 1)
 }

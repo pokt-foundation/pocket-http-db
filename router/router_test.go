@@ -372,11 +372,11 @@ func TestRouter_UpdateApplication(t *testing.T) {
 func TestRouter_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateApplication{
+	rawRemoveInput := &repository.UpdateApplication{
 		Remove: true,
 	}
 
-	updateInputToSend, err := json.Marshal(rawUpdateInput)
+	updateInputToSend, err := json.Marshal(rawRemoveInput)
 	c.NoError(err)
 
 	req, err := http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
@@ -779,18 +779,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	router.Router.ServeHTTP(rr, req)
 
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("RemoveLoadBalancer", mock.Anything).Return(errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
+	c.Equal(http.StatusNotFound, rr.Code)
 }
 
 func TestRouter_GetUsers(t *testing.T) {
