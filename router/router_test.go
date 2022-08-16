@@ -30,6 +30,12 @@ func (w *writerMock) UpdateLoadBalancer(id string, options *repository.UpdateLoa
 	return args.Error(0)
 }
 
+func (w *writerMock) RemoveLoadBalancer(id string) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
 func (w *writerMock) WriteApplication(app *repository.Application) (*repository.Application, error) {
 	args := w.Called()
 
@@ -37,6 +43,12 @@ func (w *writerMock) WriteApplication(app *repository.Application) (*repository.
 }
 
 func (w *writerMock) UpdateApplication(id string, options *repository.UpdateApplication) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
+func (w *writerMock) RemoveApplication(id string) error {
 	args := w.Called()
 
 	return args.Error(0)

@@ -18,8 +18,10 @@ var (
 type Writer interface {
 	WriteLoadBalancer(loadBalancer *repository.LoadBalancer) (*repository.LoadBalancer, error)
 	UpdateLoadBalancer(id string, options *repository.UpdateLoadBalancer) error
+	RemoveLoadBalancer(id string) error
 	WriteApplication(app *repository.Application) (*repository.Application, error)
 	UpdateApplication(id string, options *repository.UpdateApplication) error
+	RemoveApplication(id string) error
 }
 
 // Router struct handler for router requests
@@ -195,30 +197,31 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
-	if err != nil {
+	var writeErr error
+	if updateInput.Remove {
+		writeErr = rt.Writer.RemoveApplication(vars["id"])
+
+		app.Status = "AWAITING_GRACE_PERIOD"
+	} else {
+		writeErr = rt.Writer.UpdateApplication(vars["id"], &updateInput)
+
+		if updateInput.Name != "" {
+			app.Name = updateInput.Name
+		}
+		if updateInput.GatewaySettings != nil {
+			app.GatewaySettings = *updateInput.GatewaySettings
+		}
+		if updateInput.NotificationSettings != nil {
+			app.NotificationSettings = *updateInput.NotificationSettings
+		}
+	}
+	if writeErr != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 
 		return
 	}
 
 	oldUserID := app.UserID
-
-	if updateInput.Name != "" {
-		app.Name = updateInput.Name
-	}
-
-	if updateInput.UserID != "" {
-		app.UserID = updateInput.UserID
-	}
-
-	if updateInput.Status != "" {
-		app.Status = updateInput.Status
-	}
-
-	if updateInput.GatewaySettings != nil {
-		app.GatewaySettings = *updateInput.GatewaySettings
-	}
 
 	rt.Cache.UpdateApplication(app, oldUserID)
 
@@ -334,21 +337,24 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
-	if err != nil {
+	oldUserID := lb.UserID
+
+	var writeErr error
+	if updateInput.Remove {
+		writeErr = rt.Writer.RemoveLoadBalancer(vars["id"])
+
+		lb.UserID = ""
+	} else {
+		writeErr = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
+
+		if updateInput.Name != "" {
+			lb.Name = updateInput.Name
+		}
+	}
+	if writeErr != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 
 		return
-	}
-
-	oldUserID := lb.UserID
-
-	if updateInput.Name != "" {
-		lb.Name = updateInput.Name
-	}
-
-	if updateInput.UserID != "" {
-		lb.UserID = updateInput.UserID
 	}
 
 	rt.Cache.UpdateLoadBalancer(lb, oldUserID)
