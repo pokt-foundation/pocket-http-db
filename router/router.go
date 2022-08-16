@@ -202,7 +202,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		app.Status = "AWAITING_GRACE_PERIOD"
+		app.Status = repository.AwaitingGracePeriod
 	} else {
 		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
 		if err != nil {
@@ -221,7 +221,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rt.Cache.UpdateApplication(app, app.UserID)
+	rt.Cache.UpdateApplication(app)
 
 	respondWithJSON(w, http.StatusOK, app)
 }
@@ -332,8 +332,6 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	oldUserID := lb.UserID
-
 	if updateInput.Remove {
 		err = rt.Writer.RemoveLoadBalancer(vars["id"])
 		if err != nil {
@@ -341,7 +339,10 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		oldUserID := lb.UserID
 		lb.UserID = ""
+
+		rt.Cache.DeleteLoadBalancer(lb, oldUserID)
 	} else {
 		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
 		if err != nil {
@@ -352,9 +353,9 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		if updateInput.Name != "" {
 			lb.Name = updateInput.Name
 		}
-	}
 
-	rt.Cache.UpdateLoadBalancer(lb, oldUserID)
+		rt.Cache.UpdateLoadBalancer(lb)
+	}
 
 	respondWithJSON(w, http.StatusOK, lb)
 }
