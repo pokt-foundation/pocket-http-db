@@ -141,7 +141,6 @@ func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 
 	if app == nil {
 		respondWithError(w, http.StatusNotFound, "application not found")
-
 		return
 	}
 
@@ -156,7 +155,6 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&app)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
-
 		return
 	}
 
@@ -165,7 +163,6 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	fullApp, err := rt.Writer.WriteApplication(&app)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
-
 		return
 	}
 
@@ -212,6 +209,9 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 		if updateInput.Name != "" {
 			app.Name = updateInput.Name
+		}
+		if updateInput.AppLimits != nil {
+			app.Limits = *updateInput.AppLimits
 		}
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = *updateInput.GatewaySettings
@@ -276,7 +276,6 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	if lb == nil {
 		respondWithError(w, http.StatusNotFound, "load balancer not found")
-
 		return
 	}
 
@@ -291,7 +290,6 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	err := decoder.Decode(&lb)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())
-
 		return
 	}
 
@@ -300,7 +298,6 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	fullLB, err := rt.Writer.WriteLoadBalancer(&lb)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
-
 		return
 	}
 
@@ -369,7 +366,6 @@ func (rt *Router) GetUser(w http.ResponseWriter, r *http.Request) {
 
 	if user == nil {
 		respondWithError(w, http.StatusNotFound, "user not found")
-
 		return
 	}
 
