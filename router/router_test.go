@@ -59,11 +59,9 @@ func newTestRouter() (*Router, error) {
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
-			Limits: repository.AppLimits{
-				DailyLimit: 1000000,
-			},
+			ID:          "5f62b7d8be3591c4dea8566d",
+			UserID:      "60ecb2bf67774900350d9c43",
+			PayPlanType: repository.FreetierV0,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -111,6 +109,17 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
+
 	return NewRouter(readerMock, nil)
 }
 
@@ -150,7 +159,8 @@ func TestRouter_GetApplications(t *testing.T) {
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
 			Limits: repository.AppLimits{
-				DailyLimit: 1000000,
+				PlanType:   repository.FreetierV0,
+				DailyLimit: 250000,
 			},
 		},
 		{
@@ -192,16 +202,23 @@ func TestRouter_GetApplicationsLimits(t *testing.T) {
 
 	expectedBody, err := json.Marshal([]*repository.AppLimits{
 		{
-			AppID:      "5f62b7d8be3591c4dea8566d",
-			DailyLimit: 1000000,
+			AppID:                "5f62b7d8be3591c4dea8566d",
+			AppUserID:            "60ecb2bf67774900350d9c43",
+			PlanType:             repository.FreetierV0,
+			DailyLimit:           250000,
+			NotificationSettings: &repository.NotificationSettings{},
 		},
 		{
-			AppID:      "5f62b7d8be3591c4dea8566a",
-			DailyLimit: 0,
+			AppID:                "5f62b7d8be3591c4dea8566a",
+			AppUserID:            "60ecb2bf67774900350d9c43",
+			DailyLimit:           0,
+			NotificationSettings: &repository.NotificationSettings{},
 		},
 		{
-			AppID:      "5f62b7d8be3591c4dea8566f",
-			DailyLimit: 0,
+			AppID:                "5f62b7d8be3591c4dea8566f",
+			AppUserID:            "60ecb2bf67774900350d9c44",
+			DailyLimit:           0,
+			NotificationSettings: &repository.NotificationSettings{},
 		},
 	})
 	c.NoError(err)
@@ -228,7 +245,8 @@ func TestRouter_GetApplication(t *testing.T) {
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
 		Limits: repository.AppLimits{
-			DailyLimit: 1000000,
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
 		},
 	})
 	c.NoError(err)
@@ -308,8 +326,9 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateApplication{
-		Name:   "pablo",
-		Status: repository.Orphaned,
+		Name:        "pablo",
+		Status:      repository.Orphaned,
+		PayPlanType: repository.PayAsYouGoV0,
 		GatewaySettings: &repository.GatewaySettings{
 			SecretKey: "1234",
 		},
@@ -447,7 +466,8 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
 			Limits: repository.AppLimits{
-				DailyLimit: 1000000,
+				PlanType:   repository.FreetierV0,
+				DailyLimit: 250000,
 			},
 		},
 		{
@@ -745,34 +765,36 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
 	router, err := newTestRouter()
 	c.NoError(err)
 
 	writerMock := &writerMock{}
 
-	writerMock.On("RemoveLoadBalancer", mock.Anything).Return(nil).Once()
-
 	router.Writer = writerMock
+
+	req, err := http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	writerMock.On("RemoveLoadBalancer", mock.Anything).Return(errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("RemoveLoadBalancer", mock.Anything).Return(nil).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
 	req, err = http.NewRequest(http.MethodPut, "/load_balancer/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -833,6 +855,69 @@ func TestRouter_GetUser(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 
 	req, err = http.NewRequest(http.MethodGet, "/user/61ecb2bf67774900350d9c43", nil)
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
+}
+
+func TestRouter_GetPayPlans(t *testing.T) {
+	c := require.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/pay_plan", nil)
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	expectedBody, err := json.Marshal([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	})
+	c.NoError(err)
+
+	c.Equal(expectedBody, rr.Body.Bytes())
+}
+
+func TestRouter_GetPayPlan(t *testing.T) {
+	c := require.New(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/pay_plan/freetier_v0", nil)
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	expectedBody, err := json.Marshal(&repository.PayPlan{
+		PlanType:   repository.FreetierV0,
+		DailyLimit: 250000,
+	})
+	c.NoError(err)
+
+	c.Equal(expectedBody, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodGet, "/pay_plan/freetier_v21", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()

@@ -15,8 +15,9 @@ func TestCache_SetCache(t *testing.T) {
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:          "5f62b7d8be3591c4dea8566d",
+			UserID:      "60ecb2bf67774900350d9c43",
+			PayPlanType: repository.FreetierV0,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -51,6 +52,17 @@ func TestCache_SetCache(t *testing.T) {
 		},
 	}, nil)
 
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
+
 	cache := NewCache(readerMock)
 
 	err := cache.SetCache()
@@ -69,18 +81,36 @@ func TestCache_SetCache(t *testing.T) {
 
 	c.NotEmpty(cache.GetUser("60ecb2bf67774900350d9c43"))
 	c.Len(cache.GetUsers(), 1)
+
+	c.NotEmpty(cache.GetPayPlan(repository.FreetierV0))
+	c.Len(cache.GetPayPlans(), 2)
 }
 
 func TestCache_SetCacheFailure(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
+	cache := NewCache(readerMock)
+
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{}, errors.New("error on pay plans")).Once()
+
+	err := cache.SetCache()
+	c.EqualError(err, "error on pay plans")
+
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
 
-	cache := NewCache(readerMock)
-
-	err := cache.SetCache()
+	err = cache.SetCache()
 	c.EqualError(err, "error on applications")
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
@@ -304,7 +334,5 @@ func TestCache_DeleteLoadBalancer(t *testing.T) {
 		Name:   "papolo",
 	}, "60ecb2bf67774900350d9c43")
 
-	c.Len(cache.GetLoadBalancers(), 2)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 1)
-	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c44"), 1)
 }
