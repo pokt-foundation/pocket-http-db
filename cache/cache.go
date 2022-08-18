@@ -12,6 +12,7 @@ type Reader interface {
 	ReadBlockchains() ([]*repository.Blockchain, error)
 	ReadLoadBalancers() ([]*repository.LoadBalancer, error)
 	ReadUsers() ([]*repository.User, error)
+	ReadPayPlans() ([]*repository.PayPlan, error)
 }
 
 // Cache struct handler for cache operations
@@ -31,6 +32,9 @@ type Cache struct {
 	usersMap                 map[string]*repository.User
 	users                    []*repository.User
 	usersMux                 sync.Mutex
+	payPlansMap              map[repository.PayPlanType]*repository.PayPlan
+	payPlans                 []*repository.PayPlan
+	payPlansMux              sync.Mutex
 }
 
 // NewCache returns cache instance from reader interface
@@ -119,6 +123,22 @@ func (c *Cache) GetUsers() []*repository.User {
 	return c.users
 }
 
+// GetPayPlan returns PayPlan from cache by planType
+func (c *Cache) GetPayPlan(planType repository.PayPlanType) *repository.PayPlan {
+	c.payPlansMux.Lock()
+	defer c.payPlansMux.Unlock()
+
+	return c.payPlansMap[planType]
+}
+
+// GetPayPlans returns all PayPlans in cache
+func (c *Cache) GetPayPlans() []*repository.PayPlan {
+	c.payPlansMux.Lock()
+	defer c.payPlansMux.Unlock()
+
+	return c.payPlans
+}
+
 func (c *Cache) setApplications() error {
 	applications, err := c.reader.ReadApplications()
 	if err != nil {
@@ -128,10 +148,25 @@ func (c *Cache) setApplications() error {
 	applicationsMap := make(map[string]*repository.Application)
 	applicationsMapByUserID := make(map[string][]*repository.Application)
 
-	for _, application := range applications {
-		applicationsMap[application.ID] = application
-		applicationsMapByUserID[application.UserID] = append(applicationsMapByUserID[application.UserID], application)
+	c.payPlansMux.Lock()
+
+	for i := 0; i < len(applications); i++ {
+		plan := c.payPlansMap[applications[i].PayPlanType]
+
+		if plan != nil {
+			applications[i].Limits = repository.AppLimits{
+				PlanType:   plan.PlanType,
+				DailyLimit: plan.DailyLimit,
+			}
+		}
+
+		applications[i].PayPlanType = "" // set to empty to avoid two sources of truth
+
+		applicationsMap[applications[i].ID] = applications[i]
+		applicationsMapByUserID[applications[i].UserID] = append(applicationsMapByUserID[applications[i].UserID], applications[i])
 	}
+
+	c.payPlansMux.Unlock()
 
 	c.applicationsMux.Lock()
 	defer c.applicationsMux.Unlock()
@@ -171,19 +206,6 @@ func (c *Cache) UpdateApplication(app *repository.Application) {
 	for i := 0; i < len(c.loadBalancers); i++ {
 		updateApplicationFromSlice(app, c.loadBalancers[i].Applications)
 	}
-}
-
-func deleteApplicationFromSlice(appID string, apps []*repository.Application) []*repository.Application {
-	for i := 0; i < len(apps); i++ {
-		if apps[i].ID == appID {
-			apps[i] = apps[len(apps)-1]
-			apps = apps[:len(apps)-1]
-
-			break
-		}
-	}
-
-	return apps
 }
 
 func updateApplicationFromSlice(updatedApp *repository.Application, apps []*repository.Application) []*repository.Application {
@@ -283,10 +305,6 @@ func (c *Cache) DeleteLoadBalancer(lb *repository.LoadBalancer, oldUserID string
 	c.loadBalancersMux.Lock()
 	defer c.loadBalancersMux.Unlock()
 
-	c.loadBalancers = deleteLoadBalancerFromSlice(lb.ID, c.loadBalancers)
-
-	delete(c.loadBalancersMap, lb.ID)
-
 	c.loadBalancersMapByUserID[oldUserID] = deleteLoadBalancerFromSlice(lb.ID, c.loadBalancersMapByUserID[oldUserID])
 }
 
@@ -338,9 +356,36 @@ func (c *Cache) setUsers() error {
 	return nil
 }
 
+func (c *Cache) setPayPlans() error {
+	payPlans, err := c.reader.ReadPayPlans()
+	if err != nil {
+		return err
+	}
+
+	payPlansMap := make(map[repository.PayPlanType]*repository.PayPlan)
+
+	for _, payPlan := range payPlans {
+		payPlansMap[payPlan.PlanType] = payPlan
+	}
+
+	c.payPlansMux.Lock()
+	defer c.payPlansMux.Unlock()
+
+	c.payPlans = payPlans
+	c.payPlansMap = payPlansMap
+
+	return nil
+}
+
 // SetCache gets all values from DB and stores them in cache
 func (c *Cache) SetCache() error {
-	err := c.setApplications()
+	err := c.setPayPlans()
+	if err != nil {
+		return err
+	}
+
+	// always call after setPayPlans func
+	err = c.setApplications()
 	if err != nil {
 		return err
 	}

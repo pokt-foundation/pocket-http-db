@@ -33,3 +33,9 @@ func (r *ReaderMock) ReadUsers() ([]*repository.User, error) {
 
 	return args.Get(0).([]*repository.User), args.Error(1)
 }
+
+func (r *ReaderMock) ReadPayPlans() ([]*repository.PayPlan, error) {
+	args := r.Called()
+
+	return args.Get(0).([]*repository.PayPlan), args.Error(1)
+}

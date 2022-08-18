@@ -3,6 +3,7 @@ package router
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
@@ -62,6 +63,8 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	rt.Router.HandleFunc("/user/{id}", rt.GetUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
 
 	rt.Router.Use(rt.AuthorizationHandler)
 
@@ -124,11 +127,15 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 	var appsLimits []repository.AppLimits
 
 	for _, app := range apps {
-		appsLimits = append(appsLimits, repository.AppLimits{
-			AppID:      app.ID,
-			PublicKey:  app.FreeTierApplicationAccount.PublicKey,
-			DailyLimit: app.Limits.DailyLimit,
-		})
+		limits := app.Limits
+
+		limits.AppID = app.ID
+		limits.AppName = app.Name
+		limits.AppUserID = app.UserID
+		limits.PublicKey = app.FreeTierApplicationAccount.PublicKey
+		limits.NotificationSettings = &app.NotificationSettings
+
+		appsLimits = append(appsLimits, limits)
 	}
 
 	respondWithJSON(w, http.StatusOK, appsLimits)
@@ -210,8 +217,11 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		if updateInput.Name != "" {
 			app.Name = updateInput.Name
 		}
-		if updateInput.AppLimits != nil {
-			app.Limits = *updateInput.AppLimits
+		if updateInput.Status != "" {
+			app.Status = updateInput.Status
+		}
+		if updateInput.PayPlanType != "" {
+			app.PayPlanType = updateInput.PayPlanType
 		}
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = *updateInput.GatewaySettings
@@ -374,4 +384,21 @@ func (rt *Router) GetUser(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Router) GetUsers(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, rt.Cache.GetUsers())
+}
+
+func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	plan := rt.Cache.GetPayPlan(repository.PayPlanType(strings.ToUpper(vars["type"])))
+
+	if plan == nil {
+		respondWithError(w, http.StatusNotFound, "pay plan not found")
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, plan)
+}
+
+func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusOK, rt.Cache.GetPayPlans())
 }
