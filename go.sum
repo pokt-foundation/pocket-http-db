@@ -20,6 +20,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pokt-foundation/portal-api-go v0.2.2 h1:qHscdOQR6ulYm1st8rpYPFlCO1dGFTuMrwWWWYBEhg0=
 github.com/pokt-foundation/portal-api-go v0.2.2/go.mod h1:7T8GJ+dpbo39i+3nuNhByJLD3LfvgwCdzZjseKBeH/g=
+github.com/pokt-foundation/utils-go v0.2.0 h1:q74w0fq/VNl109KsfMaHEq0ugqX/iPueyPwNz+ldSYY=
+github.com/pokt-foundation/utils-go v0.2.0/go.mod h1:c92FV9S9qY4PEyeOv4fGkI9FTZSv8oh1MiARGC+BC2E=
 github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

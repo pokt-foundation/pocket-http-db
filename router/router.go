@@ -7,8 +7,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
-	"github.com/pokt-foundation/pocket-http-db/environment"
 	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/pokt-foundation/utils-go/environment"
+	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
 )
 
 var (
@@ -71,21 +72,6 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	return rt, nil
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_, err := w.Write(response)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
-}
-
 func (rt *Router) AuthorizationHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is the path of the health check endpoint
@@ -118,7 +104,7 @@ func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetApplications())
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetApplications())
 }
 
 func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +124,7 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 		appsLimits = append(appsLimits, limits)
 	}
 
-	respondWithJSON(w, http.StatusOK, appsLimits)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, appsLimits)
 }
 
 func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
@@ -147,11 +133,11 @@ func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 	app := rt.Cache.GetApplication(vars["id"])
 
 	if app == nil {
-		respondWithError(w, http.StatusNotFound, "application not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "application not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, app)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
 }
 
 func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +147,7 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&app)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -169,13 +155,13 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 
 	fullApp, err := rt.Writer.WriteApplication(&app)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	rt.Cache.AddApplication(fullApp)
 
-	respondWithJSON(w, http.StatusOK, fullApp)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
 }
 
 func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
@@ -183,7 +169,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 	app := rt.Cache.GetApplication(vars["id"])
 	if app == nil {
-		respondWithError(w, http.StatusNotFound, "application not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "application not found")
 		return
 	}
 
@@ -193,7 +179,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&updateInput)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -202,7 +188,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	if updateInput.Remove {
 		err = rt.Writer.RemoveApplication(vars["id"])
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -210,7 +196,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -233,7 +219,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 	rt.Cache.UpdateApplication(app)
 
-	respondWithJSON(w, http.StatusOK, app)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
 }
 
 func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request) {
@@ -242,11 +228,11 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 	apps := rt.Cache.GetApplicationsByUserID(vars["id"])
 
 	if len(apps) == 0 {
-		respondWithError(w, http.StatusNotFound, "applications not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "applications not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, apps)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, apps)
 }
 
 func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request) {
@@ -255,11 +241,11 @@ func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request
 	lbs := rt.Cache.GetLoadBalancersByUserID(vars["id"])
 
 	if len(lbs) == 0 {
-		respondWithError(w, http.StatusNotFound, "load balancers not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "load balancers not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, lbs)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
@@ -268,15 +254,15 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	blockchain := rt.Cache.GetBlockchain(vars["id"])
 
 	if blockchain == nil {
-		respondWithError(w, http.StatusNotFound, "blockchain not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "blockchain not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, blockchain)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, blockchain)
 }
 
 func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchains())
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchains())
 }
 
 func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
@@ -285,11 +271,11 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 
 	if lb == nil {
-		respondWithError(w, http.StatusNotFound, "load balancer not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "load balancer not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, lb)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
 
 func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
@@ -299,7 +285,7 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&lb)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -307,13 +293,13 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	fullLB, err := rt.Writer.WriteLoadBalancer(&lb)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	rt.Cache.AddLoadBalancer(fullLB)
 
-	respondWithJSON(w, http.StatusOK, fullLB)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }
 
 func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
@@ -321,7 +307,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 	if lb == nil {
-		respondWithError(w, http.StatusNotFound, "load balancer not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "load balancer not found")
 		return
 	}
 
@@ -331,7 +317,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&updateInput)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -340,7 +326,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	if updateInput.Remove {
 		err = rt.Writer.RemoveLoadBalancer(vars["id"])
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -351,7 +337,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
@@ -362,11 +348,11 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		rt.Cache.UpdateLoadBalancer(lb)
 	}
 
-	respondWithJSON(w, http.StatusOK, lb)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
 
 func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancers())
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancers())
 }
 
 func (rt *Router) GetUser(w http.ResponseWriter, r *http.Request) {
@@ -375,15 +361,15 @@ func (rt *Router) GetUser(w http.ResponseWriter, r *http.Request) {
 	user := rt.Cache.GetUser(vars["id"])
 
 	if user == nil {
-		respondWithError(w, http.StatusNotFound, "user not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "user not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, user)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, user)
 }
 
 func (rt *Router) GetUsers(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetUsers())
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetUsers())
 }
 
 func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
@@ -392,13 +378,13 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 	plan := rt.Cache.GetPayPlan(repository.PayPlanType(strings.ToUpper(vars["type"])))
 
 	if plan == nil {
-		respondWithError(w, http.StatusNotFound, "pay plan not found")
+		jsonresponse.RespondWithError(w, http.StatusNotFound, "pay plan not found")
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, plan)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, plan)
 }
 
 func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusOK, rt.Cache.GetPayPlans())
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetPayPlans())
 }
