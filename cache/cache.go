@@ -190,12 +190,18 @@ func (c *Cache) AddApplication(app *repository.Application) {
 
 // UpdateApplication updates application saved in cache
 func (c *Cache) UpdateApplication(app *repository.Application) {
+	if app.PayPlanType != "" {
+		newPlan := c.GetPayPlan(app.PayPlanType)
+		app.Limits = repository.AppLimits{
+			PlanType:   newPlan.PlanType,
+			DailyLimit: newPlan.DailyLimit,
+		}
+	}
+
 	c.applicationsMux.Lock()
 
 	c.applications = updateApplicationFromSlice(app, c.applications)
-
 	c.applicationsMap[app.ID] = app
-
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
 
 	c.applicationsMux.Unlock()

@@ -187,6 +187,17 @@ func TestCache_UpdateApplication(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
+
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -215,21 +226,26 @@ func TestCache_UpdateApplication(t *testing.T) {
 
 	cache := NewCache(readerMock)
 
-	err := cache.setApplications()
+	err := cache.setPayPlans()
+	c.NoError(err)
+
+	err = cache.setApplications()
 	c.NoError(err)
 
 	err = cache.setLoadBalancers()
 	c.NoError(err)
 
 	cache.UpdateApplication(&repository.Application{
-		ID:   "5f62b7d8be3591c4dea8566a",
-		Name: "papolo",
+		ID:          "5f62b7d8be3591c4dea8566a",
+		Name:        "papolo",
+		PayPlanType: repository.FreetierV0,
 	})
 
 	c.Len(cache.GetApplications(), 3)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 2)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c44"), 1)
 	c.Equal("papolo", cache.GetApplication("5f62b7d8be3591c4dea8566a").Name)
+	c.Equal(250000, cache.GetApplication("5f62b7d8be3591c4dea8566a").Limits.DailyLimit)
 	c.Equal("papolo", cache.GetLoadBalancer("60ecb2bf67774900350d9c42").Applications[1].Name)
 }
 
