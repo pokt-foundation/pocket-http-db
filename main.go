@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pokt-foundation/pocket-http-db/environment"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
+	"github.com/pokt-foundation/utils-go/environment"
 )
 
 var (
