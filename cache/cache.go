@@ -180,6 +180,14 @@ func (c *Cache) setApplications() error {
 
 // AddApplication adds application to cache
 func (c *Cache) AddApplication(app *repository.Application) {
+	if app.PayPlanType != "" {
+		newPlan := c.GetPayPlan(app.PayPlanType)
+		app.Limits = repository.AppLimits{
+			PlanType:   newPlan.PlanType,
+			DailyLimit: newPlan.DailyLimit,
+		}
+	}
+
 	c.applicationsMux.Lock()
 	defer c.applicationsMux.Unlock()
 
