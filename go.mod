@@ -4,8 +4,8 @@ go 1.18
 
 require (
 	github.com/gorilla/mux v1.8.0
-	github.com/pokt-foundation/portal-api-go v0.2.3
-	github.com/pokt-foundation/utils-go v0.2.0
+	github.com/pokt-foundation/portal-api-go v0.2.4
+	github.com/pokt-foundation/utils-go v0.2.2
 	github.com/stretchr/testify v1.8.0
 )
 
