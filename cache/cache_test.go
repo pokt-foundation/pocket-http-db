@@ -153,6 +153,17 @@ func TestCache_AddApplication(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
+
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -170,16 +181,21 @@ func TestCache_AddApplication(t *testing.T) {
 
 	cache := NewCache(readerMock)
 
-	err := cache.setApplications()
+	err := cache.setPayPlans()
+	c.NoError(err)
+
+	err = cache.setApplications()
 	c.NoError(err)
 
 	cache.AddApplication(&repository.Application{
-		ID:     "5f62b7d8be3591c4dea8566b",
-		UserID: "60ecb2bf67774900350d9c43",
+		ID:          "5f62b7d8be3591c4dea8566b",
+		UserID:      "60ecb2bf67774900350d9c43",
+		PayPlanType: repository.FreetierV0,
 	})
 
 	c.Len(cache.GetApplications(), 4)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 3)
+	c.Equal(cache.GetApplication("5f62b7d8be3591c4dea8566b").Limits.DailyLimit, 250000)
 }
 
 func TestCache_UpdateApplication(t *testing.T) {
