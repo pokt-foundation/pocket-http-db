@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: Staging deployment us-west-2
 
 on:
@@ -6,6 +7,13 @@ on:
     branches: [staging]
     types:
       - completed
+=======
+name: Production deployment us-west-2
+
+on:
+  push:
+    branches: [staging]
+>>>>>>> ac085f4 (infra: add staging deployment files)
 
 jobs:
   deploy:
@@ -47,14 +55,23 @@ jobs:
           image: ${{ steps.build-image-api.outputs.image }}
           environment-variables: |
             PORT=${{ secrets.PORT }}
+<<<<<<< HEAD
             CONNECTION_STRING=${{ secrets.CONNECTION_STRING_STAGING }}
             API_KEYS=${{ secrets.API_KEYS }}
             CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
+=======
+            CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
+            API_KEYS=${{ secrets.API_KEYS }}
+>>>>>>> ac085f4 (infra: add staging deployment files)
 
       - name: Deploy / us-west-2
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
+<<<<<<< HEAD
           service: postgres-api-staging
+=======
+          service: postgres-api
+>>>>>>> ac085f4 (infra: add staging deployment files)
           cluster: postgres-api
           wait-for-service-stability: true
