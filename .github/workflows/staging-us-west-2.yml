@@ -51,6 +51,6 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
-          service: postgres-api
+          service: postgres-api-staging
           cluster: postgres-api
           wait-for-service-stability: true
