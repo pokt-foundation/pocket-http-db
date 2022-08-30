@@ -2,11 +2,11 @@ name: Production deployment us-west-2
 
 on:
   push:
-    branches: [master]
+    branches: [staging]
 
 jobs:
   deploy:
-    name: Postgres HTTP API
+    name: Postgres HTTP API Staging
     runs-on: ubuntu-latest
 
     steps:
@@ -28,7 +28,7 @@ jobs:
         id: build-image-api
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: postgres-api
+          ECR_REPOSITORY: postgres-api-staging
           IMAGE_TAG: latest
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -39,18 +39,18 @@ jobs:
         id: task-def-us-west-2-api
         uses: aws-actions/amazon-ecs-render-task-definition@master
         with:
-          task-definition: .aws/ecs-task-definition-production.json
-          container-name: postgres-api
+          task-definition: .aws/ecs-task-definition-staging.json
+          container-name: postgres-api-staging
           image: ${{ steps.build-image-api.outputs.image }}
           environment-variables: |
             PORT=${{ secrets.PORT }}
-            CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
+            CONNECTION_STRING=${{ secrets.CONNECTION_STRING_STAGING }}
             API_KEYS=${{ secrets.API_KEYS }}
 
       - name: Deploy / us-west-2
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
           task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
-          service: postgres-api
+          service: postgres-api-staging
           cluster: postgres-api
           wait-for-service-stability: true
