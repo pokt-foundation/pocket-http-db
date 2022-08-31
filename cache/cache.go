@@ -295,6 +295,12 @@ func (c *Cache) setLoadBalancers() error {
 
 // AddLoadBalancer adds load balancer to cache
 func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
+	for _, appID := range lb.ApplicationIDs {
+		lb.Applications = append(lb.Applications, c.GetApplication(appID))
+	}
+
+	lb.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
+
 	c.loadBalancersMux.Lock()
 	defer c.loadBalancersMux.Unlock()
 
