@@ -15,5 +15,11 @@
 # vendor/
 
 .env
-pocket-http-db
+tmp
 tmp/*
+*/tmp/*
+.DS_Store
+.vscode
+.vscode/*
+
+pocket-http-db
