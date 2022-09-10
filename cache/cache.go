@@ -11,30 +11,33 @@ type Reader interface {
 	ReadApplications() ([]*repository.Application, error)
 	ReadBlockchains() ([]*repository.Blockchain, error)
 	ReadLoadBalancers() ([]*repository.LoadBalancer, error)
-	ReadUsers() ([]*repository.User, error)
 	ReadPayPlans() ([]*repository.PayPlan, error)
+	ReadRedirects() ([]*repository.Redirect, error)
+	ReadUsers() ([]*repository.User, error)
 }
 
 // Cache struct handler for cache operations
 type Cache struct {
-	reader                   Reader
-	applicationsMap          map[string]*repository.Application
-	applicationsMapByUserID  map[string][]*repository.Application
-	applications             []*repository.Application
-	applicationsMux          sync.Mutex
-	blockchainsMap           map[string]*repository.Blockchain
-	blockchains              []*repository.Blockchain
-	blockchainsMux           sync.Mutex
-	loadBalancersMap         map[string]*repository.LoadBalancer
-	loadBalancersMapByUserID map[string][]*repository.LoadBalancer
-	loadBalancers            []*repository.LoadBalancer
-	loadBalancersMux         sync.Mutex
-	usersMap                 map[string]*repository.User
-	users                    []*repository.User
-	usersMux                 sync.Mutex
-	payPlansMap              map[repository.PayPlanType]*repository.PayPlan
-	payPlans                 []*repository.PayPlan
-	payPlansMux              sync.Mutex
+	reader                     Reader
+	applicationsMap            map[string]*repository.Application
+	applicationsMapByUserID    map[string][]*repository.Application
+	applications               []*repository.Application
+	applicationsMux            sync.Mutex
+	blockchainsMap             map[string]*repository.Blockchain
+	blockchains                []*repository.Blockchain
+	blockchainsMux             sync.Mutex
+	loadBalancersMap           map[string]*repository.LoadBalancer
+	loadBalancersMapByUserID   map[string][]*repository.LoadBalancer
+	loadBalancers              []*repository.LoadBalancer
+	loadBalancersMux           sync.Mutex
+	payPlansMap                map[repository.PayPlanType]*repository.PayPlan
+	payPlans                   []*repository.PayPlan
+	payPlansMux                sync.Mutex
+	redirectsMapByBlockchainID map[string][]*repository.Redirect
+	redirectsMux               sync.Mutex
+	usersMap                   map[string]*repository.User
+	users                      []*repository.User
+	usersMux                   sync.Mutex
 }
 
 // NewCache returns cache instance from reader interface
@@ -107,22 +110,6 @@ func (c *Cache) GetLoadBalancersByUserID(userID string) []*repository.LoadBalanc
 	return c.loadBalancersMapByUserID[userID]
 }
 
-// GetUser returns User from cache by userID
-func (c *Cache) GetUser(userID string) *repository.User {
-	c.usersMux.Lock()
-	defer c.usersMux.Unlock()
-
-	return c.usersMap[userID]
-}
-
-// GetUsers returns all Users in cache
-func (c *Cache) GetUsers() []*repository.User {
-	c.usersMux.Lock()
-	defer c.usersMux.Unlock()
-
-	return c.users
-}
-
 // GetPayPlan returns PayPlan from cache by planType
 func (c *Cache) GetPayPlan(planType repository.PayPlanType) *repository.PayPlan {
 	c.payPlansMux.Lock()
@@ -137,6 +124,30 @@ func (c *Cache) GetPayPlans() []*repository.PayPlan {
 	defer c.payPlansMux.Unlock()
 
 	return c.payPlans
+}
+
+// GetRedirects returns all Redirects from cache by blockchainID
+func (c *Cache) GetRedirects(blockchainID string) []*repository.Redirect {
+	c.redirectsMux.Lock()
+	defer c.redirectsMux.Unlock()
+
+	return c.redirectsMapByBlockchainID[blockchainID]
+}
+
+// GetUser returns User from cache by userID
+func (c *Cache) GetUser(userID string) *repository.User {
+	c.usersMux.Lock()
+	defer c.usersMux.Unlock()
+
+	return c.usersMap[userID]
+}
+
+// GetUsers returns all Users in cache
+func (c *Cache) GetUsers() []*repository.User {
+	c.usersMux.Lock()
+	defer c.usersMux.Unlock()
+
+	return c.users
 }
 
 func (c *Cache) setApplications() error {
@@ -246,6 +257,14 @@ func (c *Cache) setBlockchains() error {
 	blockchainsMap := make(map[string]*repository.Blockchain)
 
 	for _, blockchain := range blockchains {
+		if blockchainRedirects, exists := c.redirectsMapByBlockchainID[blockchain.ID]; exists {
+			redirects := []repository.Redirect{}
+			for _, redirect := range blockchainRedirects {
+				redirects = append(redirects, *redirect)
+			}
+			blockchain.Redirects = redirects
+		}
+
 		blockchainsMap[blockchain.ID] = blockchain
 	}
 
@@ -356,27 +375,6 @@ func updateLoadBalancerFromSlice(updatedlb *repository.LoadBalancer, lbs []*repo
 	return lbs
 }
 
-func (c *Cache) setUsers() error {
-	users, err := c.reader.ReadUsers()
-	if err != nil {
-		return err
-	}
-
-	userMap := make(map[string]*repository.User)
-
-	for _, user := range users {
-		userMap[user.ID] = user
-	}
-
-	c.usersMux.Lock()
-	defer c.usersMux.Unlock()
-
-	c.users = users
-	c.usersMap = userMap
-
-	return nil
-}
-
 func (c *Cache) setPayPlans() error {
 	payPlans, err := c.reader.ReadPayPlans()
 	if err != nil {
@@ -398,9 +396,55 @@ func (c *Cache) setPayPlans() error {
 	return nil
 }
 
+func (c *Cache) setRedirects() error {
+	redirects, err := c.reader.ReadRedirects()
+	if err != nil {
+		return err
+	}
+
+	redirectsMap := make(map[string][]*repository.Redirect)
+
+	for _, redirect := range redirects {
+		redirectsMap[redirect.BlockchainID] = append(redirectsMap[redirect.BlockchainID], redirect)
+	}
+
+	c.redirectsMux.Lock()
+	defer c.redirectsMux.Unlock()
+
+	c.redirectsMapByBlockchainID = redirectsMap
+
+	return nil
+}
+
+func (c *Cache) setUsers() error {
+	users, err := c.reader.ReadUsers()
+	if err != nil {
+		return err
+	}
+
+	userMap := make(map[string]*repository.User)
+
+	for _, user := range users {
+		userMap[user.ID] = user
+	}
+
+	c.usersMux.Lock()
+	defer c.usersMux.Unlock()
+
+	c.users = users
+	c.usersMap = userMap
+
+	return nil
+}
+
 // SetCache gets all values from DB and stores them in cache
 func (c *Cache) SetCache() error {
 	err := c.setPayPlans()
+	if err != nil {
+		return err
+	}
+
+	err = c.setRedirects()
 	if err != nil {
 		return err
 	}
@@ -411,6 +455,7 @@ func (c *Cache) SetCache() error {
 		return err
 	}
 
+	// always call after setRedirects func
 	err = c.setBlockchains()
 	if err != nil {
 		return err
