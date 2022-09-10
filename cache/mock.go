@@ -39,3 +39,9 @@ func (r *ReaderMock) ReadPayPlans() ([]*repository.PayPlan, error) {
 
 	return args.Get(0).([]*repository.PayPlan), args.Error(1)
 }
+
+func (r *ReaderMock) ReadRedirects() ([]*repository.Redirect, error) {
+	args := r.Called()
+
+	return args.Get(0).([]*repository.Redirect), args.Error(1)
+}
