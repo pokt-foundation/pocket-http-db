@@ -57,6 +57,32 @@ func (w *writerMock) RemoveApplication(id string) error {
 func newTestRouter() (*Router, error) {
 	readerMock := &cache.ReaderMock{}
 
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
+
+	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+		{
+			BlockchainID:   "0021",
+			Alias:          "pokt-mainnet",
+			Domain:         "pokt-mainnet.gateway.network",
+			LoadBalancerID: "12345",
+		},
+		{
+			BlockchainID:   "0022",
+			Alias:          "eth-mainnet",
+			Domain:         "eth-mainnet.gateway.network",
+			LoadBalancerID: "45678",
+		},
+	}, nil)
+
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
 			ID:          "5f62b7d8be3591c4dea8566d",
@@ -106,17 +132,6 @@ func newTestRouter() (*Router, error) {
 		},
 		{
 			ID: "60ecb2bf67774900350d9c44",
-		},
-	}, nil)
-
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
-		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
-		},
-		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
 		},
 	}, nil)
 
@@ -539,9 +554,25 @@ func TestRouter_GetBlockchains(t *testing.T) {
 	expectedBody, err := json.Marshal([]*repository.Blockchain{
 		{
 			ID: "0021",
+			Redirects: []repository.Redirect{
+				{
+					BlockchainID:   "0021",
+					Alias:          "pokt-mainnet",
+					Domain:         "pokt-mainnet.gateway.network",
+					LoadBalancerID: "12345",
+				},
+			},
 		},
 		{
 			ID: "0022",
+			Redirects: []repository.Redirect{
+				{
+					BlockchainID:   "0022",
+					Alias:          "eth-mainnet",
+					Domain:         "eth-mainnet.gateway.network",
+					LoadBalancerID: "45678",
+				},
+			},
 		},
 	})
 	c.NoError(err)
@@ -566,6 +597,14 @@ func TestRouter_GetBlockchain(t *testing.T) {
 
 	expectedBody, err := json.Marshal(&repository.Blockchain{
 		ID: "0021",
+		Redirects: []repository.Redirect{
+			{
+				BlockchainID:   "0021",
+				Alias:          "pokt-mainnet",
+				Domain:         "pokt-mainnet.gateway.network",
+				LoadBalancerID: "12345",
+			},
+		},
 	})
 	c.NoError(err)
 
