@@ -24,6 +24,9 @@ type Writer interface {
 	WriteApplication(app *repository.Application) (*repository.Application, error)
 	UpdateApplication(id string, options *repository.UpdateApplication) error
 	RemoveApplication(id string) error
+	WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error)
+	WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error)
+	ActivateBlockchain(id string, active bool) error
 }
 
 // Router struct handler for router requests
@@ -50,7 +53,9 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 
 	rt.Router.HandleFunc("/", rt.HealthCheck).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/blockchain", rt.GetBlockchains).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/blockchain", rt.CreateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/blockchain/{id}", rt.GetBlockchain).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/blockchain/{id}/activate", rt.ActivateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/application", rt.GetApplications).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application", rt.CreateApplication).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/application/limits", rt.GetApplicationsLimits).Methods(http.MethodGet)
@@ -66,6 +71,7 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	rt.Router.HandleFunc("/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/redirect", rt.CreateRedirects).Methods(http.MethodPost)
 
 	rt.Router.Use(rt.AuthorizationHandler)
 
@@ -261,6 +267,57 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, blockchain)
 }
 
+func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	blockchainID := vars["id"]
+
+	var active bool
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&active)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = rt.Writer.ActivateBlockchain(blockchainID, active)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rt.Cache.ActivateBlockchain(blockchainID, active)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, active)
+}
+
+func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
+	var blockchain repository.Blockchain
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&blockchain)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	fullBlockchain, err := rt.Writer.WriteBlockchain(&blockchain)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rt.Cache.AddBlockchain(fullBlockchain)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullBlockchain)
+}
+
 func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchains())
 }
@@ -387,4 +444,34 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetPayPlans())
+}
+
+func (rt *Router) CreateRedirects(w http.ResponseWriter, r *http.Request) {
+	var redirect []repository.Redirect
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&redirect)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	fullRedirects := []*repository.Redirect{}
+
+	for _, redirect := range redirect {
+		fullRedirect, err := rt.Writer.WriteRedirect(&redirect)
+		if err != nil {
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		rt.Cache.AddRedirect(fullRedirect)
+
+		fullRedirects = append(fullRedirects, fullRedirect)
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirects)
 }

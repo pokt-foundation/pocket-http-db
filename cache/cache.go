@@ -277,6 +277,40 @@ func (c *Cache) setBlockchains() error {
 	return nil
 }
 
+// AddBlockchain adds blockchain to cache
+func (c *Cache) AddBlockchain(blockchain *repository.Blockchain) {
+	c.blockchainsMux.Lock()
+	defer c.blockchainsMux.Unlock()
+
+	c.blockchains = append(c.blockchains, blockchain)
+	c.blockchainsMap[blockchain.ID] = blockchain
+}
+
+// ActivateBlockchain updates application saved in cache
+func (c *Cache) ActivateBlockchain(id string, active bool) {
+	c.blockchainsMux.Lock()
+	defer c.blockchainsMux.Unlock()
+
+	if blockchain, exists := c.blockchainsMap[id]; exists {
+		blockchain.Active = active
+		c.blockchainsMap[id] = blockchain
+	}
+}
+
+func updateBlockchainFromSlice(updatedChain *repository.Blockchain, chains []*repository.Blockchain) []*repository.Blockchain {
+	for i := 0; i < len(chains); i++ {
+		if chains[i].ID == updatedChain.ID {
+			chains[i] = chains[len(chains)-1]
+			chains = chains[:len(chains)-1]
+			chains = append(chains, updatedChain)
+
+			break
+		}
+	}
+
+	return chains
+}
+
 func (c *Cache) setLoadBalancers() error {
 	loadBalancers, err := c.reader.ReadLoadBalancers()
 	if err != nil {
@@ -414,6 +448,25 @@ func (c *Cache) setRedirects() error {
 	c.redirectsMapByBlockchainID = redirectsMap
 
 	return nil
+}
+
+// AddRedirects adds blockchain redirect to cache and updates cached blockchain entry
+func (c *Cache) AddRedirect(redirect *repository.Redirect) {
+	c.redirectsMux.Lock()
+
+	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], redirect)
+
+	c.redirectsMux.Unlock()
+
+	c.blockchainsMux.Lock()
+	defer c.blockchainsMux.Unlock()
+
+	blockchain := c.blockchainsMap[redirect.BlockchainID]
+
+	blockchain.Redirects = append(blockchain.Redirects, *redirect)
+
+	c.blockchains = updateBlockchainFromSlice(blockchain, c.blockchains)
+	c.blockchainsMap[blockchain.ID] = blockchain
 }
 
 func (c *Cache) setUsers() error {
