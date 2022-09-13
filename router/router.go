@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	apiKeys = environment.GetStringMap("API_KEYS", "", ",")
+	apiKeys = environment.MustGetStringMap("API_KEYS", ",")
 )
 
 // Writer represents the implementation of writer interface

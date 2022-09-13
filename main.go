@@ -13,9 +13,10 @@ import (
 )
 
 var (
-	port             = environment.GetString("PORT", "8080")
-	cacheRefresh     = environment.GetInt64("CACHE_REFRESH", 10)
-	connectionString = environment.GetString("CONNECTION_STRING", "")
+	connectionString = environment.MustGetString("CONNECTION_STRING")
+
+	cacheRefresh = environment.GetInt64("CACHE_REFRESH", 10)
+	port         = environment.GetString("PORT", "8080")
 )
 
 func cacheHandler(router *router.Router) {
