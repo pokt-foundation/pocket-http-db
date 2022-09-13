@@ -71,7 +71,7 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	rt.Router.HandleFunc("/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/redirect", rt.CreateRedirects).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/redirect", rt.CreateRedirect).Methods(http.MethodPost)
 
 	rt.Router.Use(rt.AuthorizationHandler)
 
@@ -124,7 +124,7 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 		limits.AppID = app.ID
 		limits.AppName = app.Name
 		limits.AppUserID = app.UserID
-		limits.PublicKey = app.FreeTierApplicationAccount.PublicKey
+		limits.PublicKey = app.GatewayAAT.ApplicationPublicKey
 		limits.NotificationSettings = &app.NotificationSettings
 
 		appsLimits = append(appsLimits, limits)
@@ -446,8 +446,8 @@ func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetPayPlans())
 }
 
-func (rt *Router) CreateRedirects(w http.ResponseWriter, r *http.Request) {
-	var redirect []repository.Redirect
+func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
+	var redirect repository.Redirect
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -459,19 +459,13 @@ func (rt *Router) CreateRedirects(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullRedirects := []*repository.Redirect{}
-
-	for _, redirect := range redirect {
-		fullRedirect, err := rt.Writer.WriteRedirect(&redirect)
-		if err != nil {
-			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		rt.Cache.AddRedirect(fullRedirect)
-
-		fullRedirects = append(fullRedirects, fullRedirect)
+	fullRedirect, err := rt.Writer.WriteRedirect(&redirect)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirects)
+	rt.Cache.AddRedirect(fullRedirect)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
 }
