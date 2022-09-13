@@ -54,8 +54,52 @@ func (w *writerMock) RemoveApplication(id string) error {
 	return args.Error(0)
 }
 
+func (w *writerMock) WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error) {
+	args := w.Called()
+
+	return args.Get(0).(*repository.Blockchain), args.Error(1)
+}
+
+func (w *writerMock) WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error) {
+	args := w.Called()
+
+	return args.Get(0).(*repository.Redirect), args.Error(1)
+}
+
+func (w *writerMock) ActivateBlockchain(id string, active bool) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
 func newTestRouter() (*Router, error) {
 	readerMock := &cache.ReaderMock{}
+
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
+
+	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+		{
+			BlockchainID:   "0021",
+			Alias:          "pokt-mainnet",
+			Domain:         "pokt-mainnet.gateway.network",
+			LoadBalancerID: "12345",
+		},
+		{
+			BlockchainID:   "0022",
+			Alias:          "eth-mainnet",
+			Domain:         "eth-mainnet.gateway.network",
+			LoadBalancerID: "45678",
+		},
+	}, nil)
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
@@ -109,18 +153,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
-		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
-		},
-		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
-		},
-	}, nil)
-
-	return NewRouter(readerMock, nil)
+	return NewRouter(readerMock, nil, map[string]bool{"": true})
 }
 
 func TestRouter_HealthCheck(t *testing.T) {
@@ -539,9 +572,25 @@ func TestRouter_GetBlockchains(t *testing.T) {
 	expectedBody, err := json.Marshal([]*repository.Blockchain{
 		{
 			ID: "0021",
+			Redirects: []repository.Redirect{
+				{
+					BlockchainID:   "0021",
+					Alias:          "pokt-mainnet",
+					Domain:         "pokt-mainnet.gateway.network",
+					LoadBalancerID: "12345",
+				},
+			},
 		},
 		{
 			ID: "0022",
+			Redirects: []repository.Redirect{
+				{
+					BlockchainID:   "0022",
+					Alias:          "eth-mainnet",
+					Domain:         "eth-mainnet.gateway.network",
+					LoadBalancerID: "45678",
+				},
+			},
 		},
 	})
 	c.NoError(err)
@@ -566,6 +615,14 @@ func TestRouter_GetBlockchain(t *testing.T) {
 
 	expectedBody, err := json.Marshal(&repository.Blockchain{
 		ID: "0021",
+		Redirects: []repository.Redirect{
+			{
+				BlockchainID:   "0021",
+				Alias:          "pokt-mainnet",
+				Domain:         "pokt-mainnet.gateway.network",
+				LoadBalancerID: "12345",
+			},
+		},
 	})
 	c.NoError(err)
 
@@ -925,4 +982,162 @@ func TestRouter_GetPayPlan(t *testing.T) {
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusNotFound, rr.Code)
+}
+
+func TestRouter_CreateBlockchain(t *testing.T) {
+	c := require.New(t)
+
+	rawChainToSend := &repository.Blockchain{
+		Ticker: "POKT",
+	}
+
+	chainToSend, err := json.Marshal(rawChainToSend)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer(chainToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	chainToReturn := &repository.Blockchain{
+		ID:     "60ddc61b6e29c3003378361E",
+		Ticker: "POKT",
+	}
+
+	writerMock := &writerMock{}
+
+	writerMock.On("WriteBlockchain", mock.Anything).Return(chainToReturn, nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	marshaledReturnChain, err := json.Marshal(chainToReturn)
+	c.NoError(err)
+
+	c.Equal(marshaledReturnChain, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer(chainToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("WriteBlockchain", mock.Anything).Return(chainToReturn, errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_CreateRedirect(t *testing.T) {
+	c := require.New(t)
+
+	rawRedirectsToSend := &repository.Redirect{BlockchainID: "0021"}
+
+	redirectToSend, err := json.Marshal(rawRedirectsToSend)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer(redirectToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	redirectToReturn := &repository.Redirect{ID: "60ddc61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
+
+	writerMock := &writerMock{}
+
+	writerMock.On("WriteRedirect", mock.Anything).Return(redirectToReturn, nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	marshaledReturnRedirect, err := json.Marshal(redirectToReturn)
+	c.NoError(err)
+
+	c.Equal(marshaledReturnRedirect, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer(redirectToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("WriteRedirect", mock.Anything).Return(redirectToReturn, errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_ActivateBlockchain(t *testing.T) {
+	c := require.New(t)
+
+	activeStatusToSend, err := json.Marshal(true)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	writerMock := &writerMock{}
+
+	writerMock.On("ActivateBlockchain", mock.Anything).Return(nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("ActivateBlockchain", mock.Anything).Return(errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
 }

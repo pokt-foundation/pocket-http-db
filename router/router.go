@@ -8,12 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-api-go/repository"
-	"github.com/pokt-foundation/utils-go/environment"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
-)
-
-var (
-	apiKeys = environment.GetStringMap("API_KEYS", "", ",")
 )
 
 // Writer represents the implementation of writer interface
@@ -24,17 +19,21 @@ type Writer interface {
 	WriteApplication(app *repository.Application) (*repository.Application, error)
 	UpdateApplication(id string, options *repository.UpdateApplication) error
 	RemoveApplication(id string) error
+	WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error)
+	WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error)
+	ActivateBlockchain(id string, active bool) error
 }
 
 // Router struct handler for router requests
 type Router struct {
-	Cache  *cache.Cache
-	Router *mux.Router
-	Writer Writer
+	Cache   *cache.Cache
+	Router  *mux.Router
+	Writer  Writer
+	APIKeys map[string]bool
 }
 
 // NewRouter returns router instance
-func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
+func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool) (*Router, error) {
 	cache := cache.NewCache(reader)
 
 	err := cache.SetCache()
@@ -43,14 +42,17 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	}
 
 	rt := &Router{
-		Cache:  cache,
-		Writer: writer,
-		Router: mux.NewRouter(),
+		Cache:   cache,
+		Writer:  writer,
+		Router:  mux.NewRouter(),
+		APIKeys: apiKeys,
 	}
 
 	rt.Router.HandleFunc("/", rt.HealthCheck).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/blockchain", rt.GetBlockchains).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/blockchain", rt.CreateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/blockchain/{id}", rt.GetBlockchain).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/blockchain/{id}/activate", rt.ActivateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/application", rt.GetApplications).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application", rt.CreateApplication).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/application/limits", rt.GetApplicationsLimits).Methods(http.MethodGet)
@@ -66,6 +68,7 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	rt.Router.HandleFunc("/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/redirect", rt.CreateRedirect).Methods(http.MethodPost)
 
 	rt.Router.Use(rt.AuthorizationHandler)
 
@@ -81,7 +84,7 @@ func (rt *Router) AuthorizationHandler(h http.Handler) http.Handler {
 			return
 		}
 
-		if !apiKeys[r.Header.Get("Authorization")] {
+		if !rt.APIKeys[r.Header.Get("Authorization")] {
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("Unauthorized"))
 			if err != nil {
@@ -118,7 +121,7 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 		limits.AppID = app.ID
 		limits.AppName = app.Name
 		limits.AppUserID = app.UserID
-		limits.PublicKey = app.FreeTierApplicationAccount.PublicKey
+		limits.PublicKey = app.GatewayAAT.ApplicationPublicKey
 		limits.NotificationSettings = &app.NotificationSettings
 
 		appsLimits = append(appsLimits, limits)
@@ -261,6 +264,57 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, blockchain)
 }
 
+func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	blockchainID := vars["id"]
+
+	var active bool
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&active)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = rt.Writer.ActivateBlockchain(blockchainID, active)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rt.Cache.ActivateBlockchain(blockchainID, active)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, active)
+}
+
+func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
+	var blockchain repository.Blockchain
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&blockchain)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	fullBlockchain, err := rt.Writer.WriteBlockchain(&blockchain)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rt.Cache.AddBlockchain(fullBlockchain)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullBlockchain)
+}
+
 func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchains())
 }
@@ -387,4 +441,28 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetPayPlans())
+}
+
+func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
+	var redirect repository.Redirect
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&redirect)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	fullRedirect, err := rt.Writer.WriteRedirect(&redirect)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	rt.Cache.AddRedirect(fullRedirect)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
 }

@@ -13,9 +13,11 @@ import (
 )
 
 var (
-	port             = environment.GetString("PORT", "8080")
-	cacheRefresh     = environment.GetInt64("CACHE_REFRESH", 10)
-	connectionString = environment.GetString("CONNECTION_STRING", "")
+	connectionString = environment.MustGetString("CONNECTION_STRING")
+	apiKeys          = environment.MustGetStringMap("API_KEYS", ",")
+
+	cacheRefresh = environment.GetInt64("CACHE_REFRESH", 10)
+	port         = environment.GetString("PORT", "8080")
 )
 
 func cacheHandler(router *router.Router) {
@@ -42,7 +44,7 @@ func main() {
 		panic(err)
 	}
 
-	router, err := router.NewRouter(driver, driver)
+	router, err := router.NewRouter(driver, driver, apiKeys)
 	if err != nil {
 		panic(err)
 	}
