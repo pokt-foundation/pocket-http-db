@@ -14,6 +14,7 @@ import (
 
 var (
 	connectionString = environment.MustGetString("CONNECTION_STRING")
+	apiKeys          = environment.MustGetStringMap("API_KEYS", ",")
 
 	cacheRefresh = environment.GetInt64("CACHE_REFRESH", 10)
 	port         = environment.GetString("PORT", "8080")
@@ -43,7 +44,7 @@ func main() {
 		panic(err)
 	}
 
-	router, err := router.NewRouter(driver, driver)
+	router, err := router.NewRouter(driver, driver, apiKeys)
 	if err != nil {
 		panic(err)
 	}

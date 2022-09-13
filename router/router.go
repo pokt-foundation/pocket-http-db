@@ -8,12 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-api-go/repository"
-	"github.com/pokt-foundation/utils-go/environment"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
-)
-
-var (
-	apiKeys = environment.MustGetStringMap("API_KEYS", ",")
 )
 
 // Writer represents the implementation of writer interface
@@ -31,13 +26,14 @@ type Writer interface {
 
 // Router struct handler for router requests
 type Router struct {
-	Cache  *cache.Cache
-	Router *mux.Router
-	Writer Writer
+	Cache   *cache.Cache
+	Router  *mux.Router
+	Writer  Writer
+	APIKeys map[string]bool
 }
 
 // NewRouter returns router instance
-func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
+func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool) (*Router, error) {
 	cache := cache.NewCache(reader)
 
 	err := cache.SetCache()
@@ -46,9 +42,10 @@ func NewRouter(reader cache.Reader, writer Writer) (*Router, error) {
 	}
 
 	rt := &Router{
-		Cache:  cache,
-		Writer: writer,
-		Router: mux.NewRouter(),
+		Cache:   cache,
+		Writer:  writer,
+		Router:  mux.NewRouter(),
+		APIKeys: apiKeys,
 	}
 
 	rt.Router.HandleFunc("/", rt.HealthCheck).Methods(http.MethodGet)
@@ -87,7 +84,7 @@ func (rt *Router) AuthorizationHandler(h http.Handler) http.Handler {
 			return
 		}
 
-		if !apiKeys[r.Header.Get("Authorization")] {
+		if !rt.APIKeys[r.Header.Get("Authorization")] {
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("Unauthorized"))
 			if err != nil {

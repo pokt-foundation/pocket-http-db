@@ -153,7 +153,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	return NewRouter(readerMock, nil)
+	return NewRouter(readerMock, nil, map[string]bool{"": true})
 }
 
 func TestRouter_HealthCheck(t *testing.T) {

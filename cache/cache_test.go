@@ -418,3 +418,80 @@ func TestCache_DeleteLoadBalancer(t *testing.T) {
 
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 1)
 }
+
+func TestCache_AddBlockchain(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := &ReaderMock{}
+
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+		{ID: "0001", Ticker: "POKT"},
+	}, nil)
+
+	cache := NewCache(readerMock)
+
+	err := cache.setBlockchains()
+	c.NoError(err)
+
+	c.Len(cache.GetBlockchains(), 1)
+
+	cache.AddBlockchain(&repository.Blockchain{ID: "0002", Ticker: "ETH"})
+
+	c.Len(cache.GetBlockchains(), 2)
+}
+
+func TestCache_ActivateBlockchain(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := &ReaderMock{}
+
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+		{ID: "0001", Active: false},
+	}, nil)
+
+	cache := NewCache(readerMock)
+
+	err := cache.setBlockchains()
+	c.NoError(err)
+
+	c.Len(cache.GetBlockchains(), 1)
+	c.Equal(cache.GetBlockchains()[0].Active, false)
+
+	cache.ActivateBlockchain("0001", true)
+
+	c.Len(cache.GetBlockchains(), 1)
+	c.Equal(cache.GetBlockchains()[0].Active, true)
+}
+
+func TestCache_AddRedirect(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := &ReaderMock{}
+
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+		{ID: "0001", Ticker: "POKT"},
+	}, nil)
+
+	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+		{BlockchainID: "0001", Alias: "pokt-mainnet-1"},
+		{BlockchainID: "0001", Alias: "pokt-mainnet-2"},
+		{BlockchainID: "0002", Alias: "eth-mainnet"},
+	}, nil)
+
+	cache := NewCache(readerMock)
+
+	err := cache.setRedirects()
+	c.NoError(err)
+
+	err = cache.setBlockchains()
+	c.NoError(err)
+
+	c.Len(cache.GetBlockchains(), 1)
+	c.Len(cache.GetBlockchains()[0].Redirects, 2)
+	c.Len(cache.GetRedirects("0001"), 2)
+
+	cache.AddRedirect(&repository.Redirect{BlockchainID: "0001", Alias: "pokt-mainnet-3"})
+
+	c.Len(cache.GetBlockchains()[0].Redirects, 3)
+	c.Len(cache.GetRedirects("0001"), 3)
+}
