@@ -461,12 +461,12 @@ func (c *Cache) AddRedirect(redirect *repository.Redirect) {
 	c.blockchainsMux.Lock()
 	defer c.blockchainsMux.Unlock()
 
-	blockchain := c.blockchainsMap[redirect.BlockchainID]
+	if blockchain, exists := c.blockchainsMap[redirect.BlockchainID]; exists {
+		blockchain.Redirects = append(blockchain.Redirects, *redirect)
 
-	blockchain.Redirects = append(blockchain.Redirects, *redirect)
-
-	c.blockchains = updateBlockchainFromSlice(blockchain, c.blockchains)
-	c.blockchainsMap[blockchain.ID] = blockchain
+		c.blockchains = updateBlockchainFromSlice(blockchain, c.blockchains)
+		c.blockchainsMap[redirect.BlockchainID] = blockchain
+	}
 }
 
 func (c *Cache) setUsers() error {
