@@ -2,6 +2,7 @@ package router
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -18,6 +19,7 @@ type Writer interface {
 	RemoveLoadBalancer(id string) error
 	WriteApplication(app *repository.Application) (*repository.Application, error)
 	UpdateApplication(id string, options *repository.UpdateApplication) error
+	UpdateFirstDateSurpassed(firstDateSurpassed *repository.UpdateFirstDateSurpassed) error
 	RemoveApplication(id string) error
 	WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error)
 	WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error)
@@ -58,6 +60,7 @@ func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool) (*Ro
 	rt.Router.HandleFunc("/application/limits", rt.GetApplicationsLimits).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application/{id}", rt.GetApplication).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application/{id}", rt.UpdateApplication).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/application/first_date_surpassed", rt.UpdateFirstDateSurpassed).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/load_balancer", rt.GetLoadBalancers).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/load_balancer", rt.CreateLoadBalancer).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
@@ -122,6 +125,7 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 		limits.AppName = app.Name
 		limits.AppUserID = app.UserID
 		limits.PublicKey = app.GatewayAAT.ApplicationPublicKey
+		limits.FirstDateSurpassed = app.FirstDateSurpassed
 		limits.NotificationSettings = &app.NotificationSettings
 
 		appsLimits = append(appsLimits, limits)
@@ -212,6 +216,9 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		if updateInput.PayPlanType != "" {
 			app.PayPlanType = updateInput.PayPlanType
 		}
+		if !updateInput.FirstDateSurpassed.IsZero() {
+			app.FirstDateSurpassed = &updateInput.FirstDateSurpassed
+		}
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = *updateInput.GatewaySettings
 		}
@@ -223,6 +230,50 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	rt.Cache.UpdateApplication(app)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
+}
+
+func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
+	var updateInput repository.UpdateFirstDateSurpassed
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&updateInput)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	if len(updateInput.ApplicationIDs) == 0 {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, "no application IDs on input")
+		return
+	}
+
+	var appsToUpdate []*repository.Application
+
+	for _, appID := range updateInput.ApplicationIDs {
+		app := rt.Cache.GetApplication(appID)
+		if app == nil {
+			jsonresponse.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s not found", appID))
+			return
+		}
+
+		appsToUpdate = append(appsToUpdate, app)
+	}
+
+	err = rt.Writer.UpdateFirstDateSurpassed(&updateInput)
+	if err != nil {
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	for _, app := range appsToUpdate {
+		app.FirstDateSurpassed = &updateInput.FirstDateSurpassed
+		rt.Cache.UpdateApplication(app)
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, appsToUpdate)
 }
 
 func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request) {

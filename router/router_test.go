@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-api-go/repository"
@@ -43,6 +44,12 @@ func (w *writerMock) WriteApplication(app *repository.Application) (*repository.
 }
 
 func (w *writerMock) UpdateApplication(id string, options *repository.UpdateApplication) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
+func (w *writerMock) UpdateFirstDateSurpassed(firstDateSurpassed *repository.UpdateFirstDateSurpassed) error {
 	args := w.Called()
 
 	return args.Error(0)
@@ -101,11 +108,14 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:          "5f62b7d8be3591c4dea8566d",
-			UserID:      "60ecb2bf67774900350d9c43",
-			PayPlanType: repository.FreetierV0,
+			ID:                 "5f62b7d8be3591c4dea8566d",
+			UserID:             "60ecb2bf67774900350d9c43",
+			PayPlanType:        repository.FreetierV0,
+			FirstDateSurpassed: &dateSurpassed,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -187,6 +197,8 @@ func TestRouter_GetApplications(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -195,6 +207,7 @@ func TestRouter_GetApplications(t *testing.T) {
 				PlanType:   repository.FreetierV0,
 				DailyLimit: 250000,
 			},
+			FirstDateSurpassed: &dateSurpassed,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -233,12 +246,15 @@ func TestRouter_GetApplicationsLimits(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal([]*repository.AppLimits{
 		{
 			AppID:                "5f62b7d8be3591c4dea8566d",
 			AppUserID:            "60ecb2bf67774900350d9c43",
 			PlanType:             repository.FreetierV0,
 			DailyLimit:           250000,
+			FirstDateSurpassed:   &dateSurpassed,
 			NotificationSettings: &repository.NotificationSettings{},
 		},
 		{
@@ -274,6 +290,8 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal(&repository.Application{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
@@ -281,6 +299,7 @@ func TestRouter_GetApplication(t *testing.T) {
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
 		},
+		FirstDateSurpassed: &dateSurpassed,
 	})
 	c.NoError(err)
 
@@ -359,9 +378,10 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateApplication{
-		Name:        "pablo",
-		Status:      repository.Orphaned,
-		PayPlanType: repository.PayAsYouGoV0,
+		Name:               "pablo",
+		Status:             repository.Orphaned,
+		PayPlanType:        repository.PayAsYouGoV0,
+		FirstDateSurpassed: time.Now(),
 		GatewaySettings: &repository.GatewaySettings{
 			SecretKey: "1234",
 		},
@@ -419,6 +439,84 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
+	c := require.New(t)
+
+	rawUpdateInput := &repository.UpdateFirstDateSurpassed{
+		ApplicationIDs:     []string{"5f62b7d8be3591c4dea8566d"},
+		FirstDateSurpassed: time.Now(),
+	}
+
+	updateInputToSend, err := json.Marshal(rawUpdateInput)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	writerMock := &writerMock{}
+
+	writerMock.On("UpdateFirstDateSurpassed", mock.Anything).Return(nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	writerMock.On("UpdateFirstDateSurpassed", mock.Anything).Return(errors.New("dummy error")).Once()
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	rawUpdateInput.ApplicationIDs = []string{"5f62b7d8be3591c4dea85664"}
+
+	updateInputToSend, err = json.Marshal(rawUpdateInput)
+	c.NoError(err)
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
+
+	rawUpdateInput.ApplicationIDs = nil
+
+	updateInputToSend, err = json.Marshal(rawUpdateInput)
+	c.NoError(err)
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
 }
 
 func TestRouter_RemoveApplication(t *testing.T) {
@@ -494,6 +592,8 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -502,6 +602,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 				PlanType:   repository.FreetierV0,
 				DailyLimit: 250000,
 			},
+			FirstDateSurpassed: &dateSurpassed,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
