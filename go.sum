@@ -18,8 +18,8 @@ github.com/mattn/go-sqlite3 v1.14.6 h1:dNPt6NO46WmLVt2DLNpwczCmdV5boIZ6g/tlDrlRU
 github.com/mattn/go-sqlite3 v1.14.6/go.mod h1:NyWgC/yNuGj7Q9rpYnZvas74GogHl5/Z4A/KQRfk6bU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pokt-foundation/portal-api-go v0.3.2 h1:ttx4MysDc35XozjVIn7y0EXch/14cXn9vJYMyS6SVoE=
-github.com/pokt-foundation/portal-api-go v0.3.2/go.mod h1:7T8GJ+dpbo39i+3nuNhByJLD3LfvgwCdzZjseKBeH/g=
+github.com/pokt-foundation/portal-api-go v0.3.3 h1:qP+HMOoignFCIZV1b2fDGyI1bErrldWqEb3rjCdfa5Q=
+github.com/pokt-foundation/portal-api-go v0.3.3/go.mod h1:7T8GJ+dpbo39i+3nuNhByJLD3LfvgwCdzZjseKBeH/g=
 github.com/pokt-foundation/utils-go v0.2.4 h1:1OntN55cxnbvpRjI7g5ndk9duZ9B7SPwe0EJsHKXZ7g=
 github.com/pokt-foundation/utils-go v0.2.4/go.mod h1:c92FV9S9qY4PEyeOv4fGkI9FTZSv8oh1MiARGC+BC2E=
 github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
