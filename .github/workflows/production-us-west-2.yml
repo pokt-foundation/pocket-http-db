@@ -46,6 +46,7 @@ jobs:
             PORT=${{ secrets.PORT }}
             CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
             API_KEYS=${{ secrets.API_KEYS }}
+            CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
 
       - name: Deploy / us-west-2
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
