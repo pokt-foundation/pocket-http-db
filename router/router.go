@@ -65,8 +65,6 @@ func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool) (*Ro
 	rt.Router.HandleFunc("/load_balancer", rt.CreateLoadBalancer).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/user", rt.GetUsers).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/user/{id}", rt.GetUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
@@ -458,23 +456,6 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancers())
-}
-
-func (rt *Router) GetUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	user := rt.Cache.GetUser(vars["id"])
-
-	if user == nil {
-		jsonresponse.RespondWithError(w, http.StatusNotFound, "user not found")
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, user)
-}
-
-func (rt *Router) GetUsers(w http.ResponseWriter, r *http.Request) {
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetUsers())
 }
 
 func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
