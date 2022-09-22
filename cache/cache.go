@@ -13,7 +13,6 @@ type Reader interface {
 	ReadLoadBalancers() ([]*repository.LoadBalancer, error)
 	ReadPayPlans() ([]*repository.PayPlan, error)
 	ReadRedirects() ([]*repository.Redirect, error)
-	ReadUsers() ([]*repository.User, error)
 }
 
 // Cache struct handler for cache operations
@@ -35,9 +34,6 @@ type Cache struct {
 	payPlansMux                sync.Mutex
 	redirectsMapByBlockchainID map[string][]*repository.Redirect
 	redirectsMux               sync.Mutex
-	usersMap                   map[string]*repository.User
-	users                      []*repository.User
-	usersMux                   sync.Mutex
 }
 
 // NewCache returns cache instance from reader interface
@@ -132,22 +128,6 @@ func (c *Cache) GetRedirects(blockchainID string) []*repository.Redirect {
 	defer c.redirectsMux.Unlock()
 
 	return c.redirectsMapByBlockchainID[blockchainID]
-}
-
-// GetUser returns User from cache by userID
-func (c *Cache) GetUser(userID string) *repository.User {
-	c.usersMux.Lock()
-	defer c.usersMux.Unlock()
-
-	return c.usersMap[userID]
-}
-
-// GetUsers returns all Users in cache
-func (c *Cache) GetUsers() []*repository.User {
-	c.usersMux.Lock()
-	defer c.usersMux.Unlock()
-
-	return c.users
 }
 
 func (c *Cache) setApplications() error {
@@ -469,27 +449,6 @@ func (c *Cache) AddRedirect(redirect *repository.Redirect) {
 	}
 }
 
-func (c *Cache) setUsers() error {
-	users, err := c.reader.ReadUsers()
-	if err != nil {
-		return err
-	}
-
-	userMap := make(map[string]*repository.User)
-
-	for _, user := range users {
-		userMap[user.ID] = user
-	}
-
-	c.usersMux.Lock()
-	defer c.usersMux.Unlock()
-
-	c.users = users
-	c.usersMap = userMap
-
-	return nil
-}
-
 // SetCache gets all values from DB and stores them in cache
 func (c *Cache) SetCache() error {
 	err := c.setPayPlans()
@@ -515,10 +474,5 @@ func (c *Cache) SetCache() error {
 	}
 
 	// always call after setApplications func
-	err = c.setLoadBalancers()
-	if err != nil {
-		return err
-	}
-
-	return c.setUsers()
+	return c.setLoadBalancers()
 }

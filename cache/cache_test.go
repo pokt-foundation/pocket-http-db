@@ -46,12 +46,6 @@ func TestCache_SetCache(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUsers").Return([]*repository.User{
-		{
-			ID: "60ecb2bf67774900350d9c43",
-		},
-	}, nil)
-
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
 			PlanType:   repository.FreetierV0,
@@ -93,9 +87,6 @@ func TestCache_SetCache(t *testing.T) {
 	c.NotEmpty(cache.GetLoadBalancer("60ecb2bf67774900350d9c42"))
 	c.Len(cache.GetLoadBalancers(), 1)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb35fts687463gh2h72gs"), 1)
-
-	c.NotEmpty(cache.GetUser("60ecb2bf67774900350d9c43"))
-	c.Len(cache.GetUsers(), 1)
 
 	c.NotEmpty(cache.GetPayPlan(repository.FreetierV0))
 	c.Len(cache.GetPayPlans(), 2)
@@ -179,11 +170,6 @@ func TestCache_SetCacheFailure(t *testing.T) {
 			ID: "60ecb2bf67774900350d9c42",
 		},
 	}, nil)
-
-	readerMock.On("ReadUsers").Return([]*repository.User{}, errors.New("error on users")).Once()
-
-	err = cache.SetCache()
-	c.EqualError(err, "error on users")
 }
 
 func TestCache_AddApplication(t *testing.T) {

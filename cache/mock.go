@@ -28,12 +28,6 @@ func (r *ReaderMock) ReadLoadBalancers() ([]*repository.LoadBalancer, error) {
 	return args.Get(0).([]*repository.LoadBalancer), args.Error(1)
 }
 
-func (r *ReaderMock) ReadUsers() ([]*repository.User, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.User), args.Error(1)
-}
-
 func (r *ReaderMock) ReadPayPlans() ([]*repository.PayPlan, error) {
 	args := r.Called()
 

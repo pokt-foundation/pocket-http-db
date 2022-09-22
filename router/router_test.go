@@ -154,15 +154,6 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUsers").Return([]*repository.User{
-		{
-			ID: "60ecb2bf67774900350d9c43",
-		},
-		{
-			ID: "60ecb2bf67774900350d9c44",
-		},
-	}, nil)
-
 	return NewRouter(readerMock, nil, map[string]bool{"": true})
 }
 
@@ -953,66 +944,6 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 
 	req, err = http.NewRequest(http.MethodPut, "/load_balancer/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-}
-
-func TestRouter_GetUsers(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/user", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter()
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal([]*repository.User{
-		{
-			ID: "60ecb2bf67774900350d9c43",
-		},
-		{
-			ID: "60ecb2bf67774900350d9c44",
-		},
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-}
-
-func TestRouter_GetUser(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/user/60ecb2bf67774900350d9c43", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter()
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal(&repository.User{
-		ID: "60ecb2bf67774900350d9c43",
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodGet, "/user/61ecb2bf67774900350d9c43", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
