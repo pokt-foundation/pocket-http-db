@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-api-go/repository"
@@ -48,7 +49,31 @@ func (w *writerMock) UpdateApplication(id string, options *repository.UpdateAppl
 	return args.Error(0)
 }
 
+func (w *writerMock) UpdateFirstDateSurpassed(firstDateSurpassed *repository.UpdateFirstDateSurpassed) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
 func (w *writerMock) RemoveApplication(id string) error {
+	args := w.Called()
+
+	return args.Error(0)
+}
+
+func (w *writerMock) WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error) {
+	args := w.Called()
+
+	return args.Get(0).(*repository.Blockchain), args.Error(1)
+}
+
+func (w *writerMock) WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error) {
+	args := w.Called()
+
+	return args.Get(0).(*repository.Redirect), args.Error(1)
+}
+
+func (w *writerMock) ActivateBlockchain(id string, active bool) error {
 	args := w.Called()
 
 	return args.Error(0)
@@ -57,11 +82,40 @@ func (w *writerMock) RemoveApplication(id string) error {
 func newTestRouter() (*Router, error) {
 	readerMock := &cache.ReaderMock{}
 
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+		{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+		{
+			PlanType:   repository.PayAsYouGoV0,
+			DailyLimit: 0,
+		},
+	}, nil)
+
+	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+		{
+			BlockchainID:   "0021",
+			Alias:          "pokt-mainnet",
+			Domain:         "pokt-mainnet.gateway.network",
+			LoadBalancerID: "12345",
+		},
+		{
+			BlockchainID:   "0022",
+			Alias:          "eth-mainnet",
+			Domain:         "eth-mainnet.gateway.network",
+			LoadBalancerID: "45678",
+		},
+	}, nil)
+
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:          "5f62b7d8be3591c4dea8566d",
-			UserID:      "60ecb2bf67774900350d9c43",
-			PayPlanType: repository.FreetierV0,
+			ID:                 "5f62b7d8be3591c4dea8566d",
+			UserID:             "60ecb2bf67774900350d9c43",
+			PayPlanType:        repository.FreetierV0,
+			FirstDateSurpassed: &dateSurpassed,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -100,27 +154,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUsers").Return([]*repository.User{
-		{
-			ID: "60ecb2bf67774900350d9c43",
-		},
-		{
-			ID: "60ecb2bf67774900350d9c44",
-		},
-	}, nil)
-
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
-		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
-		},
-		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
-		},
-	}, nil)
-
-	return NewRouter(readerMock, nil)
+	return NewRouter(readerMock, nil, map[string]bool{"": true})
 }
 
 func TestRouter_HealthCheck(t *testing.T) {
@@ -154,6 +188,8 @@ func TestRouter_GetApplications(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -162,6 +198,7 @@ func TestRouter_GetApplications(t *testing.T) {
 				PlanType:   repository.FreetierV0,
 				DailyLimit: 250000,
 			},
+			FirstDateSurpassed: &dateSurpassed,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -200,12 +237,15 @@ func TestRouter_GetApplicationsLimits(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal([]*repository.AppLimits{
 		{
 			AppID:                "5f62b7d8be3591c4dea8566d",
 			AppUserID:            "60ecb2bf67774900350d9c43",
 			PlanType:             repository.FreetierV0,
 			DailyLimit:           250000,
+			FirstDateSurpassed:   &dateSurpassed,
 			NotificationSettings: &repository.NotificationSettings{},
 		},
 		{
@@ -241,6 +281,8 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal(&repository.Application{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
@@ -248,6 +290,7 @@ func TestRouter_GetApplication(t *testing.T) {
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
 		},
+		FirstDateSurpassed: &dateSurpassed,
 	})
 	c.NoError(err)
 
@@ -326,9 +369,10 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateApplication{
-		Name:        "pablo",
-		Status:      repository.Orphaned,
-		PayPlanType: repository.PayAsYouGoV0,
+		Name:               "pablo",
+		Status:             repository.Orphaned,
+		PayPlanType:        repository.PayAsYouGoV0,
+		FirstDateSurpassed: time.Now(),
 		GatewaySettings: &repository.GatewaySettings{
 			SecretKey: "1234",
 		},
@@ -386,6 +430,84 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
+	c := require.New(t)
+
+	rawUpdateInput := &repository.UpdateFirstDateSurpassed{
+		ApplicationIDs:     []string{"5f62b7d8be3591c4dea8566d"},
+		FirstDateSurpassed: time.Now(),
+	}
+
+	updateInputToSend, err := json.Marshal(rawUpdateInput)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	writerMock := &writerMock{}
+
+	writerMock.On("UpdateFirstDateSurpassed", mock.Anything).Return(nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	writerMock.On("UpdateFirstDateSurpassed", mock.Anything).Return(errors.New("dummy error")).Once()
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	rawUpdateInput.ApplicationIDs = []string{"5f62b7d8be3591c4dea85664"}
+
+	updateInputToSend, err = json.Marshal(rawUpdateInput)
+	c.NoError(err)
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusNotFound, rr.Code)
+
+	rawUpdateInput.ApplicationIDs = nil
+
+	updateInputToSend, err = json.Marshal(rawUpdateInput)
+	c.NoError(err)
+
+	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
 }
 
 func TestRouter_RemoveApplication(t *testing.T) {
@@ -461,6 +583,8 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
+	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
+
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -469,6 +593,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 				PlanType:   repository.FreetierV0,
 				DailyLimit: 250000,
 			},
+			FirstDateSurpassed: &dateSurpassed,
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -539,9 +664,25 @@ func TestRouter_GetBlockchains(t *testing.T) {
 	expectedBody, err := json.Marshal([]*repository.Blockchain{
 		{
 			ID: "0021",
+			Redirects: []repository.Redirect{
+				{
+					BlockchainID:   "0021",
+					Alias:          "pokt-mainnet",
+					Domain:         "pokt-mainnet.gateway.network",
+					LoadBalancerID: "12345",
+				},
+			},
 		},
 		{
 			ID: "0022",
+			Redirects: []repository.Redirect{
+				{
+					BlockchainID:   "0022",
+					Alias:          "eth-mainnet",
+					Domain:         "eth-mainnet.gateway.network",
+					LoadBalancerID: "45678",
+				},
+			},
 		},
 	})
 	c.NoError(err)
@@ -566,6 +707,14 @@ func TestRouter_GetBlockchain(t *testing.T) {
 
 	expectedBody, err := json.Marshal(&repository.Blockchain{
 		ID: "0021",
+		Redirects: []repository.Redirect{
+			{
+				BlockchainID:   "0021",
+				Alias:          "pokt-mainnet",
+				Domain:         "pokt-mainnet.gateway.network",
+				LoadBalancerID: "12345",
+			},
+		},
 	})
 	c.NoError(err)
 
@@ -804,66 +953,6 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetUsers(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/user", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter()
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal([]*repository.User{
-		{
-			ID: "60ecb2bf67774900350d9c43",
-		},
-		{
-			ID: "60ecb2bf67774900350d9c44",
-		},
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-}
-
-func TestRouter_GetUser(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/user/60ecb2bf67774900350d9c43", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter()
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal(&repository.User{
-		ID: "60ecb2bf67774900350d9c43",
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodGet, "/user/61ecb2bf67774900350d9c43", nil)
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-}
-
 func TestRouter_GetPayPlans(t *testing.T) {
 	c := require.New(t)
 
@@ -925,4 +1014,162 @@ func TestRouter_GetPayPlan(t *testing.T) {
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusNotFound, rr.Code)
+}
+
+func TestRouter_CreateBlockchain(t *testing.T) {
+	c := require.New(t)
+
+	rawChainToSend := &repository.Blockchain{
+		Ticker: "POKT",
+	}
+
+	chainToSend, err := json.Marshal(rawChainToSend)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer(chainToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	chainToReturn := &repository.Blockchain{
+		ID:     "60ddc61b6e29c3003378361E",
+		Ticker: "POKT",
+	}
+
+	writerMock := &writerMock{}
+
+	writerMock.On("WriteBlockchain", mock.Anything).Return(chainToReturn, nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	marshaledReturnChain, err := json.Marshal(chainToReturn)
+	c.NoError(err)
+
+	c.Equal(marshaledReturnChain, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer(chainToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("WriteBlockchain", mock.Anything).Return(chainToReturn, errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_CreateRedirect(t *testing.T) {
+	c := require.New(t)
+
+	rawRedirectsToSend := &repository.Redirect{BlockchainID: "0021"}
+
+	redirectToSend, err := json.Marshal(rawRedirectsToSend)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer(redirectToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	redirectToReturn := &repository.Redirect{ID: "60ddc61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
+
+	writerMock := &writerMock{}
+
+	writerMock.On("WriteRedirect", mock.Anything).Return(redirectToReturn, nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	marshaledReturnRedirect, err := json.Marshal(redirectToReturn)
+	c.NoError(err)
+
+	c.Equal(marshaledReturnRedirect, rr.Body.Bytes())
+
+	req, err = http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer(redirectToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("WriteRedirect", mock.Anything).Return(redirectToReturn, errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+func TestRouter_ActivateBlockchain(t *testing.T) {
+	c := require.New(t)
+
+	activeStatusToSend, err := json.Marshal(true)
+	c.NoError(err)
+
+	req, err := http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
+	c.NoError(err)
+
+	rr := httptest.NewRecorder()
+
+	router, err := newTestRouter()
+	c.NoError(err)
+
+	writerMock := &writerMock{}
+
+	writerMock.On("ActivateBlockchain", mock.Anything).Return(nil).Once()
+
+	router.Writer = writerMock
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusOK, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer([]byte("wrong")))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusBadRequest, rr.Code)
+
+	req, err = http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
+	c.NoError(err)
+
+	rr = httptest.NewRecorder()
+
+	writerMock.On("ActivateBlockchain", mock.Anything).Return(errors.New("dummy error")).Once()
+
+	router.Router.ServeHTTP(rr, req)
+
+	c.Equal(http.StatusInternalServerError, rr.Code)
 }
