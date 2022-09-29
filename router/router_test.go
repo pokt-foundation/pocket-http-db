@@ -851,6 +851,12 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	rawUpdateInput := &repository.UpdateLoadBalancer{
 		Name: "pablo",
+		StickyOptions: &repository.StickyOptions{
+			Duration:      "21",
+			StickyOrigins: []string{"pjog"},
+			StickyMax:     21,
+			Stickiness:    true,
+		},
 	}
 
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
