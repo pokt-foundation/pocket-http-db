@@ -18,22 +18,18 @@ type Reader interface {
 // Cache struct handler for cache operations
 type Cache struct {
 	reader                     Reader
+	rwMutex                    sync.RWMutex
 	applicationsMap            map[string]*repository.Application
 	applicationsMapByUserID    map[string][]*repository.Application
 	applications               []*repository.Application
-	applicationsMux            sync.Mutex
 	blockchainsMap             map[string]*repository.Blockchain
 	blockchains                []*repository.Blockchain
-	blockchainsMux             sync.Mutex
 	loadBalancersMap           map[string]*repository.LoadBalancer
 	loadBalancersMapByUserID   map[string][]*repository.LoadBalancer
 	loadBalancers              []*repository.LoadBalancer
-	loadBalancersMux           sync.Mutex
 	payPlansMap                map[repository.PayPlanType]*repository.PayPlan
 	payPlans                   []*repository.PayPlan
-	payPlansMux                sync.Mutex
 	redirectsMapByBlockchainID map[string][]*repository.Redirect
-	redirectsMux               sync.Mutex
 }
 
 // NewCache returns cache instance from reader interface
@@ -45,87 +41,87 @@ func NewCache(reader Reader) *Cache {
 
 // GetApplication returns Application from cache by applicationID
 func (c *Cache) GetApplication(applicationID string) *repository.Application {
-	c.applicationsMux.Lock()
-	defer c.applicationsMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.applicationsMap[applicationID]
 }
 
 // GetApplicationsByUserID returns Applications from cache by userID
 func (c *Cache) GetApplicationsByUserID(userID string) []*repository.Application {
-	c.applicationsMux.Lock()
-	defer c.applicationsMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.applicationsMapByUserID[userID]
 }
 
 // GetApplications returns all Applications in cache
 func (c *Cache) GetApplications() []*repository.Application {
-	c.applicationsMux.Lock()
-	defer c.applicationsMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.applications
 }
 
 // GetBlockchain returns Blockchain from cache by blockchainID
 func (c *Cache) GetBlockchain(blockchainID string) *repository.Blockchain {
-	c.blockchainsMux.Lock()
-	defer c.blockchainsMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.blockchainsMap[blockchainID]
 }
 
 // GetBlockchains returns all Blockchains from cache
 func (c *Cache) GetBlockchains() []*repository.Blockchain {
-	c.blockchainsMux.Lock()
-	defer c.blockchainsMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.blockchains
 }
 
 // GetLoadBalancer returns Loadbalancer by loadbalancerID
 func (c *Cache) GetLoadBalancer(loadBalancerID string) *repository.LoadBalancer {
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.loadBalancersMap[loadBalancerID]
 }
 
 // GetLoadBalancers returns all Loadbalancers on cache
 func (c *Cache) GetLoadBalancers() []*repository.LoadBalancer {
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.loadBalancers
 }
 
 func (c *Cache) GetLoadBalancersByUserID(userID string) []*repository.LoadBalancer {
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.loadBalancersMapByUserID[userID]
 }
 
 // GetPayPlan returns PayPlan from cache by planType
 func (c *Cache) GetPayPlan(planType repository.PayPlanType) *repository.PayPlan {
-	c.payPlansMux.Lock()
-	defer c.payPlansMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.payPlansMap[planType]
 }
 
 // GetPayPlans returns all PayPlans in cache
 func (c *Cache) GetPayPlans() []*repository.PayPlan {
-	c.payPlansMux.Lock()
-	defer c.payPlansMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.payPlans
 }
 
 // GetRedirects returns all Redirects from cache by blockchainID
 func (c *Cache) GetRedirects(blockchainID string) []*repository.Redirect {
-	c.redirectsMux.Lock()
-	defer c.redirectsMux.Unlock()
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
 
 	return c.redirectsMapByBlockchainID[blockchainID]
 }
@@ -138,8 +134,6 @@ func (c *Cache) setApplications() error {
 
 	applicationsMap := make(map[string]*repository.Application)
 	applicationsMapByUserID := make(map[string][]*repository.Application)
-
-	c.payPlansMux.Lock()
 
 	for i := 0; i < len(applications); i++ {
 		plan := c.payPlansMap[applications[i].PayPlanType]
@@ -156,11 +150,6 @@ func (c *Cache) setApplications() error {
 		applicationsMap[applications[i].ID] = applications[i]
 		applicationsMapByUserID[applications[i].UserID] = append(applicationsMapByUserID[applications[i].UserID], applications[i])
 	}
-
-	c.payPlansMux.Unlock()
-
-	c.applicationsMux.Lock()
-	defer c.applicationsMux.Unlock()
 
 	c.applications = applications
 	c.applicationsMap = applicationsMap
@@ -179,8 +168,8 @@ func (c *Cache) AddApplication(app *repository.Application) {
 		}
 	}
 
-	c.applicationsMux.Lock()
-	defer c.applicationsMux.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.applications = append(c.applications, app)
 	c.applicationsMap[app.ID] = app
@@ -198,16 +187,12 @@ func (c *Cache) UpdateApplication(app *repository.Application) {
 		app.PayPlanType = "" // set to empty to avoid two sources of truth
 	}
 
-	c.applicationsMux.Lock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.applications = updateApplicationFromSlice(app, c.applications)
 	c.applicationsMap[app.ID] = app
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
-
-	c.applicationsMux.Unlock()
-
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
 
 	for i := 0; i < len(c.loadBalancers); i++ {
 		updateApplicationFromSlice(app, c.loadBalancers[i].Applications)
@@ -248,9 +233,6 @@ func (c *Cache) setBlockchains() error {
 		blockchainsMap[blockchain.ID] = blockchain
 	}
 
-	c.blockchainsMux.Lock()
-	defer c.blockchainsMux.Unlock()
-
 	c.blockchains = blockchains
 	c.blockchainsMap = blockchainsMap
 
@@ -259,8 +241,8 @@ func (c *Cache) setBlockchains() error {
 
 // AddBlockchain adds blockchain to cache
 func (c *Cache) AddBlockchain(blockchain *repository.Blockchain) {
-	c.blockchainsMux.Lock()
-	defer c.blockchainsMux.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.blockchains = append(c.blockchains, blockchain)
 	c.blockchainsMap[blockchain.ID] = blockchain
@@ -268,8 +250,8 @@ func (c *Cache) AddBlockchain(blockchain *repository.Blockchain) {
 
 // ActivateBlockchain updates application saved in cache
 func (c *Cache) ActivateBlockchain(id string, active bool) {
-	c.blockchainsMux.Lock()
-	defer c.blockchainsMux.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	if blockchain, exists := c.blockchainsMap[id]; exists {
 		blockchain.Active = active
@@ -300,8 +282,6 @@ func (c *Cache) setLoadBalancers() error {
 	loadBalancersMap := make(map[string]*repository.LoadBalancer)
 	loadBalancersMapByUserID := make(map[string][]*repository.LoadBalancer)
 
-	c.applicationsMux.Lock()
-
 	for i, loadBalancer := range loadBalancers {
 		for _, appID := range loadBalancer.ApplicationIDs {
 			loadBalancer.Applications = append(loadBalancer.Applications, c.applicationsMap[appID])
@@ -313,11 +293,6 @@ func (c *Cache) setLoadBalancers() error {
 		loadBalancersMap[loadBalancer.ID] = loadBalancer
 		loadBalancersMapByUserID[loadBalancer.UserID] = append(loadBalancersMapByUserID[loadBalancer.UserID], loadBalancer)
 	}
-
-	c.applicationsMux.Unlock()
-
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
 
 	c.loadBalancers = loadBalancers
 	c.loadBalancersMap = loadBalancersMap
@@ -334,8 +309,8 @@ func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
 
 	lb.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
 
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.loadBalancers = append(c.loadBalancers, lb)
 	c.loadBalancersMap[lb.ID] = lb
@@ -344,8 +319,8 @@ func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
 
 // UpdateLoadBalancer updates load balancer saved in cache
 func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer) {
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.loadBalancers = updateLoadBalancerFromSlice(lb, c.loadBalancers)
 
@@ -356,8 +331,8 @@ func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer) {
 
 // DeleteLoadBalancer removes the load balancer from the cache
 func (c *Cache) DeleteLoadBalancer(lb *repository.LoadBalancer, oldUserID string) {
-	c.loadBalancersMux.Lock()
-	defer c.loadBalancersMux.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.loadBalancersMapByUserID[oldUserID] = deleteLoadBalancerFromSlice(lb.ID, c.loadBalancersMapByUserID[oldUserID])
 }
@@ -401,9 +376,6 @@ func (c *Cache) setPayPlans() error {
 		payPlansMap[payPlan.PlanType] = payPlan
 	}
 
-	c.payPlansMux.Lock()
-	defer c.payPlansMux.Unlock()
-
 	c.payPlans = payPlans
 	c.payPlansMap = payPlansMap
 
@@ -422,9 +394,6 @@ func (c *Cache) setRedirects() error {
 		redirectsMap[redirect.BlockchainID] = append(redirectsMap[redirect.BlockchainID], redirect)
 	}
 
-	c.redirectsMux.Lock()
-	defer c.redirectsMux.Unlock()
-
 	c.redirectsMapByBlockchainID = redirectsMap
 
 	return nil
@@ -432,14 +401,10 @@ func (c *Cache) setRedirects() error {
 
 // AddRedirects adds blockchain redirect to cache and updates cached blockchain entry
 func (c *Cache) AddRedirect(redirect *repository.Redirect) {
-	c.redirectsMux.Lock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], redirect)
-
-	c.redirectsMux.Unlock()
-
-	c.blockchainsMux.Lock()
-	defer c.blockchainsMux.Unlock()
 
 	if blockchain, exists := c.blockchainsMap[redirect.BlockchainID]; exists {
 		blockchain.Redirects = append(blockchain.Redirects, *redirect)
@@ -451,6 +416,9 @@ func (c *Cache) AddRedirect(redirect *repository.Redirect) {
 
 // SetCache gets all values from DB and stores them in cache
 func (c *Cache) SetCache() error {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
 	err := c.setPayPlans()
 	if err != nil {
 		return err
