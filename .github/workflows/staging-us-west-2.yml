@@ -1,8 +1,11 @@
-name: Production deployment us-west-2
+name: Staging deployment us-west-2
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Build & Test"]
     branches: [staging]
+    types:
+      - completed
 
 jobs:
   deploy:

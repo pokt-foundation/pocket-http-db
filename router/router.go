@@ -447,6 +447,9 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		if updateInput.Name != "" {
 			lb.Name = updateInput.Name
 		}
+		if updateInput.StickyOptions != nil {
+			lb.StickyOptions = *updateInput.StickyOptions
+		}
 
 		rt.Cache.UpdateLoadBalancer(lb)
 	}
