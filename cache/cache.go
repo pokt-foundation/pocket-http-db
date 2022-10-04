@@ -192,10 +192,16 @@ func (c *Cache) UpdateApplication(app *repository.Application) {
 
 	c.applications = updateApplicationFromSlice(app, c.applications)
 	c.applicationsMap[app.ID] = app
-	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
+	c.applicationsMapByUserID[app.UserID] = updateApplicationFromSlice(app, c.applicationsMapByUserID[app.UserID])
 
-	for i := 0; i < len(c.loadBalancers); i++ {
-		updateApplicationFromSlice(app, c.loadBalancers[i].Applications)
+	for _, lb := range c.loadBalancers {
+		lb.Applications = updateApplicationFromSlice(app, lb.Applications)
+
+		c.loadBalancers = updateLoadBalancerFromSlice(lb, c.loadBalancers)
+
+		c.loadBalancersMap[lb.ID] = lb
+
+		c.loadBalancersMapByUserID[lb.UserID] = updateLoadBalancerFromSlice(lb, c.loadBalancersMapByUserID[lb.UserID])
 	}
 }
 
@@ -326,7 +332,7 @@ func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer) {
 
 	c.loadBalancersMap[lb.ID] = lb
 
-	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], lb)
+	c.loadBalancersMapByUserID[lb.UserID] = updateLoadBalancerFromSlice(lb, c.loadBalancersMapByUserID[lb.UserID])
 }
 
 // DeleteLoadBalancer removes the load balancer from the cache

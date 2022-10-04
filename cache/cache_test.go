@@ -277,6 +277,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 
 	cache.UpdateApplication(&repository.Application{
 		ID:          "5f62b7d8be3591c4dea8566a",
+		UserID:      "60ecb2bf67774900350d9c43",
 		Name:        "papolo",
 		PayPlanType: repository.FreetierV0,
 	})
@@ -287,6 +288,9 @@ func TestCache_UpdateApplication(t *testing.T) {
 	c.Equal("papolo", cache.GetApplication("5f62b7d8be3591c4dea8566a").Name)
 	c.Equal(250000, cache.GetApplication("5f62b7d8be3591c4dea8566a").Limits.DailyLimit)
 	c.Equal("papolo", cache.GetLoadBalancer("60ecb2bf67774900350d9c42").Applications[1].Name)
+	c.Equal("papolo", cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43")[1].Name)
+	c.Equal("papolo", cache.GetLoadBalancer("60ecb2bf67774900350d9c42").Applications[1].Name)
+	c.Equal("papolo", cache.GetLoadBalancersByUserID("60ecb35fts687463gh2h72gs")[0].Applications[1].Name)
 }
 
 func TestCache_AddLoadBalancer(t *testing.T) {
@@ -361,13 +365,15 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 	c.NoError(err)
 
 	cache.UpdateLoadBalancer(&repository.LoadBalancer{
-		ID:   "5f62b7d8be3591c4dea8566a",
-		Name: "papolo",
+		ID:     "5f62b7d8be3591c4dea8566a",
+		UserID: "60ecb2bf67774900350d9c43",
+		Name:   "papolo",
 	})
 
 	c.Len(cache.GetLoadBalancers(), 3)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 2)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c44"), 1)
+	c.Equal("papolo", cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43")[1].Name)
 	c.Equal("papolo", cache.GetLoadBalancer("5f62b7d8be3591c4dea8566a").Name)
 }
 
