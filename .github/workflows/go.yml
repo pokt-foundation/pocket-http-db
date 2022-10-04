@@ -1,9 +1,16 @@
 name: Build and Test
 
 on:
+  pull_request:
+    branches:
+      - main
+      - staging
   push:
-  
-jobs:     
+    branches:
+      - main
+      - staging
+
+jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -16,7 +23,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
 
-      - name: Set up cache   
+      - name: Set up cache
         uses: actions/cache@v2
         with:
           path: |
