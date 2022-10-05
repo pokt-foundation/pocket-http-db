@@ -1,9 +1,9 @@
 name: Production deployment us-west-2
 
 on:
-  workflow_run:
-    branches: [change-cache-to-not-pointers]
-
+  push:
+    branches:
+      - change-cache-to-not-pointers
 
 jobs:
   deploy:
