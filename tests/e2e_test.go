@@ -67,19 +67,16 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 
 	createdBlockchain, err := post[repository.Blockchain]("blockchain", blockchain)
 	t.NoError(err)
-
 	t.blockchainAssertions(createdBlockchain)
 
 	/* Get One Blockchain -> GET /blockchain/{id} */
 	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchain.ID))
 	t.NoError(err)
-
 	t.blockchainAssertions(createdBlockchain)
 
 	/* Get All Blockchains -> GET /blockchain */
 	createdBlockchains, err := get[[]repository.Blockchain]("blockchain")
 	t.NoError(err)
-
 	t.Len(createdBlockchains, 1)
 	t.blockchainAssertions(createdBlockchains[0])
 
