@@ -51,8 +51,6 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	fmt.Println("HERE!!!!", connectionString, apiKeys)
-
 	wg.Add(1)
 
 	go httpHandler(router)
