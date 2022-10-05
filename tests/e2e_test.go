@@ -1,4 +1,4 @@
-package main
+package tests
 
 import (
 	"bytes"
@@ -36,12 +36,12 @@ type (
 )
 
 func (t *PHDTestSuite) SetupSuite() {
-	_, err := exec.Command("docker", "compose", "-f", "./testdata/docker-compose.yml", "up", "-d").Output()
+	_, err := exec.Command("docker", "compose", "-f", "./docker-compose.yml", "up", "-d").Output()
 	t.NoError(err)
 }
 
 func (t *PHDTestSuite) TearDownSuite() {
-	_, err := exec.Command("docker-compose", "-f", "./testdata/docker-compose.yml", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
+	_, err := exec.Command("docker-compose", "-f", "./docker-compose.yml", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
 	t.NoError(err)
 }
 
@@ -60,7 +60,7 @@ The tests then performs every operation that PHD can perform for each set of end
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	/* Create Blockchain -> POST /blockchain */
-	blockchain, err := ioutil.ReadFile("./testdata/blockchain.json")
+	blockchain, err := ioutil.ReadFile("./blockchain.json")
 	t.NoError(err)
 
 	createdBlockchain, err := post[repository.Blockchain]("blockchain", blockchain)
