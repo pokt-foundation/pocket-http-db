@@ -178,6 +178,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.Equal("TST01", updatedApplication.GatewaySettings.WhitelistMethods[0].BlockchainID)
 	t.Len(updatedApplication.GatewaySettings.WhitelistMethods[1].Methods, 2)
 	t.Equal("test-method-3", updatedApplication.GatewaySettings.WhitelistMethods[1].Methods[1])
+	t.NotEmpty(updatedApplication.UpdatedAt)
 
 	/* Update First Date Surpassed -> POST /application/first_date_surpassed */
 	updateDate := repository.UpdateFirstDateSurpassed{
@@ -470,7 +471,7 @@ const (
 	// 	"id": "",
 	// 	"name": "test-load-balancer-1",
 	// 	"userID": "test_id_de26a0db3b6c631c4",
-	// 	"applicationIDs": [%s],
+	// 	"applicationIDs": ["%s"],
 	// 	"requestTimeout": 2000,
 	// 	"gigastake": false,
 	// 	"gigastakeRedirect": true,
@@ -481,11 +482,10 @@ const (
 	// 		"stickiness": false
 	// 	},
 	// 	"Applications": null,
-	// 	"createdAt": "0001-01-01T00:00:00Z",
-	// 	"updatedAt": "0001-01-01T00:00:00Z"
 	// }`
 
 	redirectJSON = `{
+		"id": "",
 		"blockchainID": "TST01",
 		"alias": "test-mainnet",
 		"domain": "test-rpc.gateway.pokt.network",
