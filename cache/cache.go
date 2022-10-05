@@ -8,28 +8,28 @@ import (
 
 // Reader represents implementation of reader interface
 type Reader interface {
-	ReadApplications() ([]*repository.Application, error)
-	ReadBlockchains() ([]*repository.Blockchain, error)
-	ReadLoadBalancers() ([]*repository.LoadBalancer, error)
-	ReadPayPlans() ([]*repository.PayPlan, error)
-	ReadRedirects() ([]*repository.Redirect, error)
+	ReadApplications() ([]repository.Application, error)
+	ReadBlockchains() ([]repository.Blockchain, error)
+	ReadLoadBalancers() ([]repository.LoadBalancer, error)
+	ReadPayPlans() ([]repository.PayPlan, error)
+	ReadRedirects() ([]repository.Redirect, error)
 }
 
 // Cache struct handler for cache operations
 type Cache struct {
 	reader                     Reader
 	rwMutex                    sync.RWMutex
-	applicationsMap            map[string]*repository.Application
-	applicationsMapByUserID    map[string][]*repository.Application
-	applications               []*repository.Application
-	blockchainsMap             map[string]*repository.Blockchain
-	blockchains                []*repository.Blockchain
-	loadBalancersMap           map[string]*repository.LoadBalancer
-	loadBalancersMapByUserID   map[string][]*repository.LoadBalancer
-	loadBalancers              []*repository.LoadBalancer
-	payPlansMap                map[repository.PayPlanType]*repository.PayPlan
-	payPlans                   []*repository.PayPlan
-	redirectsMapByBlockchainID map[string][]*repository.Redirect
+	applicationsMap            map[string]repository.Application
+	applicationsMapByUserID    map[string][]repository.Application
+	applications               []repository.Application
+	blockchainsMap             map[string]repository.Blockchain
+	blockchains                []repository.Blockchain
+	loadBalancersMap           map[string]repository.LoadBalancer
+	loadBalancersMapByUserID   map[string][]repository.LoadBalancer
+	loadBalancers              []repository.LoadBalancer
+	payPlansMap                map[repository.PayPlanType]repository.PayPlan
+	payPlans                   []repository.PayPlan
+	redirectsMapByBlockchainID map[string][]repository.Redirect
 }
 
 // NewCache returns cache instance from reader interface
@@ -40,7 +40,7 @@ func NewCache(reader Reader) *Cache {
 }
 
 // GetApplication returns Application from cache by applicationID
-func (c *Cache) GetApplication(applicationID string) *repository.Application {
+func (c *Cache) GetApplication(applicationID string) repository.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -48,7 +48,7 @@ func (c *Cache) GetApplication(applicationID string) *repository.Application {
 }
 
 // GetApplicationsByUserID returns Applications from cache by userID
-func (c *Cache) GetApplicationsByUserID(userID string) []*repository.Application {
+func (c *Cache) GetApplicationsByUserID(userID string) []repository.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -56,7 +56,7 @@ func (c *Cache) GetApplicationsByUserID(userID string) []*repository.Application
 }
 
 // GetApplications returns all Applications in cache
-func (c *Cache) GetApplications() []*repository.Application {
+func (c *Cache) GetApplications() []repository.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -64,7 +64,7 @@ func (c *Cache) GetApplications() []*repository.Application {
 }
 
 // GetBlockchain returns Blockchain from cache by blockchainID
-func (c *Cache) GetBlockchain(blockchainID string) *repository.Blockchain {
+func (c *Cache) GetBlockchain(blockchainID string) repository.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -72,7 +72,7 @@ func (c *Cache) GetBlockchain(blockchainID string) *repository.Blockchain {
 }
 
 // GetBlockchains returns all Blockchains from cache
-func (c *Cache) GetBlockchains() []*repository.Blockchain {
+func (c *Cache) GetBlockchains() []repository.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -80,7 +80,7 @@ func (c *Cache) GetBlockchains() []*repository.Blockchain {
 }
 
 // GetLoadBalancer returns Loadbalancer by loadbalancerID
-func (c *Cache) GetLoadBalancer(loadBalancerID string) *repository.LoadBalancer {
+func (c *Cache) GetLoadBalancer(loadBalancerID string) repository.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -88,14 +88,14 @@ func (c *Cache) GetLoadBalancer(loadBalancerID string) *repository.LoadBalancer 
 }
 
 // GetLoadBalancers returns all Loadbalancers on cache
-func (c *Cache) GetLoadBalancers() []*repository.LoadBalancer {
+func (c *Cache) GetLoadBalancers() []repository.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	return c.loadBalancers
 }
 
-func (c *Cache) GetLoadBalancersByUserID(userID string) []*repository.LoadBalancer {
+func (c *Cache) GetLoadBalancersByUserID(userID string) []repository.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -103,7 +103,7 @@ func (c *Cache) GetLoadBalancersByUserID(userID string) []*repository.LoadBalanc
 }
 
 // GetPayPlan returns PayPlan from cache by planType
-func (c *Cache) GetPayPlan(planType repository.PayPlanType) *repository.PayPlan {
+func (c *Cache) GetPayPlan(planType repository.PayPlanType) repository.PayPlan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -111,7 +111,7 @@ func (c *Cache) GetPayPlan(planType repository.PayPlanType) *repository.PayPlan 
 }
 
 // GetPayPlans returns all PayPlans in cache
-func (c *Cache) GetPayPlans() []*repository.PayPlan {
+func (c *Cache) GetPayPlans() []repository.PayPlan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -119,7 +119,7 @@ func (c *Cache) GetPayPlans() []*repository.PayPlan {
 }
 
 // GetRedirects returns all Redirects from cache by blockchainID
-func (c *Cache) GetRedirects(blockchainID string) []*repository.Redirect {
+func (c *Cache) GetRedirects(blockchainID string) []repository.Redirect {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -132,13 +132,13 @@ func (c *Cache) setApplications() error {
 		return err
 	}
 
-	applicationsMap := make(map[string]*repository.Application)
-	applicationsMapByUserID := make(map[string][]*repository.Application)
+	applicationsMap := make(map[string]repository.Application)
+	applicationsMapByUserID := make(map[string][]repository.Application)
 
 	for i := 0; i < len(applications); i++ {
 		plan := c.payPlansMap[applications[i].PayPlanType]
 
-		if plan != nil {
+		if plan != (repository.PayPlan{}) {
 			applications[i].Limits = repository.AppLimits{
 				PlanType:   plan.PlanType,
 				DailyLimit: plan.DailyLimit,
@@ -159,7 +159,7 @@ func (c *Cache) setApplications() error {
 }
 
 // AddApplication adds application to cache
-func (c *Cache) AddApplication(app *repository.Application) {
+func (c *Cache) AddApplication(app repository.Application) {
 	if app.PayPlanType != "" {
 		newPlan := c.GetPayPlan(app.PayPlanType)
 		app.Limits = repository.AppLimits{
@@ -177,7 +177,7 @@ func (c *Cache) AddApplication(app *repository.Application) {
 }
 
 // UpdateApplication updates application saved in cache
-func (c *Cache) UpdateApplication(app *repository.Application) {
+func (c *Cache) UpdateApplication(app repository.Application) {
 	if app.PayPlanType != "" {
 		newPlan := c.GetPayPlan(app.PayPlanType)
 		app.Limits = repository.AppLimits{
@@ -205,7 +205,7 @@ func (c *Cache) UpdateApplication(app *repository.Application) {
 	}
 }
 
-func updateApplicationFromSlice(updatedApp *repository.Application, apps []*repository.Application) []*repository.Application {
+func updateApplicationFromSlice(updatedApp repository.Application, apps []repository.Application) []repository.Application {
 	for i := 0; i < len(apps); i++ {
 		if apps[i].ID == updatedApp.ID {
 			apps[i] = apps[len(apps)-1]
@@ -225,18 +225,15 @@ func (c *Cache) setBlockchains() error {
 		return err
 	}
 
-	blockchainsMap := make(map[string]*repository.Blockchain)
+	blockchainsMap := make(map[string]repository.Blockchain)
 
-	for _, blockchain := range blockchains {
+	for i, blockchain := range blockchains {
 		if blockchainRedirects, exists := c.redirectsMapByBlockchainID[blockchain.ID]; exists {
-			redirects := []repository.Redirect{}
-			for _, redirect := range blockchainRedirects {
-				redirects = append(redirects, *redirect)
-			}
-			blockchain.Redirects = redirects
+			blockchain.Redirects = blockchainRedirects
 		}
 
 		blockchainsMap[blockchain.ID] = blockchain
+		blockchains[i] = blockchain
 	}
 
 	c.blockchains = blockchains
@@ -246,7 +243,7 @@ func (c *Cache) setBlockchains() error {
 }
 
 // AddBlockchain adds blockchain to cache
-func (c *Cache) AddBlockchain(blockchain *repository.Blockchain) {
+func (c *Cache) AddBlockchain(blockchain repository.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -262,10 +259,11 @@ func (c *Cache) ActivateBlockchain(id string, active bool) {
 	if blockchain, exists := c.blockchainsMap[id]; exists {
 		blockchain.Active = active
 		c.blockchainsMap[id] = blockchain
+		c.blockchains = updateBlockchainFromSlice(blockchain, c.blockchains)
 	}
 }
 
-func updateBlockchainFromSlice(updatedChain *repository.Blockchain, chains []*repository.Blockchain) []*repository.Blockchain {
+func updateBlockchainFromSlice(updatedChain repository.Blockchain, chains []repository.Blockchain) []repository.Blockchain {
 	for i := 0; i < len(chains); i++ {
 		if chains[i].ID == updatedChain.ID {
 			chains[i] = chains[len(chains)-1]
@@ -285,8 +283,8 @@ func (c *Cache) setLoadBalancers() error {
 		return err
 	}
 
-	loadBalancersMap := make(map[string]*repository.LoadBalancer)
-	loadBalancersMapByUserID := make(map[string][]*repository.LoadBalancer)
+	loadBalancersMap := make(map[string]repository.LoadBalancer)
+	loadBalancersMapByUserID := make(map[string][]repository.LoadBalancer)
 
 	for i, loadBalancer := range loadBalancers {
 		for _, appID := range loadBalancer.ApplicationIDs {
@@ -308,7 +306,7 @@ func (c *Cache) setLoadBalancers() error {
 }
 
 // AddLoadBalancer adds load balancer to cache
-func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
+func (c *Cache) AddLoadBalancer(lb repository.LoadBalancer) {
 	for _, appID := range lb.ApplicationIDs {
 		lb.Applications = append(lb.Applications, c.GetApplication(appID))
 	}
@@ -324,7 +322,7 @@ func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
 }
 
 // UpdateLoadBalancer updates load balancer saved in cache
-func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer) {
+func (c *Cache) UpdateLoadBalancer(lb repository.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -336,14 +334,14 @@ func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer) {
 }
 
 // DeleteLoadBalancer removes the load balancer from the cache
-func (c *Cache) DeleteLoadBalancer(lb *repository.LoadBalancer, oldUserID string) {
+func (c *Cache) DeleteLoadBalancer(lb repository.LoadBalancer, oldUserID string) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
 	c.loadBalancersMapByUserID[oldUserID] = deleteLoadBalancerFromSlice(lb.ID, c.loadBalancersMapByUserID[oldUserID])
 }
 
-func deleteLoadBalancerFromSlice(lbID string, lbs []*repository.LoadBalancer) []*repository.LoadBalancer {
+func deleteLoadBalancerFromSlice(lbID string, lbs []repository.LoadBalancer) []repository.LoadBalancer {
 	for i := 0; i < len(lbs); i++ {
 		if lbs[i].ID == lbID {
 			lbs[i] = lbs[len(lbs)-1]
@@ -356,7 +354,7 @@ func deleteLoadBalancerFromSlice(lbID string, lbs []*repository.LoadBalancer) []
 	return lbs
 }
 
-func updateLoadBalancerFromSlice(updatedlb *repository.LoadBalancer, lbs []*repository.LoadBalancer) []*repository.LoadBalancer {
+func updateLoadBalancerFromSlice(updatedlb repository.LoadBalancer, lbs []repository.LoadBalancer) []repository.LoadBalancer {
 	for i := 0; i < len(lbs); i++ {
 		if lbs[i].ID == updatedlb.ID {
 			lbs[i] = lbs[len(lbs)-1]
@@ -376,7 +374,7 @@ func (c *Cache) setPayPlans() error {
 		return err
 	}
 
-	payPlansMap := make(map[repository.PayPlanType]*repository.PayPlan)
+	payPlansMap := make(map[repository.PayPlanType]repository.PayPlan)
 
 	for _, payPlan := range payPlans {
 		payPlansMap[payPlan.PlanType] = payPlan
@@ -394,7 +392,7 @@ func (c *Cache) setRedirects() error {
 		return err
 	}
 
-	redirectsMap := make(map[string][]*repository.Redirect)
+	redirectsMap := make(map[string][]repository.Redirect)
 
 	for _, redirect := range redirects {
 		redirectsMap[redirect.BlockchainID] = append(redirectsMap[redirect.BlockchainID], redirect)
@@ -406,14 +404,14 @@ func (c *Cache) setRedirects() error {
 }
 
 // AddRedirects adds blockchain redirect to cache and updates cached blockchain entry
-func (c *Cache) AddRedirect(redirect *repository.Redirect) {
+func (c *Cache) AddRedirect(redirect repository.Redirect) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
 	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], redirect)
 
 	if blockchain, exists := c.blockchainsMap[redirect.BlockchainID]; exists {
-		blockchain.Redirects = append(blockchain.Redirects, *redirect)
+		blockchain.Redirects = append(blockchain.Redirects, redirect)
 
 		c.blockchains = updateBlockchainFromSlice(blockchain, c.blockchains)
 		c.blockchainsMap[redirect.BlockchainID] = blockchain

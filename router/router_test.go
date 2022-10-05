@@ -19,13 +19,13 @@ type writerMock struct {
 	mock.Mock
 }
 
-func (w *writerMock) WriteLoadBalancer(loadBalancer *repository.LoadBalancer) (*repository.LoadBalancer, error) {
+func (w *writerMock) WriteLoadBalancer(loadBalancer repository.LoadBalancer) (repository.LoadBalancer, error) {
 	args := w.Called()
 
-	return args.Get(0).(*repository.LoadBalancer), args.Error(1)
+	return args.Get(0).(repository.LoadBalancer), args.Error(1)
 }
 
-func (w *writerMock) UpdateLoadBalancer(id string, options *repository.UpdateLoadBalancer) error {
+func (w *writerMock) UpdateLoadBalancer(id string, options repository.UpdateLoadBalancer) error {
 	args := w.Called()
 
 	return args.Error(0)
@@ -37,19 +37,19 @@ func (w *writerMock) RemoveLoadBalancer(id string) error {
 	return args.Error(0)
 }
 
-func (w *writerMock) WriteApplication(app *repository.Application) (*repository.Application, error) {
+func (w *writerMock) WriteApplication(app repository.Application) (repository.Application, error) {
 	args := w.Called()
 
-	return args.Get(0).(*repository.Application), args.Error(1)
+	return args.Get(0).(repository.Application), args.Error(1)
 }
 
-func (w *writerMock) UpdateApplication(id string, options *repository.UpdateApplication) error {
+func (w *writerMock) UpdateApplication(id string, options repository.UpdateApplication) error {
 	args := w.Called()
 
 	return args.Error(0)
 }
 
-func (w *writerMock) UpdateFirstDateSurpassed(firstDateSurpassed *repository.UpdateFirstDateSurpassed) error {
+func (w *writerMock) UpdateFirstDateSurpassed(firstDateSurpassed repository.UpdateFirstDateSurpassed) error {
 	args := w.Called()
 
 	return args.Error(0)
@@ -61,16 +61,16 @@ func (w *writerMock) RemoveApplication(id string) error {
 	return args.Error(0)
 }
 
-func (w *writerMock) WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error) {
+func (w *writerMock) WriteBlockchain(blockchain repository.Blockchain) (repository.Blockchain, error) {
 	args := w.Called()
 
-	return args.Get(0).(*repository.Blockchain), args.Error(1)
+	return args.Get(0).(repository.Blockchain), args.Error(1)
 }
 
-func (w *writerMock) WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error) {
+func (w *writerMock) WriteRedirect(redirect repository.Redirect) (repository.Redirect, error) {
 	args := w.Called()
 
-	return args.Get(0).(*repository.Redirect), args.Error(1)
+	return args.Get(0).(repository.Redirect), args.Error(1)
 }
 
 func (w *writerMock) ActivateBlockchain(id string, active bool) error {
@@ -82,7 +82,7 @@ func (w *writerMock) ActivateBlockchain(id string, active bool) error {
 func newTestRouter() (*Router, error) {
 	readerMock := &cache.ReaderMock{}
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadPayPlans").Return([]repository.PayPlan{
 		{
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
@@ -93,7 +93,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+	readerMock.On("ReadRedirects").Return([]repository.Redirect{
 		{
 			BlockchainID:   "0021",
 			Alias:          "pokt-mainnet",
@@ -110,7 +110,7 @@ func newTestRouter() (*Router, error) {
 
 	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications").Return([]repository.Application{
 		{
 			ID:                 "5f62b7d8be3591c4dea8566d",
 			UserID:             "60ecb2bf67774900350d9c43",
@@ -127,7 +127,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains").Return([]repository.Blockchain{
 		{
 			ID: "0021",
 		},
@@ -136,7 +136,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{
 		{
 			ID: "60ecb2bf67774900350d9c42",
 			ApplicationIDs: []string{
@@ -190,7 +190,7 @@ func TestRouter_GetApplications(t *testing.T) {
 
 	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
 
-	expectedBody, err := json.Marshal([]*repository.Application{
+	expectedBody, err := json.Marshal([]repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -239,7 +239,7 @@ func TestRouter_GetApplicationsLimits(t *testing.T) {
 
 	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
 
-	expectedBody, err := json.Marshal([]*repository.AppLimits{
+	expectedBody, err := json.Marshal([]repository.AppLimits{
 		{
 			AppID:                "5f62b7d8be3591c4dea8566d",
 			AppUserID:            "60ecb2bf67774900350d9c43",
@@ -283,7 +283,7 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
 
-	expectedBody, err := json.Marshal(&repository.Application{
+	expectedBody, err := json.Marshal(repository.Application{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
 		Limits: repository.AppLimits{
@@ -309,7 +309,7 @@ func TestRouter_GetApplication(t *testing.T) {
 func TestRouter_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
-	rawAppToSend := &repository.Application{
+	rawAppToSend := repository.Application{
 		UserID: "60ddc61b6e29c3003378361D",
 	}
 
@@ -324,7 +324,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 	router, err := newTestRouter()
 	c.NoError(err)
 
-	appToReturn := &repository.Application{
+	appToReturn := repository.Application{
 		ID:     "60ddc61b6e29c3003378361E",
 		UserID: "60ddc61b6e29c3003378361D",
 	}
@@ -368,7 +368,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 func TestRouter_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateApplication{
+	rawUpdateInput := repository.UpdateApplication{
 		Name:               "pablo",
 		Status:             repository.Orphaned,
 		PayPlanType:        repository.PayAsYouGoV0,
@@ -435,7 +435,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateFirstDateSurpassed{
+	rawUpdateInput := repository.UpdateFirstDateSurpassed{
 		ApplicationIDs:     []string{"5f62b7d8be3591c4dea8566d"},
 		FirstDateSurpassed: time.Now(),
 	}
@@ -513,7 +513,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 func TestRouter_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
-	rawRemoveInput := &repository.UpdateApplication{
+	rawRemoveInput := repository.UpdateApplication{
 		Remove: true,
 	}
 
@@ -585,7 +585,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 
 	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
 
-	expectedBody, err := json.Marshal([]*repository.Application{
+	expectedBody, err := json.Marshal([]repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -629,7 +629,7 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	var marshaledBody []*repository.LoadBalancer
+	var marshaledBody []repository.LoadBalancer
 
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
@@ -661,7 +661,7 @@ func TestRouter_GetBlockchains(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal([]*repository.Blockchain{
+	expectedBody, err := json.Marshal([]repository.Blockchain{
 		{
 			ID: "0021",
 			Redirects: []repository.Redirect{
@@ -705,7 +705,7 @@ func TestRouter_GetBlockchain(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal(&repository.Blockchain{
+	expectedBody, err := json.Marshal(repository.Blockchain{
 		ID: "0021",
 		Redirects: []repository.Redirect{
 			{
@@ -745,7 +745,7 @@ func TestRouter_GetLoadBalancers(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	var marshaledBody []*repository.LoadBalancer
+	var marshaledBody []repository.LoadBalancer
 
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
@@ -790,7 +790,7 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 func TestRouter_CreateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	rawLBToSend := &repository.LoadBalancer{
+	rawLBToSend := repository.LoadBalancer{
 		UserID: "60ddc61b6e29c3003378361D",
 	}
 
@@ -805,7 +805,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	router, err := newTestRouter()
 	c.NoError(err)
 
-	lbToReturn := &repository.LoadBalancer{
+	lbToReturn := repository.LoadBalancer{
 		ID:     "60ddc61b6e29c3003378361E",
 		UserID: "60ddc61b6e29c3003378361D",
 	}
@@ -849,7 +849,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateLoadBalancer{
+	rawUpdateInput := repository.UpdateLoadBalancer{
 		Name: "pablo",
 		StickyOptions: &repository.StickyOptions{
 			Duration:      "21",
@@ -913,7 +913,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateLoadBalancer{
+	rawUpdateInput := repository.UpdateLoadBalancer{
 		Remove: true,
 	}
 
@@ -974,7 +974,7 @@ func TestRouter_GetPayPlans(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal([]*repository.PayPlan{
+	expectedBody, err := json.Marshal([]repository.PayPlan{
 		{
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
@@ -1004,7 +1004,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal(&repository.PayPlan{
+	expectedBody, err := json.Marshal(repository.PayPlan{
 		PlanType:   repository.FreetierV0,
 		DailyLimit: 250000,
 	})
@@ -1025,7 +1025,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 func TestRouter_CreateBlockchain(t *testing.T) {
 	c := require.New(t)
 
-	rawChainToSend := &repository.Blockchain{
+	rawChainToSend := repository.Blockchain{
 		Ticker: "POKT",
 	}
 
@@ -1040,7 +1040,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 	router, err := newTestRouter()
 	c.NoError(err)
 
-	chainToReturn := &repository.Blockchain{
+	chainToReturn := repository.Blockchain{
 		ID:     "60ddc61b6e29c3003378361E",
 		Ticker: "POKT",
 	}
@@ -1084,7 +1084,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 func TestRouter_CreateRedirect(t *testing.T) {
 	c := require.New(t)
 
-	rawRedirectsToSend := &repository.Redirect{BlockchainID: "0021"}
+	rawRedirectsToSend := repository.Redirect{BlockchainID: "0021"}
 
 	redirectToSend, err := json.Marshal(rawRedirectsToSend)
 	c.NoError(err)
@@ -1097,7 +1097,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	router, err := newTestRouter()
 	c.NoError(err)
 
-	redirectToReturn := &repository.Redirect{ID: "60ddc61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
+	redirectToReturn := repository.Redirect{ID: "60ddc61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
 
 	writerMock := &writerMock{}
 

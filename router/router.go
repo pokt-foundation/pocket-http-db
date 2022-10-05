@@ -14,15 +14,15 @@ import (
 
 // Writer represents the implementation of writer interface
 type Writer interface {
-	WriteLoadBalancer(loadBalancer *repository.LoadBalancer) (*repository.LoadBalancer, error)
-	UpdateLoadBalancer(id string, options *repository.UpdateLoadBalancer) error
+	WriteLoadBalancer(loadBalancer repository.LoadBalancer) (repository.LoadBalancer, error)
+	UpdateLoadBalancer(id string, options repository.UpdateLoadBalancer) error
 	RemoveLoadBalancer(id string) error
-	WriteApplication(app *repository.Application) (*repository.Application, error)
-	UpdateApplication(id string, options *repository.UpdateApplication) error
-	UpdateFirstDateSurpassed(firstDateSurpassed *repository.UpdateFirstDateSurpassed) error
+	WriteApplication(app repository.Application) (repository.Application, error)
+	UpdateApplication(id string, options repository.UpdateApplication) error
+	UpdateFirstDateSurpassed(firstDateSurpassed repository.UpdateFirstDateSurpassed) error
 	RemoveApplication(id string) error
-	WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error)
-	WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error)
+	WriteBlockchain(blockchain repository.Blockchain) (repository.Blockchain, error)
+	WriteRedirect(redirect repository.Redirect) (repository.Redirect, error)
 	ActivateBlockchain(id string, active bool) error
 }
 
@@ -137,7 +137,7 @@ func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 
 	app := rt.Cache.GetApplication(vars["id"])
 
-	if app == nil {
+	if app.ID == "" {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, "application not found")
 		return
 	}
@@ -158,7 +158,7 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullApp, err := rt.Writer.WriteApplication(&app)
+	fullApp, err := rt.Writer.WriteApplication(app)
 	if err != nil {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -173,7 +173,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	app := rt.Cache.GetApplication(vars["id"])
-	if app == nil {
+	if app.ID == "" {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, "application not found")
 		return
 	}
@@ -199,7 +199,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 		app.Status = repository.AwaitingGracePeriod
 	} else {
-		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
+		err = rt.Writer.UpdateApplication(vars["id"], updateInput)
 		if err != nil {
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -248,11 +248,11 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var appsToUpdate []*repository.Application
+	var appsToUpdate []repository.Application
 
 	for _, appID := range updateInput.ApplicationIDs {
 		app := rt.Cache.GetApplication(appID)
-		if app == nil {
+		if app.ID == "" {
 			jsonresponse.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s not found", appID))
 			return
 		}
@@ -260,7 +260,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 		appsToUpdate = append(appsToUpdate, app)
 	}
 
-	err = rt.Writer.UpdateFirstDateSurpassed(&updateInput)
+	err = rt.Writer.UpdateFirstDateSurpassed(updateInput)
 	if err != nil {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -305,7 +305,7 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	blockchain := rt.Cache.GetBlockchain(vars["id"])
 
-	if blockchain == nil {
+	if blockchain.ID == "" {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, "blockchain not found")
 		return
 	}
@@ -353,7 +353,7 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullBlockchain, err := rt.Writer.WriteBlockchain(&blockchain)
+	fullBlockchain, err := rt.Writer.WriteBlockchain(blockchain)
 	if err != nil {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -373,7 +373,7 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 
-	if lb == nil {
+	if lb.ID == "" {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, "load balancer not found")
 		return
 	}
@@ -394,7 +394,7 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullLB, err := rt.Writer.WriteLoadBalancer(&lb)
+	fullLB, err := rt.Writer.WriteLoadBalancer(lb)
 	if err != nil {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -409,7 +409,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
-	if lb == nil {
+	if lb.ID == "" {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, "load balancer not found")
 		return
 	}
@@ -438,7 +438,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 		rt.Cache.DeleteLoadBalancer(lb, oldUserID)
 	} else {
-		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
+		err = rt.Writer.UpdateLoadBalancer(vars["id"], updateInput)
 		if err != nil {
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -466,7 +466,7 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 
 	plan := rt.Cache.GetPayPlan(repository.PayPlanType(strings.ToUpper(vars["type"])))
 
-	if plan == nil {
+	if plan == (repository.PayPlan{}) {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, "pay plan not found")
 		return
 	}
@@ -491,7 +491,7 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullRedirect, err := rt.Writer.WriteRedirect(&redirect)
+	fullRedirect, err := rt.Writer.WriteRedirect(redirect)
 	if err != nil {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return

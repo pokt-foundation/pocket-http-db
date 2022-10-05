@@ -13,7 +13,7 @@ func TestCache_SetCache(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications").Return([]repository.Application{
 		{
 			ID:          "5f62b7d8be3591c4dea8566d",
 			UserID:      "60ecb2bf67774900350d9c43",
@@ -29,13 +29,13 @@ func TestCache_SetCache(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains").Return([]repository.Blockchain{
 		{
 			ID: "0021",
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{
 		{
 			ID:     "60ecb2bf67774900350d9c42",
 			UserID: "60ecb35fts687463gh2h72gs",
@@ -46,7 +46,7 @@ func TestCache_SetCache(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadPayPlans").Return([]repository.PayPlan{
 		{
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
@@ -57,7 +57,7 @@ func TestCache_SetCache(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+	readerMock.On("ReadRedirects").Return([]repository.Redirect{
 		{
 			BlockchainID:   "0021",
 			Alias:          "pokt-mainnet",
@@ -101,12 +101,12 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	readerMock := &ReaderMock{}
 	cache := NewCache(readerMock)
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{}, errors.New("error on pay plans")).Once()
+	readerMock.On("ReadPayPlans").Return([]repository.PayPlan{}, errors.New("error on pay plans")).Once()
 
 	err := cache.SetCache()
 	c.EqualError(err, "error on pay plans")
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadPayPlans").Return([]repository.PayPlan{
 		{
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
@@ -117,12 +117,12 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{}, errors.New("error on redirects")).Once()
+	readerMock.On("ReadRedirects").Return([]repository.Redirect{}, errors.New("error on redirects")).Once()
 
 	err = cache.SetCache()
 	c.EqualError(err, "error on redirects")
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+	readerMock.On("ReadRedirects").Return([]repository.Redirect{
 		{
 			BlockchainID:   "0021",
 			Alias:          "pokt-mainnet",
@@ -137,35 +137,35 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
+	readerMock.On("ReadApplications").Return([]repository.Application{}, errors.New("error on applications")).Once()
 
 	err = cache.SetCache()
 	c.EqualError(err, "error on applications")
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications").Return([]repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
+	readerMock.On("ReadBlockchains").Return([]repository.Blockchain{}, errors.New("error on blockchains")).Once()
 
 	err = cache.SetCache()
 	c.EqualError(err, "error on blockchains")
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains").Return([]repository.Blockchain{
 		{
 			ID: "0021",
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{}, errors.New("error on loadbalancers")).Once()
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{}, errors.New("error on loadbalancers")).Once()
 
 	err = cache.SetCache()
 	c.EqualError(err, "error on loadbalancers")
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{
 		{
 			ID: "60ecb2bf67774900350d9c42",
 		},
@@ -177,7 +177,7 @@ func TestCache_AddApplication(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadPayPlans").Return([]repository.PayPlan{
 		{
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
@@ -188,7 +188,7 @@ func TestCache_AddApplication(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications").Return([]repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -211,7 +211,7 @@ func TestCache_AddApplication(t *testing.T) {
 	err = cache.setApplications()
 	c.NoError(err)
 
-	cache.AddApplication(&repository.Application{
+	cache.AddApplication(repository.Application{
 		ID:          "5f62b7d8be3591c4dea8566b",
 		UserID:      "60ecb2bf67774900350d9c43",
 		PayPlanType: repository.FreetierV0,
@@ -227,7 +227,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadPayPlans").Return([]repository.PayPlan{
 		{
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
@@ -238,7 +238,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications").Return([]repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -253,7 +253,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{
 		{
 			ID:     "60ecb2bf67774900350d9c42",
 			UserID: "60ecb35fts687463gh2h72gs",
@@ -275,7 +275,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 	err = cache.setLoadBalancers()
 	c.NoError(err)
 
-	cache.UpdateApplication(&repository.Application{
+	cache.UpdateApplication(repository.Application{
 		ID:          "5f62b7d8be3591c4dea8566a",
 		UserID:      "60ecb2bf67774900350d9c43",
 		Name:        "papolo",
@@ -298,7 +298,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -313,7 +313,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications").Return([]repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -328,7 +328,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 	err = cache.setApplications()
 	c.NoError(err)
 
-	cache.AddLoadBalancer(&repository.LoadBalancer{
+	cache.AddLoadBalancer(repository.LoadBalancer{
 		ID:             "5f62b7d8be3591c4dea8566b",
 		UserID:         "60ecb2bf67774900350d9c43",
 		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566d"},
@@ -344,7 +344,7 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -364,7 +364,7 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 	err := cache.setLoadBalancers()
 	c.NoError(err)
 
-	cache.UpdateLoadBalancer(&repository.LoadBalancer{
+	cache.UpdateLoadBalancer(repository.LoadBalancer{
 		ID:     "5f62b7d8be3591c4dea8566a",
 		UserID: "60ecb2bf67774900350d9c43",
 		Name:   "papolo",
@@ -382,7 +382,7 @@ func TestCache_DeleteLoadBalancer(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]repository.LoadBalancer{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -402,7 +402,7 @@ func TestCache_DeleteLoadBalancer(t *testing.T) {
 	err := cache.setLoadBalancers()
 	c.NoError(err)
 
-	cache.DeleteLoadBalancer(&repository.LoadBalancer{
+	cache.DeleteLoadBalancer(repository.LoadBalancer{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "",
 		Name:   "papolo",
@@ -416,7 +416,7 @@ func TestCache_AddBlockchain(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains").Return([]repository.Blockchain{
 		{ID: "0001", Ticker: "POKT"},
 	}, nil)
 
@@ -427,7 +427,7 @@ func TestCache_AddBlockchain(t *testing.T) {
 
 	c.Len(cache.GetBlockchains(), 1)
 
-	cache.AddBlockchain(&repository.Blockchain{ID: "0002", Ticker: "ETH"})
+	cache.AddBlockchain(repository.Blockchain{ID: "0002", Ticker: "ETH"})
 
 	c.Len(cache.GetBlockchains(), 2)
 }
@@ -437,7 +437,7 @@ func TestCache_ActivateBlockchain(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains").Return([]repository.Blockchain{
 		{ID: "0001", Active: false},
 	}, nil)
 
@@ -460,11 +460,11 @@ func TestCache_AddRedirect(t *testing.T) {
 
 	readerMock := &ReaderMock{}
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains").Return([]repository.Blockchain{
 		{ID: "0001", Ticker: "POKT"},
 	}, nil)
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
+	readerMock.On("ReadRedirects").Return([]repository.Redirect{
 		{BlockchainID: "0001", Alias: "pokt-mainnet-1"},
 		{BlockchainID: "0001", Alias: "pokt-mainnet-2"},
 		{BlockchainID: "0002", Alias: "eth-mainnet"},
@@ -482,7 +482,7 @@ func TestCache_AddRedirect(t *testing.T) {
 	c.Len(cache.GetBlockchains()[0].Redirects, 2)
 	c.Len(cache.GetRedirects("0001"), 2)
 
-	cache.AddRedirect(&repository.Redirect{BlockchainID: "0001", Alias: "pokt-mainnet-3"})
+	cache.AddRedirect(repository.Redirect{BlockchainID: "0001", Alias: "pokt-mainnet-3"})
 
 	c.Len(cache.GetBlockchains()[0].Redirects, 3)
 	c.Len(cache.GetRedirects("0001"), 3)
