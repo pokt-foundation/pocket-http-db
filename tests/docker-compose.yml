@@ -4,7 +4,7 @@ version: "3"
 services:
   pocket-http-db:
     build:
-      context: ../
+      context: ..
     container_name: pocket-http-db
     restart: always
     ports:

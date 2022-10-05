@@ -1,14 +1,7 @@
 {
   "id": "TST01",
   "altruist": "https://test.external.com/rpc",
-  "redirects": [
-    {
-      "blockchainID": "TST01",
-      "alias": "test-mainnet",
-      "domain": "test-rpc.gateway.pokt.network",
-      "loadBalancerID": ""
-    }
-  ],
+  "redirects": [],
   "ticker": "TEST01",
   "chainID": "10",
   "network": "TST-01",

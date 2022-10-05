@@ -166,6 +166,8 @@ func (c *Cache) AddApplication(app *repository.Application) {
 			PlanType:   newPlan.PlanType,
 			DailyLimit: newPlan.DailyLimit,
 		}
+
+		app.PayPlanType = "" // set to empty to avoid two sources of truth
 	}
 
 	c.rwMutex.Lock()
@@ -184,6 +186,7 @@ func (c *Cache) UpdateApplication(app *repository.Application) {
 			PlanType:   newPlan.PlanType,
 			DailyLimit: newPlan.DailyLimit,
 		}
+
 		app.PayPlanType = "" // set to empty to avoid two sources of truth
 	}
 
