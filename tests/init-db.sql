@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS blockchains (
 	path VARCHAR,
 	request_timeout INT,
 	ticker VARCHAR,
-    created_at TIMESTAMP NULL,
+	created_at TIMESTAMP NULL,
 	updated_at TIMESTAMP NULL,
 	PRIMARY KEY (blockchain_id)
 );
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS redirects (
 	alias VARCHAR NOT NULL,
 	loadbalancer VARCHAR NOT NULL,
 	domain VARCHAR NOT NULL,
-    created_at TIMESTAMP NULL,
+	created_at TIMESTAMP NULL,
 	updated_at TIMESTAMP NULL,
 	UNIQUE (blockchain_id, domain),
 	PRIMARY KEY (id),
@@ -104,16 +104,6 @@ CREATE TABLE IF NOT EXISTS applications (
 	CONSTRAINT fk_pay_plan
       FOREIGN KEY(pay_plan_type) 
 	  	REFERENCES pay_plans(plan_type)
-);
-
-CREATE TABLE IF NOT EXISTS icons (
-	id INT GENERATED ALWAYS AS IDENTITY,
-	application_id VARCHAR NOT NULL UNIQUE,
-	icon bytea,
-	PRIMARY KEY (id),
-	CONSTRAINT fk_application
-      FOREIGN KEY(application_id) 
-	  	REFERENCES applications(application_id)
 );
 
 CREATE TABLE IF NOT EXISTS gateway_aat (
