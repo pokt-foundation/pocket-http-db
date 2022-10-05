@@ -19,7 +19,7 @@ import (
 
 const (
 	baseURL = "http://localhost:8080"
-	apiKey  = "bwLzAhU2GBnHKe59Lqax"
+	apiKey  = "test_api_key_6789"
 )
 
 var (
