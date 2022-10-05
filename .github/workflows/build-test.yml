@@ -33,5 +33,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      - name: Build
+        run: go build -v ./...
+
       - name: Run Unit tests
-        run: go test ./...
+        run: go test ./... -short
+
+      - name: Run E2E tests
+        run: go test -v ./... -run E2E
