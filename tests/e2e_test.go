@@ -53,10 +53,12 @@ func TestE2E_RunSuite(t *testing.T) {
 	suite.Run(t, new(PHDTestSuite))
 }
 
-/* The End-to-End test suite builds a container from the Pocket HTTP DB Docker image deployed,
-and connects to a Postgres container initialized with the database tables used in production.
+/*
+The End-to-End test suite builds a container from the Pocket HTTP DB Docker image that we deploy,
+and connects to a standard Postgres container initialized with the database tables used in production.
 
-The tests then performs every operation that PHD can perform for each set of endpoints. */
+The test then performs every operation that PHD can perform for each set of endpoints and checks results.
+*/
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	/* Create Blockchain -> POST /blockchain */
