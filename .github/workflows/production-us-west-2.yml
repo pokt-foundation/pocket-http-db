@@ -2,10 +2,8 @@ name: Production deployment us-west-2
 
 on:
   workflow_run:
-    workflows: ["Build & Test"]
     branches: [change-cache-to-not-pointers]
-    types:
-      - completed
+
 
 jobs:
   deploy:
