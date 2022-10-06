@@ -39,14 +39,18 @@ type (
 )
 
 func (t *PHDTestSuite) SetupSuite() {
-	output, err := exec.Command("docker", "compose", "up", "-d").Output()
-	fmt.Println("TESTING STARTUP", string(output), err)
+	_, err := exec.Command("docker", "compose", "up", "-d").Output()
 	t.NoError(err)
+
+	output, err := exec.Command("docker", "ps", "-a").Output()
+	fmt.Println("TESTING DEBUG", string(output), err)
+
+	output, err = exec.Command("curl", "http://localhost:8080").Output()
+	fmt.Println("TESTING DEBUG 2 ", string(output), err)
 }
 
 func (t *PHDTestSuite) TearDownSuite() {
-	output, err := exec.Command("docker-compose", "down", "--remove-orphans", "-v").Output()
-	fmt.Println("TESTING TEARDOWN", string(output), err)
+	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "-v").Output()
 	t.NoError(err)
 }
 
@@ -54,9 +58,6 @@ func TestE2E_RunSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping end to end test")
 	}
-
-	output, err := exec.Command("docker", "ps", "-a").Output()
-	fmt.Println("TESTING DEBUG", string(output), err)
 
 	suite.Run(t, new(PHDTestSuite))
 }
