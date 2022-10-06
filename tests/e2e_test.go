@@ -47,7 +47,7 @@ func (t *PHDTestSuite) SetupSuite() {
 
 	output, err := exec.Command("curl", "http://localhost:8080").Output()
 	t.NoError(err)
-	t.Equal("Pocket HTTP DB is up and running!", output)
+	t.Equal("Pocket HTTP DB is up and running!", string(output))
 }
 
 func (t *PHDTestSuite) TearDownSuite() {
