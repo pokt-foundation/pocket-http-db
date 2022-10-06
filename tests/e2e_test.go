@@ -38,14 +38,14 @@ var (
 type (
 	PHDTestSuite struct {
 		suite.Suite
-		pgDriver *postgresdriver.PostgresDriver
+		PGDriver *postgresdriver.PostgresDriver
 	}
 )
 
 func (t *PHDTestSuite) SetupSuite() {
 	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
 	t.NoError(err)
-	t.pgDriver = pgDriver
+	t.PGDriver = pgDriver
 
 	_, err = exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
 	t.NoError(err)
@@ -59,7 +59,7 @@ func (t *PHDTestSuite) SetupSuite() {
 }
 
 func (t *PHDTestSuite) TearDownSuite() {
-	t.pgDriver.Close()
+	t.PGDriver.Close()
 
 	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
 	t.NoError(err)
@@ -102,7 +102,7 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	t.blockchainAssertions(createdBlockchains[0])
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgBlockchains, err := t.pgDriver.ReadBlockchains()
+	pgBlockchains, err := t.PGDriver.ReadBlockchains()
 	t.NoError(err)
 	t.Len(pgBlockchains, 1)
 
@@ -167,7 +167,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.applicationAssertions(userApplications[0])
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgApplications, err := t.pgDriver.ReadApplications()
+	pgApplications, err := t.PGDriver.ReadApplications()
 	t.NoError(err)
 	t.Len(pgApplications, 1)
 
@@ -311,7 +311,7 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	t.loadBalancerAssertions(userLoadBalancers[0])
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgLoadBalancers, err := t.pgDriver.ReadLoadBalancers()
+	pgLoadBalancers, err := t.PGDriver.ReadLoadBalancers()
 	t.NoError(err)
 	t.Len(pgLoadBalancers, 1)
 
@@ -388,7 +388,7 @@ func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	t.Equal(250000, payPlan.DailyLimit)
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgPayPlans, err := t.pgDriver.ReadPayPlans()
+	pgPayPlans, err := t.PGDriver.ReadPayPlans()
 	t.NoError(err)
 	t.Len(pgPayPlans, 5)
 
@@ -409,7 +409,7 @@ func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
 	t.Equal("12345", createdRedirect.LoadBalancerID)
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgRedirects, err := t.pgDriver.ReadRedirects()
+	pgRedirects, err := t.PGDriver.ReadRedirects()
 	t.NoError(err)
 	t.Len(pgRedirects, 1)
 

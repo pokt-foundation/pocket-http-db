@@ -1,4 +1,4 @@
-# This Docker container only used for integration testing the MongoDB database package
+# This Docker compose only used for E2E testing the Pocket HTTP DB
 version: "3"
 
 services:
