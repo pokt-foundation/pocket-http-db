@@ -8,7 +8,7 @@ services:
     container_name: pocket-http-db
     restart: always
     ports:
-      - 8080:8080
+      - 0.0.0.0:8080:8080
     environment:
       CONNECTION_STRING: postgres://postgres:pgpassword@portal-db:5432/postgres?sslmode=disable
       API_KEYS: test_api_key_6789
