@@ -39,12 +39,14 @@ type (
 )
 
 func (t *PHDTestSuite) SetupSuite() {
-	_, err := exec.Command("docker", "compose", "up", "-d").Output()
+	output, err := exec.Command("docker", "compose", "up", "-d").Output()
+	fmt.Println("TESTING STARTUP", string(output), err)
 	t.NoError(err)
 }
 
 func (t *PHDTestSuite) TearDownSuite() {
-	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "-v").Output()
+	output, err := exec.Command("docker-compose", "down", "--remove-orphans", "-v").Output()
+	fmt.Println("TESTING TEARDOWN", string(output), err)
 	t.NoError(err)
 }
 
