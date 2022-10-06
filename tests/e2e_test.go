@@ -39,7 +39,7 @@ type (
 )
 
 func (t *PHDTestSuite) SetupSuite() {
-	_, err := exec.Command("docker", "compose", "up", "-d", "--build").Output()
+	_, err := exec.Command("docker", "compose", "up", "-d").Output()
 	t.NoError(err)
 }
 

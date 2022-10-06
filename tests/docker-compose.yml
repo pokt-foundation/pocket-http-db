@@ -1,4 +1,4 @@
-# This Docker container only used for integration testing the MongoDB database package
+# This Docker compose only used for E2E testing the Pocket HTTP DB
 version: "3"
 
 services:
@@ -10,22 +10,33 @@ services:
     ports:
       - 8080:8080
     environment:
-      CONNECTION_STRING: postgres://postgres:pgpassword@portal-db:5432/postgres?sslmode=disable
+      CONNECTION_STRING: postgres://postgres:pgpassword@postgres:5432/postgres?sslmode=disable
       API_KEYS: test_api_key_6789
     depends_on:
       portal-db:
         condition: service_healthy
+    networks:
+      - testnest
 
   portal-db:
     image: postgres
     container_name: portal-db
+    hostname: postgres
     restart: always
     ports:
       - 5432:5432
     volumes:
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: pgpassword
+      POSTGRES_HOST: postgres
       POSTGRES_DB: postgres
     healthcheck:
       test: pg_isready -U postgres
+    networks:
+      - testnest
+
+networks:
+  testnest:
+    name: test-network
