@@ -55,6 +55,9 @@ func TestE2E_RunSuite(t *testing.T) {
 		t.Skip("skipping end to end test")
 	}
 
+	output, err := exec.Command("docker", "ps", "-a").Output()
+	fmt.Println("TESTING DEBUG", string(output), err)
+
 	suite.Run(t, new(PHDTestSuite))
 }
 
