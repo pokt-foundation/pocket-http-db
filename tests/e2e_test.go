@@ -24,13 +24,11 @@ const (
 )
 
 var (
-	// ErrNoUserID         error = errors.New("No User ID")
-	// ErrNoApplicationID  error = errors.New("No Application ID")
-	// ErrNoLoadBalancerID error = errors.New("No Load Balancer ID")
 	ErrResponseNotOK error = errors.New("Response not OK")
 
 	testClient = httpclient.NewClient(httpclient.WithHTTPTimeout(5*time.Second), httpclient.WithRetryCount(0))
 
+	createdBlockchainID  string = "" // Used to create a blockchain Redirect
 	createdApplicationID string = "" // Used to create a LoadBalancer.ApplicationIDs slice
 )
 
@@ -69,10 +67,7 @@ and connects to a standard Postgres container initialized with the database tabl
 
 The test then performs every operation that PHD can perform for each set of endpoints and checks results.
 
-TODO:
-1. Add error testing (send bad data, try and create duplicate records, ...)
-2. Finish Load Balancer Endpoints test
-3. Test the effect of setting the cache
+TODO - Directly verify presence of record(s) in Postgres database.
 */
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
@@ -81,8 +76,10 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	t.NoError(err)
 	t.blockchainAssertions(createdBlockchain)
 
+	createdBlockchainID = createdBlockchain.ID
+
 	/* Get One Blockchain -> GET /blockchain/{id} */
-	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchain.ID))
+	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
 	t.NoError(err)
 	t.blockchainAssertions(createdBlockchain)
 
@@ -93,13 +90,25 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	t.blockchainAssertions(createdBlockchains[0])
 
 	/* Activate Blockchain -> POST /blockchain/{id}/activate */
-	blockchainActivated, err := post[bool](fmt.Sprintf("blockchain/%s/activate", createdBlockchain.ID), []byte("true"))
+	blockchainActivated, err := post[bool](fmt.Sprintf("blockchain/%s/activate", createdBlockchainID), []byte("true"))
 	t.NoError(err)
 	t.True(blockchainActivated)
 
-	activatedBlockchain, err := get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchain.ID))
+	activatedBlockchain, err := get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
 	t.NoError(err)
 	t.Equal(true, activatedBlockchain.Active)
+
+	/* ERROR - Create Blockchain (duplicate record) -> POST /blockchain */
+	_, err = post[repository.Blockchain]("blockchain", []byte(blockchainJSON))
+	t.Error(err)
+
+	/* ERROR - Create Blockchain (bad data) -> POST /blockchain */
+	_, err = post[repository.Blockchain]("blockchain", []byte(`{"badJSON": "y tho",}`))
+	t.Error(err)
+
+	/* ERROR - Get One Blockchain (non-existent ID) -> GET /blockchain/{id} */
+	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"))
+	t.Error(err)
 }
 
 func (t *PHDTestSuite) blockchainAssertions(blockchain repository.Blockchain) {
@@ -211,6 +220,23 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.Equal(true, applicationLimits[0].NotificationSettings.Half)
 	t.Equal(false, applicationLimits[0].NotificationSettings.ThreeQuarters)
 	t.NotEmpty(applicationLimits[0].FirstDateSurpassed)
+
+	/* Remove One Application -> PUT /application/{id} (with Remove: true) */
+	remove := repository.UpdateApplication{Remove: true}
+	removeJSON, err := json.Marshal(remove)
+	t.NoError(err)
+
+	removedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), removeJSON)
+	t.NoError(err)
+	t.Equal(repository.AppStatus("AWAITING_GRACE_PERIOD"), removedApplication.Status)
+
+	/* ERROR - Create Application (bad data) -> POST /application */
+	_, err = post[repository.Application]("application", []byte(`{"badJSON": "y tho",}`))
+	t.Error(err)
+
+	/* ERROR - Get One Application (non-existent ID) -> GET /application/{id} */
+	_, err = get[repository.Application](fmt.Sprintf("application/%s", "not-a-real-id"))
+	t.Error(err)
 }
 
 func (t *PHDTestSuite) applicationAssertions(app repository.Application) {
@@ -238,53 +264,90 @@ func (t *PHDTestSuite) applicationAssertions(app repository.Application) {
 	t.NotEmpty(app.UpdatedAt)
 }
 
-// TODO - Finish Load Balancer Endpoint Tests
-// func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
-// 	/* Create Load Balancer -> POST /application */
-// 	loadBalancerInput := []byte(fmt.Sprintf(loadBalancerJSON, createdApplicationID))
+func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
+	/* Create Load Balancer -> POST /application */
+	loadBalancerInput := []byte(fmt.Sprintf(loadBalancerJSON, createdApplicationID))
 
-// 	createdLoadBalancer, err := post[repository.LoadBalancer]("load_balancer", loadBalancerInput)
-// 	t.NoError(err)
-// 	t.loadBalancerAssertions(createdLoadBalancer)
+	createdLoadBalancer, err := post[repository.LoadBalancer]("load_balancer", loadBalancerInput)
+	t.NoError(err)
+	t.loadBalancerAssertions(createdLoadBalancer)
 
-// 	/* Get One Load Balancer -> GET /load_balancer/{id} */
-// 	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID))
-// 	t.NoError(err)
-// 	t.loadBalancerAssertions(createdLoadBalancer)
+	/* Get One Load Balancer -> GET /load_balancer/{id} */
+	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID))
+	t.NoError(err)
+	t.loadBalancerAssertions(createdLoadBalancer)
 
-// 	/* Get All Load Balancers -> GET /load_balancer */
-// 	createdLoadBalancers, err := get[[]repository.LoadBalancer]("load_balancer")
-// 	t.NoError(err)
-// 	t.Len(createdLoadBalancers, 1)
-// 	t.loadBalancerAssertions(createdLoadBalancers[0])
+	/* Get All Load Balancers -> GET /load_balancer */
+	createdLoadBalancers, err := get[[]repository.LoadBalancer]("load_balancer")
+	t.NoError(err)
+	t.Len(createdLoadBalancers, 1)
+	t.loadBalancerAssertions(createdLoadBalancers[0])
 
-// 	/* Get All of One User's Load Balancers -> GET /user/{id}/load_balancer */
-// 	userLoadBalancers, err := get[[]repository.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID))
-// 	t.NoError(err)
-// 	t.Len(userLoadBalancers, 1)
-// 	t.loadBalancerAssertions(userLoadBalancers[0])
+	/* Get All of One User's Load Balancers -> GET /user/{id}/load_balancer */
+	userLoadBalancers, err := get[[]repository.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID))
+	t.NoError(err)
+	t.Len(userLoadBalancers, 1)
+	t.loadBalancerAssertions(userLoadBalancers[0])
 
-// 	/* Update One Load Balancer -> PUT /load_balancer/{id} */
-// }
+	/* Update One Load Balancer -> PUT /load_balancer/{id} */
+	update := repository.UpdateLoadBalancer{
+		Name: "update-load-balancer-1",
+		StickyOptions: &repository.StickyOptions{
+			Duration:      "test-duration",
+			StickyOrigins: []string{"test-origins-1", "test-origins-2"},
+			StickyMax:     200,
+			Stickiness:    true,
+		},
+	}
+	updateJSON, err := json.Marshal(update)
+	t.NoError(err)
 
-// func (t *PHDTestSuite) loadBalancerAssertions(lb repository.LoadBalancer) {
-// 	t.NotEmpty(lb)
-// 	t.NotEmpty(lb.ID)
-// 	t.Equal("test-load-balancer-1", lb.Name)
-// 	t.Equal(testUserID, lb.UserID)
-// 	t.Equal([]string{"test_app_id_47fht6s5fd62"}, lb.ApplicationIDs)
-// 	t.Equal(2000, lb.RequestTimeout)
-// 	t.Equal(false, lb.Gigastake)
-// 	t.Equal(true, lb.GigastakeRedirect)
-// 	t.Equal("", lb.StickyOptions.Duration)
-// 	t.Equal([]string{}, lb.StickyOptions.StickyOrigins)
-// 	t.Equal(0, lb.StickyOptions.StickyMax)
-// 	t.Equal(false, lb.StickyOptions.Stickiness)
-// 	t.Len(lb.Applications, 1)
-// 	t.Len(lb.Applications[0].Name, 1)
-// 	t.NotEmpty(lb.CreatedAt)
-// 	t.NotEmpty(lb.UpdatedAt)
-// }
+	updatedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), updateJSON)
+	t.NoError(err)
+	t.Equal("update-load-balancer-1", updatedLoadBalancer.Name)
+	t.Equal("test-duration", updatedLoadBalancer.StickyOptions.Duration)
+	t.Len(updatedLoadBalancer.StickyOptions.StickyOrigins, 2)
+	t.Equal("test-origins-2", updatedLoadBalancer.StickyOptions.StickyOrigins[1])
+	t.Equal(200, updatedLoadBalancer.StickyOptions.StickyMax)
+	t.Equal(true, updatedLoadBalancer.StickyOptions.Stickiness)
+
+	/* Remove One Load Balancer -> PUT /load_balancer/{id} (with Remove: true) */
+	remove := repository.UpdateLoadBalancer{Remove: true}
+	removeJSON, err := json.Marshal(remove)
+	t.NoError(err)
+
+	removedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), removeJSON)
+	t.NoError(err)
+	t.Equal("", removedLoadBalancer.UserID)
+
+	/* ERROR - Create Load Balancer (bad data) -> POST /load_balancer */
+	_, err = post[repository.LoadBalancer]("load_balancer", []byte(`{"badJSON": "y tho",}`))
+	t.Error(err)
+
+	/* ERROR - Get One Load Balancer (non-existent ID) -> GET /load_balancer/{id} */
+	_, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", "not-a-real-id"))
+	t.Error(err)
+}
+
+func (t *PHDTestSuite) loadBalancerAssertions(lb repository.LoadBalancer) {
+	t.NotEmpty(lb)
+	t.NotEmpty(lb.ID)
+	t.Equal("test-load-balancer-1", lb.Name)
+	t.Equal(testUserID, lb.UserID)
+	t.Equal([]string(nil), lb.ApplicationIDs)
+	t.Equal(2000, lb.RequestTimeout)
+	t.Equal(false, lb.Gigastake)
+	t.Equal(true, lb.GigastakeRedirect)
+	t.Equal("", lb.StickyOptions.Duration)
+	t.Equal([]string(nil), lb.StickyOptions.StickyOrigins)
+	t.Equal(0, lb.StickyOptions.StickyMax)
+	t.Equal(false, lb.StickyOptions.Stickiness)
+	t.Len(lb.Applications, 1)
+	t.Equal(createdApplicationID, lb.Applications[0].ID)
+	t.Equal("update-application-1", lb.Applications[0].Name)
+	t.NotEmpty(lb.CreatedAt)
+	t.NotEmpty(lb.UpdatedAt)
+}
 
 func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	/* Get All Pay Plans -> GET /pay_plan */
@@ -292,22 +355,36 @@ func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	t.NoError(err)
 	t.Len(payPlans, 5)
 
-	/* Get One PayPlan -> GET /pay_plan/{type} */
+	/* Get One Pay Plan -> GET /pay_plan/{type} */
 	payPlan, err := get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "FREETIER_V0"))
 	t.NoError(err)
 	t.Equal(repository.PayPlanType("FREETIER_V0"), payPlan.PlanType)
 	t.Equal(250000, payPlan.DailyLimit)
+
+	/* ERROR - Get One Pay Plan (non-existent ID) -> GET /pay_plan/{type} */
+	_, err = get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"))
+	t.Error(err)
 }
 
 func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
+	redirectInput := []byte(fmt.Sprintf(redirectJSON, createdBlockchainID))
+
 	/* Create Redirect -> POST /redirect */
-	createdRedirect, err := post[repository.Redirect]("redirect", []byte(redirectJSON))
+	createdRedirect, err := post[repository.Redirect]("redirect", redirectInput)
 
 	t.NoError(err)
-	t.Equal("TST01", createdRedirect.BlockchainID)
+	t.Equal(createdBlockchainID, createdRedirect.BlockchainID)
 	t.Equal("test-mainnet", createdRedirect.Alias)
 	t.Equal("test-rpc.gateway.pokt.network", createdRedirect.Domain)
 	t.Equal("12345", createdRedirect.LoadBalancerID)
+
+	/* ERROR - Create Redirect (duplicate record) -> POST /redirect */
+	_, err = post[repository.Redirect]("redirect", []byte(redirectJSON))
+	t.Error(err)
+
+	/* ERROR - Create Redirect (bad data) -> POST /redirect */
+	_, err = post[repository.Redirect]("redirect", []byte(`{"badJSON": "y tho",}`))
+	t.Error(err)
 }
 
 /* Test Client HTTP Funcs */
@@ -474,26 +551,26 @@ const (
 		}
 	}`
 
-	// loadBalancerJSON = `{
-	// 	"id": "",
-	// 	"name": "test-load-balancer-1",
-	// 	"userID": "test_id_de26a0db3b6c631c4",
-	// 	"applicationIDs": ["%s"],
-	// 	"requestTimeout": 2000,
-	// 	"gigastake": false,
-	// 	"gigastakeRedirect": true,
-	// 	"stickinessOptions": {
-	// 		"duration": "",
-	// 		"stickyOrigins": null,
-	// 		"stickyMax": 0,
-	// 		"stickiness": false
-	// 	},
-	// 	"Applications": null,
-	// }`
+	loadBalancerJSON = `{
+		"id": "",
+		"name": "test-load-balancer-1",
+		"userID": "test_id_de26a0db3b6c631c4",
+		"applicationIDs": ["%s"],
+		"requestTimeout": 2000,
+		"gigastake": false,
+		"gigastakeRedirect": true,
+		"stickinessOptions": {
+			"duration": "",
+			"stickyOrigins": null,
+			"stickyMax": 0,
+			"stickiness": false
+		},
+		"Applications": null
+	}`
 
 	redirectJSON = `{
 		"id": "",
-		"blockchainID": "TST01",
+		"blockchainID": "%s",
 		"alias": "test-mainnet",
 		"domain": "test-rpc.gateway.pokt.network",
 		"loadBalancerID": "12345"
