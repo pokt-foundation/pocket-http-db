@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gojektech/heimdall/httpclient"
+	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
 	"github.com/pokt-foundation/portal-api-go/repository"
 	"github.com/stretchr/testify/suite"
 )
@@ -19,6 +20,8 @@ import (
 const (
 	baseURL = "http://localhost:8080"
 	apiKey  = "test_api_key_6789"
+
+	connectionString = "postgres://postgres:pgpassword@localhost:5432/postgres?sslmode=disable"
 
 	testUserID = "test_id_de26a0db3b6c631c4"
 )
@@ -33,11 +36,18 @@ var (
 )
 
 type (
-	PHDTestSuite struct{ suite.Suite }
+	PHDTestSuite struct {
+		suite.Suite
+		pgDriver *postgresdriver.PostgresDriver
+	}
 )
 
 func (t *PHDTestSuite) SetupSuite() {
-	_, err := exec.Command("docker", "compose", "up", "-d").Output()
+	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
+	t.NoError(err)
+	t.pgDriver = pgDriver
+
+	_, err = exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
 	t.NoError(err)
 
 	_, err = exec.Command("docker", "ps", "-a").Output()
@@ -49,7 +59,9 @@ func (t *PHDTestSuite) SetupSuite() {
 }
 
 func (t *PHDTestSuite) TearDownSuite() {
-	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "-v").Output()
+	t.pgDriver.Close()
+
+	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
 	t.NoError(err)
 }
 
@@ -62,12 +74,12 @@ func TestE2E_RunSuite(t *testing.T) {
 }
 
 /*
-The End-to-End test suite builds a container from the Pocket HTTP DB Docker image that we deploy,
-and connects to a standard Postgres container initialized with the database tables used in production.
-
-The test then performs every operation that PHD can perform for each set of endpoints and checks results.
-
-TODO - Directly verify presence of record(s) in Postgres database.
+The End-to-End test suite:
+1) builds the Pocket HTTP DB Docker image that we deploy
+2) pulls the Postgres image and initializes it with the database tables used in production
+3) launches PHD in a container connected to the Postgres container
+4) performs every operation that PHD can perform for each set of endpoints and checks results
+5) verifies that the records exist in the Postgres DB as well as in the PHD cache
 */
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
@@ -89,6 +101,11 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	t.Len(createdBlockchains, 1)
 	t.blockchainAssertions(createdBlockchains[0])
 
+	/* Check Records Exist in Postgres DB as well as PHD Cache */
+	pgBlockchains, err := t.pgDriver.ReadBlockchains()
+	t.NoError(err)
+	t.Len(pgBlockchains, 1)
+
 	/* Activate Blockchain -> POST /blockchain/{id}/activate */
 	blockchainActivated, err := post[bool](fmt.Sprintf("blockchain/%s/activate", createdBlockchainID), []byte("true"))
 	t.NoError(err)
@@ -109,6 +126,7 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	/* ERROR - Get One Blockchain (non-existent ID) -> GET /blockchain/{id} */
 	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"))
 	t.Error(err)
+
 }
 
 func (t *PHDTestSuite) blockchainAssertions(blockchain repository.Blockchain) {
@@ -121,8 +139,6 @@ func (t *PHDTestSuite) blockchainAssertions(blockchain repository.Blockchain) {
 	t.Equal(false, blockchain.Active)
 	t.Equal("{\"method\":\"test_blockNumber\",\"id\":1,\"jsonrpc\":\"2.0\"}", blockchain.SyncCheckOptions.Body)
 	t.Equal("test-mainnet", blockchain.BlockchainAliases[0])
-	t.NotEmpty(blockchain.CreatedAt)
-	t.NotEmpty(blockchain.UpdatedAt)
 }
 
 func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
@@ -149,6 +165,11 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.NoError(err)
 	t.Len(userApplications, 1)
 	t.applicationAssertions(userApplications[0])
+
+	/* Check Records Exist in Postgres DB as well as PHD Cache */
+	pgApplications, err := t.pgDriver.ReadApplications()
+	t.NoError(err)
+	t.Len(pgApplications, 1)
 
 	/* Update One Application -> PUT /application/{id} */
 	update := repository.UpdateApplication{
@@ -289,6 +310,11 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	t.Len(userLoadBalancers, 1)
 	t.loadBalancerAssertions(userLoadBalancers[0])
 
+	/* Check Records Exist in Postgres DB as well as PHD Cache */
+	pgLoadBalancers, err := t.pgDriver.ReadLoadBalancers()
+	t.NoError(err)
+	t.Len(pgLoadBalancers, 1)
+
 	/* Update One Load Balancer -> PUT /load_balancer/{id} */
 	update := repository.UpdateLoadBalancer{
 		Name: "update-load-balancer-1",
@@ -361,6 +387,11 @@ func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	t.Equal(repository.PayPlanType("FREETIER_V0"), payPlan.PlanType)
 	t.Equal(250000, payPlan.DailyLimit)
 
+	/* Check Records Exist in Postgres DB as well as PHD Cache */
+	pgPayPlans, err := t.pgDriver.ReadPayPlans()
+	t.NoError(err)
+	t.Len(pgPayPlans, 5)
+
 	/* ERROR - Get One Pay Plan (non-existent ID) -> GET /pay_plan/{type} */
 	_, err = get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"))
 	t.Error(err)
@@ -371,12 +402,16 @@ func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
 
 	/* Create Redirect -> POST /redirect */
 	createdRedirect, err := post[repository.Redirect]("redirect", redirectInput)
-
 	t.NoError(err)
 	t.Equal(createdBlockchainID, createdRedirect.BlockchainID)
 	t.Equal("test-mainnet", createdRedirect.Alias)
 	t.Equal("test-rpc.gateway.pokt.network", createdRedirect.Domain)
 	t.Equal("12345", createdRedirect.LoadBalancerID)
+
+	/* Check Records Exist in Postgres DB as well as PHD Cache */
+	pgRedirects, err := t.pgDriver.ReadRedirects()
+	t.NoError(err)
+	t.Len(pgRedirects, 1)
 
 	/* ERROR - Create Redirect (duplicate record) -> POST /redirect */
 	_, err = post[repository.Redirect]("redirect", []byte(redirectJSON))
@@ -489,90 +524,3 @@ func put[T any](path string, postData []byte) (T, error) {
 
 	return data, nil
 }
-
-const (
-	blockchainJSON = `{
-		"id": "TST01",
-		"altruist": "https://test.external.com/rpc",
-		"redirects": [],
-		"ticker": "TEST01",
-		"chainID": "10",
-		"network": "TST-01",
-		"description": "Test Mainnet",
-		"blockchain": "test-mainnet",
-		"active": false,
-		"enforceResult": "JSON",
-		"logLimitBlocks": 100000,
-		"appCount": 0,
-		"syncCheckOptions": {
-			"blockchainID": "TST01",
-			"body": "{\"method\":\"test_blockNumber\",\"id\":1,\"jsonrpc\":\"2.0\"}",
-			"resultKey": "result",
-			"allowance": 3,
-			"path": null
-		},
-		"blockchainAliases": ["test-mainnet"]
-	}`
-
-	applicationJSON = `{
-		"id": "",
-		"userID": "test_id_de26a0db3b6c631c4",
-		"name": "test-application-1",
-		"contactEmail": "",
-		"description": "",
-		"owner": "",
-		"url": "",
-		"status": "IN_SERVICE",
-		"dummy": true,
-		"payPlanType": "FREETIER_V0",
-		"firstDateSurpassed": null,
-		"gatewayAAT": {
-			"address": "test_address_8dbb89278918da056f589086fb4",
-			"applicationPublicKey": "test_key_7a7d163434b10803eece4ddb2e0726e39ec6bb99b828aa309d05ffd",
-			"applicationSignature": "test_key_f9c21a35787c53c8cdb532cad0dc01e099f34c28219528e3732c2da38037a84db4ce0282fa9aa404e56248155a1fbda789c8b5976711ada8588ead5",
-			"clientPublicKey": "test_key_2381d403a2e2edeb37c284957fb0ee5d66f1081acb87478a5817919",
-			"privateKey": "test_key_0c0fbd26d98bcbdca4d4f14fdc45ffb6db0e6a23a56671fc4b444e1b8bbd4a934adde984d117f281867cb71d9537de45473b3028ead2326cd9e27ad",
-			"version": "0.0.1"
-		},
-		"gatewaySettings": {
-			"secretKey": "test_key_ba2724be652eca0a350bc07",
-			"secretKeyRequired": false
-		},
-			"notificationSettings": {
-			"signedUp": true,
-			"quarter": false,
-			"half": false,
-			"threeQuarters": true,
-			"full": true
-		},
-		"limits": {
-			"planType": "",
-			"dailyLimit": 0
-		}
-	}`
-
-	loadBalancerJSON = `{
-		"id": "",
-		"name": "test-load-balancer-1",
-		"userID": "test_id_de26a0db3b6c631c4",
-		"applicationIDs": ["%s"],
-		"requestTimeout": 2000,
-		"gigastake": false,
-		"gigastakeRedirect": true,
-		"stickinessOptions": {
-			"duration": "",
-			"stickyOrigins": null,
-			"stickyMax": 0,
-			"stickiness": false
-		},
-		"Applications": null
-	}`
-
-	redirectJSON = `{
-		"id": "",
-		"blockchainID": "%s",
-		"alias": "test-mainnet",
-		"domain": "test-rpc.gateway.pokt.network",
-		"loadBalancerID": "12345"
-	}`
-)
