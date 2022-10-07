@@ -117,16 +117,15 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 
 	/* ERROR - Create Blockchain (duplicate record) -> POST /blockchain */
 	_, err = post[repository.Blockchain]("blockchain", []byte(blockchainJSON))
-	t.Error(err)
+	t.Equal("Response not OK. Internal Server Error", err.Error())
 
 	/* ERROR - Create Blockchain (bad data) -> POST /blockchain */
 	_, err = post[repository.Blockchain]("blockchain", []byte(`{"badJSON": "y tho",}`))
-	t.Error(err)
+	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Blockchain (non-existent ID) -> GET /blockchain/{id} */
 	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"))
-	t.Error(err)
-
+	t.Equal("Response not OK. Not Found", err.Error())
 }
 
 func (t *PHDTestSuite) blockchainAssertions(blockchain repository.Blockchain) {
@@ -253,11 +252,11 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 
 	/* ERROR - Create Application (bad data) -> POST /application */
 	_, err = post[repository.Application]("application", []byte(`{"badJSON": "y tho",}`))
-	t.Error(err)
+	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Application (non-existent ID) -> GET /application/{id} */
 	_, err = get[repository.Application](fmt.Sprintf("application/%s", "not-a-real-id"))
-	t.Error(err)
+	t.Equal("Response not OK. Not Found", err.Error())
 }
 
 func (t *PHDTestSuite) applicationAssertions(app repository.Application) {
@@ -348,11 +347,11 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 
 	/* ERROR - Create Load Balancer (bad data) -> POST /load_balancer */
 	_, err = post[repository.LoadBalancer]("load_balancer", []byte(`{"badJSON": "y tho",}`))
-	t.Error(err)
+	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Load Balancer (non-existent ID) -> GET /load_balancer/{id} */
 	_, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", "not-a-real-id"))
-	t.Error(err)
+	t.Equal("Response not OK. Not Found", err.Error())
 }
 
 func (t *PHDTestSuite) loadBalancerAssertions(lb repository.LoadBalancer) {
@@ -394,7 +393,7 @@ func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 
 	/* ERROR - Get One Pay Plan (non-existent ID) -> GET /pay_plan/{type} */
 	_, err = get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"))
-	t.Error(err)
+	t.Equal("Response not OK. Not Found", err.Error())
 }
 
 func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
@@ -415,11 +414,11 @@ func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
 
 	/* ERROR - Create Redirect (duplicate record) -> POST /redirect */
 	_, err = post[repository.Redirect]("redirect", []byte(redirectJSON))
-	t.Error(err)
+	t.Equal("Response not OK. Internal Server Error", err.Error())
 
 	/* ERROR - Create Redirect (bad data) -> POST /redirect */
 	_, err = post[repository.Redirect]("redirect", []byte(`{"badJSON": "y tho",}`))
-	t.Error(err)
+	t.Equal("Response not OK. Bad Request", err.Error())
 }
 
 /* Test Client HTTP Funcs */
