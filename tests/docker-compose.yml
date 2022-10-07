@@ -1,0 +1,31 @@
+# This Docker compose only used for E2E testing the Pocket HTTP DB
+version: "3"
+
+services:
+  pocket-http-db:
+    build:
+      context: ..
+    container_name: pocket-http-db
+    restart: always
+    ports:
+      - 127.0.0.1:8080:8080
+    environment:
+      CONNECTION_STRING: postgres://postgres:pgpassword@portal-db:5432/postgres?sslmode=disable
+      API_KEYS: test_api_key_6789
+    depends_on:
+      portal-db:
+        condition: service_healthy
+
+  portal-db:
+    image: postgres
+    container_name: portal-db
+    restart: always
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_PASSWORD: pgpassword
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: pg_isready -U postgres

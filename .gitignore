@@ -22,4 +22,7 @@ tmp/*
 .vscode
 .vscode/*
 
+# Go Binaries
+bin
+bin/*
 pocket-http-db
