@@ -211,7 +211,7 @@ func TestCache_AddApplication(t *testing.T) {
 	err = cache.setApplications()
 	c.NoError(err)
 
-	cache.AddApplication(&repository.Application{
+	cache.addApplication(&repository.Application{
 		ID:          "5f62b7d8be3591c4dea8566b",
 		UserID:      "60ecb2bf67774900350d9c43",
 		PayPlanType: repository.FreetierV0,
@@ -275,7 +275,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 	err = cache.setLoadBalancers()
 	c.NoError(err)
 
-	cache.UpdateApplication(&repository.Application{
+	cache.updateApplication(&repository.Application{
 		ID:          "5f62b7d8be3591c4dea8566a",
 		UserID:      "60ecb2bf67774900350d9c43",
 		Name:        "papolo",
@@ -328,7 +328,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 	err = cache.setApplications()
 	c.NoError(err)
 
-	cache.AddLoadBalancer(&repository.LoadBalancer{
+	cache.addLoadBalancer(&repository.LoadBalancer{
 		ID:             "5f62b7d8be3591c4dea8566b",
 		UserID:         "60ecb2bf67774900350d9c43",
 		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566d"},
@@ -364,7 +364,7 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 	err := cache.setLoadBalancers()
 	c.NoError(err)
 
-	cache.UpdateLoadBalancer(&repository.LoadBalancer{
+	cache.updateLoadBalancer(&repository.LoadBalancer{
 		ID:     "5f62b7d8be3591c4dea8566a",
 		UserID: "60ecb2bf67774900350d9c43",
 		Name:   "papolo",
@@ -375,40 +375,6 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c44"), 1)
 	c.Equal("papolo", cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43")[1].Name)
 	c.Equal("papolo", cache.GetLoadBalancer("5f62b7d8be3591c4dea8566a").Name)
-}
-
-func TestCache_DeleteLoadBalancer(t *testing.T) {
-	c := require.New(t)
-
-	readerMock := &ReaderMock{}
-
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
-		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
-		},
-		{
-			ID:     "5f62b7d8be3591c4dea8566a",
-			UserID: "60ecb2bf67774900350d9c43",
-		},
-		{
-			ID:     "5f62b7d8be3591c4dea8566f",
-			UserID: "60ecb2bf67774900350d9c44",
-		},
-	}, nil)
-
-	cache := NewCache(readerMock)
-
-	err := cache.setLoadBalancers()
-	c.NoError(err)
-
-	cache.DeleteLoadBalancer(&repository.LoadBalancer{
-		ID:     "5f62b7d8be3591c4dea8566d",
-		UserID: "",
-		Name:   "papolo",
-	}, "60ecb2bf67774900350d9c43")
-
-	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 1)
 }
 
 func TestCache_AddBlockchain(t *testing.T) {
@@ -427,12 +393,12 @@ func TestCache_AddBlockchain(t *testing.T) {
 
 	c.Len(cache.GetBlockchains(), 1)
 
-	cache.AddBlockchain(&repository.Blockchain{ID: "0002", Ticker: "ETH"})
+	cache.addBlockchain(&repository.Blockchain{ID: "0002", Ticker: "ETH"})
 
 	c.Len(cache.GetBlockchains(), 2)
 }
 
-func TestCache_ActivateBlockchain(t *testing.T) {
+func TestCache_UpdateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -449,7 +415,10 @@ func TestCache_ActivateBlockchain(t *testing.T) {
 	c.Len(cache.GetBlockchains(), 1)
 	c.Equal(cache.GetBlockchains()[0].Active, false)
 
-	cache.ActivateBlockchain("0001", true)
+	cache.updateBlockchain(&repository.Blockchain{
+		ID:     "0001",
+		Active: true,
+	})
 
 	c.Len(cache.GetBlockchains(), 1)
 	c.Equal(cache.GetBlockchains()[0].Active, true)

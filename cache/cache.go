@@ -13,6 +13,7 @@ type Reader interface {
 	ReadLoadBalancers() ([]*repository.LoadBalancer, error)
 	ReadPayPlans() ([]*repository.PayPlan, error)
 	ReadRedirects() ([]*repository.Redirect, error)
+	NotificationChannel() <-chan *repository.Notification
 }
 
 // Cache struct handler for cache operations
@@ -30,6 +31,7 @@ type Cache struct {
 	payPlansMap                map[repository.PayPlanType]*repository.PayPlan
 	payPlans                   []*repository.PayPlan
 	redirectsMapByBlockchainID map[string][]*repository.Redirect
+	listening                  bool
 }
 
 // NewCache returns cache instance from reader interface
@@ -158,8 +160,8 @@ func (c *Cache) setApplications() error {
 	return nil
 }
 
-// AddApplication adds application to cache
-func (c *Cache) AddApplication(app *repository.Application) {
+// addApplication adds application to cache
+func (c *Cache) addApplication(app *repository.Application) {
 	if app.PayPlanType != "" {
 		newPlan := c.GetPayPlan(app.PayPlanType)
 		app.Limits = repository.AppLimits{
@@ -178,48 +180,22 @@ func (c *Cache) AddApplication(app *repository.Application) {
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
 }
 
-// UpdateApplication updates application saved in cache
-func (c *Cache) UpdateApplication(app *repository.Application) {
-	if app.PayPlanType != "" {
-		newPlan := c.GetPayPlan(app.PayPlanType)
+// updateApplication updates application saved in cache
+func (c *Cache) updateApplication(inApp *repository.Application) {
+	app := c.GetApplication(inApp.ID)
+
+	if inApp.PayPlanType != "" {
+		newPlan := c.GetPayPlan(inApp.PayPlanType)
 		app.Limits = repository.AppLimits{
 			PlanType:   newPlan.PlanType,
 			DailyLimit: newPlan.DailyLimit,
 		}
-
-		app.PayPlanType = "" // set to empty to avoid two sources of truth
 	}
 
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	c.applications = updateApplicationFromSlice(app, c.applications)
-	c.applicationsMap[app.ID] = app
-	c.applicationsMapByUserID[app.UserID] = updateApplicationFromSlice(app, c.applicationsMapByUserID[app.UserID])
-
-	for _, lb := range c.loadBalancers {
-		lb.Applications = updateApplicationFromSlice(app, lb.Applications)
-
-		c.loadBalancers = updateLoadBalancerFromSlice(lb, c.loadBalancers)
-
-		c.loadBalancersMap[lb.ID] = lb
-
-		c.loadBalancersMapByUserID[lb.UserID] = updateLoadBalancerFromSlice(lb, c.loadBalancersMapByUserID[lb.UserID])
-	}
-}
-
-func updateApplicationFromSlice(updatedApp *repository.Application, apps []*repository.Application) []*repository.Application {
-	for i := 0; i < len(apps); i++ {
-		if apps[i].ID == updatedApp.ID {
-			apps[i] = apps[len(apps)-1]
-			apps = apps[:len(apps)-1]
-			apps = append(apps, updatedApp)
-
-			break
-		}
-	}
-
-	return apps
+	app.Name = inApp.Name
+	app.Status = inApp.Status
+	app.FirstDateSurpassed = inApp.FirstDateSurpassed
+	app.UpdatedAt = inApp.UpdatedAt
 }
 
 func (c *Cache) setBlockchains() error {
@@ -248,8 +224,8 @@ func (c *Cache) setBlockchains() error {
 	return nil
 }
 
-// AddBlockchain adds blockchain to cache
-func (c *Cache) AddBlockchain(blockchain *repository.Blockchain) {
+// addBlockchain adds blockchain to cache
+func (c *Cache) addBlockchain(blockchain *repository.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -257,29 +233,11 @@ func (c *Cache) AddBlockchain(blockchain *repository.Blockchain) {
 	c.blockchainsMap[blockchain.ID] = blockchain
 }
 
-// ActivateBlockchain updates application saved in cache
-func (c *Cache) ActivateBlockchain(id string, active bool) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	if blockchain, exists := c.blockchainsMap[id]; exists {
-		blockchain.Active = active
-		c.blockchainsMap[id] = blockchain
-	}
-}
-
-func updateBlockchainFromSlice(updatedChain *repository.Blockchain, chains []*repository.Blockchain) []*repository.Blockchain {
-	for i := 0; i < len(chains); i++ {
-		if chains[i].ID == updatedChain.ID {
-			chains[i] = chains[len(chains)-1]
-			chains = chains[:len(chains)-1]
-			chains = append(chains, updatedChain)
-
-			break
-		}
-	}
-
-	return chains
+// updateBlockchain updates blockchain saved in cache
+func (c *Cache) updateBlockchain(inBlockchain *repository.Blockchain) {
+	blockchain := c.GetBlockchain(inBlockchain.ID)
+	blockchain.Active = inBlockchain.Active
+	blockchain.UpdatedAt = inBlockchain.UpdatedAt
 }
 
 func (c *Cache) setLoadBalancers() error {
@@ -310,8 +268,8 @@ func (c *Cache) setLoadBalancers() error {
 	return nil
 }
 
-// AddLoadBalancer adds load balancer to cache
-func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
+// addLoadBalancer adds load balancer to cache
+func (c *Cache) addLoadBalancer(lb *repository.LoadBalancer) {
 	for _, appID := range lb.ApplicationIDs {
 		lb.Applications = append(lb.Applications, c.GetApplication(appID))
 	}
@@ -326,51 +284,13 @@ func (c *Cache) AddLoadBalancer(lb *repository.LoadBalancer) {
 	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], lb)
 }
 
-// UpdateLoadBalancer updates load balancer saved in cache
-func (c *Cache) UpdateLoadBalancer(lb *repository.LoadBalancer) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
+// updateLoadBalancer updates load balancer saved in cache
+func (c *Cache) updateLoadBalancer(inLb *repository.LoadBalancer) {
+	lb := c.GetLoadBalancer(inLb.ID)
 
-	c.loadBalancers = updateLoadBalancerFromSlice(lb, c.loadBalancers)
-
-	c.loadBalancersMap[lb.ID] = lb
-
-	c.loadBalancersMapByUserID[lb.UserID] = updateLoadBalancerFromSlice(lb, c.loadBalancersMapByUserID[lb.UserID])
-}
-
-// DeleteLoadBalancer removes the load balancer from the cache
-func (c *Cache) DeleteLoadBalancer(lb *repository.LoadBalancer, oldUserID string) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	c.loadBalancersMapByUserID[oldUserID] = deleteLoadBalancerFromSlice(lb.ID, c.loadBalancersMapByUserID[oldUserID])
-}
-
-func deleteLoadBalancerFromSlice(lbID string, lbs []*repository.LoadBalancer) []*repository.LoadBalancer {
-	for i := 0; i < len(lbs); i++ {
-		if lbs[i].ID == lbID {
-			lbs[i] = lbs[len(lbs)-1]
-			lbs = lbs[:len(lbs)-1]
-
-			break
-		}
-	}
-
-	return lbs
-}
-
-func updateLoadBalancerFromSlice(updatedlb *repository.LoadBalancer, lbs []*repository.LoadBalancer) []*repository.LoadBalancer {
-	for i := 0; i < len(lbs); i++ {
-		if lbs[i].ID == updatedlb.ID {
-			lbs[i] = lbs[len(lbs)-1]
-			lbs = lbs[:len(lbs)-1]
-			lbs = append(lbs, updatedlb)
-
-			break
-		}
-	}
-
-	return lbs
+	lb.Name = inLb.Name
+	lb.UserID = inLb.UserID
+	lb.UpdatedAt = inLb.UpdatedAt
 }
 
 func (c *Cache) setPayPlans() error {
@@ -411,16 +331,11 @@ func (c *Cache) setRedirects() error {
 // AddRedirects adds blockchain redirect to cache and updates cached blockchain entry
 func (c *Cache) AddRedirect(redirect *repository.Redirect) {
 	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
 	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], redirect)
+	c.rwMutex.Unlock()
 
-	if blockchain, exists := c.blockchainsMap[redirect.BlockchainID]; exists {
-		blockchain.Redirects = append(blockchain.Redirects, *redirect)
-
-		c.blockchains = updateBlockchainFromSlice(blockchain, c.blockchains)
-		c.blockchainsMap[redirect.BlockchainID] = blockchain
-	}
+	blockchain := c.GetBlockchain(redirect.BlockchainID)
+	blockchain.Redirects = append(blockchain.Redirects, *redirect)
 }
 
 // SetCache gets all values from DB and stores them in cache
@@ -451,5 +366,14 @@ func (c *Cache) SetCache() error {
 	}
 
 	// always call after setApplications func
-	return c.setLoadBalancers()
+	err = c.setLoadBalancers()
+	if err != nil {
+		return err
+	}
+
+	if !c.listening {
+		go c.listen()
+	}
+
+	return nil
 }

@@ -164,8 +164,6 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rt.Cache.AddApplication(fullApp)
-
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
 }
 
@@ -225,8 +223,6 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rt.Cache.UpdateApplication(app)
-
 	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
 }
 
@@ -268,7 +264,6 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 
 	for _, app := range appsToUpdate {
 		app.FirstDateSurpassed = &updateInput.FirstDateSurpassed
-		rt.Cache.UpdateApplication(app)
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, appsToUpdate)
@@ -335,8 +330,6 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rt.Cache.ActivateBlockchain(blockchainID, active)
-
 	jsonresponse.RespondWithJSON(w, http.StatusOK, active)
 }
 
@@ -358,8 +351,6 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	rt.Cache.AddBlockchain(fullBlockchain)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullBlockchain)
 }
@@ -400,8 +391,6 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rt.Cache.AddLoadBalancer(fullLB)
-
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }
 
@@ -433,10 +422,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		oldUserID := lb.UserID
 		lb.UserID = ""
-
-		rt.Cache.DeleteLoadBalancer(lb, oldUserID)
 	} else {
 		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
 		if err != nil {
@@ -450,8 +436,6 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		if updateInput.StickyOptions != nil {
 			lb.StickyOptions = *updateInput.StickyOptions
 		}
-
-		rt.Cache.UpdateLoadBalancer(lb)
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
@@ -496,8 +480,6 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	rt.Cache.AddRedirect(fullRedirect)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
 }

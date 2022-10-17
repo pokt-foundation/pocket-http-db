@@ -174,3 +174,31 @@ VALUES
     ('TEST_PLAN_V0', 100),
     ('TEST_PLAN_10K', 10000),
     ('TEST_PLAN_90K', 90000);
+
+CREATE TRIGGER application_notify_event
+AFTER INSERT OR UPDATE ON applications
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER blockchain_notify_event
+AFTER INSERT OR UPDATE ON blockchains
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER gateway_aat_notify_event
+AFTER INSERT ON gateway_aat
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER gateway_settings_notify_event
+AFTER INSERT OR UPDATE ON gateway_settings
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER loadbalancer_notify_event
+AFTER INSERT OR UPDATE ON loadbalancers
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER notification_settings_notify_event
+AFTER INSERT OR UPDATE ON notification_settings
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER redirect_notify_event
+AFTER INSERT ON redirect
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER stickiness_options_notify_event
+AFTER INSERT OR UPDATE ON stickiness_options
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER sync_check_options_notify_event
+AFTER INSERT ON sync_check_options
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();

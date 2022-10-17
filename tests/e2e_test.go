@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gojektech/heimdall/httpclient"
+	"github.com/lib/pq"
 	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
 	"github.com/pokt-foundation/portal-api-go/repository"
 	"github.com/stretchr/testify/suite"
@@ -43,7 +44,15 @@ type (
 )
 
 func (t *PHDTestSuite) SetupSuite() {
-	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
+	reportProblem := func(ev pq.ListenerEventType, err error) {
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+
+	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
+
+	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString, listener)
 	t.NoError(err)
 	t.PGDriver = pgDriver
 
