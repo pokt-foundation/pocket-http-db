@@ -18,7 +18,7 @@ var (
 	apiKeys          = environment.MustGetStringMap("API_KEYS", ",")
 
 	cacheRefresh = environment.GetInt64("CACHE_REFRESH", 10)
-	port         = environment.GetString("PORT", "8080")
+	port         = environment.GetString("PORT", "8081")
 )
 
 func cacheHandler(router *router.Router) {

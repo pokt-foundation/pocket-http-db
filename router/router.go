@@ -123,7 +123,7 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 		limits.AppName = app.Name
 		limits.AppUserID = app.UserID
 		limits.PublicKey = app.GatewayAAT.ApplicationPublicKey
-		limits.FirstDateSurpassed = app.FirstDateSurpassed
+		limits.FirstDateSurpassed = &app.FirstDateSurpassed
 		limits.NotificationSettings = &app.NotificationSettings
 
 		appsLimits = append(appsLimits, limits)
@@ -213,7 +213,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			app.PayPlanType = updateInput.PayPlanType
 		}
 		if !updateInput.FirstDateSurpassed.IsZero() {
-			app.FirstDateSurpassed = &updateInput.FirstDateSurpassed
+			app.FirstDateSurpassed = updateInput.FirstDateSurpassed
 		}
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = *updateInput.GatewaySettings
@@ -263,7 +263,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 	}
 
 	for _, app := range appsToUpdate {
-		app.FirstDateSurpassed = &updateInput.FirstDateSurpassed
+		app.FirstDateSurpassed = updateInput.FirstDateSurpassed
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, appsToUpdate)

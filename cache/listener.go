@@ -41,6 +41,9 @@ func (c *Cache) addGatewayAATWithRetries(aat *repository.GatewayAAT, retries int
 
 	app := c.GetApplication(aat.ID)
 	if app != nil {
+		c.rwMutex.Lock()
+		defer c.rwMutex.Unlock()
+
 		aat.ID = "" // to avoid multiple sources of truth
 		app.GatewayAAT = *aat
 		return
@@ -69,9 +72,11 @@ func (c *Cache) addGatewaySettingsWithRetries(settings *repository.GatewaySettin
 
 	app := c.GetApplication(settings.ID)
 	if app != nil {
+		c.rwMutex.Lock()
+		defer c.rwMutex.Unlock()
+
 		settings.ID = "" // to avoid multiple sources of truth
 		app.GatewaySettings = *settings
-		c.updateApplication(app)
 		return
 	}
 
@@ -108,6 +113,9 @@ func (c *Cache) addNotificationSettingsWithRetries(settings *repository.Notifica
 
 	app := c.GetApplication(settings.ID)
 	if app != nil {
+		c.rwMutex.Lock()
+		defer c.rwMutex.Unlock()
+
 		settings.ID = "" // to avoid multiple sources of truth
 		app.NotificationSettings = *settings
 		return
@@ -143,6 +151,9 @@ func (c *Cache) addStickinessOptionsWithRetries(opts *repository.StickyOptions, 
 
 	lb := c.GetLoadBalancer(opts.ID)
 	if lb != nil {
+		c.rwMutex.Lock()
+		defer c.rwMutex.Unlock()
+
 		opts.ID = "" // to avoid multiple sources of truth
 		lb.StickyOptions = *opts
 		return
@@ -171,6 +182,9 @@ func (c *Cache) addSyncOptionsWithRetries(opts *repository.SyncCheckOptions, ret
 
 	blockchain := c.GetBlockchain(opts.BlockchainID)
 	if blockchain != nil {
+		c.rwMutex.Lock()
+		defer c.rwMutex.Unlock()
+
 		blockchain.SyncCheckOptions = *opts
 		return
 	}

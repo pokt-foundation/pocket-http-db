@@ -182,10 +182,13 @@ func (c *Cache) addApplication(app *repository.Application) {
 
 // updateApplication updates application saved in cache
 func (c *Cache) updateApplication(inApp *repository.Application) {
-	app := c.GetApplication(inApp.ID)
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	app := c.applicationsMap[inApp.ID]
 
 	if inApp.PayPlanType != "" {
-		newPlan := c.GetPayPlan(inApp.PayPlanType)
+		newPlan := c.payPlansMap[inApp.PayPlanType]
 		app.Limits = repository.AppLimits{
 			PlanType:   newPlan.PlanType,
 			DailyLimit: newPlan.DailyLimit,
@@ -235,7 +238,10 @@ func (c *Cache) addBlockchain(blockchain *repository.Blockchain) {
 
 // updateBlockchain updates blockchain saved in cache
 func (c *Cache) updateBlockchain(inBlockchain *repository.Blockchain) {
-	blockchain := c.GetBlockchain(inBlockchain.ID)
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	blockchain := c.blockchainsMap[inBlockchain.ID]
 	blockchain.Active = inBlockchain.Active
 	blockchain.UpdatedAt = inBlockchain.UpdatedAt
 }
@@ -286,7 +292,10 @@ func (c *Cache) addLoadBalancer(lb *repository.LoadBalancer) {
 
 // updateLoadBalancer updates load balancer saved in cache
 func (c *Cache) updateLoadBalancer(inLb *repository.LoadBalancer) {
-	lb := c.GetLoadBalancer(inLb.ID)
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	lb := c.loadBalancersMap[inLb.ID]
 
 	lb.Name = inLb.Name
 	lb.UserID = inLb.UserID
