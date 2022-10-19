@@ -123,8 +123,11 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 		limits.AppName = app.Name
 		limits.AppUserID = app.UserID
 		limits.PublicKey = app.GatewayAAT.ApplicationPublicKey
-		limits.FirstDateSurpassed = &app.FirstDateSurpassed
 		limits.NotificationSettings = &app.NotificationSettings
+
+		if !app.FirstDateSurpassed.IsZero() {
+			limits.FirstDateSurpassed = &app.FirstDateSurpassed
+		}
 
 		appsLimits = append(appsLimits, limits)
 	}
