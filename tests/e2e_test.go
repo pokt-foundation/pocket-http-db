@@ -45,9 +45,6 @@ func (t *PHDTestSuite) SetupSuite() {
 	_, err := exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
 	t.NoError(err)
 
-	_, err = exec.Command("docker", "ps", "-a").Output()
-	t.NoError(err)
-
 	output, err := exec.Command("curl", "http://localhost:8080").Output()
 	t.NoError(err)
 	t.Equal("Pocket HTTP DB is up and running!", string(output))
