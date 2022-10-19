@@ -6,8 +6,8 @@ require (
 	github.com/gojektech/heimdall v5.0.2+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.6
-	github.com/pokt-foundation/portal-api-go v0.4.2
-	github.com/pokt-foundation/utils-go v0.2.4
+	github.com/pokt-foundation/portal-api-go v0.5.0
+	github.com/pokt-foundation/utils-go v0.2.5
 	github.com/stretchr/testify v1.8.0
 )
 
@@ -20,8 +20,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/stretchr/objx v0.4.0 // indirect
-	golang.org/x/sys v0.0.0-20220927170352-d9d178bc13c6 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/pokt-foundation/portal-api-go => ../portal-api-go
