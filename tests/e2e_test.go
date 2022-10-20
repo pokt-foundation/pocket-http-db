@@ -42,7 +42,7 @@ type PHDTestSuite struct {
 }
 
 func (t *PHDTestSuite) SetupSuite() {
-	_, err := exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
+	_, err := exec.Command("docker", "compose", "up", "-d").Output()
 	t.NoError(err)
 
 	output, err := exec.Command("curl", "http://localhost:8080").Output()
@@ -66,7 +66,7 @@ func (t *PHDTestSuite) SetupSuite() {
 func (t *PHDTestSuite) TearDownSuite() {
 	t.PGDriver.Close()
 
-	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
+	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "-v").Output()
 	t.NoError(err)
 }
 
