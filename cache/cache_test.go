@@ -449,7 +449,7 @@ func TestCache_AddRedirect(t *testing.T) {
 	c.Len(cache.GetBlockchains()[0].Redirects, 2)
 	c.Len(cache.GetRedirects("0001"), 2)
 
-	cache.AddRedirect(&repository.Redirect{BlockchainID: "0001", Alias: "pokt-mainnet-3"})
+	cache.addRedirect(&repository.Redirect{BlockchainID: "0001", Alias: "pokt-mainnet-3"})
 
 	c.Len(cache.GetBlockchains()[0].Redirects, 3)
 	c.Len(cache.GetRedirects("0001"), 3)

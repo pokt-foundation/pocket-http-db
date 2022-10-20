@@ -54,7 +54,7 @@ func (t *PHDTestSuite) SetupSuite() {
 
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
 		}
 	}
 	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)

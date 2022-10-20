@@ -4,10 +4,6 @@ import (
 	"github.com/pokt-foundation/portal-api-go/repository"
 )
 
-const (
-	retriesSideTable = 5
-)
-
 func (c *Cache) parseApplicationNotification(n *repository.Notification) {
 	app := n.Data.(*repository.Application)
 	if n.Action == repository.ActionInsert {
@@ -62,7 +58,7 @@ func (c *Cache) parseNotificationSettingsNotification(n *repository.Notification
 func (c *Cache) parseRedirectNotification(n *repository.Notification) {
 	redirect := n.Data.(*repository.Redirect)
 	if n.Action == repository.ActionInsert {
-		c.AddRedirect(redirect)
+		c.addRedirect(redirect)
 	}
 }
 

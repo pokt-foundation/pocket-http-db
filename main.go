@@ -42,7 +42,7 @@ func httpHandler(router *router.Router) {
 func main() {
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
-			fmt.Println(err.Error())
+			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
 		}
 	}
 

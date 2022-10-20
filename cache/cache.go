@@ -7,6 +7,10 @@ import (
 	"github.com/pokt-foundation/portal-api-go/repository"
 )
 
+const (
+	retriesSideTable = 5
+)
+
 // Reader represents implementation of reader interface
 type Reader interface {
 	ReadApplications() ([]*repository.Application, error)
@@ -182,75 +186,51 @@ func (c *Cache) addApplication(app *repository.Application) {
 }
 
 func (c *Cache) addGatewayAAT(aat *repository.GatewayAAT) {
-	c.addGatewayAATWithRetries(aat, 0)
-}
+	for i := 0; i < retriesSideTable; i++ {
+		app := c.GetApplication(aat.ID)
+		if app != nil {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
 
-func (c *Cache) addGatewayAATWithRetries(aat *repository.GatewayAAT, retries int) {
-	if retries >= retriesSideTable {
-		return
+			aat.ID = "" // to avoid multiple sources of truth
+			app.GatewayAAT = *aat
+			return
+		}
+
+		time.Sleep(1 * time.Second)
 	}
-
-	app := c.GetApplication(aat.ID)
-	if app != nil {
-		c.rwMutex.Lock()
-		defer c.rwMutex.Unlock()
-
-		aat.ID = "" // to avoid multiple sources of truth
-		app.GatewayAAT = *aat
-		return
-	}
-
-	time.Sleep(1 * time.Second)
-	retries++
-	c.addGatewayAATWithRetries(aat, retries)
 }
 
 func (c *Cache) addGatewaySettings(settings *repository.GatewaySettings) {
-	c.addGatewaySettingsWithRetries(settings, 0)
-}
+	for i := 0; i < retriesSideTable; i++ {
+		app := c.GetApplication(settings.ID)
+		if app != nil {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
 
-func (c *Cache) addGatewaySettingsWithRetries(settings *repository.GatewaySettings, retries int) {
-	if retries >= retriesSideTable {
-		return
+			settings.ID = "" // to avoid multiple sources of truth
+			app.GatewaySettings = *settings
+			return
+		}
+
+		time.Sleep(1 * time.Second)
 	}
-
-	app := c.GetApplication(settings.ID)
-	if app != nil {
-		c.rwMutex.Lock()
-		defer c.rwMutex.Unlock()
-
-		settings.ID = "" // to avoid multiple sources of truth
-		app.GatewaySettings = *settings
-		return
-	}
-
-	time.Sleep(1 * time.Second)
-	retries++
-	c.addGatewaySettingsWithRetries(settings, retries)
 }
 
 func (c *Cache) addNotificationSettings(settings *repository.NotificationSettings) {
-	c.addNotificationSettingsWithRetries(settings, 0)
-}
+	for i := 0; i < retriesSideTable; i++ {
+		app := c.GetApplication(settings.ID)
+		if app != nil {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
 
-func (c *Cache) addNotificationSettingsWithRetries(settings *repository.NotificationSettings, retries int) {
-	if retries >= retriesSideTable {
-		return
+			settings.ID = "" // to avoid multiple sources of truth
+			app.NotificationSettings = *settings
+			return
+		}
+
+		time.Sleep(1 * time.Second)
 	}
-
-	app := c.GetApplication(settings.ID)
-	if app != nil {
-		c.rwMutex.Lock()
-		defer c.rwMutex.Unlock()
-
-		settings.ID = "" // to avoid multiple sources of truth
-		app.NotificationSettings = *settings
-		return
-	}
-
-	time.Sleep(1 * time.Second)
-	retries++
-	c.addNotificationSettingsWithRetries(settings, retries)
 }
 
 // updateApplication updates application saved in cache
@@ -310,26 +290,18 @@ func (c *Cache) addBlockchain(blockchain *repository.Blockchain) {
 }
 
 func (c *Cache) addSyncOptions(opts *repository.SyncCheckOptions) {
-	c.addSyncOptionsWithRetries(opts, 0)
-}
+	for i := 0; i < retriesSideTable; i++ {
+		blockchain := c.GetBlockchain(opts.BlockchainID)
+		if blockchain != nil {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
 
-func (c *Cache) addSyncOptionsWithRetries(opts *repository.SyncCheckOptions, retries int) {
-	if retries >= retriesSideTable {
-		return
+			blockchain.SyncCheckOptions = *opts
+			return
+		}
+
+		time.Sleep(1 * time.Second)
 	}
-
-	blockchain := c.GetBlockchain(opts.BlockchainID)
-	if blockchain != nil {
-		c.rwMutex.Lock()
-		defer c.rwMutex.Unlock()
-
-		blockchain.SyncCheckOptions = *opts
-		return
-	}
-
-	time.Sleep(1 * time.Second)
-	retries++
-	c.addSyncOptionsWithRetries(opts, retries)
 }
 
 // updateBlockchain updates blockchain saved in cache
@@ -381,50 +353,34 @@ func (c *Cache) addLoadBalancer(lb *repository.LoadBalancer) {
 }
 
 func (c *Cache) addStickinessOptions(opts *repository.StickyOptions) {
-	c.addStickinessOptionsWithRetries(opts, 0)
-}
+	for i := 0; i < retriesSideTable; i++ {
+		lb := c.GetLoadBalancer(opts.ID)
+		if lb != nil {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
 
-func (c *Cache) addStickinessOptionsWithRetries(opts *repository.StickyOptions, retries int) {
-	if retries >= retriesSideTable {
-		return
+			opts.ID = "" // to avoid multiple sources of truth
+			lb.StickyOptions = *opts
+			return
+		}
+
+		time.Sleep(1 * time.Second)
 	}
-
-	lb := c.GetLoadBalancer(opts.ID)
-	if lb != nil {
-		c.rwMutex.Lock()
-		defer c.rwMutex.Unlock()
-
-		opts.ID = "" // to avoid multiple sources of truth
-		lb.StickyOptions = *opts
-		return
-	}
-
-	time.Sleep(1 * time.Second)
-	retries++
-	c.addStickinessOptionsWithRetries(opts, retries)
 }
 
 func (c *Cache) addLbApp(lbApp *repository.LbApp) {
-	c.addLbAppWithRetries(lbApp, 0)
-}
+	for i := 0; i < retriesSideTable; i++ {
+		lb := c.GetLoadBalancer(lbApp.LbID)
+		if lb != nil {
+			c.rwMutex.Lock()
+			defer c.rwMutex.Unlock()
 
-func (c *Cache) addLbAppWithRetries(lbApp *repository.LbApp, retries int) {
-	if retries >= retriesSideTable {
-		return
+			lb.Applications = append(lb.Applications, c.applicationsMap[lbApp.AppID])
+			return
+		}
+
+		time.Sleep(1 * time.Second)
 	}
-
-	lb := c.GetLoadBalancer(lbApp.LbID)
-	if lb != nil {
-		c.rwMutex.Lock()
-		defer c.rwMutex.Unlock()
-
-		lb.Applications = append(lb.Applications, c.applicationsMap[lbApp.AppID])
-		return
-	}
-
-	time.Sleep(1 * time.Second)
-	retries++
-	c.addLbAppWithRetries(lbApp, retries)
 }
 
 // updateLoadBalancer updates load balancer saved in cache
@@ -475,7 +431,7 @@ func (c *Cache) setRedirects() error {
 }
 
 // AddRedirects adds blockchain redirect to cache and updates cached blockchain entry
-func (c *Cache) AddRedirect(redirect *repository.Redirect) {
+func (c *Cache) addRedirect(redirect *repository.Redirect) {
 	c.rwMutex.Lock()
 	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], redirect)
 	c.rwMutex.Unlock()
