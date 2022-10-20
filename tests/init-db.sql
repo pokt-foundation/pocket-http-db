@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS pay_plans (
 CREATE TABLE IF NOT EXISTS blockchains (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	blockchain_id VARCHAR NOT NULL UNIQUE,
-	active VARCHAR,
+	active BOOLEAN,
 	altruist VARCHAR,
 	blockchain VARCHAR,
 	blockchain_aliases VARCHAR[],
