@@ -304,7 +304,8 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawAppToSend := &repository.Application{
-		UserID: "60ddc61b6e29c3003378361D",
+		UserID:      "60ddc61b6e29c3003378361D",
+		PayPlanType: repository.FreetierV0,
 	}
 
 	appToSend, err := json.Marshal(rawAppToSend)
@@ -319,8 +320,9 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.NoError(err)
 
 	appToReturn := &repository.Application{
-		ID:     "60ddc61b6e29c3003378361E",
-		UserID: "60ddc61b6e29c3003378361D",
+		ID:          "60ddc61b6e29c3003378361E",
+		UserID:      "60ddc61b6e29c3003378361D",
+		PayPlanType: repository.FreetierV0,
 	}
 
 	writerMock := &writerMock{}
@@ -333,7 +335,14 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	marshaledReturnApp, err := json.Marshal(appToReturn)
+	marshaledReturnApp, err := json.Marshal(&repository.Application{
+		ID:     "60ddc61b6e29c3003378361E",
+		UserID: "60ddc61b6e29c3003378361D",
+		Limits: repository.AppLimits{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+	})
 	c.NoError(err)
 
 	c.Equal(marshaledReturnApp, rr.Body.Bytes())

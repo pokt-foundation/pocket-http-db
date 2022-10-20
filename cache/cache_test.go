@@ -329,14 +329,12 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 	c.NoError(err)
 
 	cache.addLoadBalancer(&repository.LoadBalancer{
-		ID:             "5f62b7d8be3591c4dea8566b",
-		UserID:         "60ecb2bf67774900350d9c43",
-		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566d"},
+		ID:     "5f62b7d8be3591c4dea8566b",
+		UserID: "60ecb2bf67774900350d9c43",
 	})
 
 	c.Len(cache.GetLoadBalancers(), 4)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 3)
-	c.Len(cache.GetLoadBalancer("5f62b7d8be3591c4dea8566b").Applications, 1)
 }
 
 func TestCache_UpdateLoadBalancer(t *testing.T) {

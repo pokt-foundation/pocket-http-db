@@ -167,6 +167,16 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if fullApp.PayPlanType != "" {
+		newPlan := rt.Cache.GetPayPlan(fullApp.PayPlanType)
+		fullApp.Limits = repository.AppLimits{
+			PlanType:   newPlan.PlanType,
+			DailyLimit: newPlan.DailyLimit,
+		}
+
+		fullApp.PayPlanType = "" // set to empty to avoid two sources of truth
+	}
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
 }
 
@@ -213,7 +223,11 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			app.Status = updateInput.Status
 		}
 		if updateInput.PayPlanType != "" {
-			app.PayPlanType = updateInput.PayPlanType
+			newPlan := rt.Cache.GetPayPlan(updateInput.PayPlanType)
+			app.Limits = repository.AppLimits{
+				PlanType:   newPlan.PlanType,
+				DailyLimit: newPlan.DailyLimit,
+			}
 		}
 		if !updateInput.FirstDateSurpassed.IsZero() {
 			app.FirstDateSurpassed = updateInput.FirstDateSurpassed
@@ -393,6 +407,12 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
+	for _, appID := range fullLB.ApplicationIDs {
+		fullLB.Applications = append(fullLB.Applications, rt.Cache.GetApplication(appID))
+	}
+
+	fullLB.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }

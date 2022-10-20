@@ -171,13 +171,15 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
 		},
+		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566a"},
 	})
 
-	time.Sleep(3 * time.Second) // need time for cache refresh
+	time.Sleep(4 * time.Second) // need time for cache refresh
 
 	lb := cache.GetLoadBalancer("123")
 	c.Equal("pablo", lb.Name)
 	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
+	c.Equal("5f62b7d8be3591c4dea8566a", lb.Applications[0].ID)
 
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
 		ID:   "123",

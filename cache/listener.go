@@ -201,6 +201,36 @@ func (c *Cache) parseSyncOptionsNotification(n *repository.Notification) {
 	}
 }
 
+func (c *Cache) addLbApp(lbApp *repository.LbApp) {
+	c.addLbAppWithRetries(lbApp, 0)
+}
+
+func (c *Cache) addLbAppWithRetries(lbApp *repository.LbApp, retries int) {
+	if retries >= retriesSideTable {
+		return
+	}
+
+	lb := c.GetLoadBalancer(lbApp.LbID)
+	if lb != nil {
+		c.rwMutex.Lock()
+		defer c.rwMutex.Unlock()
+
+		lb.Applications = append(lb.Applications, c.applicationsMap[lbApp.AppID])
+		return
+	}
+
+	time.Sleep(1 * time.Second)
+	retries++
+	c.addLbAppWithRetries(lbApp, retries)
+}
+
+func (c *Cache) parseLbApps(n *repository.Notification) {
+	lbApp := n.Data.(*repository.LbApp)
+	if n.Action == repository.ActionInsert {
+		c.addLbApp(lbApp)
+	}
+}
+
 func (c *Cache) parseNotification(n *repository.Notification) {
 	switch n.Table {
 	case repository.TableApplications:
@@ -221,6 +251,8 @@ func (c *Cache) parseNotification(n *repository.Notification) {
 		c.parseStickinessOptionsNotification(n)
 	case repository.TableSyncCheckOptions:
 		c.parseSyncOptionsNotification(n)
+	case repository.TableLbApps:
+		c.parseLbApps(n)
 	}
 }
 
