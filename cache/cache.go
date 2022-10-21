@@ -166,7 +166,7 @@ func (c *Cache) setApplications() error {
 }
 
 // addApplication adds application to cache
-func (c *Cache) addApplication(app *repository.Application) {
+func (c *Cache) addApplication(app repository.Application) {
 	if app.PayPlanType != "" {
 		newPlan := c.GetPayPlan(app.PayPlanType)
 		app.Limits = repository.AppLimits{
@@ -180,12 +180,12 @@ func (c *Cache) addApplication(app *repository.Application) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	c.applications = append(c.applications, app)
-	c.applicationsMap[app.ID] = app
-	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], app)
+	c.applications = append(c.applications, &app)
+	c.applicationsMap[app.ID] = &app
+	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], &app)
 }
 
-func (c *Cache) addGatewayAAT(aat *repository.GatewayAAT) {
+func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
 	for i := 0; i < retriesSideTable; i++ {
 		app := c.GetApplication(aat.ID)
 		if app != nil {
@@ -193,7 +193,7 @@ func (c *Cache) addGatewayAAT(aat *repository.GatewayAAT) {
 			defer c.rwMutex.Unlock()
 
 			aat.ID = "" // to avoid multiple sources of truth
-			app.GatewayAAT = *aat
+			app.GatewayAAT = aat
 			return
 		}
 
@@ -201,7 +201,7 @@ func (c *Cache) addGatewayAAT(aat *repository.GatewayAAT) {
 	}
 }
 
-func (c *Cache) addGatewaySettings(settings *repository.GatewaySettings) {
+func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
 	for i := 0; i < retriesSideTable; i++ {
 		app := c.GetApplication(settings.ID)
 		if app != nil {
@@ -209,7 +209,7 @@ func (c *Cache) addGatewaySettings(settings *repository.GatewaySettings) {
 			defer c.rwMutex.Unlock()
 
 			settings.ID = "" // to avoid multiple sources of truth
-			app.GatewaySettings = *settings
+			app.GatewaySettings = settings
 			return
 		}
 
@@ -217,7 +217,7 @@ func (c *Cache) addGatewaySettings(settings *repository.GatewaySettings) {
 	}
 }
 
-func (c *Cache) addNotificationSettings(settings *repository.NotificationSettings) {
+func (c *Cache) addNotificationSettings(settings repository.NotificationSettings) {
 	for i := 0; i < retriesSideTable; i++ {
 		app := c.GetApplication(settings.ID)
 		if app != nil {
@@ -225,7 +225,7 @@ func (c *Cache) addNotificationSettings(settings *repository.NotificationSetting
 			defer c.rwMutex.Unlock()
 
 			settings.ID = "" // to avoid multiple sources of truth
-			app.NotificationSettings = *settings
+			app.NotificationSettings = settings
 			return
 		}
 
@@ -234,7 +234,7 @@ func (c *Cache) addNotificationSettings(settings *repository.NotificationSetting
 }
 
 // updateApplication updates application saved in cache
-func (c *Cache) updateApplication(inApp *repository.Application) {
+func (c *Cache) updateApplication(inApp repository.Application) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -281,22 +281,22 @@ func (c *Cache) setBlockchains() error {
 }
 
 // addBlockchain adds blockchain to cache
-func (c *Cache) addBlockchain(blockchain *repository.Blockchain) {
+func (c *Cache) addBlockchain(blockchain repository.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	c.blockchains = append(c.blockchains, blockchain)
-	c.blockchainsMap[blockchain.ID] = blockchain
+	c.blockchains = append(c.blockchains, &blockchain)
+	c.blockchainsMap[blockchain.ID] = &blockchain
 }
 
-func (c *Cache) addSyncOptions(opts *repository.SyncCheckOptions) {
+func (c *Cache) addSyncOptions(opts repository.SyncCheckOptions) {
 	for i := 0; i < retriesSideTable; i++ {
 		blockchain := c.GetBlockchain(opts.BlockchainID)
 		if blockchain != nil {
 			c.rwMutex.Lock()
 			defer c.rwMutex.Unlock()
 
-			blockchain.SyncCheckOptions = *opts
+			blockchain.SyncCheckOptions = opts
 			return
 		}
 
@@ -305,7 +305,7 @@ func (c *Cache) addSyncOptions(opts *repository.SyncCheckOptions) {
 }
 
 // updateBlockchain updates blockchain saved in cache
-func (c *Cache) updateBlockchain(inBlockchain *repository.Blockchain) {
+func (c *Cache) updateBlockchain(inBlockchain repository.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -343,16 +343,16 @@ func (c *Cache) setLoadBalancers() error {
 }
 
 // addLoadBalancer adds load balancer to cache
-func (c *Cache) addLoadBalancer(lb *repository.LoadBalancer) {
+func (c *Cache) addLoadBalancer(lb repository.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	c.loadBalancers = append(c.loadBalancers, lb)
-	c.loadBalancersMap[lb.ID] = lb
-	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], lb)
+	c.loadBalancers = append(c.loadBalancers, &lb)
+	c.loadBalancersMap[lb.ID] = &lb
+	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], &lb)
 }
 
-func (c *Cache) addStickinessOptions(opts *repository.StickyOptions) {
+func (c *Cache) addStickinessOptions(opts repository.StickyOptions) {
 	for i := 0; i < retriesSideTable; i++ {
 		lb := c.GetLoadBalancer(opts.ID)
 		if lb != nil {
@@ -360,7 +360,7 @@ func (c *Cache) addStickinessOptions(opts *repository.StickyOptions) {
 			defer c.rwMutex.Unlock()
 
 			opts.ID = "" // to avoid multiple sources of truth
-			lb.StickyOptions = *opts
+			lb.StickyOptions = opts
 			return
 		}
 
@@ -368,7 +368,7 @@ func (c *Cache) addStickinessOptions(opts *repository.StickyOptions) {
 	}
 }
 
-func (c *Cache) addLbApp(lbApp *repository.LbApp) {
+func (c *Cache) addLbApp(lbApp repository.LbApp) {
 	for i := 0; i < retriesSideTable; i++ {
 		lb := c.GetLoadBalancer(lbApp.LbID)
 		if lb != nil {
@@ -384,7 +384,7 @@ func (c *Cache) addLbApp(lbApp *repository.LbApp) {
 }
 
 // updateLoadBalancer updates load balancer saved in cache
-func (c *Cache) updateLoadBalancer(inLb *repository.LoadBalancer) {
+func (c *Cache) updateLoadBalancer(inLb repository.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -431,13 +431,13 @@ func (c *Cache) setRedirects() error {
 }
 
 // AddRedirects adds blockchain redirect to cache and updates cached blockchain entry
-func (c *Cache) addRedirect(redirect *repository.Redirect) {
+func (c *Cache) addRedirect(redirect repository.Redirect) {
 	c.rwMutex.Lock()
-	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], redirect)
+	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], &redirect)
 	c.rwMutex.Unlock()
 
 	blockchain := c.GetBlockchain(redirect.BlockchainID)
-	blockchain.Redirects = append(blockchain.Redirects, *redirect)
+	blockchain.Redirects = append(blockchain.Redirects, redirect)
 }
 
 // SetCache gets all values from DB and stores them in cache

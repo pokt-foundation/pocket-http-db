@@ -211,7 +211,7 @@ func TestCache_AddApplication(t *testing.T) {
 	err = cache.setApplications()
 	c.NoError(err)
 
-	cache.addApplication(&repository.Application{
+	cache.addApplication(repository.Application{
 		ID:          "5f62b7d8be3591c4dea8566b",
 		UserID:      "60ecb2bf67774900350d9c43",
 		PayPlanType: repository.FreetierV0,
@@ -275,7 +275,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 	err = cache.setLoadBalancers()
 	c.NoError(err)
 
-	cache.updateApplication(&repository.Application{
+	cache.updateApplication(repository.Application{
 		ID:          "5f62b7d8be3591c4dea8566a",
 		UserID:      "60ecb2bf67774900350d9c43",
 		Name:        "papolo",
@@ -328,7 +328,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 	err = cache.setApplications()
 	c.NoError(err)
 
-	cache.addLoadBalancer(&repository.LoadBalancer{
+	cache.addLoadBalancer(repository.LoadBalancer{
 		ID:     "5f62b7d8be3591c4dea8566b",
 		UserID: "60ecb2bf67774900350d9c43",
 	})
@@ -362,7 +362,7 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 	err := cache.setLoadBalancers()
 	c.NoError(err)
 
-	cache.updateLoadBalancer(&repository.LoadBalancer{
+	cache.updateLoadBalancer(repository.LoadBalancer{
 		ID:     "5f62b7d8be3591c4dea8566a",
 		UserID: "60ecb2bf67774900350d9c43",
 		Name:   "papolo",
@@ -391,7 +391,7 @@ func TestCache_AddBlockchain(t *testing.T) {
 
 	c.Len(cache.GetBlockchains(), 1)
 
-	cache.addBlockchain(&repository.Blockchain{ID: "0002", Ticker: "ETH"})
+	cache.addBlockchain(repository.Blockchain{ID: "0002", Ticker: "ETH"})
 
 	c.Len(cache.GetBlockchains(), 2)
 }
@@ -413,7 +413,7 @@ func TestCache_UpdateBlockchain(t *testing.T) {
 	c.Len(cache.GetBlockchains(), 1)
 	c.Equal(cache.GetBlockchains()[0].Active, false)
 
-	cache.updateBlockchain(&repository.Blockchain{
+	cache.updateBlockchain(repository.Blockchain{
 		ID:     "0001",
 		Active: true,
 	})
@@ -449,7 +449,7 @@ func TestCache_AddRedirect(t *testing.T) {
 	c.Len(cache.GetBlockchains()[0].Redirects, 2)
 	c.Len(cache.GetRedirects("0001"), 2)
 
-	cache.addRedirect(&repository.Redirect{BlockchainID: "0001", Alias: "pokt-mainnet-3"})
+	cache.addRedirect(repository.Redirect{BlockchainID: "0001", Alias: "pokt-mainnet-3"})
 
 	c.Len(cache.GetBlockchains()[0].Redirects, 3)
 	c.Len(cache.GetRedirects("0001"), 3)
