@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
 	"testing"
 	"time"
 
 	"github.com/gojektech/heimdall/httpclient"
+	"github.com/lib/pq"
 	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
 	"github.com/pokt-foundation/portal-api-go/repository"
 	"github.com/stretchr/testify/suite"
@@ -35,34 +35,22 @@ var (
 	createdApplicationID string = "" // Used to create a LoadBalancer.ApplicationIDs slice
 )
 
-type (
-	PHDTestSuite struct {
-		suite.Suite
-		PGDriver *postgresdriver.PostgresDriver
-	}
-)
-
-func (t *PHDTestSuite) SetupSuite() {
-	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
-	t.NoError(err)
-	t.PGDriver = pgDriver
-
-	_, err = exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
-	t.NoError(err)
-
-	_, err = exec.Command("docker", "ps", "-a").Output()
-	t.NoError(err)
-
-	output, err := exec.Command("curl", "http://localhost:8080").Output()
-	t.NoError(err)
-	t.Equal("Pocket HTTP DB is up and running!", string(output))
+type PHDTestSuite struct {
+	suite.Suite
+	PGDriver *postgresdriver.PostgresDriver
 }
 
-func (t *PHDTestSuite) TearDownSuite() {
-	t.PGDriver.Close()
-
-	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
+func (t *PHDTestSuite) SetupSuite() {
+	reportProblem := func(ev pq.ListenerEventType, err error) {
+		if err != nil {
+			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
+		}
+	}
+	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
+	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString, listener)
 	t.NoError(err)
+
+	t.PGDriver = pgDriver
 }
 
 func TestE2E_RunSuite(t *testing.T) {
@@ -74,12 +62,12 @@ func TestE2E_RunSuite(t *testing.T) {
 }
 
 /*
-The End-to-End test suite:
-1) builds the Pocket HTTP DB Docker image that we deploy
-2) pulls the Postgres image and initializes it with the database tables used in production
-3) launches PHD in a container connected to the Postgres container
-4) performs every operation that PHD can perform for each set of endpoints and checks results
-5) verifies that the records exist in the Postgres DB as well as in the PHD cache
+To run the E2E suite use the command `make test_e2e` from the repository root.
+The E2E suite also runs on all Pull Requests to the main or staging branches.
+
+The End-to-End test suite uses a Dockerized reproduction of Postgres and PHD and
+performs every operation that PHD can perform for each set of endpoints, checks results
+then verifies that the records exist in the Postgres DB as well as in the PHD cache.
 */
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
@@ -89,6 +77,8 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	t.blockchainAssertions(createdBlockchain)
 
 	createdBlockchainID = createdBlockchain.ID
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Blockchain -> GET /blockchain/{id} */
 	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
@@ -110,6 +100,8 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	blockchainActivated, err := post[bool](fmt.Sprintf("blockchain/%s/activate", createdBlockchainID), []byte("true"))
 	t.NoError(err)
 	t.True(blockchainActivated)
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	activatedBlockchain, err := get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
 	t.NoError(err)
@@ -147,6 +139,8 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.applicationAssertions(createdApplication)
 
 	createdApplicationID = createdApplication.ID
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Application -> GET /application/{id} */
 	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID))
@@ -291,6 +285,8 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	createdLoadBalancer, err := post[repository.LoadBalancer]("load_balancer", loadBalancerInput)
 	t.NoError(err)
 	t.loadBalancerAssertions(createdLoadBalancer)
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Load Balancer -> GET /load_balancer/{id} */
 	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID))

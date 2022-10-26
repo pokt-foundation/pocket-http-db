@@ -108,14 +108,12 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
-
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
 			ID:                 "5f62b7d8be3591c4dea8566d",
 			UserID:             "60ecb2bf67774900350d9c43",
 			PayPlanType:        repository.FreetierV0,
-			FirstDateSurpassed: &dateSurpassed,
+			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -188,8 +186,6 @@ func TestRouter_GetApplications(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
-
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -198,7 +194,7 @@ func TestRouter_GetApplications(t *testing.T) {
 				PlanType:   repository.FreetierV0,
 				DailyLimit: 250000,
 			},
-			FirstDateSurpassed: &dateSurpassed,
+			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
@@ -281,8 +277,6 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
-
 	expectedBody, err := json.Marshal(&repository.Application{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
@@ -290,7 +284,7 @@ func TestRouter_GetApplication(t *testing.T) {
 			PlanType:   repository.FreetierV0,
 			DailyLimit: 250000,
 		},
-		FirstDateSurpassed: &dateSurpassed,
+		FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 	})
 	c.NoError(err)
 
@@ -310,7 +304,8 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawAppToSend := &repository.Application{
-		UserID: "60ddc61b6e29c3003378361D",
+		UserID:      "60ddc61b6e29c3003378361D",
+		PayPlanType: repository.FreetierV0,
 	}
 
 	appToSend, err := json.Marshal(rawAppToSend)
@@ -325,8 +320,9 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.NoError(err)
 
 	appToReturn := &repository.Application{
-		ID:     "60ddc61b6e29c3003378361E",
-		UserID: "60ddc61b6e29c3003378361D",
+		ID:          "60ddc61b6e29c3003378361E",
+		UserID:      "60ddc61b6e29c3003378361D",
+		PayPlanType: repository.FreetierV0,
 	}
 
 	writerMock := &writerMock{}
@@ -339,7 +335,14 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	marshaledReturnApp, err := json.Marshal(appToReturn)
+	marshaledReturnApp, err := json.Marshal(&repository.Application{
+		ID:     "60ddc61b6e29c3003378361E",
+		UserID: "60ddc61b6e29c3003378361D",
+		Limits: repository.AppLimits{
+			PlanType:   repository.FreetierV0,
+			DailyLimit: 250000,
+		},
+	})
 	c.NoError(err)
 
 	c.Equal(marshaledReturnApp, rr.Body.Bytes())
@@ -583,8 +586,6 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
-
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
@@ -593,7 +594,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 				PlanType:   repository.FreetierV0,
 				DailyLimit: 250000,
 			},
-			FirstDateSurpassed: &dateSurpassed,
+			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",

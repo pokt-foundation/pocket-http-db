@@ -1,14 +1,21 @@
-test:
-	go test ./... -count=1
-
 test_unit:
 	go test ./... -short
 
-test_e2e:
-	go test ./... -run E2E
+test_env_up:
+	docker-compose -f ./tests/docker-compose.yml up -d --remove-orphans --build
 
-test_verbose:
-	go test ./... -v
+test_env_down:
+	docker-compose -f ./tests/docker-compose.yml down --remove-orphans --rmi all -v
+
+test:
+	make test_env_up;
+	-go test ./... -count=1 -v;
+	make test_env_down;
+
+test_e2e:
+	make test_env_up;
+	-go test ./... -run E2E -count=1 -v;
+	make test_env_down;
 
 init-pre-commit:
 	wget https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz;
