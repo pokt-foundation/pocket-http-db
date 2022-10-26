@@ -11,6 +11,22 @@ on:
       - staging
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.18
+
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Run Golang ci Action
+      uses: golangci/golangci-lint-action@v3
+
   test:
     name: Test
     runs-on: ubuntu-latest
