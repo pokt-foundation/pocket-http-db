@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
 	"github.com/pokt-foundation/utils-go/environment"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -18,7 +18,22 @@ var (
 
 	cacheRefresh = environment.GetInt64("CACHE_REFRESH", 10)
 	port         = environment.GetString("PORT", "8080")
+
+	log = logrus.New()
 )
+
+func init() {
+	// log as JSON instead of the default ASCII formatter.
+	log.SetFormatter(&logrus.JSONFormatter{})
+}
+
+func logError(msg string, err error) {
+	fields := logrus.Fields{
+		"err": err.Error(),
+	}
+
+	log.WithFields(fields).Error(fmt.Sprintf("%s with error: %s", msg, err.Error()))
+}
 
 func cacheHandler(router *router.Router) {
 	for {
@@ -26,7 +41,7 @@ func cacheHandler(router *router.Router) {
 
 		err := router.Cache.SetCache()
 		if err != nil {
-			fmt.Printf("Cache refresh failed with error: %s", err.Error())
+			logError("Cache refresh failed", err)
 		}
 	}
 }

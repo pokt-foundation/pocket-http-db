@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
@@ -285,7 +286,7 @@ func updateBlockchainFromSlice(updatedChain *repository.Blockchain, chains []*re
 func (c *Cache) setLoadBalancers() error {
 	loadBalancers, err := c.reader.ReadLoadBalancers()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
 	}
 
 	loadBalancersMap := make(map[string]*repository.LoadBalancer)
@@ -430,24 +431,24 @@ func (c *Cache) SetCache() error {
 
 	err := c.setPayPlans()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setPayPlans: %w", err)
 	}
 
 	err = c.setRedirects()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setRedirects: %w", err)
 	}
 
 	// always call after setPayPlans func
 	err = c.setApplications()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setApplications: %w", err)
 	}
 
 	// always call after setRedirects func
 	err = c.setBlockchains()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setBlockchains: %w", err)
 	}
 
 	// always call after setApplications func
