@@ -37,6 +37,7 @@ type Cache struct {
 	payPlans                   []*repository.PayPlan
 	redirectsMapByBlockchainID map[string][]*repository.Redirect
 	listening                  bool
+	pendingGatewayAAT          map[string]repository.GatewayAAT
 }
 
 // NewCache returns cache instance from reader interface
@@ -180,25 +181,31 @@ func (c *Cache) addApplication(app repository.Application) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	aat := c.pendingGatewayAAT[app.ID]
+	if aat != (repository.GatewayAAT{}) {
+		app.GatewayAAT = aat
+		delete(c.pendingGatewayAAT, app.ID)
+	}
+
 	c.applications = append(c.applications, &app)
 	c.applicationsMap[app.ID] = &app
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], &app)
 }
 
 func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
-	for i := 0; i < retriesSideTable; i++ {
-		app := c.GetApplication(aat.ID)
-		if app != nil {
-			c.rwMutex.Lock()
-			defer c.rwMutex.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
-			aat.ID = "" // to avoid multiple sources of truth
-			app.GatewayAAT = aat
-			return
-		}
+	appID := aat.ID
+	aat.ID = "" // to avoid multiple sources of truth
 
-		time.Sleep(1 * time.Second)
+	app := c.applicationsMap[appID]
+	if app != nil {
+		app.GatewayAAT = aat
+		return
 	}
+
+	c.pendingGatewayAAT[appID] = aat
 }
 
 func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
