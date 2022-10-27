@@ -63,14 +63,15 @@ func logError(msg string, inputs []interface{}, err error) {
 }
 
 func interfaceToString(inter interface{}) string {
-	str := "{"
+	str := "{" // creates the string in json format
 	jsonStr := map[string]interface{}{}
 
 	marshaledInterface, _ := json.Marshal(inter)
 
 	err := json.Unmarshal([]byte(marshaledInterface), &jsonStr)
 	if err != nil {
-		return ""
+		// since a single value can't be unmarshal, return the value
+		return fmt.Sprintf("{%v}", inter)
 	}
 
 	for k, v := range jsonStr {
@@ -83,7 +84,7 @@ func interfaceToString(inter interface{}) string {
 	}
 
 	str = strings.TrimRight(str, ",")
-	str += "}"
+	str += "}" // close the json
 
 	return str
 }
