@@ -10,6 +10,7 @@ func (c *Cache) parseApplicationNotification(n repository.Notification) {
 	app, ok := n.Data.(*repository.Application)
 	if !ok {
 		fmt.Println("parse application failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert {
@@ -24,6 +25,7 @@ func (c *Cache) parseBlockchainNotification(n repository.Notification) {
 	blockchain, ok := n.Data.(*repository.Blockchain)
 	if !ok {
 		fmt.Println("parse blockchain failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert {
@@ -38,6 +40,7 @@ func (c *Cache) parseGatewayAATNotification(n repository.Notification) {
 	aat, ok := n.Data.(*repository.GatewayAAT)
 	if !ok {
 		fmt.Println("parse gateway aat failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert {
@@ -49,6 +52,7 @@ func (c *Cache) parseGatewaySettingsNotification(n repository.Notification) {
 	settings, ok := n.Data.(*repository.GatewaySettings)
 	if !ok {
 		fmt.Println("parse gateway settings failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
@@ -60,6 +64,7 @@ func (c *Cache) parseLoadBalancerNotification(n repository.Notification) {
 	lb, ok := n.Data.(*repository.LoadBalancer)
 	if !ok {
 		fmt.Println("parse load balancer failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert {
@@ -74,6 +79,7 @@ func (c *Cache) parseNotificationSettingsNotification(n repository.Notification)
 	settings, ok := n.Data.(*repository.NotificationSettings)
 	if !ok {
 		fmt.Println("parse notification settings failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
@@ -85,6 +91,7 @@ func (c *Cache) parseRedirectNotification(n repository.Notification) {
 	redirect, ok := n.Data.(*repository.Redirect)
 	if !ok {
 		fmt.Println("parse redirect failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert {
@@ -96,6 +103,7 @@ func (c *Cache) parseStickinessOptionsNotification(n repository.Notification) {
 	opts, ok := n.Data.(*repository.StickyOptions)
 	if !ok {
 		fmt.Println("parse stickiness options failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
@@ -107,6 +115,7 @@ func (c *Cache) parseSyncOptionsNotification(n repository.Notification) {
 	opts, ok := n.Data.(*repository.SyncCheckOptions)
 	if !ok {
 		fmt.Println("parse sync check options failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
@@ -118,6 +127,7 @@ func (c *Cache) parseLbApps(n repository.Notification) {
 	lbApp, ok := n.Data.(*repository.LbApp)
 	if !ok {
 		fmt.Println("parse lb app failed")
+		return
 	}
 
 	if n.Action == repository.ActionInsert {
