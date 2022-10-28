@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS pay_plans (
 CREATE TABLE IF NOT EXISTS blockchains (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	blockchain_id VARCHAR NOT NULL UNIQUE,
-	active VARCHAR,
+	active BOOLEAN,
 	altruist VARCHAR,
 	blockchain VARCHAR,
 	blockchain_aliases VARCHAR[],
@@ -174,3 +174,67 @@ VALUES
     ('TEST_PLAN_V0', 100),
     ('TEST_PLAN_10K', 10000),
     ('TEST_PLAN_90K', 90000);
+
+CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
+
+    DECLARE 
+        data json;
+        notification json;
+    
+    BEGIN
+    
+        -- Convert the old or new row to JSON, based on the kind of action.
+        -- Action = DELETE?             -> OLD row
+        -- Action = INSERT or UPDATE?   -> NEW row
+        IF (TG_OP = 'DELETE') THEN
+            data = row_to_json(OLD);
+        ELSE
+            data = row_to_json(NEW);
+        END IF;
+        
+        -- Contruct the notification as a JSON string.
+        notification = json_build_object(
+                          'table',TG_TABLE_NAME,
+                          'action', TG_OP,
+                          'data', data);
+        
+                        
+        -- Execute pg_notify(channel, notification)
+        PERFORM pg_notify('events',notification::text);
+        
+        -- Result is ignored since this is an AFTER trigger
+        RETURN NULL; 
+    END;
+    
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER application_notify_event
+AFTER INSERT OR UPDATE ON applications
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER blockchain_notify_event
+AFTER INSERT OR UPDATE ON blockchains
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER gateway_aat_notify_event
+AFTER INSERT ON gateway_aat
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER gateway_settings_notify_event
+AFTER INSERT OR UPDATE ON gateway_settings
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER loadbalancer_notify_event
+AFTER INSERT OR UPDATE ON loadbalancers
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER notification_settings_notify_event
+AFTER INSERT OR UPDATE ON notification_settings
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER redirect_notify_event
+AFTER INSERT ON redirects
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER stickiness_options_notify_event
+AFTER INSERT OR UPDATE ON stickiness_options
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER sync_check_options_notify_event
+AFTER INSERT ON sync_check_options
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER lb_apps_notify_event
+AFTER INSERT ON lb_apps
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();

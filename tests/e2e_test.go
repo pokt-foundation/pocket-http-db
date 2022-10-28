@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gojektech/heimdall/httpclient"
+	"github.com/lib/pq"
 	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
 	"github.com/pokt-foundation/portal-api-go/repository"
 	"github.com/stretchr/testify/suite"
@@ -35,19 +36,13 @@ var (
 	createdApplicationID string = "" // Used to create a LoadBalancer.ApplicationIDs slice
 )
 
-type (
-	PHDTestSuite struct {
-		suite.Suite
-		PGDriver *postgresdriver.PostgresDriver
-	}
-)
+type PHDTestSuite struct {
+	suite.Suite
+	PGDriver *postgresdriver.PostgresDriver
+}
 
 func (t *PHDTestSuite) SetupSuite() {
-	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
-	t.NoError(err)
-	t.PGDriver = pgDriver
-
-	_, err = exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
+	_, err := exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
 	t.NoError(err)
 
 	_, err = exec.Command("docker", "ps", "-a").Output()
@@ -56,6 +51,17 @@ func (t *PHDTestSuite) SetupSuite() {
 	output, err := exec.Command("curl", "http://localhost:8080").Output()
 	t.NoError(err)
 	t.Equal("Pocket HTTP DB is up and running!", string(output))
+
+	reportProblem := func(ev pq.ListenerEventType, err error) {
+		if err != nil {
+			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
+		}
+	}
+	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
+	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString, listener)
+	t.NoError(err)
+
+	t.PGDriver = pgDriver
 }
 
 func (t *PHDTestSuite) TearDownSuite() {
@@ -90,6 +96,8 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 
 	createdBlockchainID = createdBlockchain.ID
 
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
 	/* Get One Blockchain -> GET /blockchain/{id} */
 	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
 	t.NoError(err)
@@ -110,6 +118,8 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	blockchainActivated, err := post[bool](fmt.Sprintf("blockchain/%s/activate", createdBlockchainID), []byte("true"))
 	t.NoError(err)
 	t.True(blockchainActivated)
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	activatedBlockchain, err := get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
 	t.NoError(err)
@@ -147,6 +157,8 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.applicationAssertions(createdApplication)
 
 	createdApplicationID = createdApplication.ID
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Application -> GET /application/{id} */
 	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID))
@@ -291,6 +303,8 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	createdLoadBalancer, err := post[repository.LoadBalancer]("load_balancer", loadBalancerInput)
 	t.NoError(err)
 	t.loadBalancerAssertions(createdLoadBalancer)
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Load Balancer -> GET /load_balancer/{id} */
 	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID))
