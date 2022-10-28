@@ -98,7 +98,7 @@ func TestCache_listenApplication(t *testing.T) {
 		},
 	})
 
-	time.Sleep(4 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	app := cache.GetApplication("321")
 	c.Equal("pablo", app.Name)
@@ -141,7 +141,7 @@ func TestCache_listenBlockchain(t *testing.T) {
 		},
 	})
 
-	time.Sleep(3 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	blockchain := cache.GetBlockchain("0023")
 	c.Equal("path", blockchain.Path)
@@ -174,7 +174,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566a"},
 	})
 
-	time.Sleep(4 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	lb := cache.GetLoadBalancer("123")
 	c.Equal("pablo", lb.Name)

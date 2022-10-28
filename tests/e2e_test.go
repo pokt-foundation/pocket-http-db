@@ -96,7 +96,7 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 
 	createdBlockchainID = createdBlockchain.ID
 
-	time.Sleep(3 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Blockchain -> GET /blockchain/{id} */
 	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
@@ -158,7 +158,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 
 	createdApplicationID = createdApplication.ID
 
-	time.Sleep(4 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Application -> GET /application/{id} */
 	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID))
@@ -304,7 +304,7 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	t.NoError(err)
 	t.loadBalancerAssertions(createdLoadBalancer)
 
-	time.Sleep(3 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Load Balancer -> GET /load_balancer/{id} */
 	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID))

@@ -2,13 +2,8 @@ package cache
 
 import (
 	"sync"
-	"time"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
-)
-
-const (
-	retriesSideTable = 5
 )
 
 // Reader represents implementation of reader interface
@@ -38,12 +33,23 @@ type Cache struct {
 	redirectsMapByBlockchainID map[string][]*repository.Redirect
 	listening                  bool
 	pendingGatewayAAT          map[string]repository.GatewayAAT
+	pendingGatewaySettings     map[string]repository.GatewaySettings
+	pendingNotifactionSettings map[string]repository.NotificationSettings
+	pendingSyncCheckOptions    map[string]repository.SyncCheckOptions
+	pendingStickyOptions       map[string]repository.StickyOptions
+	pendingLbApps              map[string][]repository.LbApp
 }
 
 // NewCache returns cache instance from reader interface
 func NewCache(reader Reader) *Cache {
 	return &Cache{
-		reader: reader,
+		reader:                     reader,
+		pendingGatewayAAT:          make(map[string]repository.GatewayAAT),
+		pendingGatewaySettings:     make(map[string]repository.GatewaySettings),
+		pendingNotifactionSettings: make(map[string]repository.NotificationSettings),
+		pendingSyncCheckOptions:    make(map[string]repository.SyncCheckOptions),
+		pendingStickyOptions:       make(map[string]repository.StickyOptions),
+		pendingLbApps:              make(map[string][]repository.LbApp),
 	}
 }
 
@@ -181,10 +187,22 @@ func (c *Cache) addApplication(app repository.Application) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	aat := c.pendingGatewayAAT[app.ID]
-	if aat != (repository.GatewayAAT{}) {
+	aat, ok := c.pendingGatewayAAT[app.ID]
+	if ok {
 		app.GatewayAAT = aat
 		delete(c.pendingGatewayAAT, app.ID)
+	}
+
+	gSettings, ok := c.pendingGatewaySettings[app.ID]
+	if ok {
+		app.GatewaySettings = gSettings
+		delete(c.pendingGatewaySettings, app.ID)
+	}
+
+	nSettings, ok := c.pendingNotifactionSettings[app.ID]
+	if ok {
+		app.NotificationSettings = nSettings
+		delete(c.pendingNotifactionSettings, app.ID)
 	}
 
 	c.applications = append(c.applications, &app)
@@ -209,35 +227,35 @@ func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
 }
 
 func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
-	for i := 0; i < retriesSideTable; i++ {
-		app := c.GetApplication(settings.ID)
-		if app != nil {
-			c.rwMutex.Lock()
-			defer c.rwMutex.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
-			settings.ID = "" // to avoid multiple sources of truth
-			app.GatewaySettings = settings
-			return
-		}
+	appID := settings.ID
+	settings.ID = "" // to avoid multiple sources of truth
 
-		time.Sleep(1 * time.Second)
+	app := c.applicationsMap[appID]
+	if app != nil {
+		app.GatewaySettings = settings
+		return
 	}
+
+	c.pendingGatewaySettings[appID] = settings
 }
 
 func (c *Cache) addNotificationSettings(settings repository.NotificationSettings) {
-	for i := 0; i < retriesSideTable; i++ {
-		app := c.GetApplication(settings.ID)
-		if app != nil {
-			c.rwMutex.Lock()
-			defer c.rwMutex.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
-			settings.ID = "" // to avoid multiple sources of truth
-			app.NotificationSettings = settings
-			return
-		}
+	appID := settings.ID
+	settings.ID = "" // to avoid multiple sources of truth
 
-		time.Sleep(1 * time.Second)
+	app := c.applicationsMap[appID]
+	if app != nil {
+		app.NotificationSettings = settings
+		return
 	}
+
+	c.pendingNotifactionSettings[appID] = settings
 }
 
 // updateApplication updates application saved in cache
@@ -292,23 +310,27 @@ func (c *Cache) addBlockchain(blockchain repository.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	opts, ok := c.pendingSyncCheckOptions[blockchain.ID]
+	if ok {
+		blockchain.SyncCheckOptions = opts
+		delete(c.pendingSyncCheckOptions, blockchain.ID)
+	}
+
 	c.blockchains = append(c.blockchains, &blockchain)
 	c.blockchainsMap[blockchain.ID] = &blockchain
 }
 
 func (c *Cache) addSyncOptions(opts repository.SyncCheckOptions) {
-	for i := 0; i < retriesSideTable; i++ {
-		blockchain := c.GetBlockchain(opts.BlockchainID)
-		if blockchain != nil {
-			c.rwMutex.Lock()
-			defer c.rwMutex.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
-			blockchain.SyncCheckOptions = opts
-			return
-		}
-
-		time.Sleep(1 * time.Second)
+	blockchain := c.blockchainsMap[opts.BlockchainID]
+	if blockchain != nil {
+		blockchain.SyncCheckOptions = opts
+		return
 	}
+
+	c.pendingSyncCheckOptions[opts.BlockchainID] = opts
 }
 
 // updateBlockchain updates blockchain saved in cache
@@ -354,40 +376,52 @@ func (c *Cache) addLoadBalancer(lb repository.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	opts, ok := c.pendingStickyOptions[lb.ID]
+	if ok {
+		lb.StickyOptions = opts
+		delete(c.pendingStickyOptions, lb.ID)
+	}
+
+	lbApps, ok := c.pendingLbApps[lb.ID]
+	if ok {
+		for _, lbApp := range lbApps {
+			lb.Applications = append(lb.Applications, c.applicationsMap[lbApp.AppID])
+		}
+		delete(c.pendingLbApps, lb.ID)
+	}
+
 	c.loadBalancers = append(c.loadBalancers, &lb)
 	c.loadBalancersMap[lb.ID] = &lb
 	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], &lb)
 }
 
 func (c *Cache) addStickinessOptions(opts repository.StickyOptions) {
-	for i := 0; i < retriesSideTable; i++ {
-		lb := c.GetLoadBalancer(opts.ID)
-		if lb != nil {
-			c.rwMutex.Lock()
-			defer c.rwMutex.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
-			opts.ID = "" // to avoid multiple sources of truth
-			lb.StickyOptions = opts
-			return
-		}
+	lbID := opts.ID
+	opts.ID = "" // to avoid multiple sources of truth
 
-		time.Sleep(1 * time.Second)
+	lb := c.loadBalancersMap[lbID]
+	if lb != nil {
+		lb.StickyOptions = opts
+		return
 	}
+
+	c.pendingStickyOptions[lbID] = opts
 }
 
 func (c *Cache) addLbApp(lbApp repository.LbApp) {
-	for i := 0; i < retriesSideTable; i++ {
-		lb := c.GetLoadBalancer(lbApp.LbID)
-		if lb != nil {
-			c.rwMutex.Lock()
-			defer c.rwMutex.Unlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
-			lb.Applications = append(lb.Applications, c.applicationsMap[lbApp.AppID])
-			return
-		}
-
-		time.Sleep(1 * time.Second)
+	lb := c.loadBalancersMap[lbApp.LbID]
+	if lb != nil {
+		lb.Applications = append(lb.Applications, c.applicationsMap[lbApp.AppID])
+		return
 	}
+
+	c.pendingLbApps[lbApp.LbID] = append(c.pendingLbApps[lbApp.LbID], lbApp)
 }
 
 // updateLoadBalancer updates load balancer saved in cache
