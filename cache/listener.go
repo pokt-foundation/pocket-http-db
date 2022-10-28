@@ -1,11 +1,17 @@
 package cache
 
 import (
+	"fmt"
+
 	"github.com/pokt-foundation/portal-api-go/repository"
 )
 
 func (c *Cache) parseApplicationNotification(n repository.Notification) {
-	app := n.Data.(*repository.Application)
+	app, ok := n.Data.(*repository.Application)
+	if !ok {
+		fmt.Println("parse application failed")
+	}
+
 	if n.Action == repository.ActionInsert {
 		c.addApplication(*app)
 	}
@@ -15,7 +21,11 @@ func (c *Cache) parseApplicationNotification(n repository.Notification) {
 }
 
 func (c *Cache) parseBlockchainNotification(n repository.Notification) {
-	blockchain := n.Data.(*repository.Blockchain)
+	blockchain, ok := n.Data.(*repository.Blockchain)
+	if !ok {
+		fmt.Println("parse blockchain failed")
+	}
+
 	if n.Action == repository.ActionInsert {
 		c.addBlockchain(*blockchain)
 	}
@@ -25,21 +35,33 @@ func (c *Cache) parseBlockchainNotification(n repository.Notification) {
 }
 
 func (c *Cache) parseGatewayAATNotification(n repository.Notification) {
-	aat := n.Data.(*repository.GatewayAAT)
+	aat, ok := n.Data.(*repository.GatewayAAT)
+	if !ok {
+		fmt.Println("parse gateway aat failed")
+	}
+
 	if n.Action == repository.ActionInsert {
 		c.addGatewayAAT(*aat)
 	}
 }
 
 func (c *Cache) parseGatewaySettingsNotification(n repository.Notification) {
-	settings := n.Data.(*repository.GatewaySettings)
+	settings, ok := n.Data.(*repository.GatewaySettings)
+	if !ok {
+		fmt.Println("parse gateway settings failed")
+	}
+
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
 		c.addGatewaySettings(*settings)
 	}
 }
 
 func (c *Cache) parseLoadBalancerNotification(n repository.Notification) {
-	lb := n.Data.(*repository.LoadBalancer)
+	lb, ok := n.Data.(*repository.LoadBalancer)
+	if !ok {
+		fmt.Println("parse load balancer failed")
+	}
+
 	if n.Action == repository.ActionInsert {
 		c.addLoadBalancer(*lb)
 	}
@@ -49,35 +71,55 @@ func (c *Cache) parseLoadBalancerNotification(n repository.Notification) {
 }
 
 func (c *Cache) parseNotificationSettingsNotification(n repository.Notification) {
-	settings := n.Data.(*repository.NotificationSettings)
+	settings, ok := n.Data.(*repository.NotificationSettings)
+	if !ok {
+		fmt.Println("parse notification settings failed")
+	}
+
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
 		c.addNotificationSettings(*settings)
 	}
 }
 
 func (c *Cache) parseRedirectNotification(n repository.Notification) {
-	redirect := n.Data.(*repository.Redirect)
+	redirect, ok := n.Data.(*repository.Redirect)
+	if !ok {
+		fmt.Println("parse redirect failed")
+	}
+
 	if n.Action == repository.ActionInsert {
 		c.addRedirect(*redirect)
 	}
 }
 
 func (c *Cache) parseStickinessOptionsNotification(n repository.Notification) {
-	opts := n.Data.(*repository.StickyOptions)
+	opts, ok := n.Data.(*repository.StickyOptions)
+	if !ok {
+		fmt.Println("parse stickiness options failed")
+	}
+
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
 		c.addStickinessOptions(*opts)
 	}
 }
 
 func (c *Cache) parseSyncOptionsNotification(n repository.Notification) {
-	opts := n.Data.(*repository.SyncCheckOptions)
+	opts, ok := n.Data.(*repository.SyncCheckOptions)
+	if !ok {
+		fmt.Println("parse sync check options failed")
+	}
+
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
 		c.addSyncOptions(*opts)
 	}
 }
 
 func (c *Cache) parseLbApps(n repository.Notification) {
-	lbApp := n.Data.(*repository.LbApp)
+	lbApp, ok := n.Data.(*repository.LbApp)
+	if !ok {
+		fmt.Println("parse lb app failed")
+	}
+
 	if n.Action == repository.ActionInsert {
 		c.addLbApp(*lbApp)
 	}
