@@ -19,6 +19,7 @@ var (
 	errBalancerNotFound    = errors.New("load balancer not found")
 	errBlockchainNotFound  = errors.New("blockchain not found")
 	errApplicationNotFound = errors.New("applications not found")
+	errInvalidFormatInput  = errors.New("input could not be marshaled")
 
 	log = logrus.New()
 )
@@ -63,30 +64,12 @@ func logError(msg string, inputs []interface{}, err error) {
 }
 
 func interfaceToString(inter interface{}) string {
-	str := "{" // creates the string in json format
-	jsonStr := map[string]interface{}{}
-
-	marshaledInterface, _ := json.Marshal(inter)
-
-	err := json.Unmarshal([]byte(marshaledInterface), &jsonStr)
+	marshaledInterface, err := json.Marshal(inter)
 	if err != nil {
-		// since a single value can't be unmarshal, return the value
-		return fmt.Sprintf("{%v}", inter)
+		return errInvalidFormatInput.Error()
 	}
 
-	for k, v := range jsonStr {
-		switch v.(type) {
-		case map[string]interface{}:
-			str += fmt.Sprintf("%v:%v,", k, interfaceToString(v))
-		default:
-			str += fmt.Sprintf("%v:%v,", k, v)
-		}
-	}
-
-	str = strings.TrimRight(str, ",")
-	str += "}" // close the json
-
-	return str
+	return string(marshaledInterface)
 }
 
 // NewRouter returns router instance
