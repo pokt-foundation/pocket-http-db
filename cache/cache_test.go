@@ -104,7 +104,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{}, errors.New("error on pay plans")).Once()
 
 	err := cache.SetCache()
-	c.EqualError(err, "error on pay plans")
+	c.ErrorContains(err, "error on pay plans")
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
@@ -120,7 +120,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	readerMock.On("ReadRedirects").Return([]*repository.Redirect{}, errors.New("error on redirects")).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on redirects")
+	c.ErrorContains(err, "error on redirects")
 
 	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
 		{
@@ -140,7 +140,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on applications")
+	c.ErrorContains(err, "error on applications")
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
@@ -152,7 +152,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on blockchains")
+	c.ErrorContains(err, "error on blockchains")
 
 	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
 		{
@@ -163,7 +163,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{}, errors.New("error on loadbalancers")).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on loadbalancers")
+	c.ErrorContains(err, "error on loadbalancers")
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
 		{
