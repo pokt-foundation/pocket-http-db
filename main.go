@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
 	"github.com/pokt-foundation/utils-go/environment"
@@ -54,7 +55,15 @@ func httpHandler(router *router.Router) {
 }
 
 func main() {
-	driver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString)
+	reportProblem := func(ev pq.ListenerEventType, err error) {
+		if err != nil {
+			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
+		}
+	}
+
+	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
+
+	driver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString, listener)
 	if err != nil {
 		panic(err)
 	}

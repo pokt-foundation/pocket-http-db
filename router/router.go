@@ -161,8 +161,11 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 		limits.AppName = app.Name
 		limits.AppUserID = app.UserID
 		limits.PublicKey = app.GatewayAAT.ApplicationPublicKey
-		limits.FirstDateSurpassed = app.FirstDateSurpassed
 		limits.NotificationSettings = &app.NotificationSettings
+
+		if !app.FirstDateSurpassed.IsZero() {
+			limits.FirstDateSurpassed = &app.FirstDateSurpassed
+		}
 
 		appsLimits = append(appsLimits, limits)
 	}
@@ -203,7 +206,15 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rt.Cache.AddApplication(fullApp)
+	if fullApp.PayPlanType != "" {
+		newPlan := rt.Cache.GetPayPlan(fullApp.PayPlanType)
+		fullApp.Limits = repository.AppLimits{
+			PlanType:   newPlan.PlanType,
+			DailyLimit: newPlan.DailyLimit,
+		}
+
+		fullApp.PayPlanType = "" // set to empty to avoid two sources of truth
+	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
 }
@@ -254,10 +265,14 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			app.Status = updateInput.Status
 		}
 		if updateInput.PayPlanType != "" {
-			app.PayPlanType = updateInput.PayPlanType
+			newPlan := rt.Cache.GetPayPlan(updateInput.PayPlanType)
+			app.Limits = repository.AppLimits{
+				PlanType:   newPlan.PlanType,
+				DailyLimit: newPlan.DailyLimit,
+			}
 		}
 		if !updateInput.FirstDateSurpassed.IsZero() {
-			app.FirstDateSurpassed = &updateInput.FirstDateSurpassed
+			app.FirstDateSurpassed = updateInput.FirstDateSurpassed
 		}
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = *updateInput.GatewaySettings
@@ -266,8 +281,6 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			app.NotificationSettings = *updateInput.NotificationSettings
 		}
 	}
-
-	rt.Cache.UpdateApplication(app)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
 }
@@ -311,8 +324,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 	}
 
 	for _, app := range appsToUpdate {
-		app.FirstDateSurpassed = &updateInput.FirstDateSurpassed
-		rt.Cache.UpdateApplication(app)
+		app.FirstDateSurpassed = updateInput.FirstDateSurpassed
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, appsToUpdate)
@@ -384,8 +396,6 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rt.Cache.ActivateBlockchain(blockchainID, active)
-
 	jsonresponse.RespondWithJSON(w, http.StatusOK, active)
 }
 
@@ -409,8 +419,6 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	rt.Cache.AddBlockchain(fullBlockchain)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullBlockchain)
 }
@@ -454,7 +462,11 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rt.Cache.AddLoadBalancer(fullLB)
+	for _, appID := range fullLB.ApplicationIDs {
+		fullLB.Applications = append(fullLB.Applications, rt.Cache.GetApplication(appID))
+	}
+
+	fullLB.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }
@@ -489,10 +501,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		oldUserID := lb.UserID
 		lb.UserID = ""
-
-		rt.Cache.DeleteLoadBalancer(lb, oldUserID)
 	} else {
 		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
 		if err != nil {
@@ -507,8 +516,6 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		if updateInput.StickyOptions != nil {
 			lb.StickyOptions = *updateInput.StickyOptions
 		}
-
-		rt.Cache.UpdateLoadBalancer(lb)
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
@@ -556,8 +563,6 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	rt.Cache.AddRedirect(fullRedirect)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
 }
