@@ -84,12 +84,12 @@ func newTestRouter() (*Router, error) {
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+			Type:  repository.FreetierV0,
+			Limit: 250000,
 		},
 		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
+			Type:  repository.PayAsYouGoV0,
+			Limit: 0,
 		},
 	}, nil)
 
@@ -110,9 +110,14 @@ func newTestRouter() (*Router, error) {
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:                 "5f62b7d8be3591c4dea8566d",
-			UserID:             "60ecb2bf67774900350d9c43",
-			PayPlanType:        repository.FreetierV0,
+			ID:     "5f62b7d8be3591c4dea8566d",
+			UserID: "60ecb2bf67774900350d9c43",
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type:  repository.FreetierV0,
+					Limit: 250000,
+				},
+			},
 			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
 		{
@@ -190,9 +195,11 @@ func TestRouter_GetApplications(t *testing.T) {
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
-			Limits: repository.AppLimits{
-				PlanType:   repository.FreetierV0,
-				DailyLimit: 250000,
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type:  repository.FreetierV0,
+					Limit: 250000,
+				},
 			},
 			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
@@ -280,9 +287,11 @@ func TestRouter_GetApplication(t *testing.T) {
 	expectedBody, err := json.Marshal(&repository.Application{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
-		Limits: repository.AppLimits{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.FreetierV0,
+				Limit: 250000,
+			},
 		},
 		FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 	})
@@ -304,8 +313,13 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawAppToSend := &repository.Application{
-		UserID:      "60ddc61b6e29c3003378361D",
-		PayPlanType: repository.FreetierV0,
+		UserID: "60ddc61b6e29c3003378361D",
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.FreetierV0,
+				Limit: 250000,
+			},
+		},
 	}
 
 	appToSend, err := json.Marshal(rawAppToSend)
@@ -320,9 +334,14 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.NoError(err)
 
 	appToReturn := &repository.Application{
-		ID:          "60ddc61b6e29c3003378361E",
-		UserID:      "60ddc61b6e29c3003378361D",
-		PayPlanType: repository.FreetierV0,
+		ID:     "60ddc61b6e29c3003378361E",
+		UserID: "60ddc61b6e29c3003378361D",
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.FreetierV0,
+				Limit: 250000,
+			},
+		},
 	}
 
 	writerMock := &writerMock{}
@@ -338,9 +357,11 @@ func TestRouter_CreateApplication(t *testing.T) {
 	marshaledReturnApp, err := json.Marshal(&repository.Application{
 		ID:     "60ddc61b6e29c3003378361E",
 		UserID: "60ddc61b6e29c3003378361D",
-		Limits: repository.AppLimits{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.FreetierV0,
+				Limit: 250000,
+			},
 		},
 	})
 	c.NoError(err)
@@ -372,9 +393,14 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateApplication{
-		Name:               "pablo",
-		Status:             repository.Orphaned,
-		PayPlanType:        repository.PayAsYouGoV0,
+		Name:   "pablo",
+		Status: repository.Orphaned,
+		Limit: &repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.PayAsYouGoV0,
+				Limit: 0,
+			},
+		},
 		FirstDateSurpassed: time.Now(),
 		GatewaySettings: &repository.GatewaySettings{
 			SecretKey: "1234",
@@ -590,9 +616,11 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
-			Limits: repository.AppLimits{
-				PlanType:   repository.FreetierV0,
-				DailyLimit: 250000,
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type:  repository.FreetierV0,
+					Limit: 250000,
+				},
 			},
 			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
@@ -977,12 +1005,12 @@ func TestRouter_GetPayPlans(t *testing.T) {
 
 	expectedBody, err := json.Marshal([]*repository.PayPlan{
 		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+			Type:  repository.FreetierV0,
+			Limit: 250000,
 		},
 		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
+			Type:  repository.PayAsYouGoV0,
+			Limit: 0,
 		},
 	})
 	c.NoError(err)
@@ -1006,8 +1034,8 @@ func TestRouter_GetPayPlan(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 
 	expectedBody, err := json.Marshal(&repository.PayPlan{
-		PlanType:   repository.FreetierV0,
-		DailyLimit: 250000,
+		Type:  repository.FreetierV0,
+		Limit: 250000,
 	})
 	c.NoError(err)
 

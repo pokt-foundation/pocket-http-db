@@ -1,11 +1,15 @@
-test:
-	go test ./... -count=1
-
 test_unit:
 	go test ./... -short
 
+test:
+	docker-compose -f ./tests/docker-compose.yml up -d --remove-orphans --build && \
+	go test ./... -count=1 -v && \
+	docker-compose -f ./tests/docker-compose.yml down --remove-orphans --rmi all -v
+
 test_e2e:
-	go test ./... -run E2E
+	docker-compose -f ./tests/docker-compose.yml up -d --remove-orphans --build && \
+	go test ./... -run E2E -count=1 -v && \
+	docker-compose -f ./tests/docker-compose.yml down --remove-orphans --rmi all -v
 
 test_verbose:
 	go test ./... -v

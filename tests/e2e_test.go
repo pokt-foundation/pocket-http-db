@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -42,16 +41,6 @@ type PHDTestSuite struct {
 }
 
 func (t *PHDTestSuite) SetupSuite() {
-	_, err := exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
-	t.NoError(err)
-
-	_, err = exec.Command("docker", "ps", "-a").Output()
-	t.NoError(err)
-
-	output, err := exec.Command("curl", "http://localhost:8080").Output()
-	t.NoError(err)
-	t.Equal("Pocket HTTP DB is up and running!", string(output))
-
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
 			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
@@ -64,13 +53,6 @@ func (t *PHDTestSuite) SetupSuite() {
 	t.PGDriver = pgDriver
 }
 
-func (t *PHDTestSuite) TearDownSuite() {
-	t.PGDriver.Close()
-
-	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
-	t.NoError(err)
-}
-
 func TestE2E_RunSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping end to end test")
@@ -80,12 +62,11 @@ func TestE2E_RunSuite(t *testing.T) {
 }
 
 /*
-The End-to-End test suite:
-1) builds the Pocket HTTP DB Docker image that we deploy
-2) pulls the Postgres image and initializes it with the database tables used in production
-3) launches PHD in a container connected to the Postgres container
-4) performs every operation that PHD can perform for each set of endpoints and checks results
-5) verifies that the records exist in the Postgres DB as well as in the PHD cache
+To run the E2E suite use the command `make test_e2e` from the repository root.
+The E2E suite also runs on all Pull Requests to the main or staging branches.
+
+The End-to-End test suite uses a Dockerized reproduction of Postgres & PHD,
+tests all of PHD's endpoints using an HTTP client and the verifies the results.
 */
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
@@ -185,7 +166,6 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	/* Update One Application -> PUT /application/{id} */
 	update := repository.UpdateApplication{
 		Name:                 "update-application-1",
-		PayPlanType:          "PAY_AS_YOU_GO_V0",
 		NotificationSettings: &repository.NotificationSettings{Half: true, ThreeQuarters: false},
 		GatewaySettings: &repository.GatewaySettings{
 			SecretKeyRequired:    true,
@@ -207,9 +187,8 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	updatedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updateJSON)
 	t.NoError(err)
 	t.Equal("update-application-1", updatedApplication.Name)
-	t.Equal(repository.PayPlanType(""), updatedApplication.PayPlanType)
-	t.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), updatedApplication.Limits.PlanType)
-	t.Equal(0, updatedApplication.Limits.DailyLimit)
+	t.Equal(repository.PayPlanType("FREETIER_V0"), updatedApplication.Limit.PayPlan.Type)
+	t.Equal(250000, updatedApplication.DailyLimit())
 	t.Equal(true, updatedApplication.NotificationSettings.Half)
 	t.Equal(false, updatedApplication.NotificationSettings.ThreeQuarters)
 	t.Equal(true, updatedApplication.GatewaySettings.SecretKeyRequired)
@@ -227,6 +206,39 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.Len(updatedApplication.GatewaySettings.WhitelistMethods[1].Methods, 2)
 	t.Equal("test-method-3", updatedApplication.GatewaySettings.WhitelistMethods[1].Methods[1])
 	t.NotEmpty(updatedApplication.UpdatedAt)
+
+	/* Update One Application Pay Plan -> PUT /application/{id} */
+	updatePayPlan := repository.UpdateApplication{
+		Limit: &repository.AppLimit{
+			PayPlan: repository.PayPlan{Type: repository.PayAsYouGoV0},
+		},
+	}
+	updatePayPlanJSON, err := json.Marshal(updatePayPlan)
+	t.NoError(err)
+
+	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updatePayPlanJSON)
+	t.NoError(err)
+	t.Equal("update-application-1", updatedApplication.Name)
+	t.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), updatedApplication.Limit.PayPlan.Type)
+	t.Equal(0, updatedApplication.DailyLimit())
+	t.Equal(true, updatedApplication.NotificationSettings.Half)
+
+	/* Update One Application Pay Plan to Enterprise (with custom limit) -> PUT /application/{id} */
+	updateEnterprise := repository.UpdateApplication{
+		Limit: &repository.AppLimit{
+			PayPlan:     repository.PayPlan{Type: repository.Enterprise},
+			CustomLimit: 4200000,
+		},
+	}
+	updateEnterpriseJSON, err := json.Marshal(updateEnterprise)
+	t.NoError(err)
+
+	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updateEnterpriseJSON)
+	t.NoError(err)
+	t.Equal("update-application-1", updatedApplication.Name)
+	t.Equal(repository.PayPlanType("ENTERPRISE"), updatedApplication.Limit.PayPlan.Type)
+	t.Equal(4200000, updatedApplication.DailyLimit())
+	t.Equal("test-chains-1", updatedApplication.GatewaySettings.WhitelistBlockchains[0])
 
 	/* Update First Date Surpassed -> POST /application/first_date_surpassed */
 	updateDate := repository.UpdateFirstDateSurpassed{
@@ -247,8 +259,8 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.Equal("update-application-1", applicationLimits[0].AppName)
 	t.Equal(testUserID, applicationLimits[0].AppUserID)
 	t.Equal("test_key_7a7d163434b10803eece4ddb2e0726e39ec6bb99b828aa309d05ffd", applicationLimits[0].PublicKey)
-	t.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), applicationLimits[0].PlanType)
-	t.Equal(0, applicationLimits[0].DailyLimit)
+	t.Equal(repository.PayPlanType("ENTERPRISE"), applicationLimits[0].PlanType)
+	t.Equal(4200000, applicationLimits[0].DailyLimit)
 	t.Equal(true, applicationLimits[0].NotificationSettings.Half)
 	t.Equal(false, applicationLimits[0].NotificationSettings.ThreeQuarters)
 	t.NotEmpty(applicationLimits[0].FirstDateSurpassed)
@@ -269,6 +281,19 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	/* ERROR - Get One Application (non-existent ID) -> GET /application/{id} */
 	_, err = get[repository.Application](fmt.Sprintf("application/%s", "not-a-real-id"))
 	t.Equal("Response not OK. Not Found", err.Error())
+
+	/* ERROR - Attempting to update non-Enterprise plan with custom limit -> PUT /application/{id} */
+	updateEnterpriseErr := repository.UpdateApplication{
+		Limit: &repository.AppLimit{
+			PayPlan:     repository.PayPlan{Type: repository.FreetierV0},
+			CustomLimit: 123456,
+		},
+	}
+	updateEnterpriseErrJSON, err := json.Marshal(updateEnterpriseErr)
+	t.NoError(err)
+
+	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updateEnterpriseErrJSON)
+	t.Equal("Response not OK. Unprocessable Entity", err.Error())
 }
 
 func (t *PHDTestSuite) applicationAssertions(app repository.Application) {
@@ -278,9 +303,8 @@ func (t *PHDTestSuite) applicationAssertions(app repository.Application) {
 	t.Equal("test-application-1", app.Name)
 	t.Equal(repository.AppStatus("IN_SERVICE"), app.Status)
 	t.Equal(true, app.Dummy)
-	t.Equal(repository.PayPlanType(""), app.PayPlanType)
-	t.Equal(repository.PayPlanType("FREETIER_V0"), app.Limits.PlanType)
-	t.Equal(250000, app.Limits.DailyLimit)
+	t.Equal(repository.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
+	t.Equal(250000, app.DailyLimit())
 	t.Equal("test_address_8dbb89278918da056f589086fb4", app.GatewayAAT.Address)
 	t.Equal("test_key_7a7d163434b10803eece4ddb2e0726e39ec6bb99b828aa309d05ffd", app.GatewayAAT.ApplicationPublicKey)
 	t.Equal("test_key_f9c21a35787c53c8cdb532cad0dc01e099f34c28219528e3732c2da38037a84db4ce0282fa9aa404e56248155a1fbda789c8b5976711ada8588ead5", app.GatewayAAT.ApplicationSignature)
@@ -392,18 +416,18 @@ func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	/* Get All Pay Plans -> GET /pay_plan */
 	payPlans, err := get[[]repository.PayPlan]("pay_plan")
 	t.NoError(err)
-	t.Len(payPlans, 5)
+	t.Len(payPlans, 6)
 
 	/* Get One Pay Plan -> GET /pay_plan/{type} */
 	payPlan, err := get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "FREETIER_V0"))
 	t.NoError(err)
-	t.Equal(repository.PayPlanType("FREETIER_V0"), payPlan.PlanType)
-	t.Equal(250000, payPlan.DailyLimit)
+	t.Equal(repository.PayPlanType("FREETIER_V0"), payPlan.Type)
+	t.Equal(250000, payPlan.Limit)
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
 	pgPayPlans, err := t.PGDriver.ReadPayPlans()
 	t.NoError(err)
-	t.Len(pgPayPlans, 5)
+	t.Len(pgPayPlans, 6)
 
 	/* ERROR - Get One Pay Plan (non-existent ID) -> GET /pay_plan/{type} */
 	_, err = get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"))

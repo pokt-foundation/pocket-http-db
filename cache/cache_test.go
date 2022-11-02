@@ -15,24 +15,39 @@ func TestCache_SetCache(t *testing.T) {
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:          "5f62b7d8be3591c4dea8566d",
-			UserID:      "60ecb2bf67774900350d9c43",
-			PayPlanType: repository.FreetierV0,
+			ID:     "5f62b7d8be3591c4dea8566d",
+			UserID: "60ecb2bf67774900350d9c43",
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type:  repository.FreetierV0,
+					Limit: 250000,
+				},
+			},
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
 			UserID: "60ecb2bf67774900350d9c43",
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type: repository.Enterprise,
+				},
+				CustomLimit: 2000000,
+			},
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566f",
 			UserID: "60ecb2bf67774900350d9c44",
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type:  repository.PayAsYouGoV0,
+					Limit: 0,
+				},
+			},
 		},
 	}, nil)
 
 	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
-		{
-			ID: "0021",
-		},
+		{ID: "0021"},
 	}, nil)
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
@@ -48,15 +63,14 @@ func TestCache_SetCache(t *testing.T) {
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+			Type:  repository.FreetierV0,
+			Limit: 250000,
 		},
 		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
+			Type:  repository.PayAsYouGoV0,
+			Limit: 0,
 		},
 	}, nil)
-
 	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
 		{
 			BlockchainID:   "0021",
@@ -108,12 +122,12 @@ func TestCache_SetCacheFailure(t *testing.T) {
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+			Type:  repository.FreetierV0,
+			Limit: 250000,
 		},
 		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
+			Type:  repository.PayAsYouGoV0,
+			Limit: 0,
 		},
 	}, nil)
 
@@ -137,6 +151,17 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
+
+	err = cache.SetCache()
+	c.EqualError(err, "error on blockchains")
+
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+		{
+			ID: "0021",
+		},
+	}, nil)
+
 	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
 
 	err = cache.SetCache()
@@ -146,17 +171,6 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
-		},
-	}, nil)
-
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
-
-	err = cache.SetCache()
-	c.EqualError(err, "error on blockchains")
-
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
-		{
-			ID: "0021",
 		},
 	}, nil)
 
@@ -179,12 +193,12 @@ func TestCache_AddApplication(t *testing.T) {
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+			Type:  repository.FreetierV0,
+			Limit: 250000,
 		},
 		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
+			Type:  repository.PayAsYouGoV0,
+			Limit: 0,
 		},
 	}, nil)
 
@@ -212,14 +226,19 @@ func TestCache_AddApplication(t *testing.T) {
 	c.NoError(err)
 
 	cache.addApplication(repository.Application{
-		ID:          "5f62b7d8be3591c4dea8566b",
-		UserID:      "60ecb2bf67774900350d9c43",
-		PayPlanType: repository.FreetierV0,
+		ID:     "5f62b7d8be3591c4dea8566b",
+		UserID: "60ecb2bf67774900350d9c43",
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.FreetierV0,
+				Limit: 250000,
+			},
+		},
 	})
 
 	c.Len(cache.GetApplications(), 4)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 3)
-	c.Equal(cache.GetApplication("5f62b7d8be3591c4dea8566b").Limits.DailyLimit, 250000)
+	c.Equal(cache.GetApplication("5f62b7d8be3591c4dea8566b").DailyLimit(), 250000)
 }
 
 func TestCache_UpdateApplication(t *testing.T) {
@@ -229,12 +248,12 @@ func TestCache_UpdateApplication(t *testing.T) {
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+			Type:  repository.FreetierV0,
+			Limit: 250000,
 		},
 		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
+			Type:  repository.PayAsYouGoV0,
+			Limit: 0,
 		},
 	}, nil)
 
@@ -276,17 +295,15 @@ func TestCache_UpdateApplication(t *testing.T) {
 	c.NoError(err)
 
 	cache.updateApplication(repository.Application{
-		ID:          "5f62b7d8be3591c4dea8566a",
-		UserID:      "60ecb2bf67774900350d9c43",
-		Name:        "papolo",
-		PayPlanType: repository.FreetierV0,
+		ID:     "5f62b7d8be3591c4dea8566a",
+		UserID: "60ecb2bf67774900350d9c43",
+		Name:   "papolo",
 	})
 
 	c.Len(cache.GetApplications(), 3)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 2)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c44"), 1)
 	c.Equal("papolo", cache.GetApplication("5f62b7d8be3591c4dea8566a").Name)
-	c.Equal(250000, cache.GetApplication("5f62b7d8be3591c4dea8566a").Limits.DailyLimit)
 	c.Equal("papolo", cache.GetLoadBalancer("60ecb2bf67774900350d9c42").Applications[1].Name)
 	c.Equal("papolo", cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43")[1].Name)
 	c.Equal("papolo", cache.GetLoadBalancer("60ecb2bf67774900350d9c42").Applications[1].Name)

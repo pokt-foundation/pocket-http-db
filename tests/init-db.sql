@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS applications (
 	description TEXT,
 	name VARCHAR,
 	status VARCHAR,
+	-- TODO remove deprecated field once database updated
 	pay_plan_type VARCHAR,
 	owner VARCHAR,
 	url VARCHAR,
@@ -100,9 +101,20 @@ CREATE TABLE IF NOT EXISTS applications (
 	first_date_surpassed TIMESTAMP NULL,
 	created_at TIMESTAMP NULL,
 	updated_at TIMESTAMP NULL,
-	PRIMARY KEY (application_id),
+	PRIMARY KEY (application_id)
+);
+
+CREATE TABLE IF NOT EXISTS app_limits (
+	id INT GENERATED ALWAYS AS IDENTITY,
+	application_id VARCHAR NOT NULL UNIQUE,
+	pay_plan VARCHAR NOT NULL,
+	custom_limit VARCHAR NULL,
+	PRIMARY KEY (id),
+	CONSTRAINT fk_application
+      FOREIGN KEY(application_id) 
+	  	REFERENCES applications(application_id),
 	CONSTRAINT fk_pay_plan
-      FOREIGN KEY(pay_plan_type) 
+      FOREIGN KEY(pay_plan) 
 	  	REFERENCES pay_plans(plan_type)
 );
 
@@ -171,6 +183,7 @@ INSERT INTO pay_plans (plan_type, daily_limit)
 VALUES
     ('FREETIER_V0', 250000),
     ('PAY_AS_YOU_GO_V0', 0),
+    ('ENTERPRISE', 0),
     ('TEST_PLAN_V0', 100),
     ('TEST_PLAN_10K', 10000),
     ('TEST_PLAN_90K', 90000);
@@ -208,11 +221,22 @@ CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
     
 $$ LANGUAGE plpgsql;
 
+CREATE TRIGGER loadbalancer_notify_event
+AFTER INSERT OR UPDATE ON loadbalancers
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER stickiness_options_notify_event
+AFTER INSERT OR UPDATE ON stickiness_options
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER lb_apps_notify_event
+AFTER INSERT ON lb_apps
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
 CREATE TRIGGER application_notify_event
 AFTER INSERT OR UPDATE ON applications
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER blockchain_notify_event
-AFTER INSERT OR UPDATE ON blockchains
+CREATE TRIGGER app_limits_notify_event
+AFTER INSERT ON app_limits
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER gateway_aat_notify_event
 AFTER INSERT ON gateway_aat
@@ -220,21 +244,18 @@ AFTER INSERT ON gateway_aat
 CREATE TRIGGER gateway_settings_notify_event
 AFTER INSERT OR UPDATE ON gateway_settings
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER loadbalancer_notify_event
-AFTER INSERT OR UPDATE ON loadbalancers
-    FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER notification_settings_notify_event
 AFTER INSERT OR UPDATE ON notification_settings
+    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+
+CREATE TRIGGER blockchain_notify_event
+AFTER INSERT OR UPDATE ON blockchains
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER redirect_notify_event
 AFTER INSERT ON redirects
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER stickiness_options_notify_event
-AFTER INSERT OR UPDATE ON stickiness_options
-    FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER sync_check_options_notify_event
 AFTER INSERT ON sync_check_options
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER lb_apps_notify_event
-AFTER INSERT ON lb_apps
-    FOR EACH ROW EXECUTE PROCEDURE notify_event();
+	
+	

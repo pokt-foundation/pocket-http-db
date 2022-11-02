@@ -31,7 +31,10 @@ type Cache struct {
 	payPlansMap                map[repository.PayPlanType]*repository.PayPlan
 	payPlans                   []*repository.PayPlan
 	redirectsMapByBlockchainID map[string][]*repository.Redirect
-	listening                  bool
+
+	listening bool
+
+	pendingAppLimit            map[string]repository.AppLimit
 	pendingGatewayAAT          map[string]repository.GatewayAAT
 	pendingGatewaySettings     map[string]repository.GatewaySettings
 	pendingNotifactionSettings map[string]repository.NotificationSettings
@@ -44,6 +47,7 @@ type Cache struct {
 func NewCache(reader Reader) *Cache {
 	return &Cache{
 		reader:                     reader,
+		pendingAppLimit:            make(map[string]repository.AppLimit),
 		pendingGatewayAAT:          make(map[string]repository.GatewayAAT),
 		pendingGatewaySettings:     make(map[string]repository.GatewaySettings),
 		pendingNotifactionSettings: make(map[string]repository.NotificationSettings),
@@ -150,19 +154,11 @@ func (c *Cache) setApplications() error {
 	applicationsMapByUserID := make(map[string][]*repository.Application)
 
 	for i := 0; i < len(applications); i++ {
-		plan := c.payPlansMap[applications[i].PayPlanType]
+		app := applications[i]
+		applicationID, userID := app.ID, app.UserID
 
-		if plan != nil {
-			applications[i].Limits = repository.AppLimits{
-				PlanType:   plan.PlanType,
-				DailyLimit: plan.DailyLimit,
-			}
-		}
-
-		applications[i].PayPlanType = "" // set to empty to avoid two sources of truth
-
-		applicationsMap[applications[i].ID] = applications[i]
-		applicationsMapByUserID[applications[i].UserID] = append(applicationsMapByUserID[applications[i].UserID], applications[i])
+		applicationsMap[applicationID] = app
+		applicationsMapByUserID[userID] = append(applicationsMapByUserID[userID], app)
 	}
 
 	c.applications = applications
@@ -174,18 +170,14 @@ func (c *Cache) setApplications() error {
 
 // addApplication adds application to cache
 func (c *Cache) addApplication(app repository.Application) {
-	if app.PayPlanType != "" {
-		newPlan := c.GetPayPlan(app.PayPlanType)
-		app.Limits = repository.AppLimits{
-			PlanType:   newPlan.PlanType,
-			DailyLimit: newPlan.DailyLimit,
-		}
-
-		app.PayPlanType = "" // set to empty to avoid two sources of truth
-	}
-
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+
+	limit, ok := c.pendingAppLimit[app.ID]
+	if ok {
+		app.Limit = limit
+		delete(c.pendingAppLimit, app.ID)
+	}
 
 	aat, ok := c.pendingGatewayAAT[app.ID]
 	if ok {
@@ -208,6 +200,29 @@ func (c *Cache) addApplication(app repository.Application) {
 	c.applications = append(c.applications, &app)
 	c.applicationsMap[app.ID] = &app
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], &app)
+}
+
+func (c *Cache) addAppLimit(limit repository.AppLimit) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	appID := limit.ID
+	limit.ID = "" // to avoid multiple sources of truth
+
+	if limit.PayPlan.Type != repository.Enterprise {
+		payPlan, ok := c.payPlansMap[limit.PayPlan.Type]
+		if ok {
+			limit.PayPlan.Limit = payPlan.Limit
+		}
+	}
+
+	app := c.applicationsMap[appID]
+	if app != nil {
+		app.Limit = limit
+		return
+	}
+
+	c.pendingAppLimit[appID] = limit
 }
 
 func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
@@ -265,16 +280,18 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 
 	app := c.applicationsMap[inApp.ID]
 
-	if inApp.PayPlanType != "" {
-		newPlan := c.payPlansMap[inApp.PayPlanType]
-		app.Limits = repository.AppLimits{
-			PlanType:   newPlan.PlanType,
-			DailyLimit: newPlan.DailyLimit,
+	limit := app.Limit
+
+	if limit.PayPlan.Type != repository.Enterprise {
+		payPlan, ok := c.payPlansMap[limit.PayPlan.Type]
+		if ok {
+			limit.PayPlan.Limit = payPlan.Limit
 		}
 	}
 
 	app.Name = inApp.Name
 	app.Status = inApp.Status
+	app.Limit = limit
 	app.FirstDateSurpassed = inApp.FirstDateSurpassed
 	app.UpdatedAt = inApp.UpdatedAt
 }
@@ -445,7 +462,7 @@ func (c *Cache) setPayPlans() error {
 	payPlansMap := make(map[repository.PayPlanType]*repository.PayPlan)
 
 	for _, payPlan := range payPlans {
-		payPlansMap[payPlan.PlanType] = payPlan
+		payPlansMap[payPlan.Type] = payPlan
 	}
 
 	c.payPlans = payPlans
@@ -496,19 +513,19 @@ func (c *Cache) SetCache() error {
 		return err
 	}
 
-	// always call after setPayPlans func
-	err = c.setApplications()
-	if err != nil {
-		return err
-	}
-
-	// always call after setRedirects func
+	// Always call after setRedirects
 	err = c.setBlockchains()
 	if err != nil {
 		return err
 	}
 
-	// always call after setApplications func
+	// Always call after setPayPlans
+	err = c.setApplications()
+	if err != nil {
+		return err
+	}
+
+	// Always call after setApplications
 	err = c.setLoadBalancers()
 	if err != nil {
 		return err
