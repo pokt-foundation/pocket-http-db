@@ -44,7 +44,7 @@ type Cache struct {
 }
 
 // NewCache returns cache instance from reader interface
-func NewCache(reader Reader) *Cache {
+func NewCache(reader Reader, logger *logrus.Logger) *Cache {
 	return &Cache{
 		reader:                     reader,
 		pendingGatewayAAT:          make(map[string]repository.GatewayAAT),
@@ -53,6 +53,7 @@ func NewCache(reader Reader) *Cache {
 		pendingSyncCheckOptions:    make(map[string]repository.SyncCheckOptions),
 		pendingStickyOptions:       make(map[string]repository.StickyOptions),
 		pendingLbApps:              make(map[string][]repository.LbApp),
+		log:                        logger,
 	}
 }
 
@@ -485,7 +486,7 @@ func (c *Cache) addRedirect(redirect repository.Redirect) {
 }
 
 // SetCache gets all values from DB and stores them in cache
-func (c *Cache) SetCache(logger *logrus.Logger) error {
+func (c *Cache) SetCache() error {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -518,7 +519,7 @@ func (c *Cache) SetCache(logger *logrus.Logger) error {
 	}
 
 	if !c.listening {
-		go c.listen(logger)
+		go c.listen()
 	}
 
 	return nil

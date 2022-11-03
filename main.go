@@ -40,7 +40,7 @@ func cacheHandler(router *router.Router) {
 	for {
 		time.Sleep(time.Duration(cacheRefresh) * time.Minute)
 
-		err := router.Cache.SetCache(log)
+		err := router.Cache.SetCache()
 		if err != nil {
 			logError("Cache refresh failed", err)
 		}

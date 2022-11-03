@@ -187,10 +187,8 @@ func (c *Cache) parseNotification(n repository.Notification) {
 	}
 }
 
-func (c *Cache) listen(logger *logrus.Logger) {
+func (c *Cache) listen() {
 	c.listening = true
-
-	c.log = logger
 
 	for {
 		n := <-c.reader.NotificationChannel()

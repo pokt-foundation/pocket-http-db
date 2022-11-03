@@ -58,9 +58,9 @@ func (rt *Router) logError(err error) {
 
 // NewRouter returns router instance
 func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
-	cache := cache.NewCache(reader)
+	cache := cache.NewCache(reader, logger)
 
-	err := cache.SetCache(logger)
+	err := cache.SetCache()
 	if err != nil {
 		return nil, err
 	}
