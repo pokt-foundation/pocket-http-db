@@ -61,9 +61,9 @@ jobs:
           environment-variables: |
             DD_API_KEY=${{ secrets.DATADOG_API_KEY }}
             DD_SITE=datadoghq.eu
-            DD_LOGS_ENABLED=false
+            DD_LOGS_ENABLED=true
             DD_APM_ENABLED=true
-            DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true            
+            DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
 
       - name: Deploy / us-west-2
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
