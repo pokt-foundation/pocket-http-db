@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -42,16 +41,6 @@ type PHDTestSuite struct {
 }
 
 func (t *PHDTestSuite) SetupSuite() {
-	_, err := exec.Command("docker", "compose", "up", "-d", "--build", "--force-recreate").Output()
-	t.NoError(err)
-
-	_, err = exec.Command("docker", "ps", "-a").Output()
-	t.NoError(err)
-
-	output, err := exec.Command("curl", "http://localhost:8080").Output()
-	t.NoError(err)
-	t.Equal("Pocket HTTP DB is up and running!", string(output))
-
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
 			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
@@ -64,13 +53,6 @@ func (t *PHDTestSuite) SetupSuite() {
 	t.PGDriver = pgDriver
 }
 
-func (t *PHDTestSuite) TearDownSuite() {
-	t.PGDriver.Close()
-
-	_, err := exec.Command("docker-compose", "down", "--remove-orphans", "--rmi", "all", "-v").Output()
-	t.NoError(err)
-}
-
 func TestE2E_RunSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping end to end test")
@@ -80,12 +62,12 @@ func TestE2E_RunSuite(t *testing.T) {
 }
 
 /*
-The End-to-End test suite:
-1) builds the Pocket HTTP DB Docker image that we deploy
-2) pulls the Postgres image and initializes it with the database tables used in production
-3) launches PHD in a container connected to the Postgres container
-4) performs every operation that PHD can perform for each set of endpoints and checks results
-5) verifies that the records exist in the Postgres DB as well as in the PHD cache
+To run the E2E suite use the command `make test_e2e` from the repository root.
+The E2E suite also runs on all Pull Requests to the main or staging branches.
+
+The End-to-End test suite uses a Dockerized reproduction of Postgres and PHD and
+performs every operation that PHD can perform for each set of endpoints, checks results
+then verifies that the records exist in the Postgres DB as well as in the PHD cache.
 */
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {

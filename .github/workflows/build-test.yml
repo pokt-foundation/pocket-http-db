@@ -29,7 +29,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -52,5 +52,8 @@ jobs:
       - name: Run Unit tests
         run: go test ./... -short
 
-      - name: Run E2E tests
+      - name: Build the Docker test stack
+        run: docker-compose -f ./tests/docker-compose.yml up -d
+
+      - name: Run E2E test
         run: go test -v ./... -run E2E
