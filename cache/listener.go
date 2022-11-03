@@ -1,10 +1,8 @@
 package cache
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
 	"github.com/sirupsen/logrus"
@@ -21,42 +19,24 @@ var (
 	errParseSyncCheckOptionsFailed     = errors.New("parse sync check options failed")
 	errParseStickinessOptionsFailed    = errors.New("parse stickiness options failed")
 	errParseRedirectFailed             = errors.New("parse redirect failed")
-
-	errInvalidFormatInput = errors.New("input could not be marshaled")
-
-	log = logrus.New()
 )
 
-func logError(msg string, inputs []interface{}, err error) {
-	inputStr := ""
-
-	for _, v := range inputs {
-		inputStr += fmt.Sprintf("%v,", interfaceToString(v))
+func (c *Cache) logError(err error) {
+	if c.log == nil {
+		c.log = logrus.New()
 	}
-
-	inputStr = strings.TrimRight(inputStr, ",")
 
 	fields := logrus.Fields{
-		"err":    err.Error(),
-		"inputs": inputStr,
+		"err": err.Error(),
 	}
 
-	log.WithFields(fields).Error(fmt.Sprintf("%s with error: %s", msg, err.Error()))
-}
-
-func interfaceToString(inter interface{}) string {
-	marshaledInterface, err := json.Marshal(inter)
-	if err != nil {
-		return errInvalidFormatInput.Error()
-	}
-
-	return string(marshaledInterface)
+	c.log.WithFields(fields).Error(err)
 }
 
 func (c *Cache) parseApplicationNotification(n repository.Notification) {
 	app, ok := n.Data.(*repository.Application)
 	if !ok {
-		logError("parseApplicationNotification failed", []interface{}{n.Data}, errParseApplicationFailed)
+		c.logError(fmt.Errorf("parseApplicationNotification failed: %w", errParseApplicationFailed))
 		return
 	}
 
@@ -71,7 +51,7 @@ func (c *Cache) parseApplicationNotification(n repository.Notification) {
 func (c *Cache) parseBlockchainNotification(n repository.Notification) {
 	blockchain, ok := n.Data.(*repository.Blockchain)
 	if !ok {
-		logError("parseBlockchainNotification failed", []interface{}{n.Data}, errParseBlockchainFailed)
+		c.logError(fmt.Errorf("parseBlockchainNotification failed: %w", errParseBlockchainFailed))
 		return
 	}
 
@@ -86,7 +66,7 @@ func (c *Cache) parseBlockchainNotification(n repository.Notification) {
 func (c *Cache) parseGatewayAATNotification(n repository.Notification) {
 	aat, ok := n.Data.(*repository.GatewayAAT)
 	if !ok {
-		logError("parseGatewayAATNotification failed", []interface{}{n.Data}, errParseGatewayAATFailed)
+		c.logError(fmt.Errorf("parseGatewayAATNotification failed: %w", errParseGatewayAATFailed))
 		return
 	}
 
@@ -98,7 +78,7 @@ func (c *Cache) parseGatewayAATNotification(n repository.Notification) {
 func (c *Cache) parseGatewaySettingsNotification(n repository.Notification) {
 	settings, ok := n.Data.(*repository.GatewaySettings)
 	if !ok {
-		logError("parseGatewaySettingsNotification failed", []interface{}{n.Data}, errParseGatewaySettingsFailed)
+		c.logError(fmt.Errorf("parseGatewaySettingsNotification failed: %w", errParseGatewaySettingsFailed))
 		return
 	}
 
@@ -110,7 +90,7 @@ func (c *Cache) parseGatewaySettingsNotification(n repository.Notification) {
 func (c *Cache) parseLoadBalancerNotification(n repository.Notification) {
 	lb, ok := n.Data.(*repository.LoadBalancer)
 	if !ok {
-		logError("parseLoadBalancerNotification failed", []interface{}{n.Data}, errParseLoadBalancerFailed)
+		c.logError(fmt.Errorf("parseLoadBalancerNotification failed: %w", errParseLoadBalancerFailed))
 		return
 	}
 
@@ -125,7 +105,7 @@ func (c *Cache) parseLoadBalancerNotification(n repository.Notification) {
 func (c *Cache) parseNotificationSettingsNotification(n repository.Notification) {
 	settings, ok := n.Data.(*repository.NotificationSettings)
 	if !ok {
-		logError("parseNotificationSettingsNotification failed", []interface{}{n.Data}, errParseNotificationSettingsFailed)
+		c.logError(fmt.Errorf("parseNotificationSettingsNotification failed: %w", errParseNotificationSettingsFailed))
 		return
 	}
 
@@ -137,7 +117,7 @@ func (c *Cache) parseNotificationSettingsNotification(n repository.Notification)
 func (c *Cache) parseRedirectNotification(n repository.Notification) {
 	redirect, ok := n.Data.(*repository.Redirect)
 	if !ok {
-		logError("parseRedirectNotification failed", []interface{}{n.Data}, errParseRedirectFailed)
+		c.logError(fmt.Errorf("parseRedirectNotification failed: %w", errParseRedirectFailed))
 		return
 	}
 
@@ -149,7 +129,7 @@ func (c *Cache) parseRedirectNotification(n repository.Notification) {
 func (c *Cache) parseStickinessOptionsNotification(n repository.Notification) {
 	opts, ok := n.Data.(*repository.StickyOptions)
 	if !ok {
-		logError("parseStickinessOptionsNotification failed", []interface{}{n.Data}, errParseStickinessOptionsFailed)
+		c.logError(fmt.Errorf("parseStickinessOptionsNotification failed: %w", errParseStickinessOptionsFailed))
 		return
 	}
 
@@ -161,7 +141,7 @@ func (c *Cache) parseStickinessOptionsNotification(n repository.Notification) {
 func (c *Cache) parseSyncOptionsNotification(n repository.Notification) {
 	opts, ok := n.Data.(*repository.SyncCheckOptions)
 	if !ok {
-		logError("parseSyncOptionsNotification failed", []interface{}{n.Data}, errParseSyncCheckOptionsFailed)
+		c.logError(fmt.Errorf("parseSyncOptionsNotification failed: %w", errParseSyncCheckOptionsFailed))
 		return
 	}
 
@@ -173,7 +153,7 @@ func (c *Cache) parseSyncOptionsNotification(n repository.Notification) {
 func (c *Cache) parseLbApps(n repository.Notification) {
 	lbApp, ok := n.Data.(*repository.LbApp)
 	if !ok {
-		logError("parseLbApps failed", []interface{}{n.Data}, errParseLBAppsFailed)
+		c.logError(fmt.Errorf("parseLbApps failed: %w", errParseLBAppsFailed))
 		return
 	}
 
@@ -207,8 +187,10 @@ func (c *Cache) parseNotification(n repository.Notification) {
 	}
 }
 
-func (c *Cache) listen() {
+func (c *Cache) listen(logger *logrus.Logger) {
 	c.listening = true
+
+	c.log = logger
 
 	for {
 		n := <-c.reader.NotificationChannel()

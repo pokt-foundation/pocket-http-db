@@ -19,9 +19,6 @@ var (
 	errBalancerNotFound    = errors.New("load balancer not found")
 	errBlockchainNotFound  = errors.New("blockchain not found")
 	errApplicationNotFound = errors.New("applications not found")
-	errInvalidFormatInput  = errors.New("input could not be marshaled")
-
-	log = logrus.New()
 )
 
 // Writer represents the implementation of writer interface
@@ -44,39 +41,26 @@ type Router struct {
 	Router  *mux.Router
 	Writer  Writer
 	APIKeys map[string]bool
+	log     *logrus.Logger
 }
 
-func logError(msg string, inputs []interface{}, err error) {
-	inputStr := ""
-
-	for _, v := range inputs {
-		inputStr += fmt.Sprintf("%v,", interfaceToString(v))
+func (rt *Router) logError(err error) {
+	if rt.log == nil {
+		rt.log = logrus.New()
 	}
-
-	inputStr = strings.TrimRight(inputStr, ",")
 
 	fields := logrus.Fields{
-		"err":    err.Error(),
-		"inputs": inputStr,
+		"err": err.Error(),
 	}
 
-	log.WithFields(fields).Error(fmt.Sprintf("%s with error: %s", msg, err.Error()))
-}
-
-func interfaceToString(inter interface{}) string {
-	marshaledInterface, err := json.Marshal(inter)
-	if err != nil {
-		return errInvalidFormatInput.Error()
-	}
-
-	return string(marshaledInterface)
+	rt.log.WithFields(fields).Error(err)
 }
 
 // NewRouter returns router instance
-func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool) (*Router, error) {
+func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
 	cache := cache.NewCache(reader)
 
-	err := cache.SetCache()
+	err := cache.SetCache(logger)
 	if err != nil {
 		return nil, err
 	}
@@ -198,10 +182,9 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-
 	fullApp, err := rt.Writer.WriteApplication(&app)
 	if err != nil {
-		logError("WriteApplication in CreateApplication failed", []interface{}{app}, errApplicationNotFound)
+		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -224,7 +207,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 	app := rt.Cache.GetApplication(vars["id"])
 	if app == nil {
-		logError(" GetApplication in UpdateApplicationfailed", []interface{}{vars}, errApplicationNotFound)
+		rt.logError(fmt.Errorf("GetApplication in UpdateApplication failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errApplicationNotFound.Error())
 		return
 	}
@@ -244,7 +227,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	if updateInput.Remove {
 		err = rt.Writer.RemoveApplication(vars["id"])
 		if err != nil {
-			logError("RemoveApplication in UpdateApplication failed", []interface{}{updateInput}, err)
+			rt.logError(fmt.Errorf("RemoveApplication in UpdateApplication failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -253,7 +236,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
 		if err != nil {
-			logError("UpdateApplication failed", []interface{}{updateInput}, err)
+			rt.logError(fmt.Errorf("UpdateApplication failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -292,7 +275,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 
 	err := decoder.Decode(&updateInput)
 	if err != nil {
-		logError("UpdateFirstDateSurpassed decode failed", []interface{}{updateInput}, err)
+		rt.logError(fmt.Errorf("UpdateFirstDateSurpassed decode failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -318,7 +301,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 
 	err = rt.Writer.UpdateFirstDateSurpassed(&updateInput)
 	if err != nil {
-		logError("UpdateFirstDateSurpassed failed", []interface{}{updateInput}, err)
+		rt.logError(fmt.Errorf("UpdateFirstDateSurpassed failed: %W", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -336,7 +319,7 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 	apps := rt.Cache.GetApplicationsByUserID(vars["id"])
 
 	if len(apps) == 0 {
-		logError("GetLoadBalancerByUserID failed", []interface{}{vars}, errApplicationNotFound)
+		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errApplicationNotFound.Error())
 		return
 	}
@@ -350,7 +333,7 @@ func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request
 	lbs := rt.Cache.GetLoadBalancersByUserID(vars["id"])
 
 	if len(lbs) == 0 {
-		logError("GetLoadBalancerByUserID failed", []interface{}{vars}, errBalancerNotFound)
+		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
 		return
 	}
@@ -364,7 +347,7 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	blockchain := rt.Cache.GetBlockchain(vars["id"])
 
 	if blockchain == nil {
-		logError("GetBlockchain failed", []interface{}{vars}, errBlockchainNotFound)
+		rt.logError(fmt.Errorf("GetBlockchain failed: %w", errBlockchainNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
 		return
 	}
@@ -382,7 +365,7 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&active)
 	if err != nil {
-		logError("ActivateBlockchain decode failed", []interface{}{active}, err)
+		rt.logError(fmt.Errorf("ActivateBlockchain decode failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -391,7 +374,7 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	err = rt.Writer.ActivateBlockchain(blockchainID, active)
 	if err != nil {
-		logError("ActivateBlockchain failed", []interface{}{active, blockchainID}, err)
+		rt.logError(fmt.Errorf("ActivateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -406,7 +389,7 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&blockchain)
 	if err != nil {
-		logError("CreateBlockchain decode failed", []interface{}{blockchain}, err)
+		rt.logError(fmt.Errorf("CreateBlockchain decode failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -415,7 +398,7 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	fullBlockchain, err := rt.Writer.WriteBlockchain(&blockchain)
 	if err != nil {
-		logError("WriteBlockchain in CreateBlockchain failed", []interface{}{blockchain}, err)
+		rt.logError(fmt.Errorf("WriteBlockchain in CreateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -433,7 +416,7 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 
 	if lb == nil {
-		logError("GetLoadBalancer failed", []interface{}{vars}, errBalancerNotFound)
+		rt.logError(fmt.Errorf("GetLoadBalancer failed: %w", errBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
 		return
 	}
@@ -448,7 +431,7 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&lb)
 	if err != nil {
-		logError("CreateLoadBalancer Decode failed", []interface{}{lb}, err)
+		rt.logError(fmt.Errorf("CreateLoadBalancer Decode failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -457,7 +440,7 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	fullLB, err := rt.Writer.WriteLoadBalancer(&lb)
 	if err != nil {
-		logError("WriteLoadBalancer in CreateLoadBalancer failed", []interface{}{lb}, err)
+		rt.logError(fmt.Errorf("WriteLoadBalancer in CreateLoadBalancer failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -476,7 +459,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 	if lb == nil {
-		logError("GetLoadBalancer in UpdateLoadBalancer failed", []interface{}{vars}, errBalancerNotFound)
+		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancer failed: %w", errBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
 		return
 	}
@@ -496,7 +479,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	if updateInput.Remove {
 		err = rt.Writer.RemoveLoadBalancer(vars["id"])
 		if err != nil {
-			logError("RemoveLoadBalancer in UpdateLoadBalancer failed", []interface{}{updateInput, vars}, err)
+			rt.logError(fmt.Errorf("RemoveLoadBalancer in UpdateLoadBalancer failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -505,7 +488,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
 		if err != nil {
-			logError("UpdateLoadBalancer failed", []interface{}{updateInput, vars}, err)
+			rt.logError(fmt.Errorf("UpdateLoadBalancer failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -531,7 +514,7 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 	plan := rt.Cache.GetPayPlan(repository.PayPlanType(strings.ToUpper(vars["type"])))
 
 	if plan == nil {
-		logError("GetPayPlan failed", []interface{}{vars}, errNoPayFound)
+		rt.logError(fmt.Errorf("GetPayPlan failed: %w", errNoPayFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPayFound.Error())
 		return
 	}
@@ -550,7 +533,7 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&redirect)
 	if err != nil {
-		logError("CreateRedirect decode failed", []interface{}{redirect}, err)
+		rt.logError(fmt.Errorf("CreateRedirect decode failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -559,7 +542,7 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 
 	fullRedirect, err := rt.Writer.WriteRedirect(&redirect)
 	if err != nil {
-		logError("WriteRedirect in CreateRedirect failed", []interface{}{redirect}, err)
+		rt.logError(fmt.Errorf("WriteRedirect in CreateRedirect failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

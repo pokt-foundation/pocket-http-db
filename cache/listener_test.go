@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -70,7 +71,7 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 
 	cache := NewCache(readerMock)
 
-	err := cache.SetCache()
+	err := cache.SetCache(logrus.New())
 	if err != nil {
 		panic(err)
 	}

@@ -33,14 +33,14 @@ func logError(msg string, err error) {
 		"err": err.Error(),
 	}
 
-	log.WithFields(fields).Error(fmt.Sprintf("%s with error: %s", msg, err.Error()))
+	log.WithFields(fields).Error(err)
 }
 
 func cacheHandler(router *router.Router) {
 	for {
 		time.Sleep(time.Duration(cacheRefresh) * time.Minute)
 
-		err := router.Cache.SetCache()
+		err := router.Cache.SetCache(log)
 		if err != nil {
 			logError("Cache refresh failed", err)
 		}
@@ -68,7 +68,7 @@ func main() {
 		panic(err)
 	}
 
-	router, err := router.NewRouter(driver, driver, apiKeys)
+	router, err := router.NewRouter(driver, driver, apiKeys, log)
 	if err != nil {
 		panic(err)
 	}

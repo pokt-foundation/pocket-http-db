@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/sirupsen/logrus"
 )
 
 // Reader represents implementation of reader interface
@@ -39,6 +40,7 @@ type Cache struct {
 	pendingSyncCheckOptions    map[string]repository.SyncCheckOptions
 	pendingStickyOptions       map[string]repository.StickyOptions
 	pendingLbApps              map[string][]repository.LbApp
+	log                        *logrus.Logger
 }
 
 // NewCache returns cache instance from reader interface
@@ -483,7 +485,7 @@ func (c *Cache) addRedirect(redirect repository.Redirect) {
 }
 
 // SetCache gets all values from DB and stores them in cache
-func (c *Cache) SetCache() error {
+func (c *Cache) SetCache(logger *logrus.Logger) error {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -516,7 +518,7 @@ func (c *Cache) SetCache() error {
 	}
 
 	if !c.listening {
-		go c.listen()
+		go c.listen(logger)
 	}
 
 	return nil

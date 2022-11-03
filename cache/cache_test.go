@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,7 +75,7 @@ func TestCache_SetCache(t *testing.T) {
 
 	cache := NewCache(readerMock)
 
-	err := cache.SetCache()
+	err := cache.SetCache(logrus.New())
 	c.NoError(err)
 
 	c.NotEmpty(cache.GetApplication("5f62b7d8be3591c4dea8566d"))
@@ -101,10 +102,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	readerMock := &ReaderMock{}
 	cache := NewCache(readerMock)
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{}, errors.New("error on pay plans")).Once()
+	errOnPay := errors.New("error on pay plans")
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{}, errOnPay).Once()
 
-	err := cache.SetCache()
-	c.ErrorContains(err, "error on pay plans")
+	err := cache.SetCache(logrus.New())
+	c.ErrorIs(err, errOnPay)
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
@@ -117,10 +119,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{}, errors.New("error on redirects")).Once()
+	errOnRedirect := errors.New("error on redirects")
+	readerMock.On("ReadRedirects").Return([]*repository.Redirect{}, errOnRedirect).Once()
 
-	err = cache.SetCache()
-	c.ErrorContains(err, "error on redirects")
+	err = cache.SetCache(logrus.New())
+	c.ErrorIs(err, errOnRedirect)
 
 	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
 		{
@@ -137,10 +140,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
+	errOnApplication := errors.New("error on applications")
+	readerMock.On("ReadApplications").Return([]*repository.Application{}, errOnApplication).Once()
 
-	err = cache.SetCache()
-	c.ErrorContains(err, "error on applications")
+	err = cache.SetCache(logrus.New())
+	c.ErrorIs(err, errOnApplication)
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
@@ -149,10 +153,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
+	errOnBlockchains := errors.New("error on blockchains")
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errOnBlockchains).Once()
 
-	err = cache.SetCache()
-	c.ErrorContains(err, "error on blockchains")
+	err = cache.SetCache(logrus.New())
+	c.ErrorIs(err, errOnBlockchains)
 
 	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
 		{
@@ -160,10 +165,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{}, errors.New("error on loadbalancers")).Once()
+	errOnLoadBalancer := errors.New("error on loadbalancers")
+	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{}, errOnLoadBalancer).Once()
 
-	err = cache.SetCache()
-	c.ErrorContains(err, "error on loadbalancers")
+	err = cache.SetCache(logrus.New())
+	c.ErrorIs(err, errOnLoadBalancer)
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
 		{
