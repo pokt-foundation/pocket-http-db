@@ -45,10 +45,6 @@ type Router struct {
 }
 
 func (rt *Router) logError(err error) {
-	if rt.log == nil {
-		rt.log = logrus.New()
-	}
-
 	fields := logrus.Fields{
 		"err": err.Error(),
 	}
@@ -70,6 +66,7 @@ func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool, logg
 		Writer:  writer,
 		Router:  mux.NewRouter(),
 		APIKeys: apiKeys,
+		log:     logger,
 	}
 
 	rt.Router.HandleFunc("/", rt.HealthCheck).Methods(http.MethodGet)

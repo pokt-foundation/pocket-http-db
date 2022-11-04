@@ -22,10 +22,6 @@ var (
 )
 
 func (c *Cache) logError(err error) {
-	if c.log == nil {
-		c.log = logrus.New()
-	}
-
 	fields := logrus.Fields{
 		"err": err.Error(),
 	}
