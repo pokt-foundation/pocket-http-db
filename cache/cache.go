@@ -1,9 +1,11 @@
 package cache
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/sirupsen/logrus"
 )
 
 // Reader represents implementation of reader interface
@@ -38,10 +40,11 @@ type Cache struct {
 	pendingSyncCheckOptions    map[string]repository.SyncCheckOptions
 	pendingStickyOptions       map[string]repository.StickyOptions
 	pendingLbApps              map[string][]repository.LbApp
+	log                        *logrus.Logger
 }
 
 // NewCache returns cache instance from reader interface
-func NewCache(reader Reader) *Cache {
+func NewCache(reader Reader, logger *logrus.Logger) *Cache {
 	return &Cache{
 		reader:                     reader,
 		pendingGatewayAAT:          make(map[string]repository.GatewayAAT),
@@ -50,6 +53,7 @@ func NewCache(reader Reader) *Cache {
 		pendingSyncCheckOptions:    make(map[string]repository.SyncCheckOptions),
 		pendingStickyOptions:       make(map[string]repository.StickyOptions),
 		pendingLbApps:              make(map[string][]repository.LbApp),
+		log:                        logger,
 	}
 }
 
@@ -346,7 +350,7 @@ func (c *Cache) updateBlockchain(inBlockchain repository.Blockchain) {
 func (c *Cache) setLoadBalancers() error {
 	loadBalancers, err := c.reader.ReadLoadBalancers()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
 	}
 
 	loadBalancersMap := make(map[string]*repository.LoadBalancer)
@@ -488,24 +492,24 @@ func (c *Cache) SetCache() error {
 
 	err := c.setPayPlans()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setPayPlans: %w", err)
 	}
 
 	err = c.setRedirects()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setRedirects: %w", err)
 	}
 
 	// always call after setPayPlans func
 	err = c.setApplications()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setApplications: %w", err)
 	}
 
 	// always call after setRedirects func
 	err = c.setBlockchains()
 	if err != nil {
-		return err
+		return fmt.Errorf("err in setBlockchains: %w", err)
 	}
 
 	// always call after setApplications func

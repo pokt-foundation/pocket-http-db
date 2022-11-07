@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -72,7 +73,7 @@ func TestCache_SetCache(t *testing.T) {
 		},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.SetCache()
 	c.NoError(err)
@@ -99,12 +100,13 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{}, errors.New("error on pay plans")).Once()
+	errOnPay := errors.New("error on pay plans")
+	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{}, errOnPay).Once()
 
 	err := cache.SetCache()
-	c.EqualError(err, "error on pay plans")
+	c.ErrorIs(err, errOnPay)
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
@@ -117,10 +119,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{}, errors.New("error on redirects")).Once()
+	errOnRedirect := errors.New("error on redirects")
+	readerMock.On("ReadRedirects").Return([]*repository.Redirect{}, errOnRedirect).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on redirects")
+	c.ErrorIs(err, errOnRedirect)
 
 	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
 		{
@@ -137,10 +140,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
+	errOnApplication := errors.New("error on applications")
+	readerMock.On("ReadApplications").Return([]*repository.Application{}, errOnApplication).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on applications")
+	c.ErrorIs(err, errOnApplication)
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
@@ -149,10 +153,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
+	errOnBlockchains := errors.New("error on blockchains")
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errOnBlockchains).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on blockchains")
+	c.ErrorIs(err, errOnBlockchains)
 
 	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
 		{
@@ -160,10 +165,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{}, errors.New("error on loadbalancers")).Once()
+	errOnLoadBalancer := errors.New("error on loadbalancers")
+	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{}, errOnLoadBalancer).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on loadbalancers")
+	c.ErrorIs(err, errOnLoadBalancer)
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
 		{
@@ -203,7 +209,7 @@ func TestCache_AddApplication(t *testing.T) {
 		},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.setPayPlans()
 	c.NoError(err)
@@ -264,7 +270,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 		},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.setPayPlans()
 	c.NoError(err)
@@ -320,7 +326,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 		},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.setLoadBalancers()
 	c.NoError(err)
@@ -357,7 +363,7 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 		},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.setLoadBalancers()
 	c.NoError(err)
@@ -384,7 +390,7 @@ func TestCache_AddBlockchain(t *testing.T) {
 		{ID: "0001", Ticker: "POKT"},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.setBlockchains()
 	c.NoError(err)
@@ -405,7 +411,7 @@ func TestCache_UpdateBlockchain(t *testing.T) {
 		{ID: "0001", Active: false},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.setBlockchains()
 	c.NoError(err)
@@ -437,7 +443,7 @@ func TestCache_AddRedirect(t *testing.T) {
 		{BlockchainID: "0002", Alias: "eth-mainnet"},
 	}, nil)
 
-	cache := NewCache(readerMock)
+	cache := NewCache(readerMock, logrus.New())
 
 	err := cache.setRedirects()
 	c.NoError(err)
