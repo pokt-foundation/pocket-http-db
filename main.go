@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	CONNECTION_STRING = "CONNECTION_STRING"
-	API_KEYS          = "API_KEYS"
-	CACHE_REFRESH     = "CACHE_REFRESH"
-	PORT              = "PORT"
+	connectionString = "CONNECTION_STRING"
+	apiKeys          = "API_KEYS"
+	cacheRefresh     = "CACHE_REFRESH"
+	port             = "PORT"
 
-	CACHE_REFRESH_DEFAULT_MINUTES = 10
-	DEFAULT_PORT                  = "8080"
+	defaultCacheRefreshMinutes = 10
+	defaultPort                = "8080"
 )
 
 type options struct {
@@ -32,10 +32,10 @@ type options struct {
 
 func gatherOptions() options {
 	return options{
-		connectionString: environment.MustGetString(CONNECTION_STRING),
-		apiKeys:          environment.MustGetStringMap(API_KEYS, ","),
-		cacheRefresh:     environment.GetInt64(CACHE_REFRESH, CACHE_REFRESH_DEFAULT_MINUTES),
-		port:             environment.GetString(PORT, DEFAULT_PORT),
+		connectionString: environment.MustGetString(connectionString),
+		apiKeys:          environment.MustGetStringMap(apiKeys, ","),
+		cacheRefresh:     environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes),
+		port:             environment.GetString(port, defaultPort),
 	}
 }
 
