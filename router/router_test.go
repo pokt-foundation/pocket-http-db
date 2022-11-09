@@ -458,7 +458,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	router.Router.ServeHTTP(rr, req)
 
-	c.Equal(http.StatusInternalServerError, rr.Code)
+	c.Equal(http.StatusUnprocessableEntity, rr.Code)
 }
 
 func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {

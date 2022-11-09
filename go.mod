@@ -6,7 +6,7 @@ require (
 	github.com/gojektech/heimdall v5.0.2+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.6
-	github.com/pokt-foundation/portal-api-go v0.5.1
+	github.com/pokt-foundation/portal-api-go v0.6.0
 	github.com/pokt-foundation/utils-go v0.2.5
 	github.com/stretchr/testify v1.8.0
 )
