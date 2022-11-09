@@ -154,10 +154,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errors.New("error on blockchains")).Once()
+	errOnBlockchain := errors.New("error on blockchains")
+	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{}, errOnBlockchain).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on blockchains")
+	c.ErrorIs(err, errOnBlockchain)
 
 	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
 		{
@@ -165,10 +166,11 @@ func TestCache_SetCacheFailure(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications").Return([]*repository.Application{}, errors.New("error on applications")).Once()
+	errOnApplications := errors.New("error on applications")
+	readerMock.On("ReadApplications").Return([]*repository.Application{}, errOnApplications).Once()
 
 	err = cache.SetCache()
-	c.EqualError(err, "error on applications")
+	c.ErrorIs(err, errOnApplications)
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{

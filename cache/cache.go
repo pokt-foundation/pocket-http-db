@@ -520,13 +520,13 @@ func (c *Cache) SetCache() error {
 	// Always call after setRedirects
 	err = c.setBlockchains()
 	if err != nil {
-		return fmt.Errorf("err in setApplications: %w", err)
+		return fmt.Errorf("err in setBlockchains: %w", err)
 	}
 
 	// Always call after setPayPlans
 	err = c.setApplications()
 	if err != nil {
-		return fmt.Errorf("err in setBlockchains: %w", err)
+		return fmt.Errorf("err in setApplications: %w", err)
 	}
 
 	// Always call after setApplications
