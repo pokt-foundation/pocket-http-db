@@ -19,9 +19,6 @@ test_e2e:
 	-go test ./... -run E2E -count=1 -v;
 	make test_env_down;
 
-test_verbose:
-	go test ./... -v
-
 init-pre-commit:
 	wget https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz;
 	python3 pre-commit-2.20.0.pyz install;

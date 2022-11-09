@@ -11,6 +11,7 @@ import (
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -157,7 +158,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	return NewRouter(readerMock, nil, map[string]bool{"": true})
+	return NewRouter(readerMock, nil, map[string]bool{"": true}, logrus.New())
 }
 
 func TestRouter_HealthCheck(t *testing.T) {
