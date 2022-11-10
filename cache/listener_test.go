@@ -120,7 +120,7 @@ func TestCache_listenApplication(t *testing.T) {
 		},
 	})
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
+	time.Sleep(2 * time.Second) // need time for cache refresh
 
 	app := cache.GetApplication("321")
 	c.Equal("pablo", app.Name)
