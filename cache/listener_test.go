@@ -158,6 +158,41 @@ func TestCache_listenApplication(t *testing.T) {
 	c.True(app.NotificationSettings.SignedUp)
 }
 
+func TestCache_listenAppLimit(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := NewReaderMock()
+	cache := newMockCache(readerMock)
+
+	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.AppLimit{
+		ID:      "321",
+		PayPlan: repository.PayPlan{Type: repository.PayAsYouGoV0, Limit: 0},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app := cache.GetApplication("321")
+	c.Nil(app)
+
+	pendingUpdates := cache.pendingAppLimit
+	c.Len(pendingUpdates, 1)
+	c.Equal(repository.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
+
+	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
+		ID:   "321",
+		Name: "pablo",
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+	c.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), app.Limit.PayPlan.Type)
+	c.Equal(0, app.DailyLimit())
+
+	pendingUpdates = cache.pendingAppLimit
+	c.Len(pendingUpdates, 0)
+}
+
 func TestCache_listenBlockchain(t *testing.T) {
 	c := require.New(t)
 
