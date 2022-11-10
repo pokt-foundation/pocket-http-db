@@ -120,7 +120,7 @@ func TestCache_listenApplication(t *testing.T) {
 		},
 	})
 
-	time.Sleep(2 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	app := cache.GetApplication("321")
 	c.Equal("pablo", app.Name)
@@ -164,6 +164,10 @@ func TestCache_listenAppLimit(t *testing.T) {
 	readerMock := NewReaderMock()
 	cache := newMockCache(readerMock)
 
+	cache.payPlansMap = map[repository.PayPlanType]*repository.PayPlan{
+		repository.PayAsYouGoV0: {Type: repository.PayAsYouGoV0, Limit: 0},
+	}
+
 	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.AppLimit{
 		ID:      "321",
 		PayPlan: repository.PayPlan{Type: repository.PayAsYouGoV0, Limit: 0},
@@ -179,8 +183,13 @@ func TestCache_listenAppLimit(t *testing.T) {
 	c.Equal(repository.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
 
 	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
-		ID:   "321",
-		Name: "pablo",
+		ID: "321",
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.PayAsYouGoV0,
+				Limit: 0,
+			},
+		},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh

@@ -213,11 +213,6 @@ func (c *Cache) addAppLimit(limit repository.AppLimit) {
 	appID := limit.ID
 	limit.ID = "" // to avoid multiple sources of truth
 
-	if app, ok := c.applicationsMap[appID]; ok {
-		app.Limit = limit
-		return
-	}
-
 	if limit.PayPlan.Type != repository.Enterprise {
 		payPlan, ok := c.payPlansMap[limit.PayPlan.Type]
 		if !ok {
@@ -225,6 +220,11 @@ func (c *Cache) addAppLimit(limit repository.AppLimit) {
 			return
 		}
 		limit.PayPlan.Limit = payPlan.Limit
+	}
+
+	if app, ok := c.applicationsMap[appID]; ok {
+		app.Limit = limit
+		return
 	}
 
 	c.pendingAppLimit[appID] = limit
