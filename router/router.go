@@ -130,25 +130,29 @@ func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetApplications())
 }
 
+// TODO - This Endpoint is DEPRECATED. Remove once Rate Limiter & Portal Workers are updated
+// to parse fields currently found in AppLimits from the /application endpoint instead.
 func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) {
 	apps := rt.Cache.GetApplications()
 
 	var appsLimits []repository.AppLimits
 
 	for _, app := range apps {
-		limits := app.Limits
-
-		limits.AppID = app.ID
-		limits.AppName = app.Name
-		limits.AppUserID = app.UserID
-		limits.PublicKey = app.GatewayAAT.ApplicationPublicKey
-		limits.NotificationSettings = &app.NotificationSettings
-
-		if !app.FirstDateSurpassed.IsZero() {
-			limits.FirstDateSurpassed = &app.FirstDateSurpassed
+		appLimits := repository.AppLimits{
+			AppID:                app.ID,
+			AppName:              app.Name,
+			AppUserID:            app.UserID,
+			PublicKey:            app.GatewayAAT.ApplicationPublicKey,
+			PlanType:             app.Limit.PayPlan.Type,
+			DailyLimit:           app.DailyLimit(),
+			NotificationSettings: &app.NotificationSettings,
 		}
 
-		appsLimits = append(appsLimits, limits)
+		if !app.FirstDateSurpassed.IsZero() {
+			appLimits.FirstDateSurpassed = &app.FirstDateSurpassed
+		}
+
+		appsLimits = append(appsLimits, appLimits)
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, appsLimits)
@@ -184,16 +188,6 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
-	}
-
-	if fullApp.PayPlanType != "" {
-		newPlan := rt.Cache.GetPayPlan(fullApp.PayPlanType)
-		fullApp.Limits = repository.AppLimits{
-			PlanType:   newPlan.PlanType,
-			DailyLimit: newPlan.DailyLimit,
-		}
-
-		fullApp.PayPlanType = "" // set to empty to avoid two sources of truth
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
@@ -233,8 +227,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
 		if err != nil {
-			rt.logError(fmt.Errorf("UpdateApplication failed: %w", err))
-			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			jsonresponse.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
 
@@ -244,15 +237,11 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		if updateInput.Status != "" {
 			app.Status = updateInput.Status
 		}
-		if updateInput.PayPlanType != "" {
-			newPlan := rt.Cache.GetPayPlan(updateInput.PayPlanType)
-			app.Limits = repository.AppLimits{
-				PlanType:   newPlan.PlanType,
-				DailyLimit: newPlan.DailyLimit,
-			}
-		}
 		if !updateInput.FirstDateSurpassed.IsZero() {
 			app.FirstDateSurpassed = updateInput.FirstDateSurpassed
+		}
+		if updateInput.Limit != nil {
+			app.Limit = *updateInput.Limit
 		}
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = *updateInput.GatewaySettings
