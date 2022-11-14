@@ -34,8 +34,13 @@ const (
 		"url": "",
 		"status": "IN_SERVICE",
 		"dummy": true,
-		"payPlanType": "FREETIER_V0",
 		"firstDateSurpassed": null,
+		"limit": {
+			"payPlan": {
+				"planType": "FREETIER_V0",
+				"dailyLimit": 250000
+			}
+		},
 		"gatewayAAT": {
 			"address": "test_address_8dbb89278918da056f589086fb4",
 			"applicationPublicKey": "test_key_7a7d163434b10803eece4ddb2e0726e39ec6bb99b828aa309d05ffd",
@@ -54,10 +59,6 @@ const (
 			"half": false,
 			"threeQuarters": true,
 			"full": true
-		},
-		"limits": {
-			"planType": "",
-			"dailyLimit": 0
 		}
 	}`
 

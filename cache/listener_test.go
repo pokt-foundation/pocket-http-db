@@ -12,24 +12,39 @@ import (
 func newMockCache(readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:          "5f62b7d8be3591c4dea8566d",
-			UserID:      "60ecb2bf67774900350d9c43",
-			PayPlanType: repository.FreetierV0,
+			ID:     "5f62b7d8be3591c4dea8566d",
+			UserID: "60ecb2bf67774900350d9c43",
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type:  repository.FreetierV0,
+					Limit: 250000,
+				},
+			},
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
 			UserID: "60ecb2bf67774900350d9c43",
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type: repository.Enterprise,
+				},
+				CustomLimit: 2000000,
+			},
 		},
 		{
 			ID:     "5f62b7d8be3591c4dea8566f",
 			UserID: "60ecb2bf67774900350d9c44",
+			Limit: repository.AppLimit{
+				PayPlan: repository.PayPlan{
+					Type:  repository.PayAsYouGoV0,
+					Limit: 0,
+				},
+			},
 		},
 	}, nil)
 
 	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
-		{
-			ID: "0021",
-		},
+		{ID: "0021"},
 	}, nil)
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
@@ -45,12 +60,12 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 
 	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
 		{
-			PlanType:   repository.FreetierV0,
-			DailyLimit: 250000,
+			Type:  repository.FreetierV0,
+			Limit: 250000,
 		},
 		{
-			PlanType:   repository.PayAsYouGoV0,
-			DailyLimit: 0,
+			Type:  repository.PayAsYouGoV0,
+			Limit: 0,
 		},
 	}, nil)
 
@@ -97,6 +112,12 @@ func TestCache_listenApplication(t *testing.T) {
 		NotificationSettings: repository.NotificationSettings{
 			Full: true,
 		},
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.FreetierV0,
+				Limit: 250000,
+			},
+		},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -105,6 +126,8 @@ func TestCache_listenApplication(t *testing.T) {
 	c.Equal("pablo", app.Name)
 	c.Equal("123", app.GatewayAAT.Address)
 	c.Equal("123", app.GatewaySettings.SecretKey)
+	c.Equal(repository.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
+	c.Equal(250000, app.DailyLimit())
 	c.True(app.NotificationSettings.Full)
 
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
@@ -117,6 +140,12 @@ func TestCache_listenApplication(t *testing.T) {
 			Full:     true,
 			SignedUp: true,
 		},
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type: repository.Enterprise,
+			},
+			CustomLimit: 2000000,
+		},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -124,7 +153,53 @@ func TestCache_listenApplication(t *testing.T) {
 	app = cache.GetApplication("321")
 	c.Equal("orlando", app.Name)
 	c.Equal("1234", app.GatewaySettings.SecretKey)
+	c.Equal(repository.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
+	c.Equal(2000000, app.DailyLimit())
 	c.True(app.NotificationSettings.SignedUp)
+}
+
+func TestCache_listenAppLimit(t *testing.T) {
+	c := require.New(t)
+
+	readerMock := NewReaderMock()
+	cache := newMockCache(readerMock)
+
+	cache.payPlansMap = map[repository.PayPlanType]*repository.PayPlan{
+		repository.PayAsYouGoV0: {Type: repository.PayAsYouGoV0, Limit: 0},
+	}
+
+	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.AppLimit{
+		ID:      "321",
+		PayPlan: repository.PayPlan{Type: repository.PayAsYouGoV0, Limit: 0},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app := cache.GetApplication("321")
+	c.Nil(app)
+
+	pendingUpdates := cache.pendingAppLimit
+	c.Len(pendingUpdates, 1)
+	c.Equal(repository.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
+
+	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
+		ID: "321",
+		Limit: repository.AppLimit{
+			PayPlan: repository.PayPlan{
+				Type:  repository.PayAsYouGoV0,
+				Limit: 0,
+			},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+	c.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), app.Limit.PayPlan.Type)
+	c.Equal(0, app.DailyLimit())
+
+	pendingUpdates = cache.pendingAppLimit
+	c.Len(pendingUpdates, 0)
 }
 
 func TestCache_listenBlockchain(t *testing.T) {
