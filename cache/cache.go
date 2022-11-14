@@ -33,7 +33,10 @@ type Cache struct {
 	payPlansMap                map[repository.PayPlanType]*repository.PayPlan
 	payPlans                   []*repository.PayPlan
 	redirectsMapByBlockchainID map[string][]*repository.Redirect
-	listening                  bool
+
+	listening bool
+
+	pendingAppLimit            map[string]repository.AppLimit
 	pendingGatewayAAT          map[string]repository.GatewayAAT
 	pendingGatewaySettings     map[string]repository.GatewaySettings
 	pendingNotifactionSettings map[string]repository.NotificationSettings
@@ -47,6 +50,7 @@ type Cache struct {
 func NewCache(reader Reader, logger *logrus.Logger) *Cache {
 	return &Cache{
 		reader:                     reader,
+		pendingAppLimit:            make(map[string]repository.AppLimit),
 		pendingGatewayAAT:          make(map[string]repository.GatewayAAT),
 		pendingGatewaySettings:     make(map[string]repository.GatewaySettings),
 		pendingNotifactionSettings: make(map[string]repository.NotificationSettings),
@@ -154,19 +158,11 @@ func (c *Cache) setApplications() error {
 	applicationsMapByUserID := make(map[string][]*repository.Application)
 
 	for i := 0; i < len(applications); i++ {
-		plan := c.payPlansMap[applications[i].PayPlanType]
+		app := applications[i]
+		applicationID, userID := app.ID, app.UserID
 
-		if plan != nil {
-			applications[i].Limits = repository.AppLimits{
-				PlanType:   plan.PlanType,
-				DailyLimit: plan.DailyLimit,
-			}
-		}
-
-		applications[i].PayPlanType = "" // set to empty to avoid two sources of truth
-
-		applicationsMap[applications[i].ID] = applications[i]
-		applicationsMapByUserID[applications[i].UserID] = append(applicationsMapByUserID[applications[i].UserID], applications[i])
+		applicationsMap[applicationID] = app
+		applicationsMapByUserID[userID] = append(applicationsMapByUserID[userID], app)
 	}
 
 	c.applications = applications
@@ -178,18 +174,14 @@ func (c *Cache) setApplications() error {
 
 // addApplication adds application to cache
 func (c *Cache) addApplication(app repository.Application) {
-	if app.PayPlanType != "" {
-		newPlan := c.GetPayPlan(app.PayPlanType)
-		app.Limits = repository.AppLimits{
-			PlanType:   newPlan.PlanType,
-			DailyLimit: newPlan.DailyLimit,
-		}
-
-		app.PayPlanType = "" // set to empty to avoid two sources of truth
-	}
-
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+
+	limit, ok := c.pendingAppLimit[app.ID]
+	if ok {
+		app.Limit = limit
+		delete(c.pendingAppLimit, app.ID)
+	}
 
 	aat, ok := c.pendingGatewayAAT[app.ID]
 	if ok {
@@ -199,7 +191,9 @@ func (c *Cache) addApplication(app repository.Application) {
 
 	gSettings, ok := c.pendingGatewaySettings[app.ID]
 	if ok {
-		app.GatewaySettings = gSettings
+		// These are the only gateway settings fields set on a newly created app
+		app.GatewaySettings.SecretKey = gSettings.SecretKey
+		app.GatewaySettings.SecretKeyRequired = gSettings.SecretKeyRequired
 		delete(c.pendingGatewaySettings, app.ID)
 	}
 
@@ -212,6 +206,30 @@ func (c *Cache) addApplication(app repository.Application) {
 	c.applications = append(c.applications, &app)
 	c.applicationsMap[app.ID] = &app
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], &app)
+}
+
+func (c *Cache) addAppLimit(limit repository.AppLimit) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	appID := limit.ID
+	limit.ID = "" // to avoid multiple sources of truth
+
+	if limit.PayPlan.Type != repository.Enterprise {
+		payPlan, ok := c.payPlansMap[limit.PayPlan.Type]
+		if !ok {
+			fmt.Println("invalid pay plan type on add app limit")
+			return
+		}
+		limit.PayPlan.Limit = payPlan.Limit
+	}
+
+	if app, ok := c.applicationsMap[appID]; ok {
+		app.Limit = limit
+		return
+	}
+
+	c.pendingAppLimit[appID] = limit
 }
 
 func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
@@ -230,6 +248,7 @@ func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
 	c.pendingGatewayAAT[appID] = aat
 }
 
+// Updates the gateway settings from a listener notification
 func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
@@ -237,13 +256,76 @@ func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
 	appID := settings.ID
 	settings.ID = "" // to avoid multiple sources of truth
 
-	app := c.applicationsMap[appID]
-	if app != nil {
-		app.GatewaySettings = settings
+	app, ok := c.applicationsMap[appID]
+	if !ok { // Add to pending map in case gateway settings notification arrives first
+		c.pendingGatewaySettings[appID] = settings
 		return
 	}
 
-	c.pendingGatewaySettings[appID] = settings
+	// The below fields are sent from the listener on the gateway setting struct
+	app.GatewaySettings.SecretKey = settings.SecretKey
+	app.GatewaySettings.SecretKeyRequired = settings.SecretKeyRequired
+	app.GatewaySettings.WhitelistOrigins = settings.WhitelistOrigins
+	app.GatewaySettings.WhitelistUserAgents = settings.WhitelistUserAgents
+	app.GatewaySettings.WhitelistBlockchains = settings.WhitelistBlockchains
+}
+
+// Updates the gateway settings whitelist contracts from a listener notification
+func (c *Cache) addWhitelistContract(inContract repository.WhitelistContract) {
+	appID := inContract.ID
+	inContract.ID = "" // to avoid multiple sources of truth
+
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
+		return
+	}
+
+	appSettings := app.GatewaySettings
+	var chainIDExists bool
+	for i := range appSettings.WhitelistContracts {
+		if appSettings.WhitelistContracts[i].BlockchainID == inContract.BlockchainID {
+			appSettings.WhitelistContracts[i].Contracts = inContract.Contracts
+			chainIDExists = true
+			break
+		}
+	}
+	if !chainIDExists {
+		appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, inContract)
+	}
+
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	app.GatewaySettings = appSettings
+}
+
+// Updates the gateway settings whitelist methods from a listener notification
+func (c *Cache) addWhitelistMethod(inMethod repository.WhitelistMethod) {
+	appID := inMethod.ID
+	inMethod.ID = "" // to avoid multiple sources of truth
+
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
+		return
+	}
+
+	appSettings := app.GatewaySettings
+	var chainIDExists bool
+	for i := range appSettings.WhitelistMethods {
+		if appSettings.WhitelistMethods[i].BlockchainID == inMethod.BlockchainID {
+			appSettings.WhitelistMethods[i].Methods = inMethod.Methods
+			chainIDExists = true
+			break
+		}
+	}
+	if !chainIDExists {
+		appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, inMethod)
+	}
+
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	app.GatewaySettings = appSettings
 }
 
 func (c *Cache) addNotificationSettings(settings repository.NotificationSettings) {
@@ -269,18 +351,40 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 
 	app := c.applicationsMap[inApp.ID]
 
-	if inApp.PayPlanType != "" {
-		newPlan := c.payPlansMap[inApp.PayPlanType]
-		app.Limits = repository.AppLimits{
-			PlanType:   newPlan.PlanType,
-			DailyLimit: newPlan.DailyLimit,
+	if inApp.UserID == "" {
+		c.removeApplicationFromUserIDMap(inApp, app)
+	}
+
+	limit := app.Limit
+
+	if limit.PayPlan.Type != repository.Enterprise {
+		payPlan, ok := c.payPlansMap[limit.PayPlan.Type]
+		if ok {
+			limit.PayPlan.Limit = payPlan.Limit
 		}
 	}
 
 	app.Name = inApp.Name
 	app.Status = inApp.Status
+	app.Limit = limit
 	app.FirstDateSurpassed = inApp.FirstDateSurpassed
 	app.UpdatedAt = inApp.UpdatedAt
+}
+
+// removeApplicationFromUserIDMap removes applications saved in cache from the applicationsMapByUserID as they no longer have a userID
+func (c *Cache) removeApplicationFromUserIDMap(inApp repository.Application, oldApp *repository.Application) {
+	userID := oldApp.UserID
+
+	appsForUser := c.applicationsMapByUserID[userID]
+	appsForUserAfterRemove := []*repository.Application{}
+
+	for i := range appsForUser {
+		if appsForUser[i].ID != inApp.ID {
+			appsForUserAfterRemove = append(appsForUserAfterRemove, appsForUser[i])
+		}
+	}
+
+	c.applicationsMapByUserID[userID] = appsForUserAfterRemove
 }
 
 func (c *Cache) setBlockchains() error {
@@ -429,15 +533,35 @@ func (c *Cache) addLbApp(lbApp repository.LbApp) {
 }
 
 // updateLoadBalancer updates load balancer saved in cache
-func (c *Cache) updateLoadBalancer(inLb repository.LoadBalancer) {
+func (c *Cache) updateLoadBalancer(inLB repository.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	lb := c.loadBalancersMap[inLb.ID]
+	lb := c.loadBalancersMap[inLB.ID]
 
-	lb.Name = inLb.Name
-	lb.UserID = inLb.UserID
-	lb.UpdatedAt = inLb.UpdatedAt
+	if inLB.UserID == "" {
+		c.removeLoadBalancerFromUserIDMap(inLB, lb)
+	}
+
+	lb.Name = inLB.Name
+	lb.UserID = inLB.UserID
+	lb.UpdatedAt = inLB.UpdatedAt
+}
+
+// removeApplication removes load balancers saved in cache from the loadBalancersMapByUserID as they no longer have a userID
+func (c *Cache) removeLoadBalancerFromUserIDMap(inLB repository.LoadBalancer, oldLB *repository.LoadBalancer) {
+	userID := oldLB.UserID
+
+	lbsForUser := c.loadBalancersMapByUserID[userID]
+	lbsForUserAfterRemove := []*repository.LoadBalancer{}
+
+	for i := range lbsForUser {
+		if lbsForUser[i].ID != inLB.ID {
+			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
+		}
+	}
+
+	c.loadBalancersMapByUserID[userID] = lbsForUserAfterRemove
 }
 
 func (c *Cache) setPayPlans() error {
@@ -449,7 +573,7 @@ func (c *Cache) setPayPlans() error {
 	payPlansMap := make(map[repository.PayPlanType]*repository.PayPlan)
 
 	for _, payPlan := range payPlans {
-		payPlansMap[payPlan.PlanType] = payPlan
+		payPlansMap[payPlan.Type] = payPlan
 	}
 
 	c.payPlans = payPlans
@@ -500,19 +624,19 @@ func (c *Cache) SetCache() error {
 		return fmt.Errorf("err in setRedirects: %w", err)
 	}
 
-	// always call after setPayPlans func
-	err = c.setApplications()
-	if err != nil {
-		return fmt.Errorf("err in setApplications: %w", err)
-	}
-
-	// always call after setRedirects func
+	// Always call after setRedirects
 	err = c.setBlockchains()
 	if err != nil {
 		return fmt.Errorf("err in setBlockchains: %w", err)
 	}
 
-	// always call after setApplications func
+	// Always call after setPayPlans
+	err = c.setApplications()
+	if err != nil {
+		return fmt.Errorf("err in setApplications: %w", err)
+	}
+
+	// Always call after setApplications
 	err = c.setLoadBalancers()
 	if err != nil {
 		return err

@@ -1,20 +1,24 @@
-test_unit:
-	go test ./... -short
+build:
+	CGO_ENABLED=0 GOOS=linux go build -a -o bin/pocket-http-db ./main.go
 
 test_env_up:
-	docker-compose -f ./tests/docker-compose.yml up -d --remove-orphans --build
-
+	docker-compose -f ./docker-compose.test.yml up -d --remove-orphans --build;
+	sleep 2;
 test_env_down:
-	docker-compose -f ./tests/docker-compose.yml down --remove-orphans --rmi all -v
+	docker-compose -f ./docker-compose.test.yml down --remove-orphans -v
+
+run_e2e_tests_v0:
+	-go test -run V0_E2E -count=1 -v;
+run_all_tests_v0:
+	-go test ./... -run V0 -count=1;
+test_unit_v0:
+	go test ./...  -run V0 -short -count=1
+test_e2e_v0: test_env_up run_e2e_tests_v0 test_env_down
+test_v0:     test_env_up run_all_tests_v0 test_env_down
 
 test:
 	make test_env_up;
-	-go test ./... -count=1 -v;
-	make test_env_down;
-
-test_e2e:
-	make test_env_up;
-	-go test ./... -run E2E -count=1 -v;
+	make run_all_tests_v0;
 	make test_env_down;
 
 init-pre-commit:
