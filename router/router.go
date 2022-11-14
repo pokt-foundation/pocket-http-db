@@ -1,7 +1,6 @@
 package router
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -200,26 +199,11 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
 }
 
-func PrettyString(label string, thing interface{}) {
-	jsonThing, _ := json.Marshal(thing)
-	str := string(jsonThing)
-
-	var prettyJSON bytes.Buffer
-	_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-	output := prettyJSON.String()
-
-	fmt.Println(label, output)
-}
-
 func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("CALLING UPDATE APPLICATION", r)
 	vars := mux.Vars(r)
-	fmt.Println("VARS", vars)
 
 	app := rt.Cache.GetApplication(vars["id"])
-	PrettyString("APP", app)
 	if app == nil {
-		fmt.Println("APP = nil")
 		rt.logError(fmt.Errorf("GetApplication in UpdateApplication failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errApplicationNotFound.Error())
 		return
@@ -231,16 +215,13 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 	err := decoder.Decode(&updateInput)
 	if err != nil {
-		fmt.Println("DECODE ERR", err)
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	PrettyString("DECODED INPUT", updateInput)
 
 	defer r.Body.Close()
 
 	if updateInput.Remove {
-		fmt.Println("HIT REMOVE", updateInput.Remove)
 		err = rt.Writer.RemoveApplication(vars["id"])
 		if err != nil {
 			rt.logError(fmt.Errorf("RemoveApplication in UpdateApplication failed: %w", err))
@@ -250,10 +231,8 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 		app.Status = repository.AwaitingGracePeriod
 	} else {
-		fmt.Println("HIT UPDATE", updateInput.Remove)
 		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
 		if err != nil {
-			fmt.Println("WRITER UPDATE ERR", err)
 			rt.logError(fmt.Errorf("UpdateApplication failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -261,36 +240,27 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 
 		if updateInput.Name != "" {
 			app.Name = updateInput.Name
-			fmt.Println("INPUT NAME", updateInput.Name, app.Name)
 		}
 		if updateInput.Status != "" {
 			app.Status = updateInput.Status
-			fmt.Println("INPUT STATUS", updateInput.Status, app.Status)
 		}
 		if updateInput.PayPlanType != "" {
 			newPlan := rt.Cache.GetPayPlan(updateInput.PayPlanType)
-			fmt.Println("NEW PLAN", updateInput.Status, app.Status)
 			app.Limits = repository.AppLimits{
 				PlanType:   newPlan.PlanType,
 				DailyLimit: newPlan.DailyLimit,
 			}
-			fmt.Println("INPUT LIMITS", updateInput.PayPlanType, app.Limits)
 		}
 		if !updateInput.FirstDateSurpassed.IsZero() {
 			app.FirstDateSurpassed = updateInput.FirstDateSurpassed
-			fmt.Println("INPUT FIRSTDATESURPASSED", updateInput.FirstDateSurpassed, app.FirstDateSurpassed)
 		}
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = *updateInput.GatewaySettings
-			fmt.Println("INPUT GATEWAY SETTINGS", updateInput.GatewaySettings, app.GatewaySettings)
 		}
 		if updateInput.NotificationSettings != nil {
 			app.NotificationSettings = *updateInput.NotificationSettings
-			fmt.Println("INPUT NOTIFICATION SETTINGS", updateInput.NotificationSettings, app.NotificationSettings)
 		}
 	}
-
-	PrettyString("APP", app)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
 }
