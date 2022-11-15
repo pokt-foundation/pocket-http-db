@@ -285,6 +285,11 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 
 	app := c.applicationsMap[inApp.ID]
 
+	if inApp.UserID == "" {
+		c.removeApplication(inApp, app)
+		return
+	}
+
 	limit := app.Limit
 
 	if limit.PayPlan.Type != repository.Enterprise {
@@ -299,6 +304,32 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 	app.Limit = limit
 	app.FirstDateSurpassed = inApp.FirstDateSurpassed
 	app.UpdatedAt = inApp.UpdatedAt
+}
+
+// removeApplication removes applications saved in cache
+func (c *Cache) removeApplication(inApp repository.Application, oldApp *repository.Application) {
+	delete(c.applicationsMap, inApp.ID)
+
+	userID := oldApp.UserID
+	appsForUser := c.applicationsMapByUserID[userID]
+	appsForUserAfterRemove := []*repository.Application{}
+	for i := range appsForUser {
+		if appsForUser[i].ID != inApp.ID {
+			appsForUserAfterRemove = append(appsForUserAfterRemove, appsForUser[i])
+		}
+	}
+	c.applicationsMapByUserID[userID] = appsForUserAfterRemove
+
+	for i := range c.applications {
+		if c.applications[i].ID == inApp.ID {
+			c.applications[i] = c.applications[len(c.applications)-1]
+			c.applications = c.applications[:len(c.applications)-1]
+			break
+		}
+	}
+
+	// TODO find way to remove Application from load balancers in cache as well.
+	// Is this necessary since the associated load balancer will always be removed in conjunction with apps?
 }
 
 func (c *Cache) setBlockchains() error {
@@ -447,15 +478,43 @@ func (c *Cache) addLbApp(lbApp repository.LbApp) {
 }
 
 // updateLoadBalancer updates load balancer saved in cache
-func (c *Cache) updateLoadBalancer(inLb repository.LoadBalancer) {
+func (c *Cache) updateLoadBalancer(inLB repository.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	lb := c.loadBalancersMap[inLb.ID]
+	lb := c.loadBalancersMap[inLB.ID]
 
-	lb.Name = inLb.Name
-	lb.UserID = inLb.UserID
-	lb.UpdatedAt = inLb.UpdatedAt
+	if inLB.UserID == "" {
+		c.removeLoadBalancer(inLB, lb)
+		return
+	}
+
+	lb.Name = inLB.Name
+	lb.UserID = inLB.UserID
+	lb.UpdatedAt = inLB.UpdatedAt
+}
+
+// removeApplication removes applications saved in cache
+func (c *Cache) removeLoadBalancer(inLB repository.LoadBalancer, oldLB *repository.LoadBalancer) {
+	delete(c.loadBalancersMap, inLB.ID)
+
+	userID := oldLB.UserID
+	lbsForUser := c.loadBalancersMapByUserID[userID]
+	lbsForUserAfterRemove := []*repository.LoadBalancer{}
+	for i := range lbsForUser {
+		if lbsForUser[i].ID != inLB.ID {
+			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
+		}
+	}
+	c.loadBalancersMapByUserID[userID] = lbsForUserAfterRemove
+
+	for i := range c.loadBalancers {
+		if c.loadBalancers[i].ID == inLB.ID {
+			c.loadBalancers[i] = c.loadBalancers[len(c.loadBalancers)-1]
+			c.loadBalancers = c.loadBalancers[:len(c.loadBalancers)-1]
+			break
+		}
+	}
 }
 
 func (c *Cache) setPayPlans() error {
