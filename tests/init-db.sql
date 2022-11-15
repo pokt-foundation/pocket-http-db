@@ -236,7 +236,7 @@ CREATE TRIGGER application_notify_event
 AFTER INSERT OR UPDATE ON applications
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER app_limits_notify_event
-AFTER INSERT ON app_limits
+AFTER INSERT OR UPDATE ON app_limits
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER gateway_aat_notify_event
 AFTER INSERT ON gateway_aat
