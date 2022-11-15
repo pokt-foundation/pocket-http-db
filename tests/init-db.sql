@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS app_limits (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	application_id VARCHAR NOT NULL UNIQUE,
 	pay_plan VARCHAR NOT NULL,
-	custom_limit VARCHAR NULL,
+	custom_limit INT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT fk_application
       FOREIGN KEY(application_id) 
