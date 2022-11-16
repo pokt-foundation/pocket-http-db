@@ -190,6 +190,11 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if fullApp.Limit.PayPlan.Type != repository.Enterprise {
+		newPlan := rt.Cache.GetPayPlan(fullApp.Limit.PayPlan.Type)
+		fullApp.Limit.PayPlan.Limit = newPlan.Limit
+	}
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
 }
 
