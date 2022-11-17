@@ -190,6 +190,11 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if fullApp.Limit.PayPlan.Type != repository.Enterprise {
+		newPlan := rt.Cache.GetPayPlan(fullApp.Limit.PayPlan.Type)
+		fullApp.Limit.PayPlan.Limit = newPlan.Limit
+	}
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullApp)
 }
 
@@ -241,6 +246,10 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			app.FirstDateSurpassed = updateInput.FirstDateSurpassed
 		}
 		if updateInput.Limit != nil {
+			if updateInput.Limit.PayPlan.Type != repository.Enterprise {
+				newPlan := rt.Cache.GetPayPlan(updateInput.Limit.PayPlan.Type)
+				updateInput.Limit.PayPlan.Limit = newPlan.Limit
+			}
 			app.Limit = *updateInput.Limit
 		}
 		if updateInput.GatewaySettings != nil {
