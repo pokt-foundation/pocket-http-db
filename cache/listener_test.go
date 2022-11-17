@@ -159,6 +159,9 @@ func TestCache_listenApplication(t *testing.T) {
 	c.Equal(2000000, app.DailyLimit())
 
 	// Delete application event
+	apps := cache.GetApplicationsByUserID("user_id_12345")
+	c.NotEmpty(apps)
+
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
 		ID:     "321",
 		UserID: "",
@@ -166,8 +169,8 @@ func TestCache_listenApplication(t *testing.T) {
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
-	app = cache.GetApplication("321")
-	c.Nil(app)
+	apps = cache.GetApplicationsByUserID("user_id_12345")
+	c.Empty(apps)
 }
 
 func TestCache_listenAppLimit(t *testing.T) {
@@ -287,6 +290,9 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	c.Equal([]string{"ohana"}, lb.StickyOptions.StickyOrigins)
 
 	// Delete load balancer event
+	lbs := cache.GetLoadBalancersByUserID("user_id_12345")
+	c.NotEmpty(lbs)
+
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
 		ID:     "123",
 		UserID: "",
@@ -294,8 +300,8 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
-	lb = cache.GetLoadBalancer("123")
-	c.Nil(lb)
+	lbs = cache.GetLoadBalancersByUserID("user_id_12345")
+	c.Empty(lbs)
 }
 
 func TestCache_listenRedirect(t *testing.T) {

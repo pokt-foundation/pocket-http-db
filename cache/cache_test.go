@@ -355,25 +355,16 @@ func TestCache_RemoveApplication(t *testing.T) {
 
 	err := cache.setPayPlans()
 	c.NoError(err)
-
 	err = cache.setApplications()
 	c.NoError(err)
-
 	err = cache.setLoadBalancers()
 	c.NoError(err)
-
-	c.NotEmpty(cache.GetApplication("5f62b7d8be3591c4dea8566a"))
-	c.Len(cache.GetApplications(), 2)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 2)
-	c.Len(cache.GetLoadBalancer("60ecb2bf67774900350d9c42").Applications, 2)
 
 	cache.updateApplication(repository.Application{
 		ID:     "5f62b7d8be3591c4dea8566a",
 		UserID: "",
 	})
-
-	c.Nil(cache.GetApplication("5f62b7d8be3591c4dea8566a"))
-	c.Len(cache.GetApplications(), 1)
 	c.Len(cache.GetApplicationsByUserID("60ecb2bf67774900350d9c43"), 1)
 }
 
@@ -479,9 +470,6 @@ func TestCache_RemoveLoadBalancer(t *testing.T) {
 
 	err := cache.setLoadBalancers()
 	c.NoError(err)
-
-	c.NotEmpty(cache.GetLoadBalancer("5f62b7d8be3591c4dea8566a"))
-	c.Len(cache.GetLoadBalancers(), 2)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 2)
 
 	cache.updateLoadBalancer(repository.LoadBalancer{
@@ -489,8 +477,6 @@ func TestCache_RemoveLoadBalancer(t *testing.T) {
 		UserID: "",
 	})
 
-	c.Nil(cache.GetLoadBalancer("5f62b7d8be3591c4dea8566a"))
-	c.Len(cache.GetLoadBalancers(), 1)
 	c.Len(cache.GetLoadBalancersByUserID("60ecb2bf67774900350d9c43"), 1)
 }
 

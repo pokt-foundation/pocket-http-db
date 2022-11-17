@@ -306,30 +306,20 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 	app.UpdatedAt = inApp.UpdatedAt
 }
 
-// removeApplication removes applications saved in cache
+// removeApplication removes applications saved in cache from the applicationsMapByUserID as they no longer have a userID
 func (c *Cache) removeApplication(inApp repository.Application, oldApp *repository.Application) {
-	delete(c.applicationsMap, inApp.ID)
-
 	userID := oldApp.UserID
+
 	appsForUser := c.applicationsMapByUserID[userID]
 	appsForUserAfterRemove := []*repository.Application{}
+
 	for i := range appsForUser {
 		if appsForUser[i].ID != inApp.ID {
 			appsForUserAfterRemove = append(appsForUserAfterRemove, appsForUser[i])
 		}
 	}
+
 	c.applicationsMapByUserID[userID] = appsForUserAfterRemove
-
-	for i := range c.applications {
-		if c.applications[i].ID == inApp.ID {
-			c.applications[i] = c.applications[len(c.applications)-1]
-			c.applications = c.applications[:len(c.applications)-1]
-			break
-		}
-	}
-
-	// TODO find way to remove Application from load balancers in cache as well.
-	// Is this necessary since the associated load balancer will always be removed in conjunction with apps?
 }
 
 func (c *Cache) setBlockchains() error {
@@ -494,27 +484,20 @@ func (c *Cache) updateLoadBalancer(inLB repository.LoadBalancer) {
 	lb.UpdatedAt = inLB.UpdatedAt
 }
 
-// removeApplication removes applications saved in cache
+// removeApplication removes load balancers saved in cache from the loadBalancersMapByUserID as they no longer have a userID
 func (c *Cache) removeLoadBalancer(inLB repository.LoadBalancer, oldLB *repository.LoadBalancer) {
-	delete(c.loadBalancersMap, inLB.ID)
-
 	userID := oldLB.UserID
+
 	lbsForUser := c.loadBalancersMapByUserID[userID]
 	lbsForUserAfterRemove := []*repository.LoadBalancer{}
+
 	for i := range lbsForUser {
 		if lbsForUser[i].ID != inLB.ID {
 			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
 		}
 	}
-	c.loadBalancersMapByUserID[userID] = lbsForUserAfterRemove
 
-	for i := range c.loadBalancers {
-		if c.loadBalancers[i].ID == inLB.ID {
-			c.loadBalancers[i] = c.loadBalancers[len(c.loadBalancers)-1]
-			c.loadBalancers = c.loadBalancers[:len(c.loadBalancers)-1]
-			break
-		}
-	}
+	c.loadBalancersMapByUserID[userID] = lbsForUserAfterRemove
 }
 
 func (c *Cache) setPayPlans() error {
