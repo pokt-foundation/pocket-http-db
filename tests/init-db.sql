@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS app_limits (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	application_id VARCHAR NOT NULL UNIQUE,
 	pay_plan VARCHAR NOT NULL,
-	custom_limit VARCHAR NULL,
+	custom_limit INT NULL,
 	PRIMARY KEY (id),
 	CONSTRAINT fk_application
       FOREIGN KEY(application_id) 
@@ -236,7 +236,7 @@ CREATE TRIGGER application_notify_event
 AFTER INSERT OR UPDATE ON applications
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER app_limits_notify_event
-AFTER INSERT ON app_limits
+AFTER INSERT OR UPDATE ON app_limits
     FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER gateway_aat_notify_event
 AFTER INSERT ON gateway_aat
