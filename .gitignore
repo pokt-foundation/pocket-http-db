@@ -26,3 +26,4 @@ tmp/*
 bin
 bin/*
 pocket-http-db
+pre-commit-2.20.0.pyz
