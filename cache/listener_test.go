@@ -101,8 +101,9 @@ func TestCache_listenApplication(t *testing.T) {
 	cache := newMockCache(readerMock)
 
 	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
-		ID:   "321",
-		Name: "pablo",
+		ID:     "321",
+		UserID: "user_id_12345",
+		Name:   "pablo",
 		GatewayAAT: repository.GatewayAAT{
 			Address: "123",
 		},
@@ -131,8 +132,9 @@ func TestCache_listenApplication(t *testing.T) {
 	c.True(app.NotificationSettings.Full)
 
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
-		ID:   "321",
-		Name: "orlando",
+		ID:     "321",
+		UserID: "user_id_12345",
+		Name:   "orlando",
 		GatewaySettings: repository.GatewaySettings{
 			SecretKey: "1234",
 		},
@@ -155,7 +157,20 @@ func TestCache_listenApplication(t *testing.T) {
 	c.Equal("1234", app.GatewaySettings.SecretKey)
 	c.Equal(repository.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
 	c.Equal(2000000, app.DailyLimit())
-	c.True(app.NotificationSettings.SignedUp)
+
+	// Delete application event
+	apps := cache.GetApplicationsByUserID("user_id_12345")
+	c.NotEmpty(apps)
+
+	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
+		ID:     "321",
+		UserID: "",
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	apps = cache.GetApplicationsByUserID("user_id_12345")
+	c.Empty(apps)
 }
 
 func TestCache_listenAppLimit(t *testing.T) {
@@ -241,8 +256,9 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	cache := newMockCache(readerMock)
 
 	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.LoadBalancer{
-		ID:   "123",
-		Name: "pablo",
+		ID:     "123",
+		UserID: "user_id_12345",
+		Name:   "pablo",
 		StickyOptions: repository.StickyOptions{
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
@@ -258,8 +274,9 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	c.Equal("5f62b7d8be3591c4dea8566a", lb.Applications[0].ID)
 
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
-		ID:   "123",
-		Name: "orlando",
+		ID:     "123",
+		UserID: "user_id_12345",
+		Name:   "orlando",
 		StickyOptions: repository.StickyOptions{
 			StickyOrigins: []string{"ohana"},
 			Stickiness:    true,
@@ -271,6 +288,20 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	lb = cache.GetLoadBalancer("123")
 	c.Equal("orlando", lb.Name)
 	c.Equal([]string{"ohana"}, lb.StickyOptions.StickyOrigins)
+
+	// Delete load balancer event
+	lbs := cache.GetLoadBalancersByUserID("user_id_12345")
+	c.NotEmpty(lbs)
+
+	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
+		ID:     "123",
+		UserID: "",
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	lbs = cache.GetLoadBalancersByUserID("user_id_12345")
+	c.Empty(lbs)
 }
 
 func TestCache_listenRedirect(t *testing.T) {
