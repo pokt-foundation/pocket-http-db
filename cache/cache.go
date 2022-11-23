@@ -286,8 +286,7 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 	app := c.applicationsMap[inApp.ID]
 
 	if inApp.UserID == "" {
-		c.removeApplication(inApp, app)
-		return
+		c.removeApplicationFromUserIDMap(inApp, app)
 	}
 
 	limit := app.Limit
@@ -306,8 +305,8 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 	app.UpdatedAt = inApp.UpdatedAt
 }
 
-// removeApplication removes applications saved in cache from the applicationsMapByUserID as they no longer have a userID
-func (c *Cache) removeApplication(inApp repository.Application, oldApp *repository.Application) {
+// removeApplicationFromUserIDMap removes applications saved in cache from the applicationsMapByUserID as they no longer have a userID
+func (c *Cache) removeApplicationFromUserIDMap(inApp repository.Application, oldApp *repository.Application) {
 	userID := oldApp.UserID
 
 	appsForUser := c.applicationsMapByUserID[userID]
@@ -475,8 +474,7 @@ func (c *Cache) updateLoadBalancer(inLB repository.LoadBalancer) {
 	lb := c.loadBalancersMap[inLB.ID]
 
 	if inLB.UserID == "" {
-		c.removeLoadBalancer(inLB, lb)
-		return
+		c.removeLoadBalancerFromUserIDMap(inLB, lb)
 	}
 
 	lb.Name = inLB.Name
@@ -485,7 +483,7 @@ func (c *Cache) updateLoadBalancer(inLB repository.LoadBalancer) {
 }
 
 // removeApplication removes load balancers saved in cache from the loadBalancersMapByUserID as they no longer have a userID
-func (c *Cache) removeLoadBalancer(inLB repository.LoadBalancer, oldLB *repository.LoadBalancer) {
+func (c *Cache) removeLoadBalancerFromUserIDMap(inLB repository.LoadBalancer, oldLB *repository.LoadBalancer) {
 	userID := oldLB.UserID
 
 	lbsForUser := c.loadBalancersMapByUserID[userID]
