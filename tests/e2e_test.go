@@ -18,8 +18,9 @@ import (
 )
 
 const (
-	baseURL = "http://localhost:8080"
-	apiKey  = "test_api_key_6789"
+	baseURL   = "http://localhost:8080"
+	secondURL = "http://localhost:8081"
+	apiKey    = "test_api_key_6789"
 
 	connectionString = "postgres://postgres:pgpassword@localhost:5432/postgres?sslmode=disable"
 
@@ -71,7 +72,7 @@ tests all of PHD's endpoints using an HTTP client and the verifies the results.
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	/* Create Blockchain -> POST /blockchain */
-	createdBlockchain, err := post[repository.Blockchain]("blockchain", []byte(blockchainJSON))
+	createdBlockchain, err := post[repository.Blockchain]("blockchain", baseURL, []byte(blockchainJSON))
 	t.NoError(err)
 	t.blockchainAssertions(createdBlockchain)
 
@@ -80,12 +81,21 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Blockchain -> GET /blockchain/{id} */
-	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
+	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), baseURL)
+	t.NoError(err)
+	t.blockchainAssertions(createdBlockchain)
+
+	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), secondURL)
 	t.NoError(err)
 	t.blockchainAssertions(createdBlockchain)
 
 	/* Get All Blockchains -> GET /blockchain */
-	createdBlockchains, err := get[[]repository.Blockchain]("blockchain")
+	createdBlockchains, err := get[[]repository.Blockchain]("blockchain", secondURL)
+	t.NoError(err)
+	t.Len(createdBlockchains, 1)
+	t.blockchainAssertions(createdBlockchains[0])
+
+	createdBlockchains, err = get[[]repository.Blockchain]("blockchain", baseURL)
 	t.NoError(err)
 	t.Len(createdBlockchains, 1)
 	t.blockchainAssertions(createdBlockchains[0])
@@ -96,26 +106,33 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	t.Len(pgBlockchains, 1)
 
 	/* Activate Blockchain -> POST /blockchain/{id}/activate */
-	blockchainActivated, err := post[bool](fmt.Sprintf("blockchain/%s/activate", createdBlockchainID), []byte("true"))
+	blockchainActivated, err := post[bool](fmt.Sprintf("blockchain/%s/activate", createdBlockchainID), baseURL, []byte("true"))
 	t.NoError(err)
 	t.True(blockchainActivated)
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
-	activatedBlockchain, err := get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID))
+	activatedBlockchain, err := get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), baseURL)
+	t.NoError(err)
+	t.Equal(true, activatedBlockchain.Active)
+
+	activatedBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), secondURL)
 	t.NoError(err)
 	t.Equal(true, activatedBlockchain.Active)
 
 	/* ERROR - Create Blockchain (duplicate record) -> POST /blockchain */
-	_, err = post[repository.Blockchain]("blockchain", []byte(blockchainJSON))
+	_, err = post[repository.Blockchain]("blockchain", baseURL, []byte(blockchainJSON))
 	t.Equal("Response not OK. Internal Server Error", err.Error())
 
 	/* ERROR - Create Blockchain (bad data) -> POST /blockchain */
-	_, err = post[repository.Blockchain]("blockchain", []byte(`{"badJSON": "y tho",}`))
+	_, err = post[repository.Blockchain]("blockchain", baseURL, []byte(`{"badJSON": "y tho",}`))
 	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Blockchain (non-existent ID) -> GET /blockchain/{id} */
-	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"))
+	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"), baseURL)
+	t.Equal("Response not OK. Not Found", err.Error())
+
+	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"), secondURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 }
 
@@ -133,7 +150,7 @@ func (t *PHDTestSuite) blockchainAssertions(blockchain repository.Blockchain) {
 
 func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	/* Create Application -> POST /application */
-	createdApplication, err := post[repository.Application]("application", []byte(applicationJSON))
+	createdApplication, err := post[repository.Application]("application", baseURL, []byte(applicationJSON))
 	t.NoError(err)
 	t.applicationAssertions(createdApplication)
 
@@ -142,18 +159,32 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Application -> GET /application/{id} */
-	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID))
+	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL)
+	t.NoError(err)
+	t.applicationAssertions(createdApplication)
+
+	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), secondURL)
 	t.NoError(err)
 	t.applicationAssertions(createdApplication)
 
 	/* Get All Applications -> GET /application */
-	createdApplications, err := get[[]repository.Application]("application")
+	createdApplications, err := get[[]repository.Application]("application", baseURL)
+	t.NoError(err)
+	t.Len(createdApplications, 1)
+	t.applicationAssertions(createdApplications[0])
+
+	createdApplications, err = get[[]repository.Application]("application", secondURL)
 	t.NoError(err)
 	t.Len(createdApplications, 1)
 	t.applicationAssertions(createdApplications[0])
 
 	/* Get All of One User's Applications-> GET /user/{id}/application */
-	userApplications, err := get[[]repository.Application](fmt.Sprintf("user/%s/application", testUserID))
+	userApplications, err := get[[]repository.Application](fmt.Sprintf("user/%s/application", testUserID), baseURL)
+	t.NoError(err)
+	t.Len(userApplications, 1)
+	t.applicationAssertions(userApplications[0])
+
+	userApplications, err = get[[]repository.Application](fmt.Sprintf("user/%s/application", testUserID), secondURL)
 	t.NoError(err)
 	t.Len(userApplications, 1)
 	t.applicationAssertions(userApplications[0])
@@ -184,7 +215,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	updateJSON, err := json.Marshal(update)
 	t.NoError(err)
 
-	updatedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updateJSON)
+	updatedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateJSON)
 	t.NoError(err)
 	t.Equal("update-application-1", updatedApplication.Name)
 	t.Equal(repository.PayPlanType("FREETIER_V0"), updatedApplication.Limit.PayPlan.Type)
@@ -216,7 +247,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	updatePayPlanJSON, err := json.Marshal(updatePayPlan)
 	t.NoError(err)
 
-	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updatePayPlanJSON)
+	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updatePayPlanJSON)
 	t.NoError(err)
 	t.Equal("update-application-1", updatedApplication.Name)
 	t.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), updatedApplication.Limit.PayPlan.Type)
@@ -233,7 +264,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	updateEnterpriseJSON, err := json.Marshal(updateEnterprise)
 	t.NoError(err)
 
-	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updateEnterpriseJSON)
+	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateEnterpriseJSON)
 	t.NoError(err)
 	t.Equal("update-application-1", updatedApplication.Name)
 	t.Equal(repository.PayPlanType("ENTERPRISE"), updatedApplication.Limit.PayPlan.Type)
@@ -248,12 +279,12 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	updateDateJSON, err := json.Marshal(updateDate)
 	t.NoError(err)
 
-	updatedDateApplication, err := post[[]repository.Application]("application/first_date_surpassed", updateDateJSON)
+	updatedDateApplication, err := post[[]repository.Application]("application/first_date_surpassed", baseURL, updateDateJSON)
 	t.NoError(err)
 	t.NotEmpty(updatedDateApplication[0].FirstDateSurpassed)
 
 	/* Get All Application Limits -> GET /application/limits */
-	applicationLimits, err := get[[]repository.AppLimits]("application/limits")
+	applicationLimits, err := get[[]repository.AppLimits]("application/limits", baseURL)
 	t.NoError(err)
 	t.Len(applicationLimits, 1)
 	t.Equal("update-application-1", applicationLimits[0].AppName)
@@ -270,16 +301,16 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	removeJSON, err := json.Marshal(remove)
 	t.NoError(err)
 
-	removedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), removeJSON)
+	removedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, removeJSON)
 	t.NoError(err)
 	t.Equal(repository.AppStatus("AWAITING_GRACE_PERIOD"), removedApplication.Status)
 
 	/* ERROR - Create Application (bad data) -> POST /application */
-	_, err = post[repository.Application]("application", []byte(`{"badJSON": "y tho",}`))
+	_, err = post[repository.Application]("application", baseURL, []byte(`{"badJSON": "y tho",}`))
 	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Application (non-existent ID) -> GET /application/{id} */
-	_, err = get[repository.Application](fmt.Sprintf("application/%s", "not-a-real-id"))
+	_, err = get[repository.Application](fmt.Sprintf("application/%s", "not-a-real-id"), baseURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 
 	/* ERROR - Attempting to update non-Enterprise plan with custom limit -> PUT /application/{id} */
@@ -292,7 +323,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	updateEnterpriseErrJSON, err := json.Marshal(updateEnterpriseErr)
 	t.NoError(err)
 
-	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), updateEnterpriseErrJSON)
+	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateEnterpriseErrJSON)
 	t.Equal("Response not OK. Unprocessable Entity", err.Error())
 }
 
@@ -324,25 +355,35 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	/* Create Load Balancer -> POST /application */
 	loadBalancerInput := []byte(fmt.Sprintf(loadBalancerJSON, createdApplicationID))
 
-	createdLoadBalancer, err := post[repository.LoadBalancer]("load_balancer", loadBalancerInput)
+	createdLoadBalancer, err := post[repository.LoadBalancer]("load_balancer", baseURL, loadBalancerInput)
 	t.NoError(err)
 	t.loadBalancerAssertions(createdLoadBalancer)
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Load Balancer -> GET /load_balancer/{id} */
-	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID))
+	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
 	t.NoError(err)
 	t.loadBalancerAssertions(createdLoadBalancer)
 
 	/* Get All Load Balancers -> GET /load_balancer */
-	createdLoadBalancers, err := get[[]repository.LoadBalancer]("load_balancer")
+	createdLoadBalancers, err := get[[]repository.LoadBalancer]("load_balancer", baseURL)
+	t.NoError(err)
+	t.Len(createdLoadBalancers, 1)
+	t.loadBalancerAssertions(createdLoadBalancers[0])
+
+	createdLoadBalancers, err = get[[]repository.LoadBalancer]("load_balancer", secondURL)
 	t.NoError(err)
 	t.Len(createdLoadBalancers, 1)
 	t.loadBalancerAssertions(createdLoadBalancers[0])
 
 	/* Get All of One User's Load Balancers -> GET /user/{id}/load_balancer */
-	userLoadBalancers, err := get[[]repository.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID))
+	userLoadBalancers, err := get[[]repository.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID), baseURL)
+	t.NoError(err)
+	t.Len(userLoadBalancers, 1)
+	t.loadBalancerAssertions(userLoadBalancers[0])
+
+	userLoadBalancers, err = get[[]repository.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID), secondURL)
 	t.NoError(err)
 	t.Len(userLoadBalancers, 1)
 	t.loadBalancerAssertions(userLoadBalancers[0])
@@ -365,7 +406,7 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	updateJSON, err := json.Marshal(update)
 	t.NoError(err)
 
-	updatedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), updateJSON)
+	updatedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL, updateJSON)
 	t.NoError(err)
 	t.Equal("update-load-balancer-1", updatedLoadBalancer.Name)
 	t.Equal("test-duration", updatedLoadBalancer.StickyOptions.Duration)
@@ -379,16 +420,16 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	removeJSON, err := json.Marshal(remove)
 	t.NoError(err)
 
-	removedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), removeJSON)
+	removedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL, removeJSON)
 	t.NoError(err)
 	t.Equal("", removedLoadBalancer.UserID)
 
 	/* ERROR - Create Load Balancer (bad data) -> POST /load_balancer */
-	_, err = post[repository.LoadBalancer]("load_balancer", []byte(`{"badJSON": "y tho",}`))
+	_, err = post[repository.LoadBalancer]("load_balancer", baseURL, []byte(`{"badJSON": "y tho",}`))
 	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Load Balancer (non-existent ID) -> GET /load_balancer/{id} */
-	_, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", "not-a-real-id"))
+	_, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", "not-a-real-id"), baseURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 }
 
@@ -414,12 +455,16 @@ func (t *PHDTestSuite) loadBalancerAssertions(lb repository.LoadBalancer) {
 
 func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	/* Get All Pay Plans -> GET /pay_plan */
-	payPlans, err := get[[]repository.PayPlan]("pay_plan")
+	payPlans, err := get[[]repository.PayPlan]("pay_plan", baseURL)
+	t.NoError(err)
+	t.Len(payPlans, 6)
+
+	payPlans, err = get[[]repository.PayPlan]("pay_plan", secondURL)
 	t.NoError(err)
 	t.Len(payPlans, 6)
 
 	/* Get One Pay Plan -> GET /pay_plan/{type} */
-	payPlan, err := get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "FREETIER_V0"))
+	payPlan, err := get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "FREETIER_V0"), baseURL)
 	t.NoError(err)
 	t.Equal(repository.PayPlanType("FREETIER_V0"), payPlan.Type)
 	t.Equal(250000, payPlan.Limit)
@@ -430,7 +475,7 @@ func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	t.Len(pgPayPlans, 6)
 
 	/* ERROR - Get One Pay Plan (non-existent ID) -> GET /pay_plan/{type} */
-	_, err = get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"))
+	_, err = get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"), baseURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 }
 
@@ -438,7 +483,7 @@ func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
 	redirectInput := []byte(fmt.Sprintf(redirectJSON, createdBlockchainID))
 
 	/* Create Redirect -> POST /redirect */
-	createdRedirect, err := post[repository.Redirect]("redirect", redirectInput)
+	createdRedirect, err := post[repository.Redirect]("redirect", baseURL, redirectInput)
 	t.NoError(err)
 	t.Equal(createdBlockchainID, createdRedirect.BlockchainID)
 	t.Equal("test-mainnet", createdRedirect.Alias)
@@ -451,17 +496,17 @@ func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
 	t.Len(pgRedirects, 1)
 
 	/* ERROR - Create Redirect (duplicate record) -> POST /redirect */
-	_, err = post[repository.Redirect]("redirect", []byte(redirectJSON))
+	_, err = post[repository.Redirect]("redirect", baseURL, []byte(redirectJSON))
 	t.Equal("Response not OK. Internal Server Error", err.Error())
 
 	/* ERROR - Create Redirect (bad data) -> POST /redirect */
-	_, err = post[repository.Redirect]("redirect", []byte(`{"badJSON": "y tho",}`))
+	_, err = post[repository.Redirect]("redirect", baseURL, []byte(`{"badJSON": "y tho",}`))
 	t.Equal("Response not OK. Bad Request", err.Error())
 }
 
 /* Test Client HTTP Funcs */
-func get[T any](path string) (T, error) {
-	rawURL := fmt.Sprintf("%s/%s", baseURL, path)
+func get[T any](path, host string) (T, error) {
+	rawURL := fmt.Sprintf("%s/%s", host, path)
 
 	headers := http.Header{"Authorization": {apiKey}}
 
@@ -490,10 +535,10 @@ func get[T any](path string) (T, error) {
 	return data, nil
 }
 
-func post[T any](path string, postData []byte) (T, error) {
+func post[T any](path, host string, postData []byte) (T, error) {
 	var data T
 
-	rawURL := fmt.Sprintf("%s/%s", baseURL, path)
+	rawURL := fmt.Sprintf("%s/%s", host, path)
 
 	headers := http.Header{
 		"Authorization": {apiKey},
@@ -526,10 +571,10 @@ func post[T any](path string, postData []byte) (T, error) {
 	return data, nil
 }
 
-func put[T any](path string, postData []byte) (T, error) {
+func put[T any](path, host string, postData []byte) (T, error) {
 	var data T
 
-	rawURL := fmt.Sprintf("%s/%s", baseURL, path)
+	rawURL := fmt.Sprintf("%s/%s", host, path)
 
 	headers := http.Header{
 		"Authorization": {apiKey},
