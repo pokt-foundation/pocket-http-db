@@ -2,6 +2,7 @@ package router
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,113 +10,36 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pokt-foundation/pocket-http-db/cache"
-	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/pokt-foundation/portal-db/driver"
+	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-type writerMock struct {
-	mock.Mock
-}
+var testCtx = context.Background()
 
-func (w *writerMock) WriteLoadBalancer(loadBalancer *repository.LoadBalancer) (*repository.LoadBalancer, error) {
-	args := w.Called()
+func newTestRouter(t *testing.T) (*Router, error) {
+	readerMock := driver.NewMockDriver(t)
 
-	return args.Get(0).(*repository.LoadBalancer), args.Error(1)
-}
-
-func (w *writerMock) UpdateLoadBalancer(id string, options *repository.UpdateLoadBalancer) error {
-	args := w.Called()
-
-	return args.Error(0)
-}
-
-func (w *writerMock) RemoveLoadBalancer(id string) error {
-	args := w.Called()
-
-	return args.Error(0)
-}
-
-func (w *writerMock) WriteApplication(app *repository.Application) (*repository.Application, error) {
-	args := w.Called()
-
-	return args.Get(0).(*repository.Application), args.Error(1)
-}
-
-func (w *writerMock) UpdateApplication(id string, options *repository.UpdateApplication) error {
-	args := w.Called()
-
-	return args.Error(0)
-}
-
-func (w *writerMock) UpdateFirstDateSurpassed(firstDateSurpassed *repository.UpdateFirstDateSurpassed) error {
-	args := w.Called()
-
-	return args.Error(0)
-}
-
-func (w *writerMock) RemoveApplication(id string) error {
-	args := w.Called()
-
-	return args.Error(0)
-}
-
-func (w *writerMock) WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error) {
-	args := w.Called()
-
-	return args.Get(0).(*repository.Blockchain), args.Error(1)
-}
-
-func (w *writerMock) WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error) {
-	args := w.Called()
-
-	return args.Get(0).(*repository.Redirect), args.Error(1)
-}
-
-func (w *writerMock) ActivateBlockchain(id string, active bool) error {
-	args := w.Called()
-
-	return args.Error(0)
-}
-
-func newTestRouter() (*Router, error) {
-	readerMock := &cache.ReaderMock{}
-
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
 		{
-			Type:  repository.FreetierV0,
+			Type:  types.FreetierV0,
 			Limit: 250000,
 		},
 		{
-			Type:  repository.PayAsYouGoV0,
+			Type:  types.PayAsYouGoV0,
 			Limit: 0,
 		},
 	}, nil)
 
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
-		{
-			BlockchainID:   "0021",
-			Alias:          "pokt-mainnet",
-			Domain:         "pokt-mainnet.gateway.network",
-			LoadBalancerID: "12345",
-		},
-		{
-			BlockchainID:   "0022",
-			Alias:          "eth-mainnet",
-			Domain:         "eth-mainnet.gateway.network",
-			LoadBalancerID: "45678",
-		},
-	}, nil)
-
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications", testCtx).Return([]*types.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type:  repository.FreetierV0,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type:  types.FreetierV0,
 					Limit: 250000,
 				},
 			},
@@ -131,7 +55,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
 		{
 			ID: "0021",
 		},
@@ -140,7 +64,7 @@ func newTestRouter() (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
 		{
 			ID: "60ecb2bf67774900350d9c42",
 			ApplicationIDs: []string{
@@ -169,7 +93,7 @@ func TestRouter_HealthCheck(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
@@ -185,20 +109,20 @@ func TestRouter_GetApplications(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal([]*repository.Application{
+	expectedBody, err := json.Marshal([]*types.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type:  repository.FreetierV0,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type:  types.FreetierV0,
 					Limit: 250000,
 				},
 			},
@@ -226,50 +150,6 @@ func TestRouter_GetApplications(t *testing.T) {
 	c.Equal(http.StatusUnauthorized, rr.Code)
 }
 
-func TestRouter_GetApplicationsLimits(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/application/limits", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter()
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	dateSurpassed := time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)
-
-	expectedBody, err := json.Marshal([]*repository.AppLimits{
-		{
-			AppID:                "5f62b7d8be3591c4dea8566d",
-			AppUserID:            "60ecb2bf67774900350d9c43",
-			PlanType:             repository.FreetierV0,
-			DailyLimit:           250000,
-			FirstDateSurpassed:   &dateSurpassed,
-			NotificationSettings: &repository.NotificationSettings{},
-		},
-		{
-			AppID:                "5f62b7d8be3591c4dea8566a",
-			AppUserID:            "60ecb2bf67774900350d9c43",
-			DailyLimit:           0,
-			NotificationSettings: &repository.NotificationSettings{},
-		},
-		{
-			AppID:                "5f62b7d8be3591c4dea8566f",
-			AppUserID:            "60ecb2bf67774900350d9c44",
-			DailyLimit:           0,
-			NotificationSettings: &repository.NotificationSettings{},
-		},
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-}
-
 func TestRouter_GetApplication(t *testing.T) {
 	c := require.New(t)
 
@@ -278,19 +158,19 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal(&repository.Application{
+	expectedBody, err := json.Marshal(&types.Application{
 		ID:     "5f62b7d8be3591c4dea8566d",
 		UserID: "60ecb2bf67774900350d9c43",
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.FreetierV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.FreetierV0,
 				Limit: 250000,
 			},
 		},
@@ -313,11 +193,11 @@ func TestRouter_GetApplication(t *testing.T) {
 func TestRouter_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
-	rawAppToSend := &repository.Application{
+	rawAppToSend := &types.Application{
 		UserID: "60ddc61b6e29c3003378361D",
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.FreetierV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.FreetierV0,
 				Limit: 250000,
 			},
 		},
@@ -331,23 +211,23 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	appToReturn := &repository.Application{
+	appToReturn := &types.Application{
 		ID:     "60ddc61b6e29c3003378361E",
 		UserID: "60ddc61b6e29c3003378361D",
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.FreetierV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.FreetierV0,
 				Limit: 250000,
 			},
 		},
 	}
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteApplication", mock.Anything).Return(appToReturn, nil).Once()
+	writerMock.On("WriteApplication", testCtx, mock.Anything).Return(appToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -355,12 +235,12 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	marshaledReturnApp, err := json.Marshal(&repository.Application{
+	marshaledReturnApp, err := json.Marshal(&types.Application{
 		ID:     "60ddc61b6e29c3003378361E",
 		UserID: "60ddc61b6e29c3003378361D",
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.FreetierV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.FreetierV0,
 				Limit: 250000,
 			},
 		},
@@ -383,7 +263,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteApplication", mock.Anything).Return(appToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteApplication", testCtx, mock.Anything).Return(appToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -393,21 +273,22 @@ func TestRouter_CreateApplication(t *testing.T) {
 func TestRouter_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateApplication{
+	trueBool := true
+	rawUpdateInput := &types.UpdateApplication{
 		Name:   "pablo",
-		Status: repository.Orphaned,
-		Limit: &repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.PayAsYouGoV0,
+		Status: types.Orphaned,
+		Limit: &types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.PayAsYouGoV0,
 				Limit: 0,
 			},
 		},
 		FirstDateSurpassed: time.Now(),
-		GatewaySettings: &repository.GatewaySettings{
+		GatewaySettings: &types.UpdateGatewaySettings{
 			SecretKey: "1234",
 		},
-		NotificationSettings: &repository.NotificationSettings{
-			Half: true,
+		NotificationSettings: &types.UpdateNotificationSettings{
+			Half: &trueBool,
 		},
 	}
 
@@ -419,12 +300,12 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("UpdateApplication", mock.Anything).Return(nil).Once()
+	writerMock.On("UpdateApplication", testCtx, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -455,7 +336,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("UpdateApplication", mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("UpdateApplication", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -465,7 +346,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateFirstDateSurpassed{
+	rawUpdateInput := &types.UpdateFirstDateSurpassed{
 		ApplicationIDs:     []string{"5f62b7d8be3591c4dea8566d"},
 		FirstDateSurpassed: time.Now(),
 	}
@@ -478,12 +359,12 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("UpdateFirstDateSurpassed", mock.Anything).Return(nil).Once()
+	writerMock.On("UpdateFirstDateSurpassed", testCtx, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -491,7 +372,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	writerMock.On("UpdateFirstDateSurpassed", mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("UpdateFirstDateSurpassed", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
@@ -543,7 +424,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 func TestRouter_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
-	rawRemoveInput := &repository.UpdateApplication{
+	rawRemoveInput := &types.UpdateApplication{
 		Remove: true,
 	}
 
@@ -555,12 +436,12 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("RemoveApplication", mock.Anything).Return(nil).Once()
+	writerMock.On("RemoveApplication", testCtx, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -591,7 +472,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("RemoveApplication", mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("RemoveApplication", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -606,20 +487,20 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal([]*repository.Application{
+	expectedBody, err := json.Marshal([]*types.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type:  repository.FreetierV0,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type:  types.FreetierV0,
 					Limit: 250000,
 				},
 			},
@@ -652,14 +533,14 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	var marshaledBody []*repository.LoadBalancer
+	var marshaledBody []*types.LoadBalancer
 
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
@@ -684,17 +565,17 @@ func TestRouter_GetBlockchains(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal([]*repository.Blockchain{
+	expectedBody, err := json.Marshal([]*types.Blockchain{
 		{
 			ID: "0021",
-			Redirects: []repository.Redirect{
+			Redirects: []types.Redirect{
 				{
 					BlockchainID:   "0021",
 					Alias:          "pokt-mainnet",
@@ -705,7 +586,7 @@ func TestRouter_GetBlockchains(t *testing.T) {
 		},
 		{
 			ID: "0022",
-			Redirects: []repository.Redirect{
+			Redirects: []types.Redirect{
 				{
 					BlockchainID:   "0022",
 					Alias:          "eth-mainnet",
@@ -728,16 +609,16 @@ func TestRouter_GetBlockchain(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal(&repository.Blockchain{
+	expectedBody, err := json.Marshal(&types.Blockchain{
 		ID: "0021",
-		Redirects: []repository.Redirect{
+		Redirects: []types.Redirect{
 			{
 				BlockchainID:   "0021",
 				Alias:          "pokt-mainnet",
@@ -768,14 +649,14 @@ func TestRouter_GetLoadBalancers(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	var marshaledBody []*repository.LoadBalancer
+	var marshaledBody []*types.LoadBalancer
 
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
@@ -793,14 +674,14 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	var marshaledBody repository.LoadBalancer
+	var marshaledBody types.LoadBalancer
 
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
@@ -820,7 +701,7 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 func TestRouter_CreateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	rawLBToSend := &repository.LoadBalancer{
+	rawLBToSend := &types.LoadBalancer{
 		UserID: "60ddc61b6e29c3003378361D",
 	}
 
@@ -832,17 +713,17 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	lbToReturn := &repository.LoadBalancer{
+	lbToReturn := &types.LoadBalancer{
 		ID:     "60ddc61b6e29c3003378361E",
 		UserID: "60ddc61b6e29c3003378361D",
 	}
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteLoadBalancer", mock.Anything).Return(lbToReturn, nil).Once()
+	writerMock.On("WriteLoadBalancer", testCtx, mock.Anything).Return(lbToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -869,7 +750,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteLoadBalancer", mock.Anything).Return(lbToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteLoadBalancer", testCtx, mock.Anything).Return(lbToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -879,13 +760,14 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateLoadBalancer{
+	trueBool := true
+	rawUpdateInput := &types.UpdateLoadBalancer{
 		Name: "pablo",
-		StickyOptions: &repository.StickyOptions{
+		StickyOptions: &types.UpdateStickyOptions{
 			Duration:      "21",
 			StickyOrigins: []string{"pjog"},
 			StickyMax:     21,
-			Stickiness:    true,
+			Stickiness:    &trueBool,
 		},
 	}
 
@@ -897,12 +779,12 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("UpdateLoadBalancer", mock.Anything).Return(nil).Once()
+	writerMock.On("UpdateLoadBalancer", testCtx, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -933,7 +815,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("UpdateLoadBalancer", mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("UpdateLoadBalancer", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -943,17 +825,17 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	rawUpdateInput := &repository.UpdateLoadBalancer{
+	rawUpdateInput := &types.UpdateLoadBalancer{
 		Remove: true,
 	}
 
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
 	router.Writer = writerMock
 
@@ -962,7 +844,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	writerMock.On("RemoveLoadBalancer", mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("RemoveLoadBalancer", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -973,7 +855,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("RemoveLoadBalancer", mock.Anything).Return(nil).Once()
+	writerMock.On("RemoveLoadBalancer", testCtx, mock.Anything).Return(nil).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -997,20 +879,20 @@ func TestRouter_GetPayPlans(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal([]*repository.PayPlan{
+	expectedBody, err := json.Marshal([]*types.PayPlan{
 		{
-			Type:  repository.FreetierV0,
+			Type:  types.FreetierV0,
 			Limit: 250000,
 		},
 		{
-			Type:  repository.PayAsYouGoV0,
+			Type:  types.PayAsYouGoV0,
 			Limit: 0,
 		},
 	})
@@ -1027,15 +909,15 @@ func TestRouter_GetPayPlan(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	expectedBody, err := json.Marshal(&repository.PayPlan{
-		Type:  repository.FreetierV0,
+	expectedBody, err := json.Marshal(&types.PayPlan{
+		Type:  types.FreetierV0,
 		Limit: 250000,
 	})
 	c.NoError(err)
@@ -1055,7 +937,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 func TestRouter_CreateBlockchain(t *testing.T) {
 	c := require.New(t)
 
-	rawChainToSend := &repository.Blockchain{
+	rawChainToSend := &types.Blockchain{
 		Ticker: "POKT",
 	}
 
@@ -1067,17 +949,17 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	chainToReturn := &repository.Blockchain{
+	chainToReturn := &types.Blockchain{
 		ID:     "60ddc61b6e29c3003378361E",
 		Ticker: "POKT",
 	}
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteBlockchain", mock.Anything).Return(chainToReturn, nil).Once()
+	writerMock.On("WriteBlockchain", testCtx, mock.Anything).Return(chainToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -1104,7 +986,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteBlockchain", mock.Anything).Return(chainToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteBlockchain", testCtx, mock.Anything).Return(chainToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -1114,7 +996,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 func TestRouter_CreateRedirect(t *testing.T) {
 	c := require.New(t)
 
-	rawRedirectsToSend := &repository.Redirect{BlockchainID: "0021"}
+	rawRedirectsToSend := &types.Redirect{BlockchainID: "0021"}
 
 	redirectToSend, err := json.Marshal(rawRedirectsToSend)
 	c.NoError(err)
@@ -1124,14 +1006,14 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	redirectToReturn := &repository.Redirect{ID: "60ddc61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
+	redirectToReturn := &types.Redirect{BlockchainID: "0021"}
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteRedirect", mock.Anything).Return(redirectToReturn, nil).Once()
+	writerMock.On("WriteRedirect", testCtx, mock.Anything).Return(redirectToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -1158,7 +1040,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteRedirect", mock.Anything).Return(redirectToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteRedirect", testCtx, mock.Anything).Return(redirectToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -1176,12 +1058,12 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	router, err := newTestRouter()
+	router, err := newTestRouter(t)
 	c.NoError(err)
 
-	writerMock := &writerMock{}
+	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("ActivateBlockchain", mock.Anything).Return(nil).Once()
+	writerMock.On("ActivateBlockchain", testCtx, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -1203,7 +1085,7 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("ActivateBlockchain", mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("ActivateBlockchain", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 

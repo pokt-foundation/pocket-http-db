@@ -78,12 +78,4 @@ const (
 		},
 		"Applications": null
 	}`
-
-	redirectJSON = `{
-		"id": "",
-		"blockchainID": "%s",
-		"alias": "test-mainnet",
-		"domain": "test-rpc.gateway.pokt.network",
-		"loadBalancerID": "12345"
-	}`
 )

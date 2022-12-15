@@ -12,7 +12,7 @@ run_e2e_tests:
 run_all_tests:
 	-go test ./... -count=1;
 
-test_unit: test_env_up run_unit_tests test_env_down
+test_unit: run_unit_tests
 test_e2e:  test_env_up run_e2e_tests  test_env_down
 test:      test_env_up run_all_tests  test_env_down
 

@@ -5,17 +5,16 @@ go 1.18
 require (
 	github.com/gojektech/heimdall v5.0.2+incompatible
 	github.com/gorilla/mux v1.8.0
-	github.com/lib/pq v1.10.6
-	github.com/pokt-foundation/portal-api-go v0.6.2
+	github.com/lib/pq v1.10.7
+	github.com/pokt-foundation/portal-db v1.0.2
 	github.com/pokt-foundation/utils-go v0.2.5
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gojektech/valkyrie v0.0.0-20190210220504-8f62c1e7ba45 // indirect
-	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

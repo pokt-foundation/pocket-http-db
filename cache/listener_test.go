@@ -4,19 +4,39 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/pokt-foundation/portal-db/driver"
+	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
+	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
+type ReaderMock struct {
+	*driver.MockDriver
+	lMock        *postgresdriver.ListenerMock
+	notification chan *types.Notification
+}
+
+func NewReaderMock(t *testing.T) *ReaderMock {
+	mock := &ReaderMock{
+		MockDriver:   driver.NewMockDriver(t),
+		lMock:        postgresdriver.NewListenerMock(),
+		notification: make(chan *types.Notification, 32),
+	}
+
+	go postgresdriver.Listen(mock.lMock.NotificationChannel(), mock.notification)
+
+	return mock
+}
+
 func newMockCache(readerMock *ReaderMock) *Cache {
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications").Return([]*types.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type:  repository.FreetierV0,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type:  types.FreetierV0,
 					Limit: 250000,
 				},
 			},
@@ -24,9 +44,9 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		{
 			ID:     "5f62b7d8be3591c4dea8566a",
 			UserID: "60ecb2bf67774900350d9c43",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type: repository.Enterprise,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type: types.Enterprise,
 				},
 				CustomLimit: 2000000,
 			},
@@ -34,20 +54,20 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		{
 			ID:     "5f62b7d8be3591c4dea8566f",
 			UserID: "60ecb2bf67774900350d9c44",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type:  repository.PayAsYouGoV0,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type:  types.PayAsYouGoV0,
 					Limit: 0,
 				},
 			},
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
+	readerMock.On("ReadBlockchains").Return([]*types.Blockchain{
 		{ID: "0021"},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers").Return([]*types.LoadBalancer{
 		{
 			ID:     "60ecb2bf67774900350d9c42",
 			UserID: "60ecb35fts687463gh2h72gs",
@@ -58,29 +78,14 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		},
 	}, nil)
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadPayPlans").Return([]*types.PayPlan{
 		{
-			Type:  repository.FreetierV0,
+			Type:  types.FreetierV0,
 			Limit: 250000,
 		},
 		{
-			Type:  repository.PayAsYouGoV0,
+			Type:  types.PayAsYouGoV0,
 			Limit: 0,
-		},
-	}, nil)
-
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
-		{
-			BlockchainID:   "0021",
-			Alias:          "pokt-mainnet",
-			Domain:         "pokt-mainnet.gateway.network",
-			LoadBalancerID: "12345",
-		},
-		{
-			BlockchainID:   "0022",
-			Alias:          "eth-mainnet",
-			Domain:         "eth-mainnet.gateway.network",
-			LoadBalancerID: "45678",
 		},
 	}, nil)
 
@@ -97,25 +102,25 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 func TestCache_listenApplication(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Application{
 		ID:     "321",
 		UserID: "user_id_12345",
 		Name:   "pablo",
-		GatewayAAT: repository.GatewayAAT{
+		GatewayAAT: types.GatewayAAT{
 			Address: "123",
 		},
-		GatewaySettings: repository.GatewaySettings{
+		GatewaySettings: types.GatewaySettings{
 			SecretKey: "123",
 		},
-		NotificationSettings: repository.NotificationSettings{
+		NotificationSettings: types.NotificationSettings{
 			Full: true,
 		},
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.FreetierV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.FreetierV0,
 				Limit: 250000,
 			},
 		},
@@ -127,24 +132,24 @@ func TestCache_listenApplication(t *testing.T) {
 	c.Equal("pablo", app.Name)
 	c.Equal("123", app.GatewayAAT.Address)
 	c.Equal("123", app.GatewaySettings.SecretKey)
-	c.Equal(repository.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
+	c.Equal(types.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
 	c.Equal(250000, app.DailyLimit())
 	c.True(app.NotificationSettings.Full)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
 		ID:     "321",
 		UserID: "user_id_12345",
 		Name:   "orlando",
-		GatewaySettings: repository.GatewaySettings{
+		GatewaySettings: types.GatewaySettings{
 			SecretKey: "1234",
 		},
-		NotificationSettings: repository.NotificationSettings{
+		NotificationSettings: types.NotificationSettings{
 			Full:     true,
 			SignedUp: true,
 		},
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type: repository.Enterprise,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type: types.Enterprise,
 			},
 			CustomLimit: 2000000,
 		},
@@ -155,14 +160,14 @@ func TestCache_listenApplication(t *testing.T) {
 	app = cache.GetApplication("321")
 	c.Equal("orlando", app.Name)
 	c.Equal("1234", app.GatewaySettings.SecretKey)
-	c.Equal(repository.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
+	c.Equal(types.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
 	c.Equal(2000000, app.DailyLimit())
 
 	// Delete application event
 	apps := cache.GetApplicationsByUserID("user_id_12345")
 	c.NotEmpty(apps)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
 		ID:     "321",
 		UserID: "",
 	})
@@ -176,16 +181,16 @@ func TestCache_listenApplication(t *testing.T) {
 func TestCache_listenAppLimit(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	cache.payPlansMap = map[repository.PayPlanType]*repository.PayPlan{
-		repository.PayAsYouGoV0: {Type: repository.PayAsYouGoV0, Limit: 0},
+	cache.payPlansMap = map[types.PayPlanType]*types.PayPlan{
+		types.PayAsYouGoV0: {Type: types.PayAsYouGoV0, Limit: 0},
 	}
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.AppLimit{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.AppLimit{
 		ID:      "321",
-		PayPlan: repository.PayPlan{Type: repository.PayAsYouGoV0, Limit: 0},
+		PayPlan: types.PayPlan{Type: types.PayAsYouGoV0, Limit: 0},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -195,13 +200,13 @@ func TestCache_listenAppLimit(t *testing.T) {
 
 	pendingUpdates := cache.pendingAppLimit
 	c.Len(pendingUpdates, 1)
-	c.Equal(repository.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
+	c.Equal(types.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Application{
 		ID: "321",
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.PayAsYouGoV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.PayAsYouGoV0,
 				Limit: 0,
 			},
 		},
@@ -210,7 +215,7 @@ func TestCache_listenAppLimit(t *testing.T) {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	app = cache.GetApplication("321")
-	c.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), app.Limit.PayPlan.Type)
+	c.Equal(types.PayPlanType("PAY_AS_YOU_GO_V0"), app.Limit.PayPlan.Type)
 	c.Equal(0, app.DailyLimit())
 
 	pendingUpdates = cache.pendingAppLimit
@@ -220,13 +225,13 @@ func TestCache_listenAppLimit(t *testing.T) {
 func TestCache_listenBlockchain(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Blockchain{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Blockchain{
 		ID:   "0023",
 		Path: "path",
-		SyncCheckOptions: repository.SyncCheckOptions{
+		SyncCheckOptions: types.SyncCheckOptions{
 			BlockchainID: "0023",
 			Body:         "yeh",
 		},
@@ -238,7 +243,7 @@ func TestCache_listenBlockchain(t *testing.T) {
 	c.Equal("path", blockchain.Path)
 	c.Equal("yeh", blockchain.SyncCheckOptions.Body)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Blockchain{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Blockchain{
 		ID:     "0023",
 		Active: true,
 	})
@@ -252,14 +257,14 @@ func TestCache_listenBlockchain(t *testing.T) {
 func TestCache_listenLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.LoadBalancer{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.LoadBalancer{
 		ID:     "123",
 		UserID: "user_id_12345",
 		Name:   "pablo",
-		StickyOptions: repository.StickyOptions{
+		StickyOptions: types.StickyOptions{
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
 		},
@@ -273,11 +278,11 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
 	c.Equal("5f62b7d8be3591c4dea8566a", lb.Applications[0].ID)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
 		ID:     "123",
 		UserID: "user_id_12345",
 		Name:   "orlando",
-		StickyOptions: repository.StickyOptions{
+		StickyOptions: types.StickyOptions{
 			StickyOrigins: []string{"ohana"},
 			Stickiness:    true,
 		},
@@ -293,7 +298,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	lbs := cache.GetLoadBalancersByUserID("user_id_12345")
 	c.NotEmpty(lbs)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
 		ID:     "123",
 		UserID: "",
 	})
@@ -307,16 +312,16 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 func TestCache_listenRedirect(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Redirect{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Redirect{
 		BlockchainID: "0021",
 		Alias:        "papolo",
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
-	redirects := cache.GetRedirects("0021")
+	redirects := cache.GetBlockchain("0021").Redirects
 	c.Equal("papolo", redirects[1].Alias)
 }
