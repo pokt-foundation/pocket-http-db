@@ -31,11 +31,13 @@ services:
         condition: service_healthy
 
   portal-db:
-    image: postgres
+    image: postgres:14.3
     container_name: portal-db
     restart: always
     ports:
       - 5432:5432
+    volumes:
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       POSTGRES_PASSWORD: pgpassword
       POSTGRES_DB: postgres

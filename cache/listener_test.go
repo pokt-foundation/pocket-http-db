@@ -4,33 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pokt-foundation/portal-db/driver"
-	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
 	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
-type ReaderMock struct {
-	*driver.MockDriver
-	lMock        *postgresdriver.ListenerMock
-	notification chan *types.Notification
-}
-
-func NewReaderMock(t *testing.T) *ReaderMock {
-	mock := &ReaderMock{
-		MockDriver:   driver.NewMockDriver(t),
-		lMock:        postgresdriver.NewListenerMock(),
-		notification: make(chan *types.Notification, 32),
-	}
-
-	go postgresdriver.Listen(mock.lMock.NotificationChannel(), mock.notification)
-
-	return mock
-}
-
 func newMockCache(readerMock *ReaderMock) *Cache {
-	readerMock.On("ReadApplications").Return([]*types.Application{
+	readerMock.On("ReadApplications", testCtx).Return([]*types.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -63,11 +43,11 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*types.Blockchain{
-		{ID: "0021"},
+	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
+		{ID: "0021", Redirects: []types.Redirect{}},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*types.LoadBalancer{
+	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
 		{
 			ID:     "60ecb2bf67774900350d9c42",
 			UserID: "60ecb35fts687463gh2h72gs",
@@ -78,7 +58,7 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		},
 	}, nil)
 
-	readerMock.On("ReadPayPlans").Return([]*types.PayPlan{
+	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
 		{
 			Type:  types.FreetierV0,
 			Limit: 250000,
@@ -323,5 +303,5 @@ func TestCache_listenRedirect(t *testing.T) {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	redirects := cache.GetBlockchain("0021").Redirects
-	c.Equal("papolo", redirects[1].Alias)
+	c.Equal("papolo", redirects[0].Alias)
 }

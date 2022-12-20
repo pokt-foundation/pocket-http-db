@@ -2,7 +2,6 @@ package router
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-db/driver"
 	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
@@ -17,12 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var testCtx = context.Background()
-
 func newTestRouter(t *testing.T) (*Router, error) {
-	readerMock := driver.NewMockDriver(t)
+	readerMock := cache.NewReaderMock(t)
 
-	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
+	readerMock.On("ReadPayPlans", mock.Anything).Return([]*types.PayPlan{
 		{
 			Type:  types.FreetierV0,
 			Limit: 250000,
@@ -33,7 +31,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadApplications", testCtx).Return([]*types.Application{
+	readerMock.On("ReadApplications", mock.Anything).Return([]*types.Application{
 		{
 			ID:     "5f62b7d8be3591c4dea8566d",
 			UserID: "60ecb2bf67774900350d9c43",
@@ -55,16 +53,32 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
+	readerMock.On("ReadBlockchains", mock.Anything).Return([]*types.Blockchain{
 		{
 			ID: "0021",
+			Redirects: []types.Redirect{
+				{
+					BlockchainID:   "0021",
+					Alias:          "pokt-mainnet",
+					Domain:         "pokt-mainnet.gateway.network",
+					LoadBalancerID: "12345",
+				},
+			},
 		},
 		{
 			ID: "0022",
+			Redirects: []types.Redirect{
+				{
+					BlockchainID:   "0022",
+					Alias:          "eth-mainnet",
+					Domain:         "eth-mainnet.gateway.network",
+					LoadBalancerID: "45678",
+				},
+			},
 		},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
+	readerMock.On("ReadLoadBalancers", mock.Anything).Return([]*types.LoadBalancer{
 		{
 			ID: "60ecb2bf67774900350d9c42",
 			ApplicationIDs: []string{
@@ -227,7 +241,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteApplication", testCtx, mock.Anything).Return(appToReturn, nil).Once()
+	writerMock.On("WriteApplication", mock.Anything, mock.Anything).Return(appToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -263,7 +277,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteApplication", testCtx, mock.Anything).Return(appToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteApplication", mock.Anything, mock.Anything).Return(appToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -305,7 +319,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("UpdateApplication", testCtx, mock.Anything).Return(nil).Once()
+	writerMock.On("UpdateApplication", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -336,7 +350,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("UpdateApplication", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("UpdateApplication", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -364,7 +378,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("UpdateFirstDateSurpassed", testCtx, mock.Anything).Return(nil).Once()
+	writerMock.On("UpdateAppFirstDateSurpassed", mock.Anything, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -372,7 +386,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	writerMock.On("UpdateFirstDateSurpassed", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("UpdateAppFirstDateSurpassed", mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
@@ -441,7 +455,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("RemoveApplication", testCtx, mock.Anything).Return(nil).Once()
+	writerMock.On("RemoveApplication", mock.Anything, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -472,7 +486,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("RemoveApplication", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("RemoveApplication", mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -723,7 +737,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteLoadBalancer", testCtx, mock.Anything).Return(lbToReturn, nil).Once()
+	writerMock.On("WriteLoadBalancer", mock.Anything, mock.Anything).Return(lbToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -750,7 +764,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteLoadBalancer", testCtx, mock.Anything).Return(lbToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteLoadBalancer", mock.Anything, mock.Anything).Return(lbToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -784,7 +798,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("UpdateLoadBalancer", testCtx, mock.Anything).Return(nil).Once()
+	writerMock.On("UpdateLoadBalancer", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -815,7 +829,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("UpdateLoadBalancer", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("UpdateLoadBalancer", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -844,7 +858,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 
-	writerMock.On("RemoveLoadBalancer", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("RemoveLoadBalancer", mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -855,7 +869,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("RemoveLoadBalancer", testCtx, mock.Anything).Return(nil).Once()
+	writerMock.On("RemoveLoadBalancer", mock.Anything, mock.Anything).Return(nil).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -959,7 +973,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteBlockchain", testCtx, mock.Anything).Return(chainToReturn, nil).Once()
+	writerMock.On("WriteBlockchain", mock.Anything, mock.Anything).Return(chainToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -986,7 +1000,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteBlockchain", testCtx, mock.Anything).Return(chainToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteBlockchain", mock.Anything, mock.Anything).Return(chainToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -1013,7 +1027,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("WriteRedirect", testCtx, mock.Anything).Return(redirectToReturn, nil).Once()
+	writerMock.On("WriteRedirect", mock.Anything, mock.Anything).Return(redirectToReturn, nil).Once()
 
 	router.Writer = writerMock
 
@@ -1040,7 +1054,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("WriteRedirect", testCtx, mock.Anything).Return(redirectToReturn, errors.New("dummy error")).Once()
+	writerMock.On("WriteRedirect", mock.Anything, mock.Anything).Return(redirectToReturn, errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 
@@ -1063,7 +1077,7 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 	writerMock := driver.NewMockDriver(t)
 
-	writerMock.On("ActivateBlockchain", testCtx, mock.Anything).Return(nil).Once()
+	writerMock.On("ActivateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
 	router.Writer = writerMock
 
@@ -1085,7 +1099,7 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 	rr = httptest.NewRecorder()
 
-	writerMock.On("ActivateBlockchain", testCtx, mock.Anything).Return(errors.New("dummy error")).Once()
+	writerMock.On("ActivateChain", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
 
 	router.Router.ServeHTTP(rr, req)
 

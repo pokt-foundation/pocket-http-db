@@ -1,3 +1,5 @@
+//go:build tests
+
 package tests
 
 import (
@@ -51,10 +53,8 @@ func (t *PHDTestSuite) SetupSuite() {
 		}
 	}
 	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
-	pgDriver, err := postgresdriver.NewPostgresDriver(connectionString, listener)
-	t.NoError(err)
 
-	err = postgresdriver.InitializeTestPostgresDB(connectionString)
+	pgDriver, err := postgresdriver.NewPostgresDriver(connectionString, listener)
 	t.NoError(err)
 
 	t.PGDriver = pgDriver

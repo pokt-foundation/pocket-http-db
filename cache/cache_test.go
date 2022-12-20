@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/pokt-foundation/portal-db/driver"
 	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -16,7 +15,7 @@ var testCtx = context.Background()
 func TestCache_SetCache(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := driver.NewMockDriver(t)
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadApplications", testCtx).Return([]*types.Application{
 		{
@@ -100,7 +99,7 @@ func TestCache_SetCache(t *testing.T) {
 func TestCache_SetCacheFailure(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 	cache := NewCache(readerMock, logrus.New())
 
 	errOnPay := errors.New("error on pay plans")
@@ -161,7 +160,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 func TestCache_AddApplication(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
 		{
@@ -216,7 +215,7 @@ func TestCache_AddApplication(t *testing.T) {
 func TestCache_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
 		{
@@ -286,7 +285,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 func TestCache_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
 		{
@@ -337,7 +336,7 @@ func TestCache_RemoveApplication(t *testing.T) {
 func TestCache_AddLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
 		{
@@ -381,7 +380,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 func TestCache_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
 		{
@@ -449,7 +448,7 @@ func TestCache_RemoveLoadBalancer(t *testing.T) {
 func TestCache_AddBlockchain(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
 		{ID: "0001", Ticker: "POKT"},
@@ -470,7 +469,7 @@ func TestCache_AddBlockchain(t *testing.T) {
 func TestCache_UpdateBlockchain(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
 		{ID: "0001", Active: false},
@@ -496,10 +495,13 @@ func TestCache_UpdateBlockchain(t *testing.T) {
 func TestCache_AddRedirect(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := &ReaderMock{}
+	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
-		{ID: "0001", Ticker: "POKT"},
+		{ID: "0001", Ticker: "POKT", Redirects: []types.Redirect{
+			{BlockchainID: "0001", Alias: "pokt-mainnet-1"},
+			{BlockchainID: "0001", Alias: "pokt-mainnet-2"},
+		}},
 	}, nil)
 
 	cache := NewCache(readerMock, logrus.New())

@@ -143,7 +143,7 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	fullApp, err := rt.Writer.WriteApplication(r.Context(), &app)
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", errApplicationNotFound))
+		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -213,7 +213,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		if updateInput.GatewaySettings != nil {
 			app.GatewaySettings = types.GatewaySettings{
 				SecretKey:            updateInput.GatewaySettings.SecretKey,
-				SecretKeyRequired:    *updateInput.GatewaySettings.SecretKeyRequired,
+				SecretKeyRequired:    pointerToBool(updateInput.GatewaySettings.SecretKeyRequired),
 				WhitelistOrigins:     updateInput.GatewaySettings.WhitelistOrigins,
 				WhitelistUserAgents:  updateInput.GatewaySettings.WhitelistUserAgents,
 				WhitelistContracts:   updateInput.GatewaySettings.WhitelistContracts,
@@ -223,16 +223,24 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		}
 		if updateInput.NotificationSettings != nil {
 			app.NotificationSettings = types.NotificationSettings{
-				SignedUp:      *updateInput.NotificationSettings.SignedUp,
-				Quarter:       *updateInput.NotificationSettings.Quarter,
-				Half:          *updateInput.NotificationSettings.Half,
-				ThreeQuarters: *updateInput.NotificationSettings.ThreeQuarters,
-				Full:          *updateInput.NotificationSettings.Full,
+				SignedUp:      pointerToBool(updateInput.NotificationSettings.SignedUp),
+				Quarter:       pointerToBool(updateInput.NotificationSettings.Quarter),
+				Half:          pointerToBool(updateInput.NotificationSettings.Half),
+				ThreeQuarters: pointerToBool(updateInput.NotificationSettings.ThreeQuarters),
+				Full:          pointerToBool(updateInput.NotificationSettings.Full),
 			}
 		}
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
+}
+
+// TODO move to utils-go (?)
+func pointerToBool(value *bool) bool {
+	if value == nil {
+		return false
+	}
+	return *value
 }
 
 func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
