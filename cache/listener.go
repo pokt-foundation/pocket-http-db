@@ -1,8 +1,6 @@
 package cache
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -31,20 +29,8 @@ func (c *Cache) logError(err error) {
 	c.log.WithFields(fields).Error(err)
 }
 
-func PrettyString(label string, thing interface{}) {
-	jsonThing, _ := json.Marshal(thing)
-	str := string(jsonThing)
-
-	var prettyJSON bytes.Buffer
-	_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-	output := prettyJSON.String()
-
-	fmt.Println(label, output)
-}
-
 func (c *Cache) parseApplicationNotification(n types.Notification) {
 	app, ok := n.Data.(*types.Application)
-	PrettyString("APP JSON", app)
 	if !ok {
 		c.logError(fmt.Errorf("parseApplicationNotification failed: %w", errParseApplicationFailed))
 		return
@@ -219,7 +205,6 @@ func (c *Cache) listen() {
 
 	for {
 		n := <-c.reader.NotificationChannel()
-		PrettyString("NOTIFICATION", n)
 		go c.parseNotification(*n)
 	}
 }
