@@ -1,22 +1,24 @@
 package cache
 
 import (
-	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
-	"github.com/pokt-foundation/portal-api-go/repository"
-	"github.com/stretchr/testify/mock"
+	"testing"
+
+	"github.com/pokt-foundation/portal-db/driver"
+	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
+	"github.com/pokt-foundation/portal-db/types"
 )
 
-// ReaderMock struct handler for mocking reader interface
 type ReaderMock struct {
-	mock.Mock
+	driver.MockDriver
 	lMock        *postgresdriver.ListenerMock
-	notification chan *repository.Notification
+	notification chan *types.Notification
 }
 
-func NewReaderMock() *ReaderMock {
+func NewReaderMock(t *testing.T) *ReaderMock {
 	mock := &ReaderMock{
+		MockDriver:   *driver.NewMockDriver(t),
 		lMock:        postgresdriver.NewListenerMock(),
-		notification: make(chan *repository.Notification, 32),
+		notification: make(chan *types.Notification, 32),
 	}
 
 	go postgresdriver.Listen(mock.lMock.NotificationChannel(), mock.notification)
@@ -24,36 +26,6 @@ func NewReaderMock() *ReaderMock {
 	return mock
 }
 
-func (r *ReaderMock) ReadApplications() ([]*repository.Application, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.Application), args.Error(1)
-}
-
-func (r *ReaderMock) ReadBlockchains() ([]*repository.Blockchain, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.Blockchain), args.Error(1)
-}
-
-func (r *ReaderMock) ReadLoadBalancers() ([]*repository.LoadBalancer, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.LoadBalancer), args.Error(1)
-}
-
-func (r *ReaderMock) ReadPayPlans() ([]*repository.PayPlan, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.PayPlan), args.Error(1)
-}
-
-func (r *ReaderMock) ReadRedirects() ([]*repository.Redirect, error) {
-	args := r.Called()
-
-	return args.Get(0).([]*repository.Redirect), args.Error(1)
-}
-
-func (r *ReaderMock) NotificationChannel() <-chan *repository.Notification {
+func (r *ReaderMock) NotificationChannel() <-chan *types.Notification {
 	return r.notification
 }

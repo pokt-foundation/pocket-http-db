@@ -9,7 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
-	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/pokt-foundation/portal-db/driver"
+	"github.com/pokt-foundation/portal-db/types"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
 	"github.com/sirupsen/logrus"
 )
@@ -21,25 +22,11 @@ var (
 	errApplicationNotFound = errors.New("applications not found")
 )
 
-// Writer represents the implementation of writer interface
-type Writer interface {
-	WriteLoadBalancer(loadBalancer *repository.LoadBalancer) (*repository.LoadBalancer, error)
-	UpdateLoadBalancer(id string, options *repository.UpdateLoadBalancer) error
-	RemoveLoadBalancer(id string) error
-	WriteApplication(app *repository.Application) (*repository.Application, error)
-	UpdateApplication(id string, options *repository.UpdateApplication) error
-	UpdateFirstDateSurpassed(firstDateSurpassed *repository.UpdateFirstDateSurpassed) error
-	RemoveApplication(id string) error
-	WriteBlockchain(blockchain *repository.Blockchain) (*repository.Blockchain, error)
-	WriteRedirect(redirect *repository.Redirect) (*repository.Redirect, error)
-	ActivateBlockchain(id string, active bool) error
-}
-
 // Router struct handler for router requests
 type Router struct {
 	Cache   *cache.Cache
 	Router  *mux.Router
-	Writer  Writer
+	Writer  driver.Writer
 	APIKeys map[string]bool
 	log     *logrus.Logger
 }
@@ -53,7 +40,7 @@ func (rt *Router) logError(err error) {
 }
 
 // NewRouter returns router instance
-func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
+func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
 	cache := cache.NewCache(reader, logger)
 
 	err := cache.SetCache()
@@ -76,7 +63,6 @@ func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool, logg
 	rt.Router.HandleFunc("/blockchain/{id}/activate", rt.ActivateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/application", rt.GetApplications).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application", rt.CreateApplication).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/application/limits", rt.GetApplicationsLimits).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application/{id}", rt.GetApplication).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application/{id}", rt.UpdateApplication).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/application/first_date_surpassed", rt.UpdateFirstDateSurpassed).Methods(http.MethodPost)
@@ -130,34 +116,6 @@ func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetApplications())
 }
 
-// TODO - This Endpoint is DEPRECATED. Remove once Rate Limiter & Portal Workers are updated
-// to parse fields currently found in AppLimits from the /application endpoint instead.
-func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) {
-	apps := rt.Cache.GetApplications()
-
-	var appsLimits []repository.AppLimits
-
-	for _, app := range apps {
-		appLimits := repository.AppLimits{
-			AppID:                app.ID,
-			AppName:              app.Name,
-			AppUserID:            app.UserID,
-			PublicKey:            app.GatewayAAT.ApplicationPublicKey,
-			PlanType:             app.Limit.PayPlan.Type,
-			DailyLimit:           app.DailyLimit(),
-			NotificationSettings: &app.NotificationSettings,
-		}
-
-		if !app.FirstDateSurpassed.IsZero() {
-			appLimits.FirstDateSurpassed = &app.FirstDateSurpassed
-		}
-
-		appsLimits = append(appsLimits, appLimits)
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, appsLimits)
-}
-
 func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
@@ -172,7 +130,7 @@ func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
-	var app repository.Application
+	var app types.Application
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -183,14 +141,14 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-	fullApp, err := rt.Writer.WriteApplication(&app)
+	fullApp, err := rt.Writer.WriteApplication(r.Context(), &app)
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", errApplicationNotFound))
+		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	if fullApp.Limit.PayPlan.Type != repository.Enterprise {
+	if fullApp.Limit.PayPlan.Type != types.Enterprise {
 		newPlan := rt.Cache.GetPayPlan(fullApp.Limit.PayPlan.Type)
 		fullApp.Limit.PayPlan.Limit = newPlan.Limit
 	}
@@ -208,7 +166,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updateInput repository.UpdateApplication
+	var updateInput types.UpdateApplication
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -221,16 +179,16 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if updateInput.Remove {
-		err = rt.Writer.RemoveApplication(vars["id"])
+		err = rt.Writer.RemoveApplication(r.Context(), vars["id"])
 		if err != nil {
 			rt.logError(fmt.Errorf("RemoveApplication in UpdateApplication failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		app.Status = repository.AwaitingGracePeriod
+		app.Status = types.AwaitingGracePeriod
 	} else {
-		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
+		err = rt.Writer.UpdateApplication(r.Context(), vars["id"], &updateInput)
 		if err != nil {
 			jsonresponse.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
@@ -246,25 +204,47 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 			app.FirstDateSurpassed = updateInput.FirstDateSurpassed
 		}
 		if updateInput.Limit != nil {
-			if updateInput.Limit.PayPlan.Type != repository.Enterprise {
+			if updateInput.Limit.PayPlan.Type != types.Enterprise {
 				newPlan := rt.Cache.GetPayPlan(updateInput.Limit.PayPlan.Type)
 				updateInput.Limit.PayPlan.Limit = newPlan.Limit
 			}
 			app.Limit = *updateInput.Limit
 		}
 		if updateInput.GatewaySettings != nil {
-			app.GatewaySettings = *updateInput.GatewaySettings
+			app.GatewaySettings = types.GatewaySettings{
+				SecretKey:            updateInput.GatewaySettings.SecretKey,
+				SecretKeyRequired:    pointerToBool(updateInput.GatewaySettings.SecretKeyRequired),
+				WhitelistOrigins:     updateInput.GatewaySettings.WhitelistOrigins,
+				WhitelistUserAgents:  updateInput.GatewaySettings.WhitelistUserAgents,
+				WhitelistContracts:   updateInput.GatewaySettings.WhitelistContracts,
+				WhitelistMethods:     updateInput.GatewaySettings.WhitelistMethods,
+				WhitelistBlockchains: updateInput.GatewaySettings.WhitelistBlockchains,
+			}
 		}
 		if updateInput.NotificationSettings != nil {
-			app.NotificationSettings = *updateInput.NotificationSettings
+			app.NotificationSettings = types.NotificationSettings{
+				SignedUp:      pointerToBool(updateInput.NotificationSettings.SignedUp),
+				Quarter:       pointerToBool(updateInput.NotificationSettings.Quarter),
+				Half:          pointerToBool(updateInput.NotificationSettings.Half),
+				ThreeQuarters: pointerToBool(updateInput.NotificationSettings.ThreeQuarters),
+				Full:          pointerToBool(updateInput.NotificationSettings.Full),
+			}
 		}
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
 }
 
+// TODO move to utils-go (?)
+func pointerToBool(value *bool) bool {
+	if value == nil {
+		return false
+	}
+	return *value
+}
+
 func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	var updateInput repository.UpdateFirstDateSurpassed
+	var updateInput types.UpdateFirstDateSurpassed
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -282,7 +262,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var appsToUpdate []*repository.Application
+	var appsToUpdate []*types.Application
 
 	for _, appID := range updateInput.ApplicationIDs {
 		app := rt.Cache.GetApplication(appID)
@@ -294,7 +274,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 		appsToUpdate = append(appsToUpdate, app)
 	}
 
-	err = rt.Writer.UpdateFirstDateSurpassed(&updateInput)
+	err = rt.Writer.UpdateAppFirstDateSurpassed(r.Context(), &updateInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateFirstDateSurpassed failed: %W", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -367,7 +347,7 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	err = rt.Writer.ActivateBlockchain(blockchainID, active)
+	err = rt.Writer.ActivateChain(r.Context(), blockchainID, active)
 	if err != nil {
 		rt.logError(fmt.Errorf("ActivateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -378,7 +358,7 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
-	var blockchain repository.Blockchain
+	var blockchain types.Blockchain
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -391,7 +371,7 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullBlockchain, err := rt.Writer.WriteBlockchain(&blockchain)
+	fullBlockchain, err := rt.Writer.WriteBlockchain(r.Context(), &blockchain)
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteBlockchain in CreateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -420,7 +400,7 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	var lb repository.LoadBalancer
+	var lb types.LoadBalancer
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -433,7 +413,7 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullLB, err := rt.Writer.WriteLoadBalancer(&lb)
+	fullLB, err := rt.Writer.WriteLoadBalancer(r.Context(), &lb)
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteLoadBalancer in CreateLoadBalancer failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -459,7 +439,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updateInput repository.UpdateLoadBalancer
+	var updateInput types.UpdateLoadBalancer
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -472,7 +452,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if updateInput.Remove {
-		err = rt.Writer.RemoveLoadBalancer(vars["id"])
+		err = rt.Writer.RemoveLoadBalancer(r.Context(), vars["id"])
 		if err != nil {
 			rt.logError(fmt.Errorf("RemoveLoadBalancer in UpdateLoadBalancer failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -481,7 +461,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 		lb.UserID = ""
 	} else {
-		err = rt.Writer.UpdateLoadBalancer(vars["id"], &updateInput)
+		err = rt.Writer.UpdateLoadBalancer(r.Context(), vars["id"], &updateInput)
 		if err != nil {
 			rt.logError(fmt.Errorf("UpdateLoadBalancer failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -492,7 +472,12 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 			lb.Name = updateInput.Name
 		}
 		if updateInput.StickyOptions != nil {
-			lb.StickyOptions = *updateInput.StickyOptions
+			lb.StickyOptions = types.StickyOptions{
+				Duration:      updateInput.StickyOptions.Duration,
+				StickyOrigins: updateInput.StickyOptions.StickyOrigins,
+				StickyMax:     updateInput.StickyOptions.StickyMax,
+				Stickiness:    *updateInput.StickyOptions.Stickiness,
+			}
 		}
 	}
 
@@ -506,7 +491,7 @@ func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	plan := rt.Cache.GetPayPlan(repository.PayPlanType(strings.ToUpper(vars["type"])))
+	plan := rt.Cache.GetPayPlan(types.PayPlanType(strings.ToUpper(vars["type"])))
 
 	if plan == nil {
 		rt.logError(fmt.Errorf("GetPayPlan failed: %w", errNoPayFound))
@@ -522,7 +507,7 @@ func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
-	var redirect repository.Redirect
+	var redirect types.Redirect
 
 	decoder := json.NewDecoder(r.Body)
 
@@ -535,7 +520,7 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullRedirect, err := rt.Writer.WriteRedirect(&redirect)
+	fullRedirect, err := rt.Writer.WriteRedirect(r.Context(), &redirect)
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteRedirect in CreateRedirect failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())

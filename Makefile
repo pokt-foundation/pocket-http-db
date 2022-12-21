@@ -8,11 +8,11 @@ test_env_down:
 run_unit_tests:
 	go test ./...  -short
 run_e2e_tests:
-	-go test ./... -run E2E -count=1;
+	-go test ./... -run E2E -count=1 -tags=tests;
 run_all_tests:
-	-go test ./... -count=1;
+	-go test ./... -count=1 -tags=tests;
 
-test_unit: test_env_up run_unit_tests test_env_down
+test_unit: run_unit_tests
 test_e2e:  test_env_up run_e2e_tests  test_env_down
 test:      test_env_up run_all_tests  test_env_down
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/pokt-foundation/pocket-http-db/router"
-	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
+	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
 	"github.com/pokt-foundation/utils-go/environment"
 	"github.com/sirupsen/logrus"
 )
@@ -69,10 +69,9 @@ func main() {
 			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
 		}
 	}
-
 	listener := pq.NewListener(options.connectionString, 10*time.Second, time.Minute, reportProblem)
 
-	driver, err := postgresdriver.NewPostgresDriverFromConnectionString(options.connectionString, listener)
+	driver, err := postgresdriver.NewPostgresDriver(options.connectionString, listener)
 	if err != nil {
 		panic(err)
 	}

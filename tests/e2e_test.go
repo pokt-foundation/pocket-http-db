@@ -1,7 +1,10 @@
+//go:build tests
+
 package tests
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,8 +15,8 @@ import (
 
 	"github.com/gojektech/heimdall/httpclient"
 	"github.com/lib/pq"
-	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
-	"github.com/pokt-foundation/portal-api-go/repository"
+	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
+	"github.com/pokt-foundation/portal-db/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -28,6 +31,8 @@ const (
 )
 
 var (
+	testCtx = context.Background()
+
 	ErrResponseNotOK error = errors.New("Response not OK")
 
 	testClient = httpclient.NewClient(httpclient.WithHTTPTimeout(5*time.Second), httpclient.WithRetryCount(0))
@@ -48,7 +53,8 @@ func (t *PHDTestSuite) SetupSuite() {
 		}
 	}
 	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
-	pgDriver, err := postgresdriver.NewPostgresDriverFromConnectionString(connectionString, listener)
+
+	pgDriver, err := postgresdriver.NewPostgresDriver(connectionString, listener)
 	t.NoError(err)
 
 	t.PGDriver = pgDriver
@@ -72,7 +78,7 @@ tests all of PHD's endpoints using an HTTP client and the verifies the results.
 
 func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	/* Create Blockchain -> POST /blockchain */
-	createdBlockchain, err := post[repository.Blockchain]("blockchain", baseURL, []byte(blockchainJSON))
+	createdBlockchain, err := post[types.Blockchain]("blockchain", baseURL, []byte(blockchainJSON))
 	t.NoError(err)
 	t.blockchainAssertions(createdBlockchain)
 
@@ -81,27 +87,27 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Blockchain -> GET /blockchain/{id} */
-	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), baseURL)
+	createdBlockchain, err = get[types.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), baseURL)
 	t.NoError(err)
 	t.blockchainAssertions(createdBlockchain)
 
-	createdBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), secondURL)
+	createdBlockchain, err = get[types.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), secondURL)
 	t.NoError(err)
 	t.blockchainAssertions(createdBlockchain)
 
 	/* Get All Blockchains -> GET /blockchain */
-	createdBlockchains, err := get[[]repository.Blockchain]("blockchain", secondURL)
+	createdBlockchains, err := get[[]types.Blockchain]("blockchain", secondURL)
 	t.NoError(err)
 	t.Len(createdBlockchains, 1)
 	t.blockchainAssertions(createdBlockchains[0])
 
-	createdBlockchains, err = get[[]repository.Blockchain]("blockchain", baseURL)
+	createdBlockchains, err = get[[]types.Blockchain]("blockchain", baseURL)
 	t.NoError(err)
 	t.Len(createdBlockchains, 1)
 	t.blockchainAssertions(createdBlockchains[0])
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgBlockchains, err := t.PGDriver.ReadBlockchains()
+	pgBlockchains, err := t.PGDriver.ReadBlockchains(testCtx)
 	t.NoError(err)
 	t.Len(pgBlockchains, 1)
 
@@ -112,31 +118,31 @@ func (t *PHDTestSuite) TestPHD_BlockchainEndpoints() {
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
-	activatedBlockchain, err := get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), baseURL)
+	activatedBlockchain, err := get[types.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), baseURL)
 	t.NoError(err)
 	t.Equal(true, activatedBlockchain.Active)
 
-	activatedBlockchain, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), secondURL)
+	activatedBlockchain, err = get[types.Blockchain](fmt.Sprintf("blockchain/%s", createdBlockchainID), secondURL)
 	t.NoError(err)
 	t.Equal(true, activatedBlockchain.Active)
 
 	/* ERROR - Create Blockchain (duplicate record) -> POST /blockchain */
-	_, err = post[repository.Blockchain]("blockchain", baseURL, []byte(blockchainJSON))
+	_, err = post[types.Blockchain]("blockchain", baseURL, []byte(blockchainJSON))
 	t.Equal("Response not OK. Internal Server Error", err.Error())
 
 	/* ERROR - Create Blockchain (bad data) -> POST /blockchain */
-	_, err = post[repository.Blockchain]("blockchain", baseURL, []byte(`{"badJSON": "y tho",}`))
+	_, err = post[types.Blockchain]("blockchain", baseURL, []byte(`{"badJSON": "y tho",}`))
 	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Blockchain (non-existent ID) -> GET /blockchain/{id} */
-	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"), baseURL)
+	_, err = get[types.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"), baseURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 
-	_, err = get[repository.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"), secondURL)
+	_, err = get[types.Blockchain](fmt.Sprintf("blockchain/%s", "NOT-REAL"), secondURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 }
 
-func (t *PHDTestSuite) blockchainAssertions(blockchain repository.Blockchain) {
+func (t *PHDTestSuite) blockchainAssertions(blockchain types.Blockchain) {
 	t.NotEmpty(blockchain)
 	t.Equal("TST01", blockchain.ID)
 	t.Equal("https://test.external.com/rpc", blockchain.Altruist)
@@ -150,7 +156,7 @@ func (t *PHDTestSuite) blockchainAssertions(blockchain repository.Blockchain) {
 
 func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	/* Create Application -> POST /application */
-	createdApplication, err := post[repository.Application]("application", baseURL, []byte(applicationJSON))
+	createdApplication, err := post[types.Application]("application", baseURL, []byte(applicationJSON))
 	t.NoError(err)
 	t.applicationAssertions(createdApplication)
 
@@ -159,54 +165,55 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Application -> GET /application/{id} */
-	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL)
+	createdApplication, err = get[types.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL)
 	t.NoError(err)
 	t.applicationAssertions(createdApplication)
 
-	createdApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), secondURL)
+	createdApplication, err = get[types.Application](fmt.Sprintf("application/%s", createdApplicationID), secondURL)
 	t.NoError(err)
 	t.applicationAssertions(createdApplication)
 
 	/* Get All Applications -> GET /application */
-	createdApplications, err := get[[]repository.Application]("application", baseURL)
+	createdApplications, err := get[[]types.Application]("application", baseURL)
 	t.NoError(err)
 	t.Len(createdApplications, 1)
 	t.applicationAssertions(createdApplications[0])
 
-	createdApplications, err = get[[]repository.Application]("application", secondURL)
+	createdApplications, err = get[[]types.Application]("application", secondURL)
 	t.NoError(err)
 	t.Len(createdApplications, 1)
 	t.applicationAssertions(createdApplications[0])
 
 	/* Get All of One User's Applications-> GET /user/{id}/application */
-	userApplications, err := get[[]repository.Application](fmt.Sprintf("user/%s/application", testUserID), baseURL)
+	userApplications, err := get[[]types.Application](fmt.Sprintf("user/%s/application", testUserID), baseURL)
 	t.NoError(err)
 	t.Len(userApplications, 1)
 	t.applicationAssertions(userApplications[0])
 
-	userApplications, err = get[[]repository.Application](fmt.Sprintf("user/%s/application", testUserID), secondURL)
+	userApplications, err = get[[]types.Application](fmt.Sprintf("user/%s/application", testUserID), secondURL)
 	t.NoError(err)
 	t.Len(userApplications, 1)
 	t.applicationAssertions(userApplications[0])
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgApplications, err := t.PGDriver.ReadApplications()
+	pgApplications, err := t.PGDriver.ReadApplications(testCtx)
 	t.NoError(err)
 	t.Len(pgApplications, 1)
 
 	/* Update One Application -> PUT /application/{id} */
-	update := repository.UpdateApplication{
+	trueBool, falseBool := true, false
+	update := types.UpdateApplication{
 		Name:                 "update-application-1",
-		NotificationSettings: &repository.NotificationSettings{Half: true, ThreeQuarters: false},
-		GatewaySettings: &repository.GatewaySettings{
-			SecretKeyRequired:    true,
+		NotificationSettings: &types.UpdateNotificationSettings{Half: &trueBool, ThreeQuarters: &falseBool},
+		GatewaySettings: &types.UpdateGatewaySettings{
+			SecretKeyRequired:    &trueBool,
 			WhitelistOrigins:     []string{"test-origins-1", "test-origins-2"},
 			WhitelistUserAgents:  []string{"test-agents-1", "test-agents-2", "test-agents-3"},
 			WhitelistBlockchains: []string{"test-chains-1"},
-			WhitelistContracts: []repository.WhitelistContract{
+			WhitelistContracts: []types.WhitelistContract{
 				{BlockchainID: "TST01", Contracts: []string{"test-contract-1"}},
 			},
-			WhitelistMethods: []repository.WhitelistMethod{
+			WhitelistMethods: []types.WhitelistMethod{
 				{BlockchainID: "TST01", Methods: []string{"test-method-1"}},
 				{BlockchainID: "TST01", Methods: []string{"test-method-2", "test-method-3"}},
 			},
@@ -215,10 +222,10 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	updateJSON, err := json.Marshal(update)
 	t.NoError(err)
 
-	updatedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateJSON)
+	updatedApplication, err := put[types.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateJSON)
 	t.NoError(err)
 	t.Equal("update-application-1", updatedApplication.Name)
-	t.Equal(repository.PayPlanType("FREETIER_V0"), updatedApplication.Limit.PayPlan.Type)
+	t.Equal(types.PayPlanType("FREETIER_V0"), updatedApplication.Limit.PayPlan.Type)
 	t.Equal(250000, updatedApplication.DailyLimit())
 	t.Equal(true, updatedApplication.NotificationSettings.Half)
 	t.Equal(false, updatedApplication.NotificationSettings.ThreeQuarters)
@@ -239,102 +246,89 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 	t.NotEmpty(updatedApplication.UpdatedAt)
 
 	/* Update One Application Pay Plan -> PUT /application/{id} */
-	updatePayPlan := repository.UpdateApplication{
-		Limit: &repository.AppLimit{
-			PayPlan: repository.PayPlan{Type: repository.PayAsYouGoV0},
+	updatePayPlan := types.UpdateApplication{
+		Limit: &types.AppLimit{
+			PayPlan: types.PayPlan{Type: types.PayAsYouGoV0},
 		},
 	}
 	updatePayPlanJSON, err := json.Marshal(updatePayPlan)
 	t.NoError(err)
 
-	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updatePayPlanJSON)
+	updatedApplication, err = put[types.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updatePayPlanJSON)
 	t.NoError(err)
 	t.Equal("update-application-1", updatedApplication.Name)
-	t.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), updatedApplication.Limit.PayPlan.Type)
+	t.Equal(types.PayPlanType("PAY_AS_YOU_GO_V0"), updatedApplication.Limit.PayPlan.Type)
 	t.Equal(0, updatedApplication.DailyLimit())
 	t.Equal(true, updatedApplication.NotificationSettings.Half)
 
 	/* Update One Application Pay Plan to Enterprise (with custom limit) -> PUT /application/{id} */
-	updateEnterprise := repository.UpdateApplication{
-		Limit: &repository.AppLimit{
-			PayPlan:     repository.PayPlan{Type: repository.Enterprise},
+	updateEnterprise := types.UpdateApplication{
+		Limit: &types.AppLimit{
+			PayPlan:     types.PayPlan{Type: types.Enterprise},
 			CustomLimit: 4200000,
 		},
 	}
 	updateEnterpriseJSON, err := json.Marshal(updateEnterprise)
 	t.NoError(err)
 
-	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateEnterpriseJSON)
+	updatedApplication, err = put[types.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateEnterpriseJSON)
 	t.NoError(err)
 	t.Equal("update-application-1", updatedApplication.Name)
-	t.Equal(repository.PayPlanType("ENTERPRISE"), updatedApplication.Limit.PayPlan.Type)
+	t.Equal(types.PayPlanType("ENTERPRISE"), updatedApplication.Limit.PayPlan.Type)
 	t.Equal(4200000, updatedApplication.DailyLimit())
 	t.Equal("test-chains-1", updatedApplication.GatewaySettings.WhitelistBlockchains[0])
 
 	/* Update First Date Surpassed -> POST /application/first_date_surpassed */
-	updateDate := repository.UpdateFirstDateSurpassed{
+	updateDate := types.UpdateFirstDateSurpassed{
 		ApplicationIDs:     []string{createdApplication.ID},
 		FirstDateSurpassed: time.Now(),
 	}
 	updateDateJSON, err := json.Marshal(updateDate)
 	t.NoError(err)
 
-	updatedDateApplication, err := post[[]repository.Application]("application/first_date_surpassed", baseURL, updateDateJSON)
+	updatedDateApplication, err := post[[]types.Application]("application/first_date_surpassed", baseURL, updateDateJSON)
 	t.NoError(err)
 	t.NotEmpty(updatedDateApplication[0].FirstDateSurpassed)
 
-	/* Get All Application Limits -> GET /application/limits */
-	applicationLimits, err := get[[]repository.AppLimits]("application/limits", baseURL)
-	t.NoError(err)
-	t.Len(applicationLimits, 1)
-	t.Equal("update-application-1", applicationLimits[0].AppName)
-	t.Equal(testUserID, applicationLimits[0].AppUserID)
-	t.Equal("test_key_7a7d163434b10803eece4ddb2e0726e39ec6bb99b828aa309d05ffd", applicationLimits[0].PublicKey)
-	t.Equal(repository.PayPlanType("ENTERPRISE"), applicationLimits[0].PlanType)
-	t.Equal(4200000, applicationLimits[0].DailyLimit)
-	t.Equal(true, applicationLimits[0].NotificationSettings.Half)
-	t.Equal(false, applicationLimits[0].NotificationSettings.ThreeQuarters)
-	t.NotEmpty(applicationLimits[0].FirstDateSurpassed)
-
 	/* Remove One Application -> PUT /application/{id} (with Remove: true) */
-	remove := repository.UpdateApplication{Remove: true}
+	remove := types.UpdateApplication{Remove: true}
 	removeJSON, err := json.Marshal(remove)
 	t.NoError(err)
 
-	removedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, removeJSON)
+	removedApplication, err := put[types.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, removeJSON)
 	t.NoError(err)
-	t.Equal(repository.AppStatus("AWAITING_GRACE_PERIOD"), removedApplication.Status)
+	t.Equal(types.AppStatus("AWAITING_GRACE_PERIOD"), removedApplication.Status)
 
 	/* ERROR - Create Application (bad data) -> POST /application */
-	_, err = post[repository.Application]("application", baseURL, []byte(`{"badJSON": "y tho",}`))
+	_, err = post[types.Application]("application", baseURL, []byte(`{"badJSON": "y tho",}`))
 	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Application (non-existent ID) -> GET /application/{id} */
-	_, err = get[repository.Application](fmt.Sprintf("application/%s", "not-a-real-id"), baseURL)
+	_, err = get[types.Application](fmt.Sprintf("application/%s", "not-a-real-id"), baseURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 
 	/* ERROR - Attempting to update non-Enterprise plan with custom limit -> PUT /application/{id} */
-	updateEnterpriseErr := repository.UpdateApplication{
-		Limit: &repository.AppLimit{
-			PayPlan:     repository.PayPlan{Type: repository.FreetierV0},
+	updateEnterpriseErr := types.UpdateApplication{
+		Limit: &types.AppLimit{
+			PayPlan:     types.PayPlan{Type: types.FreetierV0},
 			CustomLimit: 123456,
 		},
 	}
 	updateEnterpriseErrJSON, err := json.Marshal(updateEnterpriseErr)
 	t.NoError(err)
 
-	updatedApplication, err = put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateEnterpriseErrJSON)
+	updatedApplication, err = put[types.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateEnterpriseErrJSON)
 	t.Equal("Response not OK. Unprocessable Entity", err.Error())
 }
 
-func (t *PHDTestSuite) applicationAssertions(app repository.Application) {
+func (t *PHDTestSuite) applicationAssertions(app types.Application) {
 	t.NotEmpty(app)
 	t.NotEmpty(app.ID)
 	t.Equal(testUserID, app.UserID)
 	t.Equal("test-application-1", app.Name)
-	t.Equal(repository.AppStatus("IN_SERVICE"), app.Status)
+	t.Equal(types.AppStatus("IN_SERVICE"), app.Status)
 	t.Equal(true, app.Dummy)
-	t.Equal(repository.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
+	t.Equal(types.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
 	t.Equal(250000, app.DailyLimit())
 	t.Equal("test_address_8dbb89278918da056f589086fb4", app.GatewayAAT.Address)
 	t.Equal("test_key_7a7d163434b10803eece4ddb2e0726e39ec6bb99b828aa309d05ffd", app.GatewayAAT.ApplicationPublicKey)
@@ -355,58 +349,59 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	/* Create Load Balancer -> POST /application */
 	loadBalancerInput := []byte(fmt.Sprintf(loadBalancerJSON, createdApplicationID))
 
-	createdLoadBalancer, err := post[repository.LoadBalancer]("load_balancer", baseURL, loadBalancerInput)
+	createdLoadBalancer, err := post[types.LoadBalancer]("load_balancer", baseURL, loadBalancerInput)
 	t.NoError(err)
 	t.loadBalancerAssertions(createdLoadBalancer)
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	/* Get One Load Balancer -> GET /load_balancer/{id} */
-	createdLoadBalancer, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
+	createdLoadBalancer, err = get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
 	t.NoError(err)
 	t.loadBalancerAssertions(createdLoadBalancer)
 
 	/* Get All Load Balancers -> GET /load_balancer */
-	createdLoadBalancers, err := get[[]repository.LoadBalancer]("load_balancer", baseURL)
+	createdLoadBalancers, err := get[[]types.LoadBalancer]("load_balancer", baseURL)
 	t.NoError(err)
 	t.Len(createdLoadBalancers, 1)
 	t.loadBalancerAssertions(createdLoadBalancers[0])
 
-	createdLoadBalancers, err = get[[]repository.LoadBalancer]("load_balancer", secondURL)
+	createdLoadBalancers, err = get[[]types.LoadBalancer]("load_balancer", secondURL)
 	t.NoError(err)
 	t.Len(createdLoadBalancers, 1)
 	t.loadBalancerAssertions(createdLoadBalancers[0])
 
 	/* Get All of One User's Load Balancers -> GET /user/{id}/load_balancer */
-	userLoadBalancers, err := get[[]repository.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID), baseURL)
+	userLoadBalancers, err := get[[]types.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID), baseURL)
 	t.NoError(err)
 	t.Len(userLoadBalancers, 1)
 	t.loadBalancerAssertions(userLoadBalancers[0])
 
-	userLoadBalancers, err = get[[]repository.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID), secondURL)
+	userLoadBalancers, err = get[[]types.LoadBalancer](fmt.Sprintf("user/%s/load_balancer", testUserID), secondURL)
 	t.NoError(err)
 	t.Len(userLoadBalancers, 1)
 	t.loadBalancerAssertions(userLoadBalancers[0])
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgLoadBalancers, err := t.PGDriver.ReadLoadBalancers()
+	pgLoadBalancers, err := t.PGDriver.ReadLoadBalancers(testCtx)
 	t.NoError(err)
 	t.Len(pgLoadBalancers, 1)
 
 	/* Update One Load Balancer -> PUT /load_balancer/{id} */
-	update := repository.UpdateLoadBalancer{
+	trueBool := true
+	update := types.UpdateLoadBalancer{
 		Name: "update-load-balancer-1",
-		StickyOptions: &repository.StickyOptions{
+		StickyOptions: &types.UpdateStickyOptions{
 			Duration:      "test-duration",
 			StickyOrigins: []string{"test-origins-1", "test-origins-2"},
 			StickyMax:     200,
-			Stickiness:    true,
+			Stickiness:    &trueBool,
 		},
 	}
 	updateJSON, err := json.Marshal(update)
 	t.NoError(err)
 
-	updatedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL, updateJSON)
+	updatedLoadBalancer, err := put[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL, updateJSON)
 	t.NoError(err)
 	t.Equal("update-load-balancer-1", updatedLoadBalancer.Name)
 	t.Equal("test-duration", updatedLoadBalancer.StickyOptions.Duration)
@@ -416,24 +411,24 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	t.Equal(true, updatedLoadBalancer.StickyOptions.Stickiness)
 
 	/* Remove One Load Balancer -> PUT /load_balancer/{id} (with Remove: true) */
-	remove := repository.UpdateLoadBalancer{Remove: true}
+	remove := types.UpdateLoadBalancer{Remove: true}
 	removeJSON, err := json.Marshal(remove)
 	t.NoError(err)
 
-	removedLoadBalancer, err := put[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL, removeJSON)
+	removedLoadBalancer, err := put[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL, removeJSON)
 	t.NoError(err)
 	t.Equal("", removedLoadBalancer.UserID)
 
 	/* ERROR - Create Load Balancer (bad data) -> POST /load_balancer */
-	_, err = post[repository.LoadBalancer]("load_balancer", baseURL, []byte(`{"badJSON": "y tho",}`))
+	_, err = post[types.LoadBalancer]("load_balancer", baseURL, []byte(`{"badJSON": "y tho",}`))
 	t.Equal("Response not OK. Bad Request", err.Error())
 
 	/* ERROR - Get One Load Balancer (non-existent ID) -> GET /load_balancer/{id} */
-	_, err = get[repository.LoadBalancer](fmt.Sprintf("load_balancer/%s", "not-a-real-id"), baseURL)
+	_, err = get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", "not-a-real-id"), baseURL)
 	t.Equal("Response not OK. Not Found", err.Error())
 }
 
-func (t *PHDTestSuite) loadBalancerAssertions(lb repository.LoadBalancer) {
+func (t *PHDTestSuite) loadBalancerAssertions(lb types.LoadBalancer) {
 	t.NotEmpty(lb)
 	t.NotEmpty(lb.ID)
 	t.Equal("test-load-balancer-1", lb.Name)
@@ -455,53 +450,28 @@ func (t *PHDTestSuite) loadBalancerAssertions(lb repository.LoadBalancer) {
 
 func (t *PHDTestSuite) TestPHD_PayPlanEndpoints() {
 	/* Get All Pay Plans -> GET /pay_plan */
-	payPlans, err := get[[]repository.PayPlan]("pay_plan", baseURL)
+	payPlans, err := get[[]types.PayPlan]("pay_plan", baseURL)
 	t.NoError(err)
 	t.Len(payPlans, 6)
 
-	payPlans, err = get[[]repository.PayPlan]("pay_plan", secondURL)
+	payPlans, err = get[[]types.PayPlan]("pay_plan", secondURL)
 	t.NoError(err)
 	t.Len(payPlans, 6)
 
 	/* Get One Pay Plan -> GET /pay_plan/{type} */
-	payPlan, err := get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "FREETIER_V0"), baseURL)
+	payPlan, err := get[types.PayPlan](fmt.Sprintf("pay_plan/%s", "FREETIER_V0"), baseURL)
 	t.NoError(err)
-	t.Equal(repository.PayPlanType("FREETIER_V0"), payPlan.Type)
+	t.Equal(types.PayPlanType("FREETIER_V0"), payPlan.Type)
 	t.Equal(250000, payPlan.Limit)
 
 	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgPayPlans, err := t.PGDriver.ReadPayPlans()
+	pgPayPlans, err := t.PGDriver.ReadPayPlans(testCtx)
 	t.NoError(err)
 	t.Len(pgPayPlans, 6)
 
 	/* ERROR - Get One Pay Plan (non-existent ID) -> GET /pay_plan/{type} */
-	_, err = get[repository.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"), baseURL)
+	_, err = get[types.PayPlan](fmt.Sprintf("pay_plan/%s", "not-a-real-pay-plan"), baseURL)
 	t.Equal("Response not OK. Not Found", err.Error())
-}
-
-func (t *PHDTestSuite) TestPHD_RedirectEndpoints() {
-	redirectInput := []byte(fmt.Sprintf(redirectJSON, createdBlockchainID))
-
-	/* Create Redirect -> POST /redirect */
-	createdRedirect, err := post[repository.Redirect]("redirect", baseURL, redirectInput)
-	t.NoError(err)
-	t.Equal(createdBlockchainID, createdRedirect.BlockchainID)
-	t.Equal("test-mainnet", createdRedirect.Alias)
-	t.Equal("test-rpc.gateway.pokt.network", createdRedirect.Domain)
-	t.Equal("12345", createdRedirect.LoadBalancerID)
-
-	/* Check Records Exist in Postgres DB as well as PHD Cache */
-	pgRedirects, err := t.PGDriver.ReadRedirects()
-	t.NoError(err)
-	t.Len(pgRedirects, 1)
-
-	/* ERROR - Create Redirect (duplicate record) -> POST /redirect */
-	_, err = post[repository.Redirect]("redirect", baseURL, []byte(redirectJSON))
-	t.Equal("Response not OK. Internal Server Error", err.Error())
-
-	/* ERROR - Create Redirect (bad data) -> POST /redirect */
-	_, err = post[repository.Redirect]("redirect", baseURL, []byte(`{"badJSON": "y tho",}`))
-	t.Equal("Response not OK. Bad Request", err.Error())
 }
 
 /* Test Client HTTP Funcs */
