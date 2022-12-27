@@ -78,6 +78,14 @@ const (
 			"stickyMax": 0,
 			"stickiness": false
 		},
+		"users": [
+			{
+				"userID": "test_id_de26a0db3b6c631c4",
+				"roleName": "OWNER",
+				"email": "test@user.com",
+				"accepted": false
+			}
+		],
 		"Applications": null
 	}`
 )

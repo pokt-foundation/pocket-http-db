@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	errNoPayFound          = errors.New("pay plan not found")
-	errBalancerNotFound    = errors.New("load balancer not found")
-	errBlockchainNotFound  = errors.New("blockchain not found")
-	errApplicationNotFound = errors.New("applications not found")
+	errNoPayFound           = errors.New("pay plan not found")
+	errLoadBalancerNotFound = errors.New("load balancer not found")
+	errBlockchainNotFound   = errors.New("blockchain not found")
+	errApplicationNotFound  = errors.New("applications not found")
 )
 
 // Router struct handler for router requests
@@ -61,19 +61,25 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/blockchain", rt.CreateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/blockchain/{id}", rt.GetBlockchain).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/blockchain/{id}/activate", rt.ActivateBlockchain).Methods(http.MethodPost)
+
 	rt.Router.HandleFunc("/application", rt.GetApplications).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application", rt.CreateApplication).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/application/{id}", rt.GetApplication).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/application/{id}", rt.UpdateApplication).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/application/first_date_surpassed", rt.UpdateFirstDateSurpassed).Methods(http.MethodPost)
+
 	rt.Router.HandleFunc("/load_balancer", rt.GetLoadBalancers).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/load_balancer", rt.CreateLoadBalancer).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
+
 	rt.Router.HandleFunc("/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
+
 	rt.Router.HandleFunc("/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
+
 	rt.Router.HandleFunc("/redirect", rt.CreateRedirect).Methods(http.MethodPost)
 
 	rt.Router.Use(rt.AuthorizationHandler)
@@ -308,8 +314,8 @@ func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request
 	lbs := rt.Cache.GetLoadBalancersByUserID(vars["id"])
 
 	if len(lbs) == 0 {
-		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errBalancerNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
+		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
 	}
 
@@ -391,8 +397,8 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 
 	if lb == nil {
-		rt.logError(fmt.Errorf("GetLoadBalancer failed: %w", errBalancerNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
+		rt.logError(fmt.Errorf("GetLoadBalancer failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
 	}
 
@@ -429,13 +435,48 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }
 
+func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+	if lb == nil {
+		rt.logError(fmt.Errorf("GetLoadBalancer in CreateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	var user types.UserAccess
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&user)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreateLoadBalancerUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = rt.Writer.WriteLoadBalancerUser(r.Context(), lb.ID, user)
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	lb.Users = append(lb.Users, user)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
+}
+
 func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 	if lb == nil {
-		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancer failed: %w", errBalancerNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
+		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancer failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
 	}
 

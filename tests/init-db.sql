@@ -87,11 +87,14 @@ CREATE TABLE IF NOT EXISTS stickiness_options (
 CREATE TABLE IF NOT EXISTS user_access (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	lb_id VARCHAR,
-	role_name VARCHAR,
 	user_id VARCHAR,
+	role_name VARCHAR,
 	email VARCHAR,
-	accepted BOOLEAN,
+	accepted BOOLEAN DEFAULT false,
+	created_at TIMESTAMP NULL,
+	updated_at TIMESTAMP NULL,
 	PRIMARY KEY (id),
+    UNIQUE (lb_id, user_id),
 	CONSTRAINT fk_lb FOREIGN KEY(lb_id) REFERENCES loadbalancers(lb_id),
 	CONSTRAINT fk_role FOREIGN KEY(role_name) REFERENCES user_roles(name)
 );
@@ -249,23 +252,6 @@ INSERT ON redirects FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER sync_check_options_notify_event
 AFTER
 INSERT ON sync_check_options FOR EACH ROW EXECUTE PROCEDURE notify_event();
--- Automatic Updated At Field
-CREATE OR REPLACE FUNCTION trigger_set_timestamp() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at = NOW();
-RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER set_timestamp BEFORE
-UPDATE ON pay_plans FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
-CREATE TRIGGER set_timestamp BEFORE
-UPDATE ON user_roles FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
-CREATE TRIGGER set_timestamp BEFORE
-UPDATE ON blockchains FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
-CREATE TRIGGER set_timestamp BEFORE
-UPDATE ON redirects FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
-CREATE TRIGGER set_timestamp BEFORE
-UPDATE ON loadbalancers FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
-CREATE TRIGGER set_timestamp BEFORE
-UPDATE ON applications FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- Insert Rows
 INSERT INTO pay_plans (plan_type, daily_limit)
@@ -276,3 +262,8 @@ VALUES
     ('TEST_PLAN_V0', 100),
     ('TEST_PLAN_10K', 10000),
     ('TEST_PLAN_90K', 90000);
+
+INSERT INTO user_roles (name, permissions)
+VALUES ('ADMIN', '{ "read:endpoint", "write:endpoint" }'),
+    ('OWNER', '{ "read:endpoint", "write:endpoint" }'),
+    ('MEMBER', '{ "read:endpoint" }');
