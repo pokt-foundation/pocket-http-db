@@ -49,11 +49,14 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 
 	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
 		{
-			ID:     "60ecb2bf67774900350d9c42",
-			UserID: "60ecb35fts687463gh2h72gs",
+			ID:     "test_lb_34987u329rfn23f",
+			UserID: "test_user_1dbffbdfeeb225",
 			ApplicationIDs: []string{
 				"5f62b7d8be3591c4dea8566d",
 				"5f62b7d8be3591c4dea8566a",
+			},
+			Users: []types.UserAccess{
+				{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
 			},
 		},
 	}, nil)
@@ -248,6 +251,9 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
 		},
+		Users: []types.UserAccess{
+			{RoleName: "OWNER", UserID: "user_id_12345", Email: "admin1@test.com", Accepted: true},
+		},
 		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566a"},
 	})
 
@@ -257,6 +263,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	c.Equal("pablo", lb.Name)
 	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
 	c.Equal("5f62b7d8be3591c4dea8566a", lb.Applications[0].ID)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
 
 	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
 		ID:     "123",
@@ -266,6 +273,9 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 			StickyOrigins: []string{"ohana"},
 			Stickiness:    true,
 		},
+		// Users: []types.UserAccess{
+		// 	{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
+		// },
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -273,6 +283,8 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	lb = cache.GetLoadBalancer("123")
 	c.Equal("orlando", lb.Name)
 	c.Equal([]string{"ohana"}, lb.StickyOptions.StickyOrigins)
+	// c.Equal("test_user_1dbffbdfeeb225", lb.Users[0].UserID)
+	// c.Equal("test_user_admin4309tug4g", lb.Users[1].UserID)
 
 	// Delete load balancer event
 	lbs := cache.GetLoadBalancersByUserID("user_id_12345")

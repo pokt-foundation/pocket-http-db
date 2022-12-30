@@ -34,6 +34,7 @@ type Cache struct {
 	pendingRedirects           map[string]types.Redirect
 	pendingSyncCheckOptions    map[string]types.SyncCheckOptions
 	pendingStickyOptions       map[string]types.StickyOptions
+	pendingUserAccess          map[string]types.UserAccess
 	pendingLbApps              map[string][]types.LbApp
 	log                        *logrus.Logger
 }
@@ -48,6 +49,7 @@ func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
 		pendingNotifactionSettings: make(map[string]types.NotificationSettings),
 		pendingSyncCheckOptions:    make(map[string]types.SyncCheckOptions),
 		pendingStickyOptions:       make(map[string]types.StickyOptions),
+		pendingUserAccess:          make(map[string]types.UserAccess),
 		pendingLbApps:              make(map[string][]types.LbApp),
 		log:                        logger,
 	}
@@ -442,6 +444,22 @@ func (c *Cache) addStickinessOptions(opts types.StickyOptions) {
 	c.pendingStickyOptions[lbID] = opts
 }
 
+func (c *Cache) addUserAccess(userAccess types.UserAccess) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	lbID := userAccess.ID
+	userAccess.ID = "" // to avoid multiple sources of truth
+
+	lb := c.loadBalancersMap[lbID]
+	if lb != nil {
+		lb.Users = append(lb.Users, userAccess)
+		return
+	}
+
+	c.pendingUserAccess[lbID] = userAccess
+}
+
 func (c *Cache) addLbApp(lbApp types.LbApp) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
@@ -503,6 +521,42 @@ func (c *Cache) setPayPlans() error {
 	c.payPlansMap = payPlansMap
 
 	return nil
+}
+
+// updateUserAccess updates load balancer user saved in cache with a new role
+func (c *Cache) updateUserAccess(inUser types.UserAccess) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	lbID := inUser.ID
+	inUser.ID = "" // to avoid multiple sources of truth
+
+	lb := c.loadBalancersMap[lbID]
+
+	for i := range lb.Users {
+		if lb.Users[i].UserID == inUser.UserID {
+			lb.Users[i].RoleName = inUser.RoleName
+		}
+	}
+}
+
+// deleteUserAccess deletes load balancer user saved in cache
+func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	lbID := delUser.ID
+	delUser.ID = "" // to avoid multiple sources of truth
+
+	lb := c.loadBalancersMap[lbID]
+
+	filteredUsers := []types.UserAccess{}
+	for _, user := range lb.Users {
+		if user.UserID != delUser.UserID {
+			filteredUsers = append(filteredUsers, user)
+		}
+	}
+	lb.Users = filteredUsers
 }
 
 // SetCache gets all values from DB and stores them in cache

@@ -101,6 +101,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 			UserID: "test_user_04228205bd261a",
 			Users: []types.UserAccess{
 				{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
+				{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
 			},
 		},
 	}, nil)
@@ -826,7 +827,7 @@ func Test_CreateLoadBalancerUser(t *testing.T) {
 			err:            nil,
 		},
 		{
-			name:           "Should fail if the LB ID does not exist",
+			name:           "Should fail if the load balancer does not exist",
 			lbID:           "test_sir_not_appearing_in_this_film",
 			expectedStatus: http.StatusNotFound,
 			err:            errors.New("dummy error"),
@@ -951,6 +952,212 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func Test_UpdateLoadBalancerUserRole(t *testing.T) {
+	tests := []struct {
+		name                  string
+		lbID                  string
+		userUpdate            types.UpdateUserAccess
+		invalidJSON           bool
+		expectedLBAfterUpdate *types.LoadBalancer
+		expectedStatus        int
+		err                   error
+	}{
+		{
+			name: "Should update User for a LoadBalancer with a new role with correct input",
+			lbID: "test_lb_34987u329rfn23f",
+			userUpdate: types.UpdateUserAccess{
+				UserID:   "test_user_1dbffbdfeeb225",
+				RoleName: types.RoleAdmin,
+			},
+			expectedLBAfterUpdate: &types.LoadBalancer{
+				ID:     "test_lb_34987u329rfn23f",
+				UserID: "test_user_1dbffbdfeeb225",
+				Applications: []*types.Application{
+					{
+						ID:     "5f62b7d8be3591c4dea8566d",
+						UserID: "test_user_1dbffbdfeeb225",
+						Limit: types.AppLimit{
+							PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000},
+						},
+						FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
+					},
+					{
+						ID:     "5f62b7d8be3591c4dea8566a",
+						UserID: "test_user_1dbffbdfeeb225",
+					},
+				},
+				Users: []types.UserAccess{
+					{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if the load balancer does not exist",
+			lbID:           "test_sir_not_appearing_in_this_film",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if the data cannot be marshaled to JSON",
+			lbID:           "test_lb_34987u329rfn23f",
+			invalidJSON:    true,
+			expectedStatus: http.StatusBadRequest,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name: "Should fail if DB driver throws an error",
+			lbID: "test_lb_34987u329rfn23f",
+			userUpdate: types.UpdateUserAccess{
+				UserID:   "test_user_1dbffbdfeeb225",
+				RoleName: types.RoleAdmin,
+			},
+			expectedStatus: http.StatusInternalServerError,
+			err:            errors.New("dummy database driver error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+		writerMock := driver.NewMockDriver(t)
+		router.Writer = writerMock
+
+		if (test.userUpdate != types.UpdateUserAccess{}) {
+			writerMock.On("UpdateUserAccessRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		userToSend, err := json.Marshal(test.userUpdate)
+		c.NoError(err)
+
+		var testBuffer *bytes.Buffer
+		switch {
+		case !test.invalidJSON:
+			testBuffer = bytes.NewBuffer(userToSend)
+		case test.invalidJSON:
+			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
+		}
+		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/load_balancer/%s/user", test.lbID), testBuffer)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(rr.Code, test.expectedStatus)
+
+		if test.err == nil {
+			lb := router.Cache.GetLoadBalancersByUserID(test.userUpdate.UserID)[0]
+			c.Equal(test.expectedLBAfterUpdate, lb)
+		}
+	}
+}
+
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func Test_DeleteLoadBalancerUser(t *testing.T) {
+	tests := []struct {
+		name                  string
+		lbID                  string
+		userToDelete          string
+		invalidJSON           bool
+		expectedLBAfterUpdate *types.LoadBalancer
+		expectedStatus        int
+		err                   error
+	}{
+		{
+			name:         "Should delete User for a LoadBalancer with correct input",
+			lbID:         "test_lb_3890ru23jfi32fj",
+			userToDelete: "test_user_admin4309tug4g",
+			expectedLBAfterUpdate: &types.LoadBalancer{
+				ID:     "test_lb_3890ru23jfi32fj",
+				UserID: "test_user_04228205bd261a",
+				Applications: []*types.Application{
+					{
+						ID:     "5f62b7d8be3591c4dea8566d",
+						UserID: "test_user_1dbffbdfeeb225",
+						Limit: types.AppLimit{
+							PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000},
+						},
+						FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
+					},
+					{
+						ID:     "5f62b7d8be3591c4dea8566a",
+						UserID: "test_user_1dbffbdfeeb225",
+					},
+				},
+				Users: []types.UserAccess{
+					{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if the load balancer does not exist",
+			lbID:           "test_sir_not_appearing_in_this_film",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if the data cannot be marshaled to JSON",
+			lbID:           "test_lb_34987u329rfn23f",
+			invalidJSON:    true,
+			expectedStatus: http.StatusBadRequest,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if DB driver throws an error",
+			lbID:           "test_lb_34987u329rfn23f",
+			userToDelete:   "test_user_admin4309tug4g",
+			expectedStatus: http.StatusInternalServerError,
+			err:            errors.New("dummy database driver error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+		writerMock := driver.NewMockDriver(t)
+		router.Writer = writerMock
+
+		if test.userToDelete != "" {
+			writerMock.On("RemoveUserAccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		userToSend, err := json.Marshal(test.userToDelete)
+		c.NoError(err)
+
+		var testBuffer *bytes.Buffer
+		switch {
+		case !test.invalidJSON:
+			testBuffer = bytes.NewBuffer(userToSend)
+		case test.invalidJSON:
+			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
+		}
+		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/load_balancer/%s/user", test.lbID), testBuffer)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(rr.Code, test.expectedStatus)
+
+		if test.err == nil {
+			lbs := router.Cache.GetLoadBalancers()
+			for _, lb := range lbs {
+				if lb.ID == test.lbID {
+					c.Equal(test.expectedLBAfterUpdate, lb)
+				}
+			}
+		}
+	}
 }
 
 func TestRouter_RemoveLoadBalancer(t *testing.T) {
