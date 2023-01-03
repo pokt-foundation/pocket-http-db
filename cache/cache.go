@@ -34,7 +34,7 @@ type Cache struct {
 	pendingRedirects           map[string]types.Redirect
 	pendingSyncCheckOptions    map[string]types.SyncCheckOptions
 	pendingStickyOptions       map[string]types.StickyOptions
-	pendingUserAccess          map[string]types.UserAccess
+	pendingUserAccess          map[string][]types.UserAccess
 	pendingLbApps              map[string][]types.LbApp
 	log                        *logrus.Logger
 }
@@ -49,7 +49,7 @@ func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
 		pendingNotifactionSettings: make(map[string]types.NotificationSettings),
 		pendingSyncCheckOptions:    make(map[string]types.SyncCheckOptions),
 		pendingStickyOptions:       make(map[string]types.StickyOptions),
-		pendingUserAccess:          make(map[string]types.UserAccess),
+		pendingUserAccess:          make(map[string][]types.UserAccess),
 		pendingLbApps:              make(map[string][]types.LbApp),
 		log:                        logger,
 	}
@@ -415,6 +415,12 @@ func (c *Cache) addLoadBalancer(lb types.LoadBalancer) {
 		delete(c.pendingStickyOptions, lb.ID)
 	}
 
+	users, ok := c.pendingUserAccess[lb.ID]
+	if ok {
+		lb.Users = append(lb.Users, users...)
+		delete(c.pendingUserAccess, lb.ID)
+	}
+
 	lbApps, ok := c.pendingLbApps[lb.ID]
 	if ok {
 		for _, lbApp := range lbApps {
@@ -457,7 +463,7 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 		return
 	}
 
-	c.pendingUserAccess[lbID] = userAccess
+	c.pendingUserAccess[lbID] = append(c.pendingUserAccess[lbID], userAccess)
 }
 
 func (c *Cache) addLbApp(lbApp types.LbApp) {
