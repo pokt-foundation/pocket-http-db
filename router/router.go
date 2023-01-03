@@ -74,7 +74,7 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/load_balancer/{id}/user", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
+	rt.Router.HandleFunc("/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
@@ -434,6 +434,8 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	fullLB.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
 
+	fullLB.Users[0].Accepted = true
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }
 
@@ -467,9 +469,11 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	lb.Users = append(lb.Users, user)
+	user.Accepted = false
+	fullLB := *lb
+	fullLB.Users = append(fullLB.Users, user)
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }
 
 func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
@@ -622,34 +626,26 @@ func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var deleteUserID string
-
-	decoder := json.NewDecoder(r.Body)
-
-	err := decoder.Decode(&deleteUserID)
-	if err != nil {
-		rt.logError(fmt.Errorf("UpdateLoadBalancerUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
+	deleteUserID := vars["userID"]
 
 	defer r.Body.Close()
 
-	err = rt.Writer.RemoveUserAccess(r.Context(), deleteUserID, lb.ID)
-	if err != nil {
-		rt.logError(fmt.Errorf("UpdateUserAccessRole in UpdateLoadBalancerUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
 	filteredUsers := []types.UserAccess{}
 	for _, user := range lb.Users {
-		if user.UserID != deleteUserID {
+		if user.UserID == deleteUserID {
+			err := rt.Writer.RemoveUserAccess(r.Context(), deleteUserID, lb.ID)
+			if err != nil {
+				rt.logError(fmt.Errorf("UpdateUserAccessRole in UpdateLoadBalancerUser failed: %w", err))
+				jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+		} else {
 			filteredUsers = append(filteredUsers, user)
 		}
 	}
 
-	lb.Users = filteredUsers
+	fullLB := *lb
+	fullLB.Users = filteredUsers
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }

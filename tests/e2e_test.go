@@ -1,5 +1,3 @@
-//go:build tests
-
 package tests
 
 import (
@@ -410,6 +408,106 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 	t.Equal(200, updatedLoadBalancer.StickyOptions.StickyMax)
 	t.Equal(true, updatedLoadBalancer.StickyOptions.Stickiness)
 
+	/* Add One Load Balancer User -> POST /load_balancer/{id}/user */
+	loadBalancerWithNewUser, err := post[types.LoadBalancer](fmt.Sprintf("load_balancer/%s/user", createdLoadBalancer.ID), baseURL, []byte(loadBalancerUserJSON))
+	t.NoError(err)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+		{
+			UserID:   "test_id_3984u8923r3jf8fld",
+			RoleName: types.RoleAdmin,
+			Email:    "admin1@test.com",
+			Accepted: false,
+		},
+	}, loadBalancerWithNewUser.Users)
+
+	loadBalancerWithNewUserFromCache, err := get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
+	t.NoError(err)
+	t.loadBalancerAssertions(createdLoadBalancer)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+		{
+			UserID:   "test_id_3984u8923r3jf8fld",
+			RoleName: types.RoleAdmin,
+			Email:    "admin1@test.com",
+			Accepted: false,
+		},
+	}, loadBalancerWithNewUserFromCache.Users)
+
+	/* Update One Load Balancer User -> PUT /load_balancer/{id}/user */
+	loadBalancerWithUpdatedUser, err := put[types.LoadBalancer](fmt.Sprintf("load_balancer/%s/user", createdLoadBalancer.ID), baseURL, []byte(updateLoadBalancerUserJSON))
+	t.NoError(err)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+		{
+			UserID:   "test_id_3984u8923r3jf8fld",
+			RoleName: types.RoleMember,
+			Email:    "admin1@test.com",
+			Accepted: false,
+		},
+	}, loadBalancerWithUpdatedUser.Users)
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	loadBalancerWithUpdatedUserFromCache, err := get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
+	t.NoError(err)
+	t.loadBalancerAssertions(createdLoadBalancer)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+		{
+			UserID:   "test_id_3984u8923r3jf8fld",
+			RoleName: types.RoleMember,
+			Email:    "admin1@test.com",
+			Accepted: false,
+		},
+	}, loadBalancerWithUpdatedUserFromCache.Users)
+
+	/* Delete One Load Balancer User -> DELETE /load_balancer/{id}/user/{userID} */
+	loadBalancerWithDeletedUser, err := delete[types.LoadBalancer](fmt.Sprintf("load_balancer/%s/user/%s", createdLoadBalancer.ID, "test_id_3984u8923r3jf8fld"), baseURL)
+	t.NoError(err)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+	}, loadBalancerWithDeletedUser.Users)
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	loadBalancerWithDeletedUserFromCache, err := get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
+	t.NoError(err)
+	t.loadBalancerAssertions(createdLoadBalancer)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+	}, loadBalancerWithDeletedUserFromCache.Users)
+
 	/* Remove One Load Balancer -> PUT /load_balancer/{id} (with Remove: true) */
 	remove := types.UpdateLoadBalancer{Remove: true}
 	removeJSON, err := json.Marshal(remove)
@@ -444,6 +542,14 @@ func (t *PHDTestSuite) loadBalancerAssertions(lb types.LoadBalancer) {
 	t.Len(lb.Applications, 1)
 	t.Equal(createdApplicationID, lb.Applications[0].ID)
 	t.Equal("update-application-1", lb.Applications[0].Name)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+	}, lb.Users)
 	t.NotEmpty(lb.CreatedAt)
 	t.NotEmpty(lb.UpdatedAt)
 }
@@ -555,6 +661,40 @@ func put[T any](path, host string, postData []byte) (T, error) {
 	postBody := bytes.NewBufferString(string(postData))
 
 	response, err := testClient.Put(rawURL, postBody, headers)
+	if err != nil {
+		return data, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return data, fmt.Errorf("%w. %s", ErrResponseNotOK, http.StatusText(response.StatusCode))
+	}
+
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return data, err
+	}
+
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return data, err
+	}
+
+	return data, nil
+}
+
+func delete[T any](path, host string) (T, error) {
+	var data T
+
+	rawURL := fmt.Sprintf("%s/%s", host, path)
+
+	headers := http.Header{
+		"Authorization": {apiKey},
+		"Content-Type":  {"application/json"},
+		"Connection":    {"Close"},
+	}
+
+	response, err := testClient.Delete(rawURL, headers)
 	if err != nil {
 		return data, err
 	}

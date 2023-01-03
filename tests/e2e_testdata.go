@@ -1,5 +1,3 @@
-//go:build tests
-
 package tests
 
 const (
@@ -82,10 +80,20 @@ const (
 			{
 				"userID": "test_id_de26a0db3b6c631c4",
 				"roleName": "OWNER",
-				"email": "test@user.com",
-				"accepted": false
+				"email": "owner1@test.com"
 			}
 		],
 		"Applications": null
+	}`
+
+	loadBalancerUserJSON = `{
+		"userID": "test_id_3984u8923r3jf8fld",
+		"roleName": "ADMIN",
+		"email": "admin1@test.com"
+	}`
+
+	updateLoadBalancerUserJSON = `{
+		"userID": "test_id_3984u8923r3jf8fld",
+		"roleName": "MEMBER"
 	}`
 )

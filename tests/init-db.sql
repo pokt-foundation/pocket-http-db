@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS user_access (
 	created_at TIMESTAMP NULL,
 	updated_at TIMESTAMP NULL,
 	PRIMARY KEY (id),
-    UNIQUE (lb_id, user_id),
+	UNIQUE (lb_id, user_id),
 	CONSTRAINT fk_lb FOREIGN KEY(lb_id) REFERENCES loadbalancers(lb_id),
 	CONSTRAINT fk_role FOREIGN KEY(role_name) REFERENCES user_roles(name)
 );
@@ -214,7 +214,8 @@ CREATE TRIGGER user_access_notify_event
 AFTER
 INSERT
 	OR
-UPDATE ON user_access FOR EACH ROW EXECUTE PROCEDURE notify_event();
+UPDATE
+	OR DELETE ON user_access FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER lb_apps_notify_event
 AFTER
 INSERT ON lb_apps FOR EACH ROW EXECUTE PROCEDURE notify_event();
@@ -252,18 +253,15 @@ INSERT ON redirects FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER sync_check_options_notify_event
 AFTER
 INSERT ON sync_check_options FOR EACH ROW EXECUTE PROCEDURE notify_event();
-
 -- Insert Rows
 INSERT INTO pay_plans (plan_type, daily_limit)
-VALUES
-    ('FREETIER_V0', 250000),
-    ('PAY_AS_YOU_GO_V0', 0),
-    ('ENTERPRISE', 0),
-    ('TEST_PLAN_V0', 100),
-    ('TEST_PLAN_10K', 10000),
-    ('TEST_PLAN_90K', 90000);
-
+VALUES ('FREETIER_V0', 250000),
+	('PAY_AS_YOU_GO_V0', 0),
+	('ENTERPRISE', 0),
+	('TEST_PLAN_V0', 100),
+	('TEST_PLAN_10K', 10000),
+	('TEST_PLAN_90K', 90000);
 INSERT INTO user_roles (name, permissions)
 VALUES ('ADMIN', '{ "read:endpoint", "write:endpoint" }'),
-    ('OWNER', '{ "read:endpoint", "write:endpoint" }'),
-    ('MEMBER', '{ "read:endpoint" }');
+	('OWNER', '{ "read:endpoint", "write:endpoint" }'),
+	('MEMBER', '{ "read:endpoint" }');
