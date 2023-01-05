@@ -628,14 +628,12 @@ func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 
 	deleteUserID := vars["userID"]
 
-	defer r.Body.Close()
-
 	filteredUsers := []types.UserAccess{}
 	for _, user := range lb.Users {
 		if user.UserID == deleteUserID {
 			err := rt.Writer.RemoveUserAccess(r.Context(), deleteUserID, lb.ID)
 			if err != nil {
-				rt.logError(fmt.Errorf("UpdateUserAccessRole in UpdateLoadBalancerUser failed: %w", err))
+				rt.logError(fmt.Errorf("RemoveUserAccess in UpdateLoadBalancerUser failed: %w", err))
 				jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 				return
 			}

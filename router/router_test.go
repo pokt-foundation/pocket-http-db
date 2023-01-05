@@ -743,6 +743,13 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	lbToReturn := &types.LoadBalancer{
 		ID:     "60ddc61b6e29c3003378361E",
 		UserID: "60ddc61b6e29c3003378361D",
+		Users: []types.UserAccess{
+			{
+				UserID:   "60ddc61b6e29c3003378361D",
+				RoleName: types.RoleOwner,
+				Email:    "owner1@test.com",
+			},
+		},
 	}
 
 	writerMock := driver.NewMockDriver(t)
@@ -883,8 +890,10 @@ func Test_CreateLoadBalancerUser(t *testing.T) {
 		c.Equal(rr.Code, test.expectedStatus)
 
 		if test.err == nil {
-			lb := router.Cache.GetLoadBalancersByUserID(test.ownerID)[0]
-			c.Equal(test.expectedLBAfterCreate, lb)
+			var lbResp types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedLBAfterCreate, &lbResp)
 		}
 	}
 }
@@ -1052,8 +1061,10 @@ func Test_UpdateLoadBalancerUserRole(t *testing.T) {
 		c.Equal(rr.Code, test.expectedStatus)
 
 		if test.err == nil {
-			lb := router.Cache.GetLoadBalancersByUserID(test.userUpdate.UserID)[0]
-			c.Equal(test.expectedLBAfterUpdate, lb)
+			var lbResp types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedLBAfterUpdate, &lbResp)
 		}
 	}
 }
@@ -1065,7 +1076,7 @@ func Test_DeleteLoadBalancerUser(t *testing.T) {
 		lbID                  string
 		userToDelete          string
 		invalidJSON           bool
-		expectedLBAfterUpdate *types.LoadBalancer
+		expectedLBAfterDelete *types.LoadBalancer
 		expectedStatus        int
 		err                   error
 	}{
@@ -1073,7 +1084,7 @@ func Test_DeleteLoadBalancerUser(t *testing.T) {
 			name:         "Should delete User for a LoadBalancer with correct input",
 			lbID:         "test_lb_3890ru23jfi32fj",
 			userToDelete: "test_user_admin4309tug4g",
-			expectedLBAfterUpdate: &types.LoadBalancer{
+			expectedLBAfterDelete: &types.LoadBalancer{
 				ID:     "test_lb_3890ru23jfi32fj",
 				UserID: "test_user_04228205bd261a",
 				Applications: []*types.Application{
@@ -1104,16 +1115,9 @@ func Test_DeleteLoadBalancerUser(t *testing.T) {
 			err:            errors.New("dummy error"),
 		},
 		{
-			name:           "Should fail if the data cannot be marshaled to JSON",
-			lbID:           "test_lb_34987u329rfn23f",
-			invalidJSON:    true,
-			expectedStatus: http.StatusBadRequest,
-			err:            errors.New("dummy error"),
-		},
-		{
 			name:           "Should fail if DB driver throws an error",
-			lbID:           "test_lb_34987u329rfn23f",
-			userToDelete:   "test_user_admin4309tug4g",
+			lbID:           "test_lb_3890ru23jfi32fj",
+			userToDelete:   "test_user_04228205bd261a",
 			expectedStatus: http.StatusInternalServerError,
 			err:            errors.New("dummy database driver error"),
 		},
@@ -1128,34 +1132,22 @@ func Test_DeleteLoadBalancerUser(t *testing.T) {
 		router.Writer = writerMock
 
 		if test.userToDelete != "" {
-			writerMock.On("RemoveUserAccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.err)
+			writerMock.On("RemoveUserAccess", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
 		}
 
 		rr := httptest.NewRecorder()
 
-		userToSend, err := json.Marshal(test.userToDelete)
-		c.NoError(err)
-
-		var testBuffer *bytes.Buffer
-		switch {
-		case !test.invalidJSON:
-			testBuffer = bytes.NewBuffer(userToSend)
-		case test.invalidJSON:
-			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
-		}
-		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/load_balancer/%s/user", test.lbID), testBuffer)
+		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/load_balancer/%s/user/%s", test.lbID, test.userToDelete), nil)
 		c.NoError(err)
 
 		router.Router.ServeHTTP(rr, req)
-		c.Equal(rr.Code, test.expectedStatus)
+		c.Equal(test.expectedStatus, rr.Code)
 
 		if test.err == nil {
-			lbs := router.Cache.GetLoadBalancers()
-			for _, lb := range lbs {
-				if lb.ID == test.lbID {
-					c.Equal(test.expectedLBAfterUpdate, lb)
-				}
-			}
+			var lbResp types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedLBAfterDelete, &lbResp)
 		}
 	}
 }

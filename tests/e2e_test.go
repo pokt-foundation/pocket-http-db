@@ -428,7 +428,23 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 
 	loadBalancerWithNewUserFromCache, err := get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
 	t.NoError(err)
-	t.loadBalancerAssertions(createdLoadBalancer)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+		{
+			UserID:   "test_id_3984u8923r3jf8fld",
+			RoleName: types.RoleAdmin,
+			Email:    "admin1@test.com",
+			Accepted: false,
+		},
+	}, loadBalancerWithNewUserFromCache.Users)
+
+	loadBalancerWithNewUserFromCache, err = get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), secondURL)
+	t.NoError(err)
 	t.Equal([]types.UserAccess{
 		{
 			UserID:   testUserID,
@@ -462,11 +478,25 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 		},
 	}, loadBalancerWithUpdatedUser.Users)
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
 	loadBalancerWithUpdatedUserFromCache, err := get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
 	t.NoError(err)
-	t.loadBalancerAssertions(createdLoadBalancer)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+		{
+			UserID:   "test_id_3984u8923r3jf8fld",
+			RoleName: types.RoleMember,
+			Email:    "admin1@test.com",
+			Accepted: false,
+		},
+	}, loadBalancerWithUpdatedUserFromCache.Users)
+
+	loadBalancerWithUpdatedUserFromCache, err = get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), secondURL)
+	t.NoError(err)
 	t.Equal([]types.UserAccess{
 		{
 			UserID:   testUserID,
@@ -498,7 +528,17 @@ func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
 
 	loadBalancerWithDeletedUserFromCache, err := get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), baseURL)
 	t.NoError(err)
-	t.loadBalancerAssertions(createdLoadBalancer)
+	t.Equal([]types.UserAccess{
+		{
+			UserID:   testUserID,
+			RoleName: types.RoleOwner,
+			Email:    "owner1@test.com",
+			Accepted: true,
+		},
+	}, loadBalancerWithDeletedUserFromCache.Users)
+
+	loadBalancerWithDeletedUserFromCache, err = get[types.LoadBalancer](fmt.Sprintf("load_balancer/%s", createdLoadBalancer.ID), secondURL)
+	t.NoError(err)
 	t.Equal([]types.UserAccess{
 		{
 			UserID:   testUserID,
