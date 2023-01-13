@@ -256,17 +256,18 @@ func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
 	appID := settings.ID
 	settings.ID = "" // to avoid multiple sources of truth
 
-	app := c.applicationsMap[appID]
-	if app != nil { // The below fields are sent from the listener on the gateway setting struct
-		app.GatewaySettings.SecretKey = settings.SecretKey
-		app.GatewaySettings.SecretKeyRequired = settings.SecretKeyRequired
-		app.GatewaySettings.WhitelistOrigins = settings.WhitelistOrigins
-		app.GatewaySettings.WhitelistUserAgents = settings.WhitelistUserAgents
-		app.GatewaySettings.WhitelistBlockchains = settings.WhitelistBlockchains
+	app, ok := c.applicationsMap[appID]
+	if !ok { // Add to pending map in case gateway settings notification arrives first
+		c.pendingGatewaySettings[appID] = settings
 		return
 	}
 
-	c.pendingGatewaySettings[appID] = settings
+	// The below fields are sent from the listener on the gateway setting struct
+	app.GatewaySettings.SecretKey = settings.SecretKey
+	app.GatewaySettings.SecretKeyRequired = settings.SecretKeyRequired
+	app.GatewaySettings.WhitelistOrigins = settings.WhitelistOrigins
+	app.GatewaySettings.WhitelistUserAgents = settings.WhitelistUserAgents
+	app.GatewaySettings.WhitelistBlockchains = settings.WhitelistBlockchains
 }
 
 // Updates the gateway settings whitelist contracts from a listener notification
@@ -277,24 +278,24 @@ func (c *Cache) addWhitelistContract(inContract repository.WhitelistContract) {
 	appID := inContract.ID
 	inContract.ID = "" // to avoid multiple sources of truth
 
-	app := c.applicationsMap[appID]
-	if app != nil {
-		appSettings, chainIDExists := app.GatewaySettings, false
-		for i := range appSettings.WhitelistContracts {
-			if appSettings.WhitelistContracts[i].BlockchainID == inContract.BlockchainID {
-				appSettings.WhitelistContracts[i].Contracts = inContract.Contracts
-				chainIDExists = true
-				break
-			}
-		}
-		if !chainIDExists {
-			appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, inContract)
-		}
-
-		app.GatewaySettings = appSettings
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
 		return
 	}
-	// No need to set to a pending map since whitelist contracts are never set on a new Application
+
+	appSettings, chainIDExists := app.GatewaySettings, false
+	for i := range appSettings.WhitelistContracts {
+		if appSettings.WhitelistContracts[i].BlockchainID == inContract.BlockchainID {
+			appSettings.WhitelistContracts[i].Contracts = inContract.Contracts
+			chainIDExists = true
+			break
+		}
+	}
+	if !chainIDExists {
+		appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, inContract)
+	}
+
+	app.GatewaySettings = appSettings
 }
 
 // Updates the gateway settings whitelist methods from a listener notification
@@ -305,24 +306,24 @@ func (c *Cache) addWhitelistMethod(inMethod repository.WhitelistMethod) {
 	appID := inMethod.ID
 	inMethod.ID = "" // to avoid multiple sources of truth
 
-	app := c.applicationsMap[appID]
-	if app != nil {
-		appSettings, chainIDExists := app.GatewaySettings, false
-		for i := range appSettings.WhitelistMethods {
-			if appSettings.WhitelistMethods[i].BlockchainID == inMethod.BlockchainID {
-				appSettings.WhitelistMethods[i].Methods = inMethod.Methods
-				chainIDExists = true
-				break
-			}
-		}
-		if !chainIDExists {
-			appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, inMethod)
-		}
-
-		app.GatewaySettings = appSettings
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
 		return
 	}
-	// No need to set to a pending map since whitelist methods are never set on a new Application
+
+	appSettings, chainIDExists := app.GatewaySettings, false
+	for i := range appSettings.WhitelistMethods {
+		if appSettings.WhitelistMethods[i].BlockchainID == inMethod.BlockchainID {
+			appSettings.WhitelistMethods[i].Methods = inMethod.Methods
+			chainIDExists = true
+			break
+		}
+	}
+	if !chainIDExists {
+		appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, inMethod)
+	}
+
+	app.GatewaySettings = appSettings
 }
 
 func (c *Cache) addNotificationSettings(settings repository.NotificationSettings) {
