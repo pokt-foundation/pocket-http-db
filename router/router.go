@@ -185,7 +185,7 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	fullApp, err := rt.Writer.WriteApplication(&app)
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", errApplicationNotFound))
+		rt.logError(fmt.Errorf("WriteApplication in CreateApplication failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
