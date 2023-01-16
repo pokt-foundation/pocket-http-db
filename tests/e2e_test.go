@@ -208,7 +208,7 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 			},
 			WhitelistMethods: []repository.WhitelistMethod{
 				{BlockchainID: "TST01", Methods: []string{"test-method-1"}},
-				{BlockchainID: "TST01", Methods: []string{"test-method-2", "test-method-3"}},
+				{BlockchainID: "TST02", Methods: []string{"test-method-2", "test-method-3"}},
 			},
 		},
 	}
@@ -217,26 +217,17 @@ func (t *PHDTestSuite) TestPHD_ApplicationEndpoints() {
 
 	updatedApplication, err := put[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL, updateJSON)
 	t.NoError(err)
-	t.Equal("update-application-1", updatedApplication.Name)
-	t.Equal(repository.PayPlanType("FREETIER_V0"), updatedApplication.Limit.PayPlan.Type)
-	t.Equal(250000, updatedApplication.DailyLimit())
-	t.Equal(true, updatedApplication.NotificationSettings.Half)
-	t.Equal(false, updatedApplication.NotificationSettings.ThreeQuarters)
-	t.Equal(true, updatedApplication.GatewaySettings.SecretKeyRequired)
-	t.Len(updatedApplication.GatewaySettings.WhitelistOrigins, 2)
-	t.Equal("test-origins-2", updatedApplication.GatewaySettings.WhitelistOrigins[1])
-	t.Len(updatedApplication.GatewaySettings.WhitelistUserAgents, 3)
-	t.Equal("test-agents-3", updatedApplication.GatewaySettings.WhitelistUserAgents[2])
-	t.Len(updatedApplication.GatewaySettings.WhitelistBlockchains, 1)
-	t.Equal("test-chains-1", updatedApplication.GatewaySettings.WhitelistBlockchains[0])
-	t.Len(updatedApplication.GatewaySettings.WhitelistContracts, 1)
-	t.Equal("TST01", updatedApplication.GatewaySettings.WhitelistContracts[0].BlockchainID)
-	t.Equal("test-contract-1", updatedApplication.GatewaySettings.WhitelistContracts[0].Contracts[0])
-	t.Len(updatedApplication.GatewaySettings.WhitelistMethods, 2)
-	t.Equal("TST01", updatedApplication.GatewaySettings.WhitelistMethods[0].BlockchainID)
-	t.Len(updatedApplication.GatewaySettings.WhitelistMethods[1].Methods, 2)
-	t.Equal("test-method-3", updatedApplication.GatewaySettings.WhitelistMethods[1].Methods[1])
-	t.NotEmpty(updatedApplication.UpdatedAt)
+	t.updateAppAssertions(updatedApplication)
+
+	time.Sleep(10 * time.Second) // need time for cache refresh
+
+	updatedApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), baseURL)
+	t.NoError(err)
+	t.updateAppAssertions(updatedApplication)
+
+	updatedApplication, err = get[repository.Application](fmt.Sprintf("application/%s", createdApplicationID), secondURL)
+	t.NoError(err)
+	t.updateAppAssertions(updatedApplication)
 
 	/* Update One Application Pay Plan -> PUT /application/{id} */
 	updatePayPlan := repository.UpdateApplication{
@@ -349,6 +340,22 @@ func (t *PHDTestSuite) applicationAssertions(app repository.Application) {
 	t.Empty(app.FirstDateSurpassed)
 	t.NotEmpty(app.CreatedAt)
 	t.NotEmpty(app.UpdatedAt)
+}
+
+func (t *PHDTestSuite) updateAppAssertions(updatedApplication repository.Application) {
+	t.Equal("update-application-1", updatedApplication.Name)
+	t.Equal(repository.PayPlanType("FREETIER_V0"), updatedApplication.Limit.PayPlan.Type)
+	t.Equal(250000, updatedApplication.DailyLimit())
+	t.Equal(true, updatedApplication.NotificationSettings.Half)
+	t.Equal(false, updatedApplication.NotificationSettings.ThreeQuarters)
+	t.Equal(true, updatedApplication.GatewaySettings.SecretKeyRequired)
+	t.Len(updatedApplication.GatewaySettings.WhitelistOrigins, 2)
+	t.Contains(updatedApplication.GatewaySettings.WhitelistOrigins, "test-origins-2")
+	t.Contains(updatedApplication.GatewaySettings.WhitelistUserAgents, "test-agents-3")
+	t.Contains(updatedApplication.GatewaySettings.WhitelistBlockchains, "test-chains-1")
+	t.Contains(updatedApplication.GatewaySettings.WhitelistContracts, repository.WhitelistContract{BlockchainID: "TST01", Contracts: []string{"test-contract-1"}})
+	t.Contains(updatedApplication.GatewaySettings.WhitelistMethods, repository.WhitelistMethod{BlockchainID: "TST01", Methods: []string{"test-method-1"}})
+	t.Contains(updatedApplication.GatewaySettings.WhitelistMethods, repository.WhitelistMethod{BlockchainID: "TST02", Methods: []string{"test-method-2", "test-method-3"}})
 }
 
 func (t *PHDTestSuite) TestPHD_LoadBalancerEndpoints() {
