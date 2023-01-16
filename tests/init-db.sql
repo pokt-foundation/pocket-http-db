@@ -7,16 +7,7 @@ CREATE TABLE IF NOT EXISTS pay_plans (
 	created_at TIMESTAMP NULL,
 	updated_at TIMESTAMP NULL
 );
--- User Roles
-CREATE TYPE permissions_enum AS ENUM ('read:endpoint', 'write:endpoint');
-CREATE TABLE IF NOT EXISTS user_roles (
-	id INT GENERATED ALWAYS AS IDENTITY,
-	name VARCHAR UNIQUE,
-	permissions permissions_enum [],
-	PRIMARY KEY (name),
-	created_at TIMESTAMP NULL,
-	updated_at TIMESTAMP NULL
-);
+
 -- Blockchains
 CREATE TABLE IF NOT EXISTS blockchains (
 	id INT GENERATED ALWAYS AS IDENTITY,
@@ -38,6 +29,7 @@ CREATE TABLE IF NOT EXISTS blockchains (
 	updated_at TIMESTAMP NULL,
 	PRIMARY KEY (blockchain_id)
 );
+
 CREATE TABLE IF NOT EXISTS redirects (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	blockchain_id VARCHAR NOT NULL,
@@ -61,6 +53,7 @@ CREATE TABLE IF NOT EXISTS sync_check_options (
 	PRIMARY KEY (id),
 	CONSTRAINT fk_blockchain FOREIGN KEY(blockchain_id) REFERENCES blockchains(blockchain_id)
 );
+
 -- Load Balancers
 CREATE TABLE IF NOT EXISTS loadbalancers (
 	id INT GENERATED ALWAYS AS IDENTITY,
@@ -74,6 +67,7 @@ CREATE TABLE IF NOT EXISTS loadbalancers (
 	updated_at TIMESTAMP NULL,
 	PRIMARY KEY (id)
 );
+
 CREATE TABLE IF NOT EXISTS stickiness_options (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	lb_id VARCHAR NOT NULL UNIQUE,
@@ -84,6 +78,7 @@ CREATE TABLE IF NOT EXISTS stickiness_options (
 	PRIMARY KEY (id),
 	CONSTRAINT fk_lb FOREIGN KEY(lb_id) REFERENCES loadbalancers(lb_id)
 );
+
 -- Applications
 CREATE TABLE IF NOT EXISTS applications (
 	id INT GENERATED ALWAYS AS IDENTITY,
@@ -92,6 +87,8 @@ CREATE TABLE IF NOT EXISTS applications (
 	description TEXT,
 	name VARCHAR,
 	status VARCHAR,
+	-- TODO remove deprecated field once database updated
+	pay_plan_type VARCHAR,
 	owner VARCHAR,
 	url VARCHAR,
 	user_id VARCHAR,
@@ -101,6 +98,7 @@ CREATE TABLE IF NOT EXISTS applications (
 	updated_at TIMESTAMP NULL,
 	PRIMARY KEY (application_id)
 );
+
 CREATE TABLE IF NOT EXISTS app_limits (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	application_id VARCHAR NOT NULL UNIQUE,
@@ -110,6 +108,7 @@ CREATE TABLE IF NOT EXISTS app_limits (
 	CONSTRAINT fk_application FOREIGN KEY(application_id) REFERENCES applications(application_id),
 	CONSTRAINT fk_pay_plan FOREIGN KEY(pay_plan) REFERENCES pay_plans(plan_type)
 );
+
 CREATE TABLE IF NOT EXISTS gateway_aat (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	application_id VARCHAR NOT NULL UNIQUE,
@@ -122,6 +121,7 @@ CREATE TABLE IF NOT EXISTS gateway_aat (
 	PRIMARY KEY (id),
 	CONSTRAINT fk_application FOREIGN KEY(application_id) REFERENCES applications(application_id)
 );
+
 CREATE TABLE IF NOT EXISTS gateway_settings (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	application_id VARCHAR NOT NULL UNIQUE,
@@ -149,6 +149,7 @@ CREATE TABLE whitelist_methods (
 	CONSTRAINT fk_application FOREIGN KEY(application_id) REFERENCES applications(application_id),
 	UNIQUE(application_id, blockchain_id)
 );
+
 CREATE TABLE IF NOT EXISTS notification_settings (
 	id INT GENERATED ALWAYS AS IDENTITY,
 	application_id VARCHAR NOT NULL UNIQUE,
@@ -160,6 +161,7 @@ CREATE TABLE IF NOT EXISTS notification_settings (
 	PRIMARY KEY (id),
 	CONSTRAINT fk_application FOREIGN KEY(application_id) REFERENCES applications(application_id)
 );
+
 -- Load Balancer-Apps Join Table
 CREATE TABLE IF NOT EXISTS lb_apps (
 	id INT GENERATED ALWAYS AS IDENTITY,
@@ -170,6 +172,7 @@ CREATE TABLE IF NOT EXISTS lb_apps (
 	CONSTRAINT fk_lb FOREIGN KEY(lb_id) REFERENCES loadbalancers(lb_id),
 	CONSTRAINT fk_app FOREIGN KEY(app_id) REFERENCES applications(application_id)
 );
+
 -- Listener Notification Function
 CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 DECLARE data json;
@@ -195,11 +198,6 @@ PERFORM pg_notify('events', notification::text);
 RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
-CREATE TRIGGER user_roles_notify_event
-AFTER
-INSERT
-	OR
-UPDATE ON user_roles FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER loadbalancer_notify_event
 AFTER
 INSERT
@@ -264,7 +262,3 @@ VALUES ('FREETIER_V0', 250000),
 	('TEST_PLAN_V0', 100),
 	('TEST_PLAN_10K', 10000),
 	('TEST_PLAN_90K', 90000);
-INSERT INTO user_roles (name, permissions)
-VALUES ('ADMIN', '{ "read:endpoint", "write:endpoint" }'),
-	('OWNER', '{ "read:endpoint", "write:endpoint" }'),
-	('MEMBER', '{ "read:endpoint" }');
