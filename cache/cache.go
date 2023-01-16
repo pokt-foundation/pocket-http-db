@@ -272,9 +272,6 @@ func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
 
 // Updates the gateway settings whitelist contracts from a listener notification
 func (c *Cache) addWhitelistContract(inContract repository.WhitelistContract) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
 	appID := inContract.ID
 	inContract.ID = "" // to avoid multiple sources of truth
 
@@ -283,7 +280,8 @@ func (c *Cache) addWhitelistContract(inContract repository.WhitelistContract) {
 		return
 	}
 
-	appSettings, chainIDExists := app.GatewaySettings, false
+	appSettings := app.GatewaySettings
+	var chainIDExists bool
 	for i := range appSettings.WhitelistContracts {
 		if appSettings.WhitelistContracts[i].BlockchainID == inContract.BlockchainID {
 			appSettings.WhitelistContracts[i].Contracts = inContract.Contracts
@@ -295,14 +293,14 @@ func (c *Cache) addWhitelistContract(inContract repository.WhitelistContract) {
 		appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, inContract)
 	}
 
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
 	app.GatewaySettings = appSettings
 }
 
 // Updates the gateway settings whitelist methods from a listener notification
 func (c *Cache) addWhitelistMethod(inMethod repository.WhitelistMethod) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
 	appID := inMethod.ID
 	inMethod.ID = "" // to avoid multiple sources of truth
 
@@ -311,7 +309,8 @@ func (c *Cache) addWhitelistMethod(inMethod repository.WhitelistMethod) {
 		return
 	}
 
-	appSettings, chainIDExists := app.GatewaySettings, false
+	appSettings := app.GatewaySettings
+	var chainIDExists bool
 	for i := range appSettings.WhitelistMethods {
 		if appSettings.WhitelistMethods[i].BlockchainID == inMethod.BlockchainID {
 			appSettings.WhitelistMethods[i].Methods = inMethod.Methods
@@ -322,6 +321,9 @@ func (c *Cache) addWhitelistMethod(inMethod repository.WhitelistMethod) {
 	if !chainIDExists {
 		appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, inMethod)
 	}
+
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	app.GatewaySettings = appSettings
 }

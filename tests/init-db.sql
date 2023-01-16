@@ -84,20 +84,6 @@ CREATE TABLE IF NOT EXISTS stickiness_options (
 	PRIMARY KEY (id),
 	CONSTRAINT fk_lb FOREIGN KEY(lb_id) REFERENCES loadbalancers(lb_id)
 );
-CREATE TABLE IF NOT EXISTS user_access (
-	id INT GENERATED ALWAYS AS IDENTITY,
-	lb_id VARCHAR,
-	user_id VARCHAR,
-	role_name VARCHAR,
-	email VARCHAR,
-	accepted BOOLEAN,
-	created_at TIMESTAMP NULL,
-	updated_at TIMESTAMP NULL,
-	PRIMARY KEY (id),
-	UNIQUE (lb_id, user_id),
-	CONSTRAINT fk_lb FOREIGN KEY(lb_id) REFERENCES loadbalancers(lb_id),
-	CONSTRAINT fk_role FOREIGN KEY(role_name) REFERENCES user_roles(name)
-);
 -- Applications
 CREATE TABLE IF NOT EXISTS applications (
 	id INT GENERATED ALWAYS AS IDENTITY,
@@ -224,11 +210,6 @@ AFTER
 INSERT
 	OR
 UPDATE ON stickiness_options FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER user_access_notify_event
-AFTER
-INSERT
-	OR
-UPDATE ON user_access FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER lb_apps_notify_event
 AFTER
 INSERT ON lb_apps FOR EACH ROW EXECUTE PROCEDURE notify_event();
