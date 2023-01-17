@@ -27,6 +27,9 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Log the branch name
+        run: echo "Building image from branch ${{ github.ref }}""
+
       - name: Build, tag, and push image to Amazon ECR (API)
         id: build-image-api
         env:
