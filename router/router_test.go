@@ -111,8 +111,8 @@ func newTestRouter() (*Router, error) {
 
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566d",
+			UserID: "test_user_774900350d9c43",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type:  repository.FreetierV0,
@@ -122,12 +122,12 @@ func newTestRouter() (*Router, error) {
 			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566a",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566a",
+			UserID: "test_user_774900350d9c43",
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566f",
-			UserID: "60ecb2bf67774900350d9c44",
+			ID:     "test_app_e3591c4dea8566f",
+			UserID: "test_user_774900350d9c44",
 		},
 	}, nil)
 
@@ -142,18 +142,18 @@ func newTestRouter() (*Router, error) {
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
 		{
-			ID: "60ecb2bf67774900350d9c42",
+			ID: "test_lb_67774900350d9c42",
 			ApplicationIDs: []string{
-				"5f62b7d8be3591c4dea8566d",
-				"5f62b7d8be3591c4dea8566a",
+				"test_app_e3591c4dea8566d",
+				"test_app_e3591c4dea8566a",
 			},
-			UserID: "60ecb2bf67774900350d9c43",
+			UserID: "test_user_774900350d9c43",
 		},
 		{
-			ID: "60ecb2bf67774900350d9c43",
+			ID: "test_user_774900350d9c43",
 			ApplicationIDs: []string{
-				"5f62b7d8be3591c4dea8566d",
-				"5f62b7d8be3591c4dea8566a",
+				"test_app_e3591c4dea8566d",
+				"test_app_e3591c4dea8566a",
 			},
 		},
 	}, nil)
@@ -161,7 +161,7 @@ func newTestRouter() (*Router, error) {
 	return NewRouter(readerMock, nil, map[string]bool{"": true}, logrus.New())
 }
 
-func TestRouter_HealthCheck(t *testing.T) {
+func Test_V0_Router_HealthCheck(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/", nil)
@@ -177,7 +177,7 @@ func TestRouter_HealthCheck(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 }
 
-func TestRouter_GetApplications(t *testing.T) {
+func Test_V0_Router_GetApplications(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/application", nil)
@@ -194,8 +194,8 @@ func TestRouter_GetApplications(t *testing.T) {
 
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566d",
+			UserID: "test_user_774900350d9c43",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type:  repository.FreetierV0,
@@ -205,12 +205,12 @@ func TestRouter_GetApplications(t *testing.T) {
 			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566a",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566a",
+			UserID: "test_user_774900350d9c43",
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566f",
-			UserID: "60ecb2bf67774900350d9c44",
+			ID:     "test_app_e3591c4dea8566f",
+			UserID: "test_user_774900350d9c44",
 		},
 	})
 	c.NoError(err)
@@ -226,7 +226,7 @@ func TestRouter_GetApplications(t *testing.T) {
 	c.Equal(http.StatusUnauthorized, rr.Code)
 }
 
-func TestRouter_GetApplicationsLimits(t *testing.T) {
+func Test_V0_Router_GetApplicationsLimits(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/application/limits", nil)
@@ -245,22 +245,22 @@ func TestRouter_GetApplicationsLimits(t *testing.T) {
 
 	expectedBody, err := json.Marshal([]*repository.AppLimits{
 		{
-			AppID:                "5f62b7d8be3591c4dea8566d",
-			AppUserID:            "60ecb2bf67774900350d9c43",
+			AppID:                "test_app_e3591c4dea8566d",
+			AppUserID:            "test_user_774900350d9c43",
 			PlanType:             repository.FreetierV0,
 			DailyLimit:           250000,
 			FirstDateSurpassed:   &dateSurpassed,
 			NotificationSettings: &repository.NotificationSettings{},
 		},
 		{
-			AppID:                "5f62b7d8be3591c4dea8566a",
-			AppUserID:            "60ecb2bf67774900350d9c43",
+			AppID:                "test_app_e3591c4dea8566a",
+			AppUserID:            "test_user_774900350d9c43",
 			DailyLimit:           0,
 			NotificationSettings: &repository.NotificationSettings{},
 		},
 		{
-			AppID:                "5f62b7d8be3591c4dea8566f",
-			AppUserID:            "60ecb2bf67774900350d9c44",
+			AppID:                "test_app_e3591c4dea8566f",
+			AppUserID:            "test_user_774900350d9c44",
 			DailyLimit:           0,
 			NotificationSettings: &repository.NotificationSettings{},
 		},
@@ -270,10 +270,10 @@ func TestRouter_GetApplicationsLimits(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetApplication(t *testing.T) {
+func Test_V0_Router_GetApplication(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/application/5f62b7d8be3591c4dea8566d", nil)
+	req, err := http.NewRequest(http.MethodGet, "/application/test_app_e3591c4dea8566d", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -286,8 +286,8 @@ func TestRouter_GetApplication(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 
 	expectedBody, err := json.Marshal(&repository.Application{
-		ID:     "5f62b7d8be3591c4dea8566d",
-		UserID: "60ecb2bf67774900350d9c43",
+		ID:     "test_app_e3591c4dea8566d",
+		UserID: "test_user_774900350d9c43",
 		Limit: repository.AppLimit{
 			PayPlan: repository.PayPlan{
 				Type:  repository.FreetierV0,
@@ -300,7 +300,7 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/application/5f62b7d8be3591c3dea8566d", nil)
+	req, err = http.NewRequest(http.MethodGet, "/application/test_app_e3591c3dea8566d", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -310,11 +310,11 @@ func TestRouter_GetApplication(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateApplication(t *testing.T) {
+func Test_V0_Router_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawAppToSend := &repository.Application{
-		UserID: "60ddc61b6e29c3003378361D",
+		UserID: "test_app_e29c3003378361D",
 		Limit: repository.AppLimit{
 			PayPlan: repository.PayPlan{
 				Type:  repository.FreetierV0,
@@ -335,8 +335,8 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.NoError(err)
 
 	appToReturn := &repository.Application{
-		ID:     "60ddc61b6e29c3003378361E",
-		UserID: "60ddc61b6e29c3003378361D",
+		ID:     "test_app_e29c3003378361E",
+		UserID: "test_app_e29c3003378361D",
 		Limit: repository.AppLimit{
 			PayPlan: repository.PayPlan{
 				Type:  repository.FreetierV0,
@@ -356,8 +356,8 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 
 	marshaledReturnApp, err := json.Marshal(&repository.Application{
-		ID:     "60ddc61b6e29c3003378361E",
-		UserID: "60ddc61b6e29c3003378361D",
+		ID:     "test_app_e29c3003378361E",
+		UserID: "test_app_e29c3003378361D",
 		Limit: repository.AppLimit{
 			PayPlan: repository.PayPlan{
 				Type:  repository.FreetierV0,
@@ -390,7 +390,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_UpdateApplication(t *testing.T) {
+func Test_V0_Router_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateApplication{
@@ -414,7 +414,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -432,7 +432,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -441,7 +441,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	c.Equal(http.StatusNotFound, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -450,7 +450,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -462,11 +462,11 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	c.Equal(http.StatusUnprocessableEntity, rr.Code)
 }
 
-func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
+func Test_V0_Router_UpdateFirstDateSurpassed(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateFirstDateSurpassed{
-		ApplicationIDs:     []string{"5f62b7d8be3591c4dea8566d"},
+		ApplicationIDs:     []string{"test_app_e3591c4dea8566d"},
 		FirstDateSurpassed: time.Now(),
 	}
 
@@ -511,7 +511,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	rawUpdateInput.ApplicationIDs = []string{"5f62b7d8be3591c4dea85664"}
+	rawUpdateInput.ApplicationIDs = []string{"test_app_e3591c4dea85664"}
 
 	updateInputToSend, err = json.Marshal(rawUpdateInput)
 	c.NoError(err)
@@ -540,7 +540,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	c.Equal(http.StatusBadRequest, rr.Code)
 }
 
-func TestRouter_RemoveApplication(t *testing.T) {
+func Test_V0_Router_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawRemoveInput := &repository.UpdateApplication{
@@ -550,7 +550,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawRemoveInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -568,7 +568,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -577,7 +577,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	c.Equal(http.StatusNotFound, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -586,7 +586,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/5f62b7d8be3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -598,10 +598,10 @@ func TestRouter_RemoveApplication(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_GetApplicationsByUserID(t *testing.T) {
+func Test_V0_Router_GetApplicationsByUserID(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/user/60ecb2bf67774900350d9c43/application", nil)
+	req, err := http.NewRequest(http.MethodGet, "/user/test_user_774900350d9c43/application", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -615,8 +615,8 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 
 	expectedBody, err := json.Marshal([]*repository.Application{
 		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566d",
+			UserID: "test_user_774900350d9c43",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type:  repository.FreetierV0,
@@ -626,15 +626,15 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566a",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566a",
+			UserID: "test_user_774900350d9c43",
 		},
 	})
 	c.NoError(err)
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/user/61ecb2bf67774900350d9c43/application", nil)
+	req, err = http.NewRequest(http.MethodGet, "/user/sir_not_appearing_in_this_film/application", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -644,10 +644,10 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
+func Test_V0_Router_GetLoadbalancerByUserID(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/user/60ecb2bf67774900350d9c43/load_balancer", nil)
+	req, err := http.NewRequest(http.MethodGet, "/user/test_user_774900350d9c43/load_balancer", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -664,9 +664,9 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
 
-	c.Equal("60ecb2bf67774900350d9c42", marshaledBody[0].ID)
+	c.Equal("test_lb_67774900350d9c42", marshaledBody[0].ID)
 
-	req, err = http.NewRequest(http.MethodGet, "/user/60ecb2bf67774900350d9d43/load_balancer", nil)
+	req, err = http.NewRequest(http.MethodGet, "/user/test_2bf67774900350d9d43/load_balancer", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -676,7 +676,7 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetBlockchains(t *testing.T) {
+func Test_V0_Router_GetBlockchains(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/blockchain", nil)
@@ -720,7 +720,7 @@ func TestRouter_GetBlockchains(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetBlockchain(t *testing.T) {
+func Test_V0_Router_GetBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/blockchain/0021", nil)
@@ -760,7 +760,7 @@ func TestRouter_GetBlockchain(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetLoadBalancers(t *testing.T) {
+func Test_V0_Router_GetLoadBalancers(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/load_balancer", nil)
@@ -781,14 +781,14 @@ func TestRouter_GetLoadBalancers(t *testing.T) {
 	c.NoError(err)
 
 	c.Len(marshaledBody, 2)
-	c.Equal("60ecb2bf67774900350d9c42", marshaledBody[0].ID)
-	c.Equal("60ecb2bf67774900350d9c43", marshaledBody[1].ID)
+	c.Equal("test_lb_67774900350d9c42", marshaledBody[0].ID)
+	c.Equal("test_user_774900350d9c43", marshaledBody[1].ID)
 }
 
-func TestRouter_GetLoadBalancer(t *testing.T) {
+func Test_V0_Router_GetLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/load_balancer/60ecb2bf67774900350d9c42", nil)
+	req, err := http.NewRequest(http.MethodGet, "/load_balancer/test_lb_67774900350d9c42", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -805,9 +805,9 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
 
-	c.Equal("60ecb2bf67774900350d9c42", marshaledBody.ID)
+	c.Equal("test_lb_67774900350d9c42", marshaledBody.ID)
 
-	req, err = http.NewRequest(http.MethodGet, "/load_balancer/60fcb2bf67774900350d9c42", nil)
+	req, err = http.NewRequest(http.MethodGet, "/load_balancer/test_2bf67774900350d9c42", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -817,11 +817,11 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateLoadBalancer(t *testing.T) {
+func Test_V0_Router_CreateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawLBToSend := &repository.LoadBalancer{
-		UserID: "60ddc61b6e29c3003378361D",
+		UserID: "test_app_e29c3003378361D",
 	}
 
 	lbToSend, err := json.Marshal(rawLBToSend)
@@ -836,8 +836,8 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	c.NoError(err)
 
 	lbToReturn := &repository.LoadBalancer{
-		ID:     "60ddc61b6e29c3003378361E",
-		UserID: "60ddc61b6e29c3003378361D",
+		ID:     "test_app_e29c3003378361E",
+		UserID: "test_app_e29c3003378361D",
 	}
 
 	writerMock := &writerMock{}
@@ -876,7 +876,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_UpdateLoadBalancer(t *testing.T) {
+func Test_V0_Router_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateLoadBalancer{
@@ -892,7 +892,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -910,7 +910,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -919,7 +919,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusNotFound, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -928,7 +928,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -940,7 +940,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_RemoveLoadBalancer(t *testing.T) {
+func Test_V0_Router_RemoveLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateLoadBalancer{
@@ -957,7 +957,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	router.Writer = writerMock
 
-	req, err := http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -968,7 +968,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/60ecb2bf67774900350d9c42", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -979,7 +979,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/5f62b7d8be3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -989,7 +989,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetPayPlans(t *testing.T) {
+func Test_V0_Router_GetPayPlans(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/pay_plan", nil)
@@ -1019,7 +1019,7 @@ func TestRouter_GetPayPlans(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetPayPlan(t *testing.T) {
+func Test_V0_Router_GetPayPlan(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/pay_plan/freetier_v0", nil)
@@ -1052,7 +1052,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateBlockchain(t *testing.T) {
+func Test_V0_Router_CreateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	rawChainToSend := &repository.Blockchain{
@@ -1071,7 +1071,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 	c.NoError(err)
 
 	chainToReturn := &repository.Blockchain{
-		ID:     "60ddc61b6e29c3003378361E",
+		ID:     "test_app_e29c3003378361E",
 		Ticker: "POKT",
 	}
 
@@ -1111,7 +1111,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_CreateRedirect(t *testing.T) {
+func Test_V0_Router_CreateRedirect(t *testing.T) {
 	c := require.New(t)
 
 	rawRedirectsToSend := &repository.Redirect{BlockchainID: "0021"}
@@ -1127,7 +1127,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	router, err := newTestRouter()
 	c.NoError(err)
 
-	redirectToReturn := &repository.Redirect{ID: "60ddc61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
+	redirectToReturn := &repository.Redirect{ID: "test_61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
 
 	writerMock := &writerMock{}
 
@@ -1165,7 +1165,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_ActivateBlockchain(t *testing.T) {
+func Test_V0_Router_ActivateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	activeStatusToSend, err := json.Marshal(true)
