@@ -3,7 +3,6 @@ build:
 
 test_env_up:
 	docker-compose -f ./tests/docker-compose.yml up -d --remove-orphans --build;
-	# S
 	sleep 2;
 test_env_down:
 	docker-compose -f ./tests/docker-compose.yml down --remove-orphans -v
