@@ -81,6 +81,8 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
 
+	rt.Router.HandleFunc("/v1/redirect", rt.CreateRedirect).Methods(http.MethodPost)
+
 	rt.Router.Use(rt.AuthorizationHandler)
 
 	return rt, nil
