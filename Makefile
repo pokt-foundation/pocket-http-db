@@ -9,14 +9,17 @@ test_env_down:
 	docker-compose -f ./tests/docker-compose.yml down --remove-orphans -v
 run_unit_tests:
 	go test ./...  -short
+run_v0_e2e_tests:
+	-go test ./v0_tests -run E2E -count=1;
 run_e2e_tests:
-	-go test ./... -run E2E -count=1;
+	-go test ./tests -run E2E -count=1;
 run_all_tests:
 	-go test ./... -count=1;
 
-test_unit: test_env_up run_unit_tests test_env_down
-test_e2e:  test_env_up run_e2e_tests  test_env_down
-test:      test_env_up run_all_tests  test_env_down
+test_unit:    test_env_up run_unit_tests test_env_down
+test_e2e_v0:  test_env_up run_v0_e2e_tests  test_env_down
+test_e2e:     test_env_up run_e2e_tests  test_env_down
+test_v0:      test_env_up run_all_tests  test_env_down
 
 init-pre-commit:
 	wget https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz;
