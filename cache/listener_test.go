@@ -12,8 +12,8 @@ import (
 func newMockCache(readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566d",
+			UserID: "test_user_774900350d9c43",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type:  repository.FreetierV0,
@@ -22,8 +22,8 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 			},
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566a",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_app_e3591c4dea8566a",
+			UserID: "test_user_774900350d9c43",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type: repository.Enterprise,
@@ -32,8 +32,8 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 			},
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566f",
-			UserID: "60ecb2bf67774900350d9c44",
+			ID:     "test_app_e3591c4dea8566f",
+			UserID: "test_user_774900350d9c44",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type:  repository.PayAsYouGoV0,
@@ -49,11 +49,11 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
 		{
-			ID:     "60ecb2bf67774900350d9c42",
-			UserID: "60ecb35fts687463gh2h72gs",
+			ID:     "test_lb_67774900350d9c42",
+			UserID: "test_user_687463gh2h72gs",
 			ApplicationIDs: []string{
-				"5f62b7d8be3591c4dea8566d",
-				"5f62b7d8be3591c4dea8566a",
+				"test_app_e3591c4dea8566d",
+				"test_app_e3591c4dea8566a",
 			},
 		},
 	}, nil)
@@ -263,7 +263,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
 		},
-		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566a"},
+		ApplicationIDs: []string{"test_app_e3591c4dea8566a"},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -271,7 +271,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	lb := cache.GetLoadBalancer("123")
 	c.Equal("pablo", lb.Name)
 	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
-	c.Equal("5f62b7d8be3591c4dea8566a", lb.Applications[0].ID)
+	c.Equal("test_app_e3591c4dea8566a", lb.Applications[0].ID)
 
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
 		ID:     "123",

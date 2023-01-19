@@ -22,7 +22,7 @@ const (
 	secondURL = "http://localhost:8081"
 	apiKey    = "test_api_key_6789"
 
-	connectionString = "postgres://postgres:pgpassword@localhost:5432/postgres?sslmode=disable"
+	connectionString = "postgres://postgres:pgpassword@localhost:5432/postgres?sslmode=disable" // pragma: allowlist secret
 
 	testUserID = "test_id_de26a0db3b6c631c4"
 )
