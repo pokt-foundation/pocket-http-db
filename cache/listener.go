@@ -13,6 +13,8 @@ var (
 	errParseBlockchainFailed           = errors.New("parse blockchain failed")
 	errParseGatewayAATFailed           = errors.New("parse gateway aat failed")
 	errParseGatewaySettingsFailed      = errors.New("parse gateway settings failed")
+	errParseWhitelistMethodsFailed     = errors.New("parse whitelist contracts failed")
+	errParseWhitelistContractsFailed   = errors.New("parse whitelist methods failed")
 	errParseLoadBalancerFailed         = errors.New("parse load balancer failed")
 	errParseNotificationSettingsFailed = errors.New("parse notification failed")
 	errParseLBAppsFailed               = errors.New("parse lb app failed")
@@ -92,6 +94,30 @@ func (c *Cache) parseGatewaySettingsNotification(n repository.Notification) {
 
 	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
 		c.addGatewaySettings(*settings)
+	}
+}
+
+func (c *Cache) parseWhitelistContractsNotification(n repository.Notification) {
+	contracts, ok := n.Data.(*repository.WhitelistContract)
+	if !ok {
+		c.logError(fmt.Errorf("parseWhitelistContractsNotification failed: %w", errParseWhitelistContractsFailed))
+		return
+	}
+
+	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
+		c.addWhitelistContract(*contracts)
+	}
+}
+
+func (c *Cache) parseWhitelistMethodsNotification(n repository.Notification) {
+	methods, ok := n.Data.(*repository.WhitelistMethod)
+	if !ok {
+		c.logError(fmt.Errorf("parseWhitelistMethodsNotification failed: %w", errParseWhitelistMethodsFailed))
+		return
+	}
+
+	if n.Action == repository.ActionInsert || n.Action == repository.ActionUpdate {
+		c.addWhitelistMethod(*methods)
 	}
 }
 
@@ -189,6 +215,10 @@ func (c *Cache) parseNotification(n repository.Notification) {
 		c.parseGatewayAATNotification(n)
 	case repository.TableGatewaySettings:
 		c.parseGatewaySettingsNotification(n)
+	case repository.TableWhitelistContracts:
+		c.parseWhitelistContractsNotification(n)
+	case repository.TableWhitelistMethods:
+		c.parseWhitelistMethodsNotification(n)
 	case repository.TableNotificationSettings:
 		c.parseNotificationSettingsNotification(n)
 
