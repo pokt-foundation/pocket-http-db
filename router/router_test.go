@@ -1015,7 +1015,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	redirectToSend, err := json.Marshal(rawRedirectsToSend)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPost, "/v1/redirect", bytes.NewBuffer(redirectToSend))
+	req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -1040,7 +1040,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	c.Equal(marshaledReturnRedirect, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodPost, "/v1/redirect", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1049,7 +1049,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/v1/redirect", bytes.NewBuffer(redirectToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
