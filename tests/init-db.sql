@@ -90,11 +90,11 @@ CREATE TABLE IF NOT EXISTS user_access (
 	user_id VARCHAR,
 	role_name VARCHAR,
 	email VARCHAR,
-	accepted BOOLEAN DEFAULT false,
+	accepted BOOLEAN,
 	created_at TIMESTAMP NULL,
 	updated_at TIMESTAMP NULL,
 	PRIMARY KEY (id),
-	UNIQUE (lb_id, user_id),
+    UNIQUE (lb_id, user_id),
 	CONSTRAINT fk_lb FOREIGN KEY(lb_id) REFERENCES loadbalancers(lb_id),
 	CONSTRAINT fk_role FOREIGN KEY(role_name) REFERENCES user_roles(name)
 );
@@ -142,12 +142,26 @@ CREATE TABLE IF NOT EXISTS gateway_settings (
 	secret_key VARCHAR,
 	secret_key_required BOOLEAN,
 	whitelist_blockchains VARCHAR [],
-	whitelist_contracts VARCHAR,
-	whitelist_methods VARCHAR,
 	whitelist_origins VARCHAR [],
 	whitelist_user_agents VARCHAR [],
 	PRIMARY KEY (id),
 	CONSTRAINT fk_application FOREIGN KEY(application_id) REFERENCES applications(application_id)
+);
+CREATE TABLE whitelist_contracts (
+	id SERIAL PRIMARY KEY,
+	application_id VARCHAR NOT NULL,
+	blockchain_id VARCHAR,
+	contracts VARCHAR[],
+	CONSTRAINT fk_application FOREIGN KEY(application_id) REFERENCES applications(application_id),
+	UNIQUE(application_id, blockchain_id)
+);
+CREATE TABLE whitelist_methods (
+	id SERIAL PRIMARY KEY,
+	application_id VARCHAR NOT NULL,
+	blockchain_id VARCHAR,
+	methods VARCHAR[],
+	CONSTRAINT fk_application FOREIGN KEY(application_id) REFERENCES applications(application_id),
+	UNIQUE(application_id, blockchain_id)
 );
 CREATE TABLE IF NOT EXISTS notification_settings (
 	id INT GENERATED ALWAYS AS IDENTITY,
@@ -214,8 +228,7 @@ CREATE TRIGGER user_access_notify_event
 AFTER
 INSERT
 	OR
-UPDATE
-	OR DELETE ON user_access FOR EACH ROW EXECUTE PROCEDURE notify_event();
+UPDATE ON user_access FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER lb_apps_notify_event
 AFTER
 INSERT ON lb_apps FOR EACH ROW EXECUTE PROCEDURE notify_event();
@@ -237,6 +250,16 @@ AFTER
 INSERT
 	OR
 UPDATE ON gateway_settings FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER whitelist_contracts_notify_event
+AFTER
+INSERT
+	OR
+UPDATE ON whitelist_contracts FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER whitelist_methods_notify_event
+AFTER
+INSERT
+	OR
+UPDATE ON whitelist_methods FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER notification_settings_notify_event
 AFTER
 INSERT
@@ -253,7 +276,7 @@ INSERT ON redirects FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER sync_check_options_notify_event
 AFTER
 INSERT ON sync_check_options FOR EACH ROW EXECUTE PROCEDURE notify_event();
--- Insert Rows
+
 INSERT INTO pay_plans (plan_type, daily_limit)
 VALUES ('FREETIER_V0', 250000),
 	('PAY_AS_YOU_GO_V0', 0),
@@ -263,5 +286,5 @@ VALUES ('FREETIER_V0', 250000),
 	('TEST_PLAN_90K', 90000);
 INSERT INTO user_roles (name, permissions)
 VALUES ('ADMIN', '{ "read:endpoint", "write:endpoint" }'),
-	('OWNER', '{ "read:endpoint", "write:endpoint" }'),
-	('MEMBER', '{ "read:endpoint" }');
+    ('OWNER', '{ "read:endpoint", "write:endpoint" }'),
+    ('MEMBER', '{ "read:endpoint" }');

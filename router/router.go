@@ -289,6 +289,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 	for _, app := range appsToUpdate {
 		app.FirstDateSurpassed = updateInput.FirstDateSurpassed
 	}
+	fmt.Println("APP IS HERE!!!!", appsToUpdate)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, appsToUpdate)
 }
@@ -338,6 +339,13 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockchainID := vars["id"]
+
+	chain := rt.Cache.GetBlockchain(blockchainID)
+	if chain == nil {
+		rt.logError(fmt.Errorf("GetBlockchain in ActivateBlockchain failed: %w", errBlockchainNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
+		return
+	}
 
 	var active bool
 
