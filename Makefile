@@ -3,18 +3,13 @@ build:
 
 test_env_up:
 	docker-compose -f ./docker-compose.test.yml up -d --remove-orphans --build;
-	sleep 2;
+	sleep 5;
 test_env_down:
 	docker-compose -f ./docker-compose.test.yml down --remove-orphans -v
 
-# v0 tests
-# test_env_up_v0:
-# 	docker-compose -f ./v0_tests/docker-compose.yml up -d --remove-orphans --build;
-# 	sleep 2;
-# test_env_down_v0:
-# 	docker-compose -f ./v0_tests/docker-compose.yml down --remove-orphans -v
+# v0 tests - TODO remove when v0 dropped
 run_e2e_tests_v0:
-	-go test ./v0_tests -run V0_E2E -count=1 -v;
+	-go test -run V0_E2E -count=1 -v;
 run_all_tests_v0:
 	-go test ./... -run V0 -count=1;
 test_unit_v0:
@@ -24,15 +19,25 @@ test_v0:     test_env_up run_all_tests_v0 test_env_down
 
 # v1 tests
 run_e2e_tests:
-	-go test ./tests -run V1_E2E -count=1 -v;
+	-go test -run V1_E2E -count=1 -v;
 run_all_tests:
 	-go test ./... -run V1 -count=1;
 test_unit:
 	go test ./...  -run V1 -short -count=1
 test_e2e: test_env_up run_e2e_tests test_env_down
+# TODO replace `make test` target once v0 dropped
+# test: test_env_up run_all_tests test_env_down
 test_v1:  test_env_up run_all_tests test_env_down
 
-test: test_v0 test_v1
+# all tests - TODO remove when v0 dropped
+test:
+	make test_env_up;
+	make run_all_tests_v0;
+	make test_env_down;
+	sleep 2;
+	make test_env_up;
+	make run_all_tests;
+	make test_env_down;
 
 init-pre-commit:
 	wget https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz;

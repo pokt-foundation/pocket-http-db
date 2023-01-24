@@ -48,11 +48,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run Unit tests
-        run: go test ./... -short
+      # v0 tests - TODO remove when v0 dropped
+      - name: Set up Docker test stack for v0
+        run: make test_env_up
+      - name: Run all V0 tests
+        run: make run_all_tests_v0
+      - name: Tear down Docker test stack for v0
+        run: make test_env_down
 
-      - name: Build the Docker test stack
-        run: docker-compose -f ./tests/docker-compose.yml up -d
-
-      - name: Run E2E test
-        run: go test -v ./... -run E2E
+      - name: Set up Docker test stack for v1
+        run: make test_env_up
+      - name: Run all V1 tests
+        run: make run_all_tests

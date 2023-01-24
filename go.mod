@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.7
-	github.com/pokt-foundation/db-client v0.0.3
+	github.com/pokt-foundation/db-client v1.1.1
 	github.com/pokt-foundation/portal-api-go v0.7.6
 	github.com/pokt-foundation/portal-db v1.5.0
 	github.com/pokt-foundation/utils-go v0.2.5

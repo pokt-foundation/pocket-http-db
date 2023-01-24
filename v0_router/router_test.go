@@ -634,7 +634,7 @@ func Test_V0_Router_GetApplicationsByUserID(t *testing.T) {
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/user/test_2bf67774900350d9c43/application", nil)
+	req, err = http.NewRequest(http.MethodGet, "/user/sir_not_appearing_in_this_film/application", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()

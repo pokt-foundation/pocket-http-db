@@ -13,36 +13,36 @@ import (
 )
 
 var (
-	testCtxv0       = context.Background()
-	mockTimestampv0 = time.Date(2022, 11, 11, 11, 11, 11, 0, time.UTC)
+	testCtx       = context.Background()
+	mockTimestamp = time.Date(2022, 11, 11, 11, 11, 11, 0, time.UTC)
 )
 
-type DBClientTestSuite_V0 struct {
+type DBClientTestSuite struct {
 	suite.Suite
 	client1, client2 *dbclient.DBClient
 	mu               sync.Mutex
 }
 
-func Test_V0_E2E_RunDBClientTestSuite_V0(t *testing.T) {
+func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping end to end test")
 	}
 
-	suite.Run(t, new(DBClientTestSuite_V0))
+	suite.Run(t, new(DBClientTestSuite))
 }
 
 // SetupSuite runs before each test suite run
-func (ts *DBClientTestSuite_V0) SetupSuite() {
+func (ts *DBClientTestSuite) SetupSuite() {
 	err := ts.initDBClient()
 	ts.NoError(err)
 }
 
 // Initializes two separate DB clients to talk to two separate PHD instances.
 // This is to test the Postgres listener is updating multiple instances as intended.
-func (ts *DBClientTestSuite_V0) initDBClient() error {
+func (ts *DBClientTestSuite) initDBClient() error {
 	baseConfig := dbclient.Config{
 		APIKey:  "test_api_key_6789",
-		Version: dbclient.V0,
+		Version: dbclient.V1,
 		Retries: 1,
 		Timeout: 10 * time.Second,
 	}
@@ -66,13 +66,13 @@ func (ts *DBClientTestSuite_V0) initDBClient() error {
 	return nil
 }
 
-func boolPointerv0(value bool) *bool {
+func boolPointer(value bool) *bool {
 	return &value
 }
 
 // Runs all the read-only endpoint tests first to compare to test DB seed data only
 // ie. not yet including data written to the test DB by the test suite
-func (ts *DBClientTestSuite_V0) Test_ReadTests() {
+func (ts *DBClientTestSuite) Test_ReadTests() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -98,13 +98,11 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 						Active:            true,
 						Redirects: []types.Redirect{
 							{
-								BlockchainID:   "0001",
 								Alias:          "test-mainnet",
 								Domain:         "test-rpc1.testnet.pokt.network",
 								LoadBalancerID: "test_lb_34gg4g43g34g5hh",
 							},
 							{
-								BlockchainID:   "0001",
 								Alias:          "test-mainnet",
 								Domain:         "test-rpc2.testnet.pokt.network",
 								LoadBalancerID: "test_lb_34gg4g43g34g5hh",
@@ -116,6 +114,8 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 							ResultKey: "height",
 							Allowance: 1,
 						},
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 					{
 						ID:                "0021",
@@ -132,7 +132,6 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 						Active:            true,
 						Redirects: []types.Redirect{
 							{
-								BlockchainID:   "0021",
 								Alias:          "eth-mainnet",
 								Domain:         "test-rpc.testnet.eth.network",
 								LoadBalancerID: "test_lb_34gg4g43g34g5hh",
@@ -143,17 +142,19 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 							ResultKey: "result",
 							Allowance: 5,
 						},
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 				},
 			},
 		}
 
 		for _, test := range tests {
-			blockchains, err := ts.client1.GetBlockchains(testCtxv0)
+			blockchains, err := ts.client1.GetBlockchains(testCtx)
 			ts.ErrorIs(test.err, err)
 			ts.Equal(test.expectedBlockchains, blockchains)
 
-			blockchains, err = ts.client2.GetBlockchains(testCtxv0)
+			blockchains, err = ts.client2.GetBlockchains(testCtx)
 			ts.ErrorIs(test.err, err)
 			ts.Equal(test.expectedBlockchains, blockchains)
 		}
@@ -184,7 +185,6 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 					Active:            true,
 					Redirects: []types.Redirect{
 						{
-							BlockchainID:   "0021",
 							Alias:          "eth-mainnet",
 							Domain:         "test-rpc.testnet.eth.network",
 							LoadBalancerID: "test_lb_34gg4g43g34g5hh",
@@ -195,6 +195,8 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 						ResultKey: "result",
 						Allowance: 5,
 					},
+					CreatedAt: mockTimestamp,
+					UpdatedAt: mockTimestamp,
 				},
 			},
 			{
@@ -205,11 +207,11 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 		}
 
 		for _, test := range tests {
-			blockchain, err := ts.client1.GetBlockchainByID(testCtxv0, test.blockchainID)
+			blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedBlockchain, blockchain)
 
-			blockchain, err = ts.client2.GetBlockchainByID(testCtxv0, test.blockchainID)
+			blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchainID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedBlockchain, blockchain)
 		}
@@ -252,8 +254,8 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 							ThreeQuarters: true,
 							Full:          true,
 						},
-						CreatedAt: mockTimestampv0,
-						UpdatedAt: mockTimestampv0,
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 					{
 						ID:     "test_app_5hdf7sh23jd828",
@@ -284,19 +286,19 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 							ThreeQuarters: true,
 							Full:          true,
 						},
-						CreatedAt: mockTimestampv0,
-						UpdatedAt: mockTimestampv0,
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 				},
 			},
 		}
 
 		for _, test := range tests {
-			applications, err := ts.client1.GetApplications(testCtxv0)
+			applications, err := ts.client1.GetApplications(testCtx)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedApplications, applications)
 
-			applications, err = ts.client2.GetApplications(testCtxv0)
+			applications, err = ts.client2.GetApplications(testCtx)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedApplications, applications)
 		}
@@ -341,8 +343,8 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 						ThreeQuarters: true,
 						Full:          true,
 					},
-					CreatedAt: mockTimestampv0,
-					UpdatedAt: mockTimestampv0,
+					CreatedAt: mockTimestamp,
+					UpdatedAt: mockTimestamp,
 				},
 			},
 			{
@@ -353,11 +355,11 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 		}
 
 		for _, test := range tests {
-			applicationByID, err := ts.client1.GetApplicationByID(testCtxv0, test.applicationID)
+			applicationByID, err := ts.client1.GetApplicationByID(testCtx, test.applicationID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedApplication, applicationByID)
 
-			applicationByID, err = ts.client2.GetApplicationByID(testCtxv0, test.applicationID)
+			applicationByID, err = ts.client2.GetApplicationByID(testCtx, test.applicationID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedApplication, applicationByID)
 		}
@@ -403,8 +405,8 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 							ThreeQuarters: true,
 							Full:          true,
 						},
-						CreatedAt: mockTimestampv0,
-						UpdatedAt: mockTimestampv0,
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 				},
 			},
@@ -416,11 +418,11 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 		}
 
 		for _, test := range tests {
-			applicationsByUserID, err := ts.client1.GetApplicationsByUserID(testCtxv0, test.userID)
+			applicationsByUserID, err := ts.client1.GetApplicationsByUserID(testCtx, test.userID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedApplications, applicationsByUserID)
 
-			applicationsByUserID, err = ts.client2.GetApplicationsByUserID(testCtxv0, test.userID)
+			applicationsByUserID, err = ts.client2.GetApplicationsByUserID(testCtx, test.userID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedApplications, applicationsByUserID)
 		}
@@ -477,12 +479,17 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 									ThreeQuarters: true,
 									Full:          true,
 								},
-								CreatedAt: mockTimestampv0,
-								UpdatedAt: mockTimestampv0,
+								CreatedAt: mockTimestamp,
+								UpdatedAt: mockTimestamp,
 							},
 						},
-						CreatedAt: mockTimestampv0,
-						UpdatedAt: mockTimestampv0,
+						Users: []types.UserAccess{
+							{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+							{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+							{RoleName: "MEMBER", UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+						},
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 					{
 						ID:                "test_lb_34gg4g43g34g5hh",
@@ -498,8 +505,12 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 							Stickiness:    false,
 						},
 						Applications: []*types.Application{nil},
-						CreatedAt:    mockTimestampv0,
-						UpdatedAt:    mockTimestampv0,
+						Users: []types.UserAccess{
+							{RoleName: "OWNER", UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
+							{RoleName: "MEMBER", UserID: "test_user_member5678", Email: "member2@test.com", Accepted: true},
+						},
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 					{
 						ID:                "test_lb_3890ru23jfi32fj",
@@ -544,23 +555,27 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 									ThreeQuarters: true,
 									Full:          true,
 								},
-								CreatedAt: mockTimestampv0,
-								UpdatedAt: mockTimestampv0,
+								CreatedAt: mockTimestamp,
+								UpdatedAt: mockTimestamp,
 							},
 						},
-						CreatedAt: mockTimestampv0,
-						UpdatedAt: mockTimestampv0,
+						Users: []types.UserAccess{
+							{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
+							{RoleName: "ADMIN", UserID: "test_user_admin5678", Email: "admin2@test.com", Accepted: true},
+						},
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 				},
 			},
 		}
 
 		for _, test := range tests {
-			loadBalancers, err := ts.client1.GetLoadBalancers(testCtxv0)
+			loadBalancers, err := ts.client1.GetLoadBalancers(testCtx)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancers, loadBalancers)
 
-			loadBalancers, err = ts.client2.GetLoadBalancers(testCtxv0)
+			loadBalancers, err = ts.client2.GetLoadBalancers(testCtx)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancers, loadBalancers)
 		}
@@ -619,12 +634,16 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 								ThreeQuarters: true,
 								Full:          true,
 							},
-							CreatedAt: mockTimestampv0,
-							UpdatedAt: mockTimestampv0,
+							CreatedAt: mockTimestamp,
+							UpdatedAt: mockTimestamp,
 						},
 					},
-					CreatedAt: mockTimestampv0,
-					UpdatedAt: mockTimestampv0,
+					Users: []types.UserAccess{
+						{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
+						{RoleName: "ADMIN", UserID: "test_user_admin5678", Email: "admin2@test.com", Accepted: true},
+					},
+					CreatedAt: mockTimestamp,
+					UpdatedAt: mockTimestamp,
 				},
 			},
 			{
@@ -635,11 +654,11 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 		}
 
 		for _, test := range tests {
-			loadBalancerByID, err := ts.client1.GetLoadBalancerByID(testCtxv0, test.loadBalancerID)
+			loadBalancerByID, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 
-			loadBalancerByID, err = ts.client2.GetLoadBalancerByID(testCtxv0, test.loadBalancerID)
+			loadBalancerByID, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 		}
@@ -698,28 +717,34 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 									ThreeQuarters: true,
 									Full:          true,
 								},
-								CreatedAt: mockTimestampv0,
-								UpdatedAt: mockTimestampv0,
+								CreatedAt: mockTimestamp,
+								UpdatedAt: mockTimestamp,
 							},
 						},
-						CreatedAt: mockTimestampv0,
-						UpdatedAt: mockTimestampv0,
+						Users: []types.UserAccess{
+							{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+							{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+							{RoleName: "MEMBER", UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+						},
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
 					},
 				},
 			},
 			{
 				name:   "Should fail if the user does not have any load balancers in the DB",
 				userID: "test_not_real_user",
-				err:    fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
+				// TODO - fix this error string in PHD, should say `load balancers`
+				err: fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 		}
 
 		for _, test := range tests {
-			loadBalancersByUserID, err := ts.client1.GetLoadBalancersByUserID(testCtxv0, test.userID)
+			loadBalancersByUserID, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.userID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancers, loadBalancersByUserID)
 
-			loadBalancersByUserID, err = ts.client2.GetLoadBalancersByUserID(testCtxv0, test.userID)
+			loadBalancersByUserID, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancers, loadBalancersByUserID)
 		}
@@ -745,11 +770,11 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 		}
 
 		for _, test := range tests {
-			payPlans, err := ts.client1.GetPayPlans(testCtxv0)
+			payPlans, err := ts.client1.GetPayPlans(testCtx)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedPayPlans, payPlans)
 
-			payPlans, err = ts.client2.GetPayPlans(testCtxv0)
+			payPlans, err = ts.client2.GetPayPlans(testCtx)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedPayPlans, payPlans)
 		}
@@ -778,11 +803,11 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 		}
 
 		for _, test := range tests {
-			payPlanByType, err := ts.client1.GetPayPlanByType(testCtxv0, test.payPlanType)
+			payPlanByType, err := ts.client1.GetPayPlanByType(testCtx, test.payPlanType)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedPayPlan, payPlanByType)
 
-			payPlanByType, err = ts.client2.GetPayPlanByType(testCtxv0, test.payPlanType)
+			payPlanByType, err = ts.client2.GetPayPlanByType(testCtx, test.payPlanType)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedPayPlan, payPlanByType)
 		}
@@ -791,7 +816,7 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 
 // Runs all the write endpoint tests after the read tests
 // This ensures the write tests to not modify the seed data expected by the read tests
-func (ts *DBClientTestSuite_V0) Test_WriteTests() {
+func (ts *DBClientTestSuite) Test_WriteTests() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -863,10 +888,10 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.CreateBlockchain(testCtxv0, test.blockchainInput)
+			_, err := ts.client1.CreateBlockchain(testCtx, test.blockchainInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
-				blockchain, err := ts.client1.GetBlockchainByID(testCtxv0, test.blockchainInput.ID)
+				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainInput.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.blockchain.ID, blockchain.ID)
 				ts.Equal(test.blockchain.Altruist, blockchain.Altruist)
@@ -888,7 +913,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 				ts.NotEmpty(blockchain.CreatedAt)
 				ts.NotEmpty(blockchain.UpdatedAt)
 
-				blockchain, err = ts.client2.GetBlockchainByID(testCtxv0, test.blockchainInput.ID)
+				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchainInput.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.blockchain.ID, blockchain.ID)
 				ts.Equal(test.blockchain.Altruist, blockchain.Altruist)
@@ -959,10 +984,10 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.CreateBlockchainRedirect(testCtxv0, test.redirectInput)
+			_, err := ts.client1.CreateBlockchainRedirect(testCtx, test.redirectInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
-				blockchain, err := ts.client1.GetBlockchainByID(testCtxv0, test.redirectInput.BlockchainID)
+				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
 				ts.Equal(test.err, err)
 				ts.Len(blockchain.Redirects, len(test.redirects))
 				for i, redirect := range blockchain.Redirects {
@@ -971,7 +996,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 					ts.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
 				}
 
-				blockchain, err = ts.client2.GetBlockchainByID(testCtxv0, test.redirectInput.BlockchainID)
+				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
 				ts.Equal(test.err, err)
 				ts.Len(blockchain.Redirects, len(test.redirects))
 				for i, redirect := range blockchain.Redirects {
@@ -1037,10 +1062,10 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			createdApp, err := ts.client1.CreateApplication(testCtxv0, test.applicationInput)
+			createdApp, err := ts.client1.CreateApplication(testCtx, test.applicationInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
-				application, err := ts.client1.GetApplicationByID(testCtxv0, createdApp.ID)
+				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(createdApp.ID, application.ID)
 				ts.Equal(test.application.Dummy, application.Dummy)
@@ -1052,7 +1077,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 				ts.NotEmpty(application.CreatedAt)
 				ts.NotEmpty(application.UpdatedAt)
 
-				application, err = ts.client2.GetApplicationByID(testCtxv0, createdApp.ID)
+				application, err = ts.client2.GetApplicationByID(testCtx, createdApp.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(createdApp.ID, application.ID)
 				ts.Equal(test.application.Dummy, application.Dummy)
@@ -1132,8 +1157,8 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 								ThreeQuarters: true,
 								Full:          true,
 							},
-							CreatedAt: mockTimestampv0,
-							UpdatedAt: mockTimestampv0,
+							CreatedAt: mockTimestamp,
+							UpdatedAt: mockTimestamp,
 						},
 					},
 					StickyOptions: types.StickyOptions{
@@ -1155,10 +1180,10 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			createdLB, err := ts.client1.CreateLoadBalancer(testCtxv0, test.loadBalancerInput)
+			createdLB, err := ts.client1.CreateLoadBalancer(testCtx, test.loadBalancerInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
-				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtxv0, createdLB.ID)
+				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(createdLB.ID, loadBalancer.ID)
 				ts.Equal(test.loadBalancer.UserID, loadBalancer.UserID)
@@ -1174,7 +1199,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 				ts.NotEmpty(loadBalancer.CreatedAt)
 				ts.NotEmpty(loadBalancer.UpdatedAt)
 
-				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtxv0, createdLB.ID)
+				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(createdLB.ID, loadBalancer.ID)
 				ts.Equal(test.loadBalancer.UserID, loadBalancer.UserID)
@@ -1218,10 +1243,10 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.ActivateBlockchain(testCtxv0, test.blockchainID, test.active)
+			_, err := ts.client1.ActivateBlockchain(testCtx, test.blockchainID, test.active)
 			ts.Equal(test.err, err)
 			if test.err == nil {
-				blockchain, err := ts.client1.GetBlockchainByID(testCtxv0, test.blockchainID)
+				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.active, blockchain.Active)
 			}
@@ -1248,7 +1273,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
 						WhitelistBlockchains: []string{"test-chain1"},
 					},
-					NotificationSettings: &types.UpdateNotificationSettings{SignedUp: boolPointerv0(false), Quarter: boolPointerv0(true), Half: boolPointerv0(true), ThreeQuarters: boolPointerv0(false), Full: boolPointerv0(false)},
+					NotificationSettings: &types.UpdateNotificationSettings{SignedUp: boolPointer(false), Quarter: boolPointer(true), Half: boolPointer(true), ThreeQuarters: boolPointer(false), Full: boolPointer(false)},
 					Limit:                &types.AppLimit{PayPlan: types.PayPlan{Type: types.Enterprise}, CustomLimit: 4_200_000},
 				},
 				applicationAfterUpdate: types.Application{
@@ -1274,17 +1299,17 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			createdApp, err := ts.client1.UpdateApplication(testCtxv0, test.applicationID, test.applicationUpdate)
+			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, test.applicationUpdate)
 			ts.Equal(test.err, err)
 			if err == nil {
-				application, err := ts.client1.GetApplicationByID(testCtxv0, createdApp.ID)
+				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
 				ts.NoError(err)
 				ts.Equal(test.applicationAfterUpdate.Name, application.Name)
 				ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
 				ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 				ts.Equal(test.applicationAfterUpdate.Limit, application.Limit)
 
-				application, err = ts.client2.GetApplicationByID(testCtxv0, createdApp.ID)
+				application, err = ts.client2.GetApplicationByID(testCtx, createdApp.ID)
 				ts.NoError(err)
 				ts.Equal(test.applicationAfterUpdate.Name, application.Name)
 				ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
@@ -1329,15 +1354,15 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.UpdateAppFirstDateSurpassed(testCtxv0, test.update)
+			_, err := ts.client1.UpdateAppFirstDateSurpassed(testCtx, test.update)
 			ts.Equal(test.err, err)
 			if test.err == nil {
 				for _, appID := range test.update.ApplicationIDs {
-					application, err := ts.client1.GetApplicationByID(testCtxv0, appID)
+					application, err := ts.client1.GetApplicationByID(testCtx, appID)
 					ts.NoError(err)
 					ts.Equal(test.expectedDate, application.FirstDateSurpassed)
 
-					application, err = ts.client2.GetApplicationByID(testCtxv0, appID)
+					application, err = ts.client2.GetApplicationByID(testCtx, appID)
 					ts.NoError(err)
 					ts.Equal(test.expectedDate, application.FirstDateSurpassed)
 				}
@@ -1365,14 +1390,14 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.RemoveApplication(testCtxv0, test.applicationID)
+			_, err := ts.client1.RemoveApplication(testCtx, test.applicationID)
 			ts.Equal(test.err, err)
 			if test.err == nil {
-				application, err := ts.client1.GetApplicationByID(testCtxv0, test.applicationID)
+				application, err := ts.client1.GetApplicationByID(testCtx, test.applicationID)
 				ts.NoError(err)
 				ts.Equal(test.expectedStatus, application.Status)
 
-				application, err = ts.client2.GetApplicationByID(testCtxv0, test.applicationID)
+				application, err = ts.client2.GetApplicationByID(testCtx, test.applicationID)
 				ts.NoError(err)
 				ts.Equal(test.expectedStatus, application.Status)
 			}
@@ -1396,7 +1421,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 						Duration:      "100",
 						StickyOrigins: []string{"chrome-extension://", "test-ext://"},
 						StickyMax:     500,
-						Stickiness:    boolPointerv0(false),
+						Stickiness:    boolPointer(false),
 					},
 				},
 				loadBalancerAfterUpdate: types.LoadBalancer{
@@ -1433,15 +1458,15 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			createdLB, err := ts.client1.UpdateLoadBalancer(testCtxv0, test.loadBalancerID, test.loadBalancerUpdate)
+			createdLB, err := ts.client1.UpdateLoadBalancer(testCtx, test.loadBalancerID, test.loadBalancerUpdate)
 			ts.Equal(test.err, err)
 			if err == nil {
-				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtxv0, createdLB.ID)
+				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerAfterUpdate.Name, loadBalancer.Name)
 				ts.Equal(test.loadBalancerAfterUpdate.StickyOptions, loadBalancer.StickyOptions)
 
-				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtxv0, createdLB.ID)
+				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerAfterUpdate.Name, loadBalancer.Name)
 				ts.Equal(test.loadBalancerAfterUpdate.StickyOptions, loadBalancer.StickyOptions)
@@ -1469,14 +1494,14 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.RemoveLoadBalancer(testCtxv0, test.loadBalancerID)
+			_, err := ts.client1.RemoveLoadBalancer(testCtx, test.loadBalancerID)
 			ts.Equal(test.err, err)
 			if test.err == nil {
-				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtxv0, test.loadBalancerID)
+				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.NoError(err)
 				ts.Equal(test.expectedUserID, loadBalancer.UserID)
 
-				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtxv0, test.loadBalancerID)
+				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.NoError(err)
 				ts.Equal(test.expectedUserID, loadBalancer.UserID)
 			}
