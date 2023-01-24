@@ -2,11 +2,7 @@ build:
 	CGO_ENABLED=0 GOOS=linux go build -a -o bin/pocket-http-db ./main.go
 
 test_env_up:
-<<<<<<< HEAD
 	docker-compose -f ./docker-compose.test.yml up -d --remove-orphans --build;
-=======
-	docker-compose -f ./tests/docker-compose.yml up -d --remove-orphans --build;
->>>>>>> 0947908 (Yelp detect secrets (#89))
 	sleep 2;
 test_env_down:
 	docker-compose -f ./docker-compose.test.yml down --remove-orphans -v
