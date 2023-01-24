@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -51,24 +51,10 @@ jobs:
             API_KEYS=${{ secrets.API_KEYS }}
             CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
 
-      - name: Fill in the new image ID / us-west-2 (Datadog Agent)
-        id: task-def-us-west-2-datadog-agent
-        uses: aws-actions/amazon-ecs-render-task-definition@master
-        with:
-          task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
-          container-name: datadog-agent
-          image: gcr.io/datadoghq/agent:latest
-          environment-variables: |
-            DD_API_KEY=${{ secrets.DATADOG_API_KEY }}
-            DD_SITE=datadoghq.eu
-            DD_LOGS_ENABLED=true
-            DD_APM_ENABLED=true
-            DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
-
       - name: Deploy / us-west-2
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
         with:
-          task-definition: ${{ steps.task-def-us-west-2-datadog-agent.outputs.task-definition }}
+          task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
           service: postgres-api
           cluster: postgres-api
           wait-for-service-stability: true
