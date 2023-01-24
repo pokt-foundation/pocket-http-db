@@ -18,13 +18,14 @@ test_e2e_v0: test_env_up run_e2e_tests_v0 test_env_down
 test_v0:     test_env_up run_all_tests_v0 test_env_down
 
 # v1 tests
-run_e2e_tests:
+run_e2e_tests:s
 	-go test -run V1_E2E -count=1 -v;
 run_all_tests:
 	-go test ./... -run V1 -count=1;
 test_unit:
 	go test ./...  -run V1 -short -count=1
 test_e2e: test_env_up run_e2e_tests test_env_down
+
 # TODO replace `make test` target once v0 dropped
 # test: test_env_up run_all_tests test_env_down
 test_v1:  test_env_up run_all_tests test_env_down
