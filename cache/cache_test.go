@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCache_SetCache(t *testing.T) {
+func Test_V0_Cache_SetCache(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -110,7 +110,7 @@ func TestCache_SetCache(t *testing.T) {
 	c.Len(cache.GetRedirects("0021"), 1)
 }
 
-func TestCache_SetCacheFailure(t *testing.T) {
+func Test_V0_Cache_SetCacheFailure(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -192,7 +192,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	}, nil)
 }
 
-func TestCache_AddApplication(t *testing.T) {
+func Test_V0_Cache_AddApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -247,7 +247,7 @@ func TestCache_AddApplication(t *testing.T) {
 	c.Equal(cache.GetApplication("test_app_e3591c4dea8566b").DailyLimit(), 250000)
 }
 
-func TestCache_UpdateApplication(t *testing.T) {
+func Test_V0_Cache_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -317,7 +317,7 @@ func TestCache_UpdateApplication(t *testing.T) {
 	c.Equal("papolo", cache.GetLoadBalancersByUserID("test_user_687463gh2h72gs")[0].Applications[1].Name)
 }
 
-func TestCache_RemoveApplication(t *testing.T) {
+func Test_V0_Cache_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -368,7 +368,7 @@ func TestCache_RemoveApplication(t *testing.T) {
 	c.Len(cache.GetApplicationsByUserID("test_user_774900350d9c43"), 1)
 }
 
-func TestCache_AddLoadBalancer(t *testing.T) {
+func Test_V0_Cache_AddLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -412,7 +412,7 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 3)
 }
 
-func TestCache_UpdateLoadBalancer(t *testing.T) {
+func Test_V0_Cache_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -450,7 +450,7 @@ func TestCache_UpdateLoadBalancer(t *testing.T) {
 	c.Equal("papolo", cache.GetLoadBalancer("test_app_e3591c4dea8566a").Name)
 }
 
-func TestCache_RemoveLoadBalancer(t *testing.T) {
+func Test_V0_Cache_RemoveLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -480,7 +480,7 @@ func TestCache_RemoveLoadBalancer(t *testing.T) {
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 1)
 }
 
-func TestCache_AddBlockchain(t *testing.T) {
+func Test_V0_Cache_AddBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -501,7 +501,7 @@ func TestCache_AddBlockchain(t *testing.T) {
 	c.Len(cache.GetBlockchains(), 2)
 }
 
-func TestCache_UpdateBlockchain(t *testing.T) {
+func Test_V0_Cache_UpdateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -527,7 +527,7 @@ func TestCache_UpdateBlockchain(t *testing.T) {
 	c.Equal(cache.GetBlockchains()[0].Active, true)
 }
 
-func TestCache_AddRedirect(t *testing.T) {
+func Test_V0_Cache_AddRedirect(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}

@@ -161,7 +161,7 @@ func newTestRouter() (*Router, error) {
 	return NewRouter(readerMock, nil, map[string]bool{"": true}, logrus.New())
 }
 
-func TestRouter_HealthCheck(t *testing.T) {
+func Test_V0_Router_HealthCheck(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/", nil)
@@ -177,7 +177,7 @@ func TestRouter_HealthCheck(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 }
 
-func TestRouter_GetApplications(t *testing.T) {
+func Test_V0_Router_GetApplications(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/application", nil)
@@ -226,7 +226,7 @@ func TestRouter_GetApplications(t *testing.T) {
 	c.Equal(http.StatusUnauthorized, rr.Code)
 }
 
-func TestRouter_GetApplicationsLimits(t *testing.T) {
+func Test_V0_Router_GetApplicationsLimits(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/application/limits", nil)
@@ -270,7 +270,7 @@ func TestRouter_GetApplicationsLimits(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetApplication(t *testing.T) {
+func Test_V0_Router_GetApplication(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/application/test_app_e3591c4dea8566d", nil)
@@ -310,7 +310,7 @@ func TestRouter_GetApplication(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateApplication(t *testing.T) {
+func Test_V0_Router_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawAppToSend := &repository.Application{
@@ -390,7 +390,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_UpdateApplication(t *testing.T) {
+func Test_V0_Router_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateApplication{
@@ -462,7 +462,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	c.Equal(http.StatusUnprocessableEntity, rr.Code)
 }
 
-func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
+func Test_V0_Router_UpdateFirstDateSurpassed(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateFirstDateSurpassed{
@@ -540,7 +540,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	c.Equal(http.StatusBadRequest, rr.Code)
 }
 
-func TestRouter_RemoveApplication(t *testing.T) {
+func Test_V0_Router_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawRemoveInput := &repository.UpdateApplication{
@@ -598,7 +598,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_GetApplicationsByUserID(t *testing.T) {
+func Test_V0_Router_GetApplicationsByUserID(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/user/test_user_774900350d9c43/application", nil)
@@ -644,7 +644,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
+func Test_V0_Router_GetLoadbalancerByUserID(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/user/test_user_774900350d9c43/load_balancer", nil)
@@ -676,7 +676,7 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetBlockchains(t *testing.T) {
+func Test_V0_Router_GetBlockchains(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/blockchain", nil)
@@ -720,7 +720,7 @@ func TestRouter_GetBlockchains(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetBlockchain(t *testing.T) {
+func Test_V0_Router_GetBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/blockchain/0021", nil)
@@ -760,7 +760,7 @@ func TestRouter_GetBlockchain(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetLoadBalancers(t *testing.T) {
+func Test_V0_Router_GetLoadBalancers(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/load_balancer", nil)
@@ -785,7 +785,7 @@ func TestRouter_GetLoadBalancers(t *testing.T) {
 	c.Equal("test_user_774900350d9c43", marshaledBody[1].ID)
 }
 
-func TestRouter_GetLoadBalancer(t *testing.T) {
+func Test_V0_Router_GetLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/load_balancer/test_lb_67774900350d9c42", nil)
@@ -817,7 +817,7 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateLoadBalancer(t *testing.T) {
+func Test_V0_Router_CreateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawLBToSend := &repository.LoadBalancer{
@@ -876,7 +876,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_UpdateLoadBalancer(t *testing.T) {
+func Test_V0_Router_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateLoadBalancer{
@@ -940,7 +940,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_RemoveLoadBalancer(t *testing.T) {
+func Test_V0_Router_RemoveLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &repository.UpdateLoadBalancer{
@@ -989,7 +989,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetPayPlans(t *testing.T) {
+func Test_V0_Router_GetPayPlans(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/pay_plan", nil)
@@ -1019,7 +1019,7 @@ func TestRouter_GetPayPlans(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetPayPlan(t *testing.T) {
+func Test_V0_Router_GetPayPlan(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/pay_plan/freetier_v0", nil)
@@ -1052,7 +1052,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateBlockchain(t *testing.T) {
+func Test_V0_Router_CreateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	rawChainToSend := &repository.Blockchain{
@@ -1111,7 +1111,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_CreateRedirect(t *testing.T) {
+func Test_V0_Router_CreateRedirect(t *testing.T) {
 	c := require.New(t)
 
 	rawRedirectsToSend := &repository.Redirect{BlockchainID: "0021"}
@@ -1165,7 +1165,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_ActivateBlockchain(t *testing.T) {
+func Test_V0_Router_ActivateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	activeStatusToSend, err := json.Marshal(true)
