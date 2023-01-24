@@ -15,17 +15,16 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.18
+      - name: Check out code
+        uses: actions/checkout@v2
 
-    - name: Check out code
-      uses: actions/checkout@v2
-
-    - name: Run Golang ci Action
-      uses: golangci/golangci-lint-action@v3
+      - name: Run Golang ci Action
+        uses: golangci/golangci-lint-action@v3
 
   test:
     name: Test
@@ -49,11 +48,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run Unit tests
-        run: go test ./... -short
-
-      - name: Build the Docker test stack
-        run: docker-compose -f ./tests/docker-compose.yml up -d
-
-      - name: Run E2E test
-        run: go test -v ./... -run E2E
+      - name: Set up Docker test stack for v0
+        run: make test_env_up
+      - name: Run all V0 tests
+        run: make run_all_tests_v0
