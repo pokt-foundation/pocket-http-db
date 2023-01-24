@@ -4,13 +4,13 @@ version: "3"
 services:
   pocket-http-db-1:
     build:
-      context: ..
+      context: .
     container_name: pocket-http-db-1
     restart: always
     ports:
       - 8080:8080
     environment:
-      CONNECTION_STRING: postgres://postgres:pgpassword@portal-db:5432/postgres?sslmode=disable
+      CONNECTION_STRING: postgres://postgres:pgpassword@portal-db:5432/postgres?sslmode=disable # pragma: allowlist secret
       API_KEYS: test_api_key_6789
     depends_on:
       portal-db:
@@ -18,26 +18,24 @@ services:
 
   pocket-http-db-2:
     build:
-      context: ..
+      context: .
     container_name: pocket-http-db-2
     restart: always
     ports:
       - 8081:8080
     environment:
-      CONNECTION_STRING: postgres://postgres:pgpassword@portal-db:5432/postgres?sslmode=disable
+      CONNECTION_STRING: postgres://postgres:pgpassword@portal-db:5432/postgres?sslmode=disable # pragma: allowlist secret
       API_KEYS: test_api_key_6789
     depends_on:
       portal-db:
         condition: service_healthy
 
   portal-db:
-    image: postgres:14.3
+    image: pocketfoundation/test-portal-postgres:latest
     container_name: portal-db
     restart: always
     ports:
       - 5432:5432
-    volumes:
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       POSTGRES_PASSWORD: pgpassword
       POSTGRES_DB: postgres

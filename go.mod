@@ -3,9 +3,9 @@ module github.com/pokt-foundation/pocket-http-db
 go 1.18
 
 require (
-	github.com/gojektech/heimdall v5.0.2+incompatible
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.7
+	github.com/pokt-foundation/db-client v0.0.3
 	github.com/pokt-foundation/portal-api-go v0.7.6
 	github.com/pokt-foundation/portal-db v1.5.0
 	github.com/pokt-foundation/utils-go v0.2.5
@@ -15,7 +15,9 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/gojektech/valkyrie v0.0.0-20190210220504-8f62c1e7ba45 // indirect
+	github.com/gojek/heimdall/v7 v7.0.2 // indirect
+	github.com/gojek/valkyrie v0.0.0-20180215180059-6aee720afcdf // indirect
+	github.com/gojektech/heimdall v5.0.2+incompatible // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

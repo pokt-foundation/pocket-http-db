@@ -12,8 +12,8 @@ import (
 func newMockCache(readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadApplications").Return([]*repository.Application{
 		{
-			ID:     "5f62b7d8be3591c4dea8566d",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_7d8be3591c4dea8566d",
+			UserID: "test_2bf67774900350d9c43",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type:  repository.FreetierV0,
@@ -22,8 +22,8 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 			},
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566a",
-			UserID: "60ecb2bf67774900350d9c43",
+			ID:     "test_d8be3591c4dea8566a",
+			UserID: "test_2bf67774900350d9c43",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type: repository.Enterprise,
@@ -32,8 +32,8 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 			},
 		},
 		{
-			ID:     "5f62b7d8be3591c4dea8566f",
-			UserID: "60ecb2bf67774900350d9c44",
+			ID:     "test_7d8be3591c4dea8566f",
+			UserID: "test_2bf67774900350d9c44",
 			Limit: repository.AppLimit{
 				PayPlan: repository.PayPlan{
 					Type:  repository.PayAsYouGoV0,
@@ -49,11 +49,11 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 
 	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
 		{
-			ID:     "60ecb2bf67774900350d9c42",
-			UserID: "60ecb35fts687463gh2h72gs",
+			ID:     "test_bf67774900350d9c42",
+			UserID: "test_35fts687463gh2h72gs",
 			ApplicationIDs: []string{
-				"5f62b7d8be3591c4dea8566d",
-				"5f62b7d8be3591c4dea8566a",
+				"test_7d8be3591c4dea8566d",
+				"test_d8be3591c4dea8566a",
 			},
 		},
 	}, nil)
@@ -94,7 +94,7 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 	return cache
 }
 
-func TestCache_listenApplication(t *testing.T) {
+func Test_V0_Cache_listenApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock()
@@ -173,7 +173,7 @@ func TestCache_listenApplication(t *testing.T) {
 	c.Empty(apps)
 }
 
-func TestCache_listenAppLimit(t *testing.T) {
+func Test_V0_Cache_listenAppLimit(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock()
@@ -217,7 +217,7 @@ func TestCache_listenAppLimit(t *testing.T) {
 	c.Len(pendingUpdates, 0)
 }
 
-func TestCache_listenBlockchain(t *testing.T) {
+func Test_V0_Cache_listenBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock()
@@ -249,7 +249,7 @@ func TestCache_listenBlockchain(t *testing.T) {
 	c.True(blockchain.Active)
 }
 
-func TestCache_listenLoadBalancer(t *testing.T) {
+func Test_V0_Cache_listenLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock()
@@ -263,7 +263,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
 		},
-		ApplicationIDs: []string{"5f62b7d8be3591c4dea8566a"},
+		ApplicationIDs: []string{"test_d8be3591c4dea8566a"},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -271,7 +271,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	lb := cache.GetLoadBalancer("123")
 	c.Equal("pablo", lb.Name)
 	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
-	c.Equal("5f62b7d8be3591c4dea8566a", lb.Applications[0].ID)
+	c.Equal("test_d8be3591c4dea8566a", lb.Applications[0].ID)
 
 	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
 		ID:     "123",
@@ -304,7 +304,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	c.Empty(lbs)
 }
 
-func TestCache_listenRedirect(t *testing.T) {
+func Test_V0_Cache_listenRedirect(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock()

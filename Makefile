@@ -2,24 +2,37 @@ build:
 	CGO_ENABLED=0 GOOS=linux go build -a -o bin/pocket-http-db ./main.go
 
 test_env_up:
-	docker-compose -f ./tests/docker-compose.yml up -d --remove-orphans --build;
+	docker-compose -f ./docker-compose.test.yml up -d --remove-orphans --build;
 	sleep 2;
 test_env_down:
-	docker-compose -f ./tests/docker-compose.yml down --remove-orphans -v
-run_unit_tests:
-	go test ./...  -short
-run_v0_e2e_tests:
-	-go test ./v0_tests -run E2E -count=1;
-run_e2e_tests:
-	-go test ./tests -run E2E -count=1 -tags=tests;
-run_all_tests:
-	-go test ./... -count=1 -tags=tests;
+	docker-compose -f ./docker-compose.test.yml down --remove-orphans -v
 
-test:		  test_env_up run_all_tests    test_env_down
-test_unit:    test_env_up run_unit_tests   test_env_down
-test_e2e_v0:  test_env_up run_v0_e2e_tests test_env_down
-test_e2e:     test_env_up run_e2e_tests    test_env_down
-test_v0:      test_env_up run_all_tests    test_env_down
+# v0 tests
+# test_env_up_v0:
+# 	docker-compose -f ./v0_tests/docker-compose.yml up -d --remove-orphans --build;
+# 	sleep 2;
+# test_env_down_v0:
+# 	docker-compose -f ./v0_tests/docker-compose.yml down --remove-orphans -v
+run_e2e_tests_v0:
+	-go test ./v0_tests -run V0_E2E -count=1 -v;
+run_all_tests_v0:
+	-go test ./... -run V0 -count=1;
+test_unit_v0:
+	go test ./...  -run V0 -short -count=1
+test_e2e_v0: test_env_up run_e2e_tests_v0 test_env_down
+test_v0:     test_env_up run_all_tests_v0 test_env_down
+
+# v1 tests
+run_e2e_tests:
+	-go test ./tests -run V1_E2E -count=1 -v;
+run_all_tests:
+	-go test ./... -run V1 -count=1;
+test_unit:
+	go test ./...  -run V1 -short -count=1
+test_e2e: test_env_up run_e2e_tests test_env_down
+test_v1:  test_env_up run_all_tests test_env_down
+
+test: test_v0 test_v1
 
 init-pre-commit:
 	wget https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz;

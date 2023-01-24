@@ -79,7 +79,7 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 	return cache
 }
 
-func TestCache_listenApplication(t *testing.T) {
+func Test_V1_Cache_listenApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -158,7 +158,7 @@ func TestCache_listenApplication(t *testing.T) {
 	c.Empty(apps)
 }
 
-func TestCache_listenAppLimit(t *testing.T) {
+func Test_V1_Cache_listenAppLimit(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -202,7 +202,7 @@ func TestCache_listenAppLimit(t *testing.T) {
 	c.Len(pendingUpdates, 0)
 }
 
-func TestCache_listenBlockchain(t *testing.T) {
+func Test_V1_Cache_listenBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -234,7 +234,7 @@ func TestCache_listenBlockchain(t *testing.T) {
 	c.True(blockchain.Active)
 }
 
-func TestCache_listenLoadBalancer(t *testing.T) {
+func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -289,7 +289,7 @@ func TestCache_listenLoadBalancer(t *testing.T) {
 	c.Empty(lbs)
 }
 
-func TestCache_listenRedirect(t *testing.T) {
+func Test_V1_Cache_listenRedirect(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
