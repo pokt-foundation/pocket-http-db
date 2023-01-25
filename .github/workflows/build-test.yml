@@ -59,4 +59,4 @@ jobs:
       - name: Set up Docker test stack for v1
         run: make test_env_up
       - name: Run all V1 tests
-        run: make run_all_tests
+        run: make run_all_tests_v1
