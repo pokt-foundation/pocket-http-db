@@ -17,7 +17,7 @@ var (
 	mockTimestamp = time.Date(2022, 11, 11, 11, 11, 11, 0, time.UTC)
 )
 
-type DBClientTestSuite struct {
+type phdE2ETestSuite struct {
 	suite.Suite
 	client1, client2 *dbclient.DBClient
 	mu               sync.Mutex
@@ -28,18 +28,18 @@ func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 		t.Skip("skipping end to end test")
 	}
 
-	suite.Run(t, new(DBClientTestSuite))
+	suite.Run(t, new(phdE2ETestSuite))
 }
 
 // SetupSuite runs before each test suite run
-func (ts *DBClientTestSuite) SetupSuite() {
+func (ts *phdE2ETestSuite) SetupSuite() {
 	err := ts.initDBClient()
 	ts.NoError(err)
 }
 
 // Initializes two separate DB clients to talk to two separate PHD instances.
 // This is to test the Postgres listener is updating multiple instances as intended.
-func (ts *DBClientTestSuite) initDBClient() error {
+func (ts *phdE2ETestSuite) initDBClient() error {
 	baseConfig := dbclient.Config{
 		APIKey:  "test_api_key_6789",
 		Version: dbclient.V1,
@@ -72,7 +72,7 @@ func boolPointer(value bool) *bool {
 
 // Runs all the read-only endpoint tests first to compare to test DB seed data only
 // ie. not yet including data written to the test DB by the test suite
-func (ts *DBClientTestSuite) Test_ReadTests() {
+func (ts *phdE2ETestSuite) Test_ReadTests() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -815,7 +815,7 @@ func (ts *DBClientTestSuite) Test_ReadTests() {
 
 // Runs all the write endpoint tests after the read tests
 // This ensures the write tests to not modify the seed data expected by the read tests
-func (ts *DBClientTestSuite) Test_WriteTests() {
+func (ts *phdE2ETestSuite) Test_WriteTests() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 

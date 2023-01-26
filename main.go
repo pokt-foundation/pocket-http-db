@@ -13,8 +13,6 @@ import (
 	v1postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
 	"github.com/pokt-foundation/utils-go/environment"
 	"github.com/sirupsen/logrus"
-
-	_ "net/http/pprof"
 )
 
 const (
