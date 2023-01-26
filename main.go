@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"github.com/pokt-foundation/pocket-http-db/router"
-	postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
+	v0router "github.com/pokt-foundation/pocket-http-db/router"
+	v1router "github.com/pokt-foundation/pocket-http-db/v1_router"
+	v0postgresdriver "github.com/pokt-foundation/portal-api-go/postgres-driver"
+	v1postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
 	"github.com/pokt-foundation/utils-go/environment"
 	"github.com/sirupsen/logrus"
 )
@@ -39,7 +41,8 @@ func gatherOptions() options {
 	}
 }
 
-func cacheHandler(router *router.Router, cacheRefresh int64, log *logrus.Logger) {
+/* DEPRECATED -- v0 cache handler using portal-api-go driver */
+func v0CacheHandler(router *v0router.Router, cacheRefresh int64, log *logrus.Logger) {
 	for {
 		time.Sleep(time.Duration(cacheRefresh) * time.Minute)
 
@@ -50,11 +53,25 @@ func cacheHandler(router *router.Router, cacheRefresh int64, log *logrus.Logger)
 	}
 }
 
-func httpHandler(router *router.Router, port string, log *logrus.Logger) {
-	http.Handle("/", router.Router)
+/* NEW -- v1 cache handler using portal-db driver */
+func v1CacheHandler(router *v1router.Router, cacheRefresh int64, log *logrus.Logger) {
+	for {
+		time.Sleep(time.Duration(cacheRefresh) * time.Minute)
 
-	log.Printf("Postgres API running in port: %s\n", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+		err := router.Cache.SetCache()
+		if err != nil {
+			log.WithFields(logrus.Fields{"err": err.Error()}).Error(err)
+		}
+	}
+}
+
+func httpHandler(v0Router *v0router.Router, v1Router *v1router.Router, port string, log *logrus.Logger) {
+	// TODO - remove this line and replace v0Router.Router with router.Router
+	// inside ListenAndServe below once v0 routes are ready to be removed
+	v0Router.Router.PathPrefix("/v1").Handler(v1Router.Router)
+
+	log.Printf("Postgres API v0/v1 running in port: %s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, v0Router.Router))
 }
 
 func main() {
@@ -70,14 +87,28 @@ func main() {
 		}
 	}
 
-	listener := pq.NewListener(options.connectionString, 10*time.Second, time.Minute, reportProblem)
+	/* DEPRECATED -- v0 DB connection, listener and router using portal-api-go driver */
+	v0Listener := pq.NewListener(options.connectionString, 10*time.Second, time.Minute, reportProblem)
 
-	driver, err := postgresdriver.NewPostgresDriverFromConnectionString(options.connectionString, listener)
+	v0Driver, err := v0postgresdriver.NewPostgresDriverFromConnectionString(options.connectionString, v0Listener)
 	if err != nil {
 		panic(err)
 	}
 
-	router, err := router.NewRouter(driver, driver, options.apiKeys, log)
+	v0Router, err := v0router.NewRouter(v0Driver, v0Driver, options.apiKeys, log)
+	if err != nil {
+		panic(err)
+	}
+
+	/* NEW -- v1 DB connection, listener and router using portal-db driver */
+	listener := pq.NewListener(options.connectionString, 10*time.Second, time.Minute, reportProblem)
+
+	v1Driver, err := v1postgresdriver.NewPostgresDriver(options.connectionString, listener)
+	if err != nil {
+		panic(err)
+	}
+
+	router, err := v1router.NewRouter(v1Driver, v1Driver, options.apiKeys, log)
 	if err != nil {
 		panic(err)
 	}
@@ -86,8 +117,13 @@ func main() {
 
 	wg.Add(1)
 
-	go httpHandler(router, options.port, log)
-	go cacheHandler(router, options.cacheRefresh, log)
+	go httpHandler(v0Router, router, options.port, log)
+
+	/* DEPRECATED -- cache handler using portal-api-go driver */
+	go v0CacheHandler(v0Router, options.cacheRefresh, log)
+
+	/* NEW -- cache handler using portal-db driver */
+	go v1CacheHandler(router, options.cacheRefresh, log)
 
 	wg.Wait()
 }

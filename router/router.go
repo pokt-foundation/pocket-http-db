@@ -232,6 +232,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err = rt.Writer.UpdateApplication(vars["id"], &updateInput)
 		if err != nil {
+			rt.logError(fmt.Errorf("UpdateApplication failed: %w", err))
 			jsonresponse.RespondWithError(w, http.StatusUnprocessableEntity, err.Error())
 			return
 		}
