@@ -1291,6 +1291,37 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name:          "Should update a single application's pay plan type",
+				applicationID: "test_app_47hfnths73j2se",
+				applicationUpdate: types.UpdateApplication{
+					Limit: &types.AppLimit{
+						PayPlan: types.PayPlan{
+							Type: types.FreetierV0,
+						},
+					},
+				},
+				applicationAfterUpdate: types.Application{
+					Name: "pokt_app_updated_lb",
+					GatewaySettings: types.GatewaySettings{
+						SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+						SecretKeyRequired:    true,
+						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
+						WhitelistUserAgents:  []string{"test-agent1"},
+						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
+						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
+						WhitelistBlockchains: []string{"test-chain1"},
+					},
+					NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: true, ThreeQuarters: false, Full: false},
+					Limit: types.AppLimit{
+						PayPlan: types.PayPlan{
+							Type:  types.FreetierV0,
+							Limit: 250_000,
+						},
+						CustomLimit: 0,
+					},
+				},
+			},
+			{
 				name:          "Should fail if application cannot be found",
 				applicationID: "9000",
 				err:           fmt.Errorf("Response not OK. 404 Not Found: applications not found"),
