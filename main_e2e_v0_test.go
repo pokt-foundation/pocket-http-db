@@ -17,7 +17,7 @@ var (
 	mockTimestampv0 = time.Date(2022, 11, 11, 11, 11, 11, 0, time.UTC)
 )
 
-type DBClientTestSuite_V0 struct {
+type phdE2ETestSuiteV0 struct {
 	suite.Suite
 	client1, client2 *dbclient.DBClient
 	mu               sync.Mutex
@@ -28,18 +28,18 @@ func Test_V0_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 		t.Skip("skipping end to end test")
 	}
 
-	suite.Run(t, new(DBClientTestSuite_V0))
+	suite.Run(t, new(phdE2ETestSuiteV0))
 }
 
 // SetupSuite runs before each test suite run
-func (ts *DBClientTestSuite_V0) SetupSuite() {
+func (ts *phdE2ETestSuiteV0) SetupSuite() {
 	err := ts.initDBClient()
 	ts.NoError(err)
 }
 
 // Initializes two separate DB clients to talk to two separate PHD instances.
 // This is to test the Postgres listener is updating multiple instances as intended.
-func (ts *DBClientTestSuite_V0) initDBClient() error {
+func (ts *phdE2ETestSuiteV0) initDBClient() error {
 	baseConfig := dbclient.Config{
 		APIKey:  "test_api_key_6789",
 		Version: dbclient.V0,
@@ -66,13 +66,13 @@ func (ts *DBClientTestSuite_V0) initDBClient() error {
 	return nil
 }
 
-func boolPointer(value bool) *bool {
+func boolPointerv0(value bool) *bool {
 	return &value
 }
 
 // Runs all the read-only endpoint tests first to compare to test DB seed data only
 // ie. not yet including data written to the test DB by the test suite
-func (ts *DBClientTestSuite_V0) Test_ReadTests() {
+func (ts *phdE2ETestSuiteV0) Test_ReadTests() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -790,7 +790,7 @@ func (ts *DBClientTestSuite_V0) Test_ReadTests() {
 
 // Runs all the write endpoint tests after the read tests
 // This ensures the write tests to not modify the seed data expected by the read tests
-func (ts *DBClientTestSuite_V0) Test_WriteTests() {
+func (ts *phdE2ETestSuiteV0) Test_WriteTests() {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -803,7 +803,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 			{
 				name: "Should create a single blockchain in the DB",
 				blockchainInput: types.Blockchain{
-					ID:                "003",
+					ID:                "003_v0",
 					Altruist:          "https://test:test_fg332f@shared-test3.nodes.pol.network:12345",
 					Blockchain:        "pol-mainnet",
 					Description:       "Polygon Mainnet",
@@ -820,7 +820,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 					},
 				},
 				blockchain: types.Blockchain{
-					ID:                "003",
+					ID:                "003_v0",
 					Altruist:          "https://test:test_fg332f@shared-test3.nodes.pol.network:12345",
 					Blockchain:        "pol-mainnet",
 					Description:       "Polygon Mainnet",
@@ -831,7 +831,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 					LogLimitBlocks:    100000,
 					Active:            true,
 					SyncCheckOptions: types.SyncCheckOptions{
-						BlockchainID: "003",
+						BlockchainID: "003_v0",
 						Body:         "{}",
 						ResultKey:    "result",
 						Allowance:    3,
@@ -841,7 +841,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 			{
 				name: "Should fail if attempting to create a duplicate record",
 				blockchainInput: types.Blockchain{
-					ID:                "003",
+					ID:                "003_v0",
 					Altruist:          "https://test:test_fg332f@shared-test3.nodes.pol.network:12345",
 					Blockchain:        "pol-mainnet",
 					Description:       "Polygon Mainnet",
@@ -984,7 +984,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 			{
 				name: "Should create a single application in the DB",
 				applicationInput: types.Application{
-					Name:   "pokt_app_789",
+					Name:   "pokt_app_789_v0",
 					UserID: "test_user_47fhsd75jd756sh",
 					Dummy:  true,
 					Status: types.InService,
@@ -1005,7 +1005,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 					NotificationSettings: types.NotificationSettings{SignedUp: true, Quarter: false, Half: false, ThreeQuarters: true, Full: true},
 				},
 				application: types.Application{
-					Name:   "pokt_app_789",
+					Name:   "pokt_app_789_v0",
 					UserID: "test_user_47fhsd75jd756sh",
 					Dummy:  true,
 					Status: types.InService,
@@ -1068,7 +1068,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 			{
 				name: "Should create a single loadBalancer in the DB",
 				loadBalancerInput: types.LoadBalancer{
-					Name:              "pokt_app_789",
+					Name:              "pokt_app_789_v0",
 					UserID:            "test_user_47fhsd75jd756sh",
 					RequestTimeout:    5000,
 					Gigastake:         true,
@@ -1082,7 +1082,7 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 					},
 				},
 				loadBalancer: types.LoadBalancer{
-					Name:              "pokt_app_789",
+					Name:              "pokt_app_789_v0",
 					UserID:            "test_user_47fhsd75jd756sh",
 					RequestTimeout:    5000,
 					Gigastake:         true,
@@ -1211,21 +1211,21 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 				name:          "Should update a single application in the DB",
 				applicationID: "test_app_47hfnths73j2se",
 				applicationUpdate: types.UpdateApplication{
-					Name: "pokt_app_updated_lb",
+					Name: "pokt_app_updated_lb_v0",
 					GatewaySettings: &types.UpdateGatewaySettings{
 						SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
-						SecretKeyRequired:    boolPointer(true),
+						SecretKeyRequired:    boolPointerv0(true),
 						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
 						WhitelistUserAgents:  []string{"test-agent1"},
 						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
 						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
 						WhitelistBlockchains: []string{"test-chain1"},
 					},
-					NotificationSettings: &types.UpdateNotificationSettings{SignedUp: boolPointer(false), Quarter: boolPointer(true), Half: boolPointer(true), ThreeQuarters: boolPointer(false), Full: boolPointer(false)},
+					NotificationSettings: &types.UpdateNotificationSettings{SignedUp: boolPointerv0(false), Quarter: boolPointerv0(true), Half: boolPointerv0(true), ThreeQuarters: boolPointerv0(false), Full: boolPointerv0(false)},
 					Limit:                &types.AppLimit{PayPlan: types.PayPlan{Type: types.Enterprise}, CustomLimit: 4_200_000},
 				},
 				applicationAfterUpdate: types.Application{
-					Name: "pokt_app_updated_lb",
+					Name: "pokt_app_updated_lb_v0",
 					GatewaySettings: types.GatewaySettings{
 						SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
 						SecretKeyRequired:    true,
@@ -1364,16 +1364,16 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 				name:           "Should update a single loadBalancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
 				loadBalancerUpdate: types.UpdateLoadBalancer{
-					Name: "pokt_app_updated",
+					Name: "pokt_app_updated_v0",
 					StickyOptions: &types.UpdateStickyOptions{
 						Duration:      "100",
 						StickyOrigins: []string{"chrome-extension://", "test-ext://"},
 						StickyMax:     500,
-						Stickiness:    boolPointer(false),
+						Stickiness:    boolPointerv0(false),
 					},
 				},
 				loadBalancerAfterUpdate: types.LoadBalancer{
-					Name: "pokt_app_updated",
+					Name: "pokt_app_updated_v0",
 					StickyOptions: types.StickyOptions{
 						Duration:      "100",
 						StickyOrigins: []string{"chrome-extension://", "test-ext://"},
@@ -1386,10 +1386,10 @@ func (ts *DBClientTestSuite_V0) Test_WriteTests() {
 				name:           "Should update only the name of a single loadBalancer in the DB",
 				loadBalancerID: "test_lb_3890ru23jfi32fj",
 				loadBalancerUpdate: types.UpdateLoadBalancer{
-					Name: "pokt_app_updated_2",
+					Name: "pokt_app_updated_2_v0",
 				},
 				loadBalancerAfterUpdate: types.LoadBalancer{
-					Name: "pokt_app_updated_2",
+					Name: "pokt_app_updated_2_v0",
 					StickyOptions: types.StickyOptions{
 						Duration:      "40",
 						StickyOrigins: []string{"chrome-extension://"},

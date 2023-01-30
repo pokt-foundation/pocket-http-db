@@ -634,7 +634,7 @@ func Test_V0_Router_GetApplicationsByUserID(t *testing.T) {
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/user/61ecb2bf67774900350d9c43/application", nil)
+	req, err = http.NewRequest(http.MethodGet, "/user/sir_not_appearing_in_this_film/application", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -666,7 +666,7 @@ func Test_V0_Router_GetLoadbalancerByUserID(t *testing.T) {
 
 	c.Equal("test_lb_67774900350d9c42", marshaledBody[0].ID)
 
-	req, err = http.NewRequest(http.MethodGet, "/user/60ecb2bf67774900350d9d43/load_balancer", nil)
+	req, err = http.NewRequest(http.MethodGet, "/user/test_2bf67774900350d9d43/load_balancer", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -807,7 +807,7 @@ func Test_V0_Router_GetLoadBalancer(t *testing.T) {
 
 	c.Equal("test_lb_67774900350d9c42", marshaledBody.ID)
 
-	req, err = http.NewRequest(http.MethodGet, "/load_balancer/60fcb2bf67774900350d9c42", nil)
+	req, err = http.NewRequest(http.MethodGet, "/load_balancer/test_2bf67774900350d9c42", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1127,7 +1127,7 @@ func Test_V0_Router_CreateRedirect(t *testing.T) {
 	router, err := newTestRouter()
 	c.NoError(err)
 
-	redirectToReturn := &repository.Redirect{ID: "60ddc61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
+	redirectToReturn := &repository.Redirect{ID: "test_61ew3h4rn4nfnkkdf93", BlockchainID: "0021"}
 
 	writerMock := &writerMock{}
 

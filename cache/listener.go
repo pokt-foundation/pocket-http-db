@@ -236,6 +236,9 @@ func (c *Cache) listen() {
 
 	for {
 		n := <-c.reader.NotificationChannel()
-		go c.parseNotification(*n)
+		// nil check is needed because the v1 DB alerts will send a nil notification for user_access table
+		if n != nil {
+			go c.parseNotification(*n)
+		}
 	}
 }

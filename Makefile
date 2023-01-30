@@ -7,18 +7,37 @@ test_env_up:
 test_env_down:
 	docker-compose -f ./docker-compose.test.yml down --remove-orphans -v
 
+# v0 tests - TODO remove when v0 dropped
 run_e2e_tests_v0:
-	-go test -run V0_E2E -count=1 -v;
+	-go test -run V0_E2E -count=1 -v
 run_all_tests_v0:
-	-go test ./... -run V0 -count=1;
+	-go test ./... -run V0 -count=1
 test_unit_v0:
 	go test ./...  -run V0 -short -count=1
 test_e2e_v0: test_env_up run_e2e_tests_v0 test_env_down
 test_v0:     test_env_up run_all_tests_v0 test_env_down
 
+# v1 tests
+run_e2e_tests_v1:
+	-go test -run V1_E2E -count=1 -v
+run_all_tests_v1:
+	-go test ./... -run V1 -count=1
+test_unit_V1:
+	go test ./...  -run V1 -short -count=1
+test_e2e_v1: test_env_up run_e2e_tests_v1 test_env_down
+
+# TODO replace `make test` target once v0 dropped
+# test: test_env_up run_all_tests test_env_down
+test_v1:  test_env_up run_all_tests_v1 test_env_down
+
+# all tests - TODO remove when v0 dropped
 test:
 	make test_env_up;
 	make run_all_tests_v0;
+	make test_env_down;
+	sleep 2;
+	make test_env_up;
+	make run_all_tests_v1;
 	make test_env_down;
 
 init-pre-commit:
