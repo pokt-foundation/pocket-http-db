@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	cache "github.com/pokt-foundation/pocket-http-db/v1_cache"
+	v1cache "github.com/pokt-foundation/pocket-http-db/v1_cache"
 	"github.com/pokt-foundation/portal-db/driver"
 	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
@@ -19,7 +18,7 @@ import (
 )
 
 func newTestRouter(t *testing.T) (*Router, error) {
-	readerMock := cache.NewReaderMock(t)
+	readerMock := v1cache.NewReaderMock(t)
 
 	readerMock.On("ReadPayPlans", mock.Anything).Return([]*types.PayPlan{
 		{
@@ -35,7 +34,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadApplications", mock.Anything).Return([]*types.Application{
 		{
 			ID:     "test_app_e3591c4dea8566d",
-			UserID: "test_user_1dbffbdfeeb225",
+			UserID: "test_user_774900350d9c43",
 			Limit: types.AppLimit{
 				PayPlan: types.PayPlan{
 					Type:  types.FreetierV0,
@@ -46,11 +45,11 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		},
 		{
 			ID:     "test_app_e3591c4dea8566a",
-			UserID: "test_user_1dbffbdfeeb225",
+			UserID: "test_user_774900350d9c43",
 		},
 		{
 			ID:     "test_app_e3591c4dea8566f",
-			UserID: "test_app_7774900350d9c44",
+			UserID: "test_user_774900350d9c44",
 		},
 	}, nil)
 
@@ -81,26 +80,18 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 	readerMock.On("ReadLoadBalancers", mock.Anything).Return([]*types.LoadBalancer{
 		{
-			ID: "test_lb_34987u329rfn23f",
+			ID: "test_lb_67774900350d9c42",
 			ApplicationIDs: []string{
 				"test_app_e3591c4dea8566d",
 				"test_app_e3591c4dea8566a",
 			},
-			UserID: "test_user_1dbffbdfeeb225",
-			Users: []types.UserAccess{
-				{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-			},
+			UserID: "test_user_774900350d9c43",
 		},
 		{
-			ID: "test_lb_3890ru23jfi32fj",
+			ID: "test_user_774900350d9c43",
 			ApplicationIDs: []string{
 				"test_app_e3591c4dea8566d",
 				"test_app_e3591c4dea8566a",
-			},
-			UserID: "test_user_04228205bd261a",
-			Users: []types.UserAccess{
-				{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
-				{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
 			},
 		},
 	}, nil)
@@ -108,7 +99,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	return NewRouter(readerMock, nil, map[string]bool{"": true}, logrus.New())
 }
 
-func TestRouter_HealthCheck(t *testing.T) {
+func Test_V1_Router_HealthCheck(t *testing.T) {
 	c := require.New(t)
 
 	req, err := http.NewRequest(http.MethodGet, "/", nil)
@@ -124,10 +115,10 @@ func TestRouter_HealthCheck(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 }
 
-func TestRouter_GetApplications(t *testing.T) {
+func Test_V1_Router_GetApplications(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/application", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/application", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -142,7 +133,7 @@ func TestRouter_GetApplications(t *testing.T) {
 	expectedBody, err := json.Marshal([]*types.Application{
 		{
 			ID:     "test_app_e3591c4dea8566d",
-			UserID: "test_user_1dbffbdfeeb225",
+			UserID: "test_user_774900350d9c43",
 			Limit: types.AppLimit{
 				PayPlan: types.PayPlan{
 					Type:  types.FreetierV0,
@@ -153,11 +144,11 @@ func TestRouter_GetApplications(t *testing.T) {
 		},
 		{
 			ID:     "test_app_e3591c4dea8566a",
-			UserID: "test_user_1dbffbdfeeb225",
+			UserID: "test_user_774900350d9c43",
 		},
 		{
 			ID:     "test_app_e3591c4dea8566f",
-			UserID: "test_app_7774900350d9c44",
+			UserID: "test_user_774900350d9c44",
 		},
 	})
 	c.NoError(err)
@@ -173,10 +164,10 @@ func TestRouter_GetApplications(t *testing.T) {
 	c.Equal(http.StatusUnauthorized, rr.Code)
 }
 
-func TestRouter_GetApplication(t *testing.T) {
+func Test_V1_Router_GetApplication(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/application/test_app_e3591c4dea8566d", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/application/test_app_e3591c4dea8566d", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -190,7 +181,7 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	expectedBody, err := json.Marshal(&types.Application{
 		ID:     "test_app_e3591c4dea8566d",
-		UserID: "test_user_1dbffbdfeeb225",
+		UserID: "test_user_774900350d9c43",
 		Limit: types.AppLimit{
 			PayPlan: types.PayPlan{
 				Type:  types.FreetierV0,
@@ -203,7 +194,7 @@ func TestRouter_GetApplication(t *testing.T) {
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/application/test_app_e3591c3dea8566d", nil)
+	req, err = http.NewRequest(http.MethodGet, "/v1/application/test_app_e3591c3dea8566d", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -213,7 +204,7 @@ func TestRouter_GetApplication(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateApplication(t *testing.T) {
+func Test_V1_Router_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawAppToSend := &types.Application{
@@ -229,7 +220,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 	appToSend, err := json.Marshal(rawAppToSend)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPost, "/application", bytes.NewBuffer(appToSend))
+	req, err := http.NewRequest(http.MethodPost, "/v1/application", bytes.NewBuffer(appToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -272,7 +263,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	c.Equal(marshaledReturnApp, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodPost, "/application", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPost, "/v1/application", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -281,7 +272,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/application", bytes.NewBuffer(appToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/application", bytes.NewBuffer(appToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -293,7 +284,7 @@ func TestRouter_CreateApplication(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_UpdateApplication(t *testing.T) {
+func Test_V1_Router_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	trueBool := true
@@ -318,7 +309,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -336,7 +327,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -345,7 +336,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	c.Equal(http.StatusNotFound, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -354,7 +345,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -366,7 +357,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	c.Equal(http.StatusUnprocessableEntity, rr.Code)
 }
 
-func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
+func Test_V1_Router_UpdateFirstDateSurpassed(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &types.UpdateFirstDateSurpassed{
@@ -377,7 +368,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -397,7 +388,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	writerMock.On("UpdateAppFirstDateSurpassed", mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
 
-	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -406,7 +397,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -415,12 +406,12 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	rawUpdateInput.ApplicationIDs = []string{"test_app_3591c4dea85664"}
+	rawUpdateInput.ApplicationIDs = []string{"test_app_e3591c4dea85664"}
 
 	updateInputToSend, err = json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -434,7 +425,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	updateInputToSend, err = json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err = http.NewRequest(http.MethodPost, "/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -444,7 +435,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	c.Equal(http.StatusBadRequest, rr.Code)
 }
 
-func TestRouter_RemoveApplication(t *testing.T) {
+func Test_V1_Router_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawRemoveInput := &types.UpdateApplication{
@@ -454,7 +445,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawRemoveInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -472,7 +463,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -481,7 +472,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	c.Equal(http.StatusNotFound, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -490,7 +481,7 @@ func TestRouter_RemoveApplication(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -502,10 +493,10 @@ func TestRouter_RemoveApplication(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_GetApplicationsByUserID(t *testing.T) {
+func Test_V1_Router_GetApplicationsByUserID(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/user/test_user_1dbffbdfeeb225/application", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/user/test_user_774900350d9c43/application", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -520,7 +511,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 	expectedBody, err := json.Marshal([]*types.Application{
 		{
 			ID:     "test_app_e3591c4dea8566d",
-			UserID: "test_user_1dbffbdfeeb225",
+			UserID: "test_user_774900350d9c43",
 			Limit: types.AppLimit{
 				PayPlan: types.PayPlan{
 					Type:  types.FreetierV0,
@@ -531,14 +522,14 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 		},
 		{
 			ID:     "test_app_e3591c4dea8566a",
-			UserID: "test_user_1dbffbdfeeb225",
+			UserID: "test_user_774900350d9c43",
 		},
 	})
 	c.NoError(err)
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/user/test_user_774900350d9c43/application", nil)
+	req, err = http.NewRequest(http.MethodGet, "/v1/user/test_2bf67774900350d9c43/application", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -548,10 +539,10 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
+func Test_V1_Router_GetLoadbalancerByUserID(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/user/test_user_1dbffbdfeeb225/load_balancer", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/user/test_user_774900350d9c43/load_balancer", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -568,9 +559,9 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
 
-	c.Equal("test_lb_34987u329rfn23f", marshaledBody[0].ID)
+	c.Equal("test_lb_67774900350d9c42", marshaledBody[0].ID)
 
-	req, err = http.NewRequest(http.MethodGet, "/user/test_user_774900350d9d43/load_balancer", nil)
+	req, err = http.NewRequest(http.MethodGet, "/v1/user/test_2bf67774900350d9d43/load_balancer", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -580,10 +571,10 @@ func TestRouter_GetLoadbalancerByUserID(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetBlockchains(t *testing.T) {
+func Test_V1_Router_GetBlockchains(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/blockchain", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/blockchain", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -624,10 +615,10 @@ func TestRouter_GetBlockchains(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetBlockchain(t *testing.T) {
+func Test_V1_Router_GetBlockchain(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/blockchain/0021", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/blockchain/0021", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -654,7 +645,7 @@ func TestRouter_GetBlockchain(t *testing.T) {
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/blockchain/00210", nil)
+	req, err = http.NewRequest(http.MethodGet, "/v1/blockchain/00210", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -664,10 +655,10 @@ func TestRouter_GetBlockchain(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetLoadBalancers(t *testing.T) {
+func Test_V1_Router_GetLoadBalancers(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/load_balancer", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/load_balancer", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -685,14 +676,14 @@ func TestRouter_GetLoadBalancers(t *testing.T) {
 	c.NoError(err)
 
 	c.Len(marshaledBody, 2)
-	c.Equal("test_lb_34987u329rfn23f", marshaledBody[0].ID)
-	c.Equal("test_lb_3890ru23jfi32fj", marshaledBody[1].ID)
+	c.Equal("test_lb_67774900350d9c42", marshaledBody[0].ID)
+	c.Equal("test_user_774900350d9c43", marshaledBody[1].ID)
 }
 
-func TestRouter_GetLoadBalancer(t *testing.T) {
+func Test_V1_Router_GetLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/load_balancer/test_lb_34987u329rfn23f", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/load_balancer/test_lb_67774900350d9c42", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -709,9 +700,9 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
 
-	c.Equal("test_lb_34987u329rfn23f", marshaledBody.ID)
+	c.Equal("test_lb_67774900350d9c42", marshaledBody.ID)
 
-	req, err = http.NewRequest(http.MethodGet, "/load_balancer/test_lb_67774900350d9c42", nil)
+	req, err = http.NewRequest(http.MethodGet, "/v1/load_balancer/test_2bf67774900350d9c42", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -721,7 +712,7 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateLoadBalancer(t *testing.T) {
+func Test_V1_Router_CreateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawLBToSend := &types.LoadBalancer{
@@ -731,7 +722,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	lbToSend, err := json.Marshal(rawLBToSend)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPost, "/load_balancer", bytes.NewBuffer(lbToSend))
+	req, err := http.NewRequest(http.MethodPost, "/v1/load_balancer", bytes.NewBuffer(lbToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -742,13 +733,6 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	lbToReturn := &types.LoadBalancer{
 		ID:     "test_app_e29c3003378361E",
 		UserID: "test_app_e29c3003378361D",
-		Users: []types.UserAccess{
-			{
-				UserID:   "test_app_e29c3003378361D",
-				RoleName: types.RoleOwner,
-				Email:    "owner1@test.com",
-			},
-		},
 	}
 
 	writerMock := driver.NewMockDriver(t)
@@ -766,7 +750,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 	c.Equal(marshaledReturnLB, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodPost, "/load_balancer", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPost, "/v1/load_balancer", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -775,7 +759,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/load_balancer", bytes.NewBuffer(lbToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/load_balancer", bytes.NewBuffer(lbToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -787,117 +771,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
-func Test_CreateLoadBalancerUser(t *testing.T) {
-	tests := []struct {
-		name                  string
-		lbID, ownerID         string
-		userInput             types.UserAccess
-		invalidJSON           bool
-		expectedLBAfterCreate *types.LoadBalancer
-		expectedStatus        int
-		err                   error
-	}{
-		{
-			name:    "Should create a new User for a LoadBalancer with correct input",
-			lbID:    "test_lb_34987u329rfn23f",
-			ownerID: "test_user_1dbffbdfeeb225",
-			userInput: types.UserAccess{
-				UserID:   "test_user_member1234",
-				RoleName: types.RoleMember,
-				Email:    "member1@test.com",
-			},
-			expectedLBAfterCreate: &types.LoadBalancer{
-				ID:     "test_lb_34987u329rfn23f",
-				UserID: "test_user_1dbffbdfeeb225",
-				Applications: []*types.Application{
-					{
-						ID:     "test_app_e3591c4dea8566d",
-						UserID: "test_user_1dbffbdfeeb225",
-						Limit: types.AppLimit{
-							PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000},
-						},
-						FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
-					},
-					{
-						ID:     "test_app_e3591c4dea8566a",
-						UserID: "test_user_1dbffbdfeeb225",
-					},
-				},
-				Users: []types.UserAccess{
-					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: false},
-				},
-			},
-			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the load balancer does not exist",
-			lbID:           "test_sir_not_appearing_in_this_film",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name:           "Should fail if the data cannot be marshaled to JSON",
-			lbID:           "test_lb_34987u329rfn23f",
-			invalidJSON:    true,
-			expectedStatus: http.StatusBadRequest,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name: "Should fail if DB driver throws an error",
-			lbID: "test_lb_34987u329rfn23f",
-			userInput: types.UserAccess{
-				UserID:   "test_user_member1234",
-				RoleName: types.RoleMember,
-				Email:    "member1@test.com",
-			},
-			expectedStatus: http.StatusInternalServerError,
-			err:            errors.New("dummy database driver error"),
-		},
-	}
-
-	for _, test := range tests {
-		c := require.New(t)
-
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if (test.userInput != types.UserAccess{}) {
-			writerMock.On("WriteLoadBalancerUser", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		userToSend, err := json.Marshal(test.userInput)
-		c.NoError(err)
-
-		var testBuffer *bytes.Buffer
-		switch {
-		case !test.invalidJSON:
-			testBuffer = bytes.NewBuffer(userToSend)
-		case test.invalidJSON:
-			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
-		}
-		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/load_balancer/%s/user", test.lbID), testBuffer)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(rr.Code, test.expectedStatus)
-
-		if test.err == nil {
-			var lbResp types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
-			c.NoError(err)
-			c.Equal(test.expectedLBAfterCreate, &lbResp)
-		}
-	}
-}
-
-func TestRouter_UpdateLoadBalancer(t *testing.T) {
+func Test_V1_Router_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	trueBool := true
@@ -914,7 +788,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	updateInputToSend, err := json.Marshal(rawUpdateInput)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPut, "/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -932,7 +806,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -941,7 +815,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusNotFound, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -950,7 +824,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -962,196 +836,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
-func Test_UpdateLoadBalancerUserRole(t *testing.T) {
-	tests := []struct {
-		name                  string
-		lbID                  string
-		userUpdate            types.UpdateUserAccess
-		invalidJSON           bool
-		expectedLBAfterUpdate *types.LoadBalancer
-		expectedStatus        int
-		err                   error
-	}{
-		{
-			name: "Should update User for a LoadBalancer with a new role with correct input",
-			lbID: "test_lb_34987u329rfn23f",
-			userUpdate: types.UpdateUserAccess{
-				UserID:   "test_user_1dbffbdfeeb225",
-				RoleName: types.RoleAdmin,
-			},
-			expectedLBAfterUpdate: &types.LoadBalancer{
-				ID:     "test_lb_34987u329rfn23f",
-				UserID: "test_user_1dbffbdfeeb225",
-				Applications: []*types.Application{
-					{
-						ID:     "test_app_e3591c4dea8566d",
-						UserID: "test_user_1dbffbdfeeb225",
-						Limit: types.AppLimit{
-							PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000},
-						},
-						FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
-					},
-					{
-						ID:     "test_app_e3591c4dea8566a",
-						UserID: "test_user_1dbffbdfeeb225",
-					},
-				},
-				Users: []types.UserAccess{
-					{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-				},
-			},
-			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the load balancer does not exist",
-			lbID:           "test_sir_not_appearing_in_this_film",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name:           "Should fail if the data cannot be marshaled to JSON",
-			lbID:           "test_lb_34987u329rfn23f",
-			invalidJSON:    true,
-			expectedStatus: http.StatusBadRequest,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name: "Should fail if DB driver throws an error",
-			lbID: "test_lb_34987u329rfn23f",
-			userUpdate: types.UpdateUserAccess{
-				UserID:   "test_user_1dbffbdfeeb225",
-				RoleName: types.RoleAdmin,
-			},
-			expectedStatus: http.StatusInternalServerError,
-			err:            errors.New("dummy database driver error"),
-		},
-	}
-
-	for _, test := range tests {
-		c := require.New(t)
-
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if (test.userUpdate != types.UpdateUserAccess{}) {
-			writerMock.On("UpdateUserAccessRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		userToSend, err := json.Marshal(test.userUpdate)
-		c.NoError(err)
-
-		var testBuffer *bytes.Buffer
-		switch {
-		case !test.invalidJSON:
-			testBuffer = bytes.NewBuffer(userToSend)
-		case test.invalidJSON:
-			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
-		}
-		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/load_balancer/%s/user", test.lbID), testBuffer)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(rr.Code, test.expectedStatus)
-
-		if test.err == nil {
-			var lbResp types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
-			c.NoError(err)
-			c.Equal(test.expectedLBAfterUpdate, &lbResp)
-		}
-	}
-}
-
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
-func Test_DeleteLoadBalancerUser(t *testing.T) {
-	tests := []struct {
-		name                  string
-		lbID                  string
-		userToDelete          string
-		invalidJSON           bool
-		expectedLBAfterDelete *types.LoadBalancer
-		expectedStatus        int
-		err                   error
-	}{
-		{
-			name:         "Should delete User for a LoadBalancer with correct input",
-			lbID:         "test_lb_3890ru23jfi32fj",
-			userToDelete: "test_user_admin4309tug4g",
-			expectedLBAfterDelete: &types.LoadBalancer{
-				ID:     "test_lb_3890ru23jfi32fj",
-				UserID: "test_user_04228205bd261a",
-				Applications: []*types.Application{
-					{
-						ID:     "test_app_e3591c4dea8566d",
-						UserID: "test_user_1dbffbdfeeb225",
-						Limit: types.AppLimit{
-							PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000},
-						},
-						FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
-					},
-					{
-						ID:     "test_app_e3591c4dea8566a",
-						UserID: "test_user_1dbffbdfeeb225",
-					},
-				},
-				Users: []types.UserAccess{
-					{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
-				},
-			},
-			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the load balancer does not exist",
-			lbID:           "test_sir_not_appearing_in_this_film",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name:           "Should fail if DB driver throws an error",
-			lbID:           "test_lb_3890ru23jfi32fj",
-			userToDelete:   "test_user_04228205bd261a",
-			expectedStatus: http.StatusInternalServerError,
-			err:            errors.New("dummy database driver error"),
-		},
-	}
-
-	for _, test := range tests {
-		c := require.New(t)
-
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if test.userToDelete != "" {
-			writerMock.On("RemoveUserAccess", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/load_balancer/%s/user/%s", test.lbID, test.userToDelete), nil)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var lbResp types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
-			c.NoError(err)
-			c.Equal(test.expectedLBAfterDelete, &lbResp)
-		}
-	}
-}
-
-func TestRouter_RemoveLoadBalancer(t *testing.T) {
+func Test_V1_Router_RemoveLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawUpdateInput := &types.UpdateLoadBalancer{
@@ -1168,7 +853,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	router.Writer = writerMock
 
-	req, err := http.NewRequest(http.MethodPut, "/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
+	req, err := http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -1179,7 +864,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_67774900350d9c42", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1190,7 +875,7 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPut, "/load_balancer/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
+	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_app_e3591c4dea85664", bytes.NewBuffer(updateInputToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1200,10 +885,10 @@ func TestRouter_RemoveLoadBalancer(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_GetPayPlans(t *testing.T) {
+func Test_V1_Router_GetPayPlans(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/pay_plan", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/pay_plan", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -1230,10 +915,10 @@ func TestRouter_GetPayPlans(t *testing.T) {
 	c.Equal(expectedBody, rr.Body.Bytes())
 }
 
-func TestRouter_GetPayPlan(t *testing.T) {
+func Test_V1_Router_GetPayPlan(t *testing.T) {
 	c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodGet, "/pay_plan/freetier_v0", nil)
+	req, err := http.NewRequest(http.MethodGet, "/v1/pay_plan/freetier_v0", nil)
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -1253,7 +938,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 
 	c.Equal(expectedBody, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodGet, "/pay_plan/freetier_v21", nil)
+	req, err = http.NewRequest(http.MethodGet, "/v1/pay_plan/freetier_v21", nil)
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1263,7 +948,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
-func TestRouter_CreateBlockchain(t *testing.T) {
+func Test_V1_Router_CreateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	rawChainToSend := &types.Blockchain{
@@ -1273,7 +958,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 	chainToSend, err := json.Marshal(rawChainToSend)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer(chainToSend))
+	req, err := http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer(chainToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -1301,7 +986,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 
 	c.Equal(marshaledReturnChain, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1310,7 +995,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/blockchain", bytes.NewBuffer(chainToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer(chainToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1322,7 +1007,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_CreateRedirect(t *testing.T) {
+func Test_V1_Router_CreateRedirect(t *testing.T) {
 	c := require.New(t)
 
 	rawRedirectsToSend := &types.Redirect{BlockchainID: "0021"}
@@ -1330,7 +1015,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	redirectToSend, err := json.Marshal(rawRedirectsToSend)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer(redirectToSend))
+	req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -1355,7 +1040,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	c.Equal(marshaledReturnRedirect, rr.Body.Bytes())
 
-	req, err = http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1364,7 +1049,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/redirect", bytes.NewBuffer(redirectToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1376,13 +1061,13 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
-func TestRouter_ActivateBlockchain(t *testing.T) {
+func Test_V1_Router_ActivateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	activeStatusToSend, err := json.Marshal(true)
 	c.NoError(err)
 
-	req, err := http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
+	req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
 	c.NoError(err)
 
 	rr := httptest.NewRecorder()
@@ -1400,7 +1085,7 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 	c.Equal(http.StatusOK, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer([]byte("wrong")))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/0021/activate", bytes.NewBuffer([]byte("wrong")))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()
@@ -1409,7 +1094,7 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 	c.Equal(http.StatusBadRequest, rr.Code)
 
-	req, err = http.NewRequest(http.MethodPost, "/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
+	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
 	c.NoError(err)
 
 	rr = httptest.NewRecorder()

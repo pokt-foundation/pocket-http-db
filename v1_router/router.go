@@ -649,8 +649,7 @@ func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	fullLB := *lb
-	fullLB.Users = filteredUsers
+	lb.Users = filteredUsers
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }

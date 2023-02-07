@@ -234,7 +234,7 @@ func Test_V1_Cache_listenBlockchain(t *testing.T) {
 	c.True(blockchain.Active)
 }
 
-func TestCache_listenLoadBalancer(t *testing.T) {
+func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
