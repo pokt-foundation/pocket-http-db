@@ -3,7 +3,7 @@ name: docker
 on:
   push:
     branches: ["never"]
-# TODO reenable if needed
+# TODO reenable if needed (currently not used)
 # on:
 #   workflow_run:
 #     workflows: ["Build & Test"]
