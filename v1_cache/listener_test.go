@@ -248,6 +248,9 @@ func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
 		},
+		Users: []types.UserAccess{
+			{RoleName: "OWNER", UserID: "user_id_12345", Email: "owner1@test.com", Accepted: true},
+		},
 		ApplicationIDs: []string{"test_app_e3591c4dea8566a"},
 	})
 
@@ -257,7 +260,10 @@ func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 	c.Equal("pablo", lb.Name)
 	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
 	c.Equal("test_app_e3591c4dea8566a", lb.Applications[0].ID)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Equal("owner1@test.com", lb.Users[0].Email)
 
+	// Update load balancer event (including updating User Access)
 	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
 		ID:     "123",
 		UserID: "user_id_12345",
@@ -266,6 +272,9 @@ func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 			StickyOrigins: []string{"ohana"},
 			Stickiness:    true,
 		},
+		Users: []types.UserAccess{
+			{RoleName: "ADMIN", UserID: "user_id_12345", Email: "owner1@test.com", Accepted: true},
+		},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -273,6 +282,50 @@ func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 	lb = cache.GetLoadBalancer("123")
 	c.Equal("orlando", lb.Name)
 	c.Equal([]string{"ohana"}, lb.StickyOptions.StickyOrigins)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Equal(types.RoleAdmin, lb.Users[0].RoleName)
+
+	// Add new load balancer User Access event
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionInsert, &types.LoadBalancer{
+		ID:     "123",
+		UserID: "user_id_12345",
+		Name:   "orlando",
+		StickyOptions: types.StickyOptions{
+			StickyOrigins: []string{"ohana"},
+			Stickiness:    true,
+		},
+		Users: []types.UserAccess{
+			{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	lb = cache.GetLoadBalancer("123")
+	c.Len(lb.Users, 2)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Equal("test_user_admin4309tug4g", lb.Users[1].UserID)
+	c.Equal("admin1@test.com", lb.Users[1].Email)
+
+	// Delete load balancer User Access event
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.LoadBalancer{
+		ID:     "123",
+		UserID: "user_id_12345",
+		Name:   "orlando",
+		StickyOptions: types.StickyOptions{
+			StickyOrigins: []string{"ohana"},
+			Stickiness:    true,
+		},
+		Users: []types.UserAccess{
+			{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	lb = cache.GetLoadBalancer("123")
+	c.Len(lb.Users, 1)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
 
 	// Delete load balancer event
 	lbs := cache.GetLoadBalancersByUserID("user_id_12345")
