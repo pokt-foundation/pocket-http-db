@@ -208,7 +208,7 @@ func Test_V1_Router_CreateApplication(t *testing.T) {
 	c := require.New(t)
 
 	rawAppToSend := &types.Application{
-		UserID: "test_app_e29c3003378361D",
+		UserID: "test_user_29c3003378361D",
 		Limit: types.AppLimit{
 			PayPlan: types.PayPlan{
 				Type:  types.FreetierV0,
@@ -230,7 +230,7 @@ func Test_V1_Router_CreateApplication(t *testing.T) {
 
 	appToReturn := &types.Application{
 		ID:     "test_app_e29c3003378361E",
-		UserID: "test_app_e29c3003378361D",
+		UserID: "test_user_29c3003378361D",
 		Limit: types.AppLimit{
 			PayPlan: types.PayPlan{
 				Type:  types.FreetierV0,
@@ -251,7 +251,7 @@ func Test_V1_Router_CreateApplication(t *testing.T) {
 
 	marshaledReturnApp, err := json.Marshal(&types.Application{
 		ID:     "test_app_e29c3003378361E",
-		UserID: "test_app_e29c3003378361D",
+		UserID: "test_user_29c3003378361D",
 		Limit: types.AppLimit{
 			PayPlan: types.PayPlan{
 				Type:  types.FreetierV0,
@@ -716,7 +716,7 @@ func Test_V1_Router_CreateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	rawLBToSend := &types.LoadBalancer{
-		UserID: "test_app_e29c3003378361D",
+		UserID: "test_user_29c3003378361D",
 	}
 
 	lbToSend, err := json.Marshal(rawLBToSend)
@@ -732,7 +732,15 @@ func Test_V1_Router_CreateLoadBalancer(t *testing.T) {
 
 	lbToReturn := &types.LoadBalancer{
 		ID:     "test_app_e29c3003378361E",
-		UserID: "test_app_e29c3003378361D",
+		UserID: "test_user_29c3003378361D",
+		Users: []types.UserAccess{
+			{
+				UserID:   "test_user_29c3003378361D",
+				RoleName: types.RoleOwner,
+				Email:    "user_Test@test.com",
+				Accepted: true,
+			},
+		},
 	}
 
 	writerMock := driver.NewMockDriver(t)

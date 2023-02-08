@@ -19,7 +19,7 @@ var (
 
 type phdE2ETestSuiteV0 struct {
 	suite.Suite
-	client1, client2 *dbclient.DBClient
+	client1, client2 dbclient.IDBClient
 	mu               sync.Mutex
 }
 
