@@ -584,6 +584,169 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 	c.Equal(http.StatusNotFound, rr.Code)
 }
 
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         string
+		roleNameFilter types.RoleName
+		expectedLBs    []*types.LoadBalancer
+		expectedStatus int
+		err            error
+	}{
+		{
+			name:   "Should fetch all load balancers for a given user when no filter provided",
+			userID: "test_user_1dbffbdfeeb225",
+			expectedLBs: []*types.LoadBalancer{
+				{
+					ID:     "test_lb_15a3f7accb30783",
+					UserID: "test_user_1dbffbdfeeb225",
+					Applications: []*types.Application{
+						{ID: "test_app_e3591c4dea8566d", UserID: "test_user_1dbffbdfeeb225", Limit: types.AppLimit{PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000}}, FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)},
+						{ID: "test_app_e3591c4dea8566a", UserID: "test_user_1dbffbdfeeb225"},
+					},
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+					},
+				},
+				{
+					ID:     "test_lb_34987u329rfn23f",
+					UserID: "test_user_969710adbd9a8a",
+					Applications: []*types.Application{
+						{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
+						{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
+					},
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
+						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+					},
+				},
+				{
+					ID:     "test_lb_3890ru23jfi32fj",
+					UserID: "test_user_04228205bd261a",
+					Applications: []*types.Application{
+						{
+							ID:     "test_app_f2dcb22a518d2ce",
+							UserID: "test_user_04228205bd261a",
+						},
+						{
+							ID:     "test_app_2b21b25b12ad62d",
+							UserID: "test_user_04228205bd261a",
+						},
+					},
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
+						{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fetch only load balancers a given user is the OWNER of when OWNER filter provided",
+			userID:         "test_user_1dbffbdfeeb225",
+			roleNameFilter: types.RoleOwner,
+			expectedLBs: []*types.LoadBalancer{
+				{
+					ID:     "test_lb_15a3f7accb30783",
+					UserID: "test_user_1dbffbdfeeb225",
+					Applications: []*types.Application{
+						{ID: "test_app_e3591c4dea8566d", UserID: "test_user_1dbffbdfeeb225", Limit: types.AppLimit{PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000}}, FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)},
+						{ID: "test_app_e3591c4dea8566a", UserID: "test_user_1dbffbdfeeb225"},
+					},
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fetch only load balancers a given user is an ADMIN of when ADMIN filter provided",
+			userID:         "test_user_1dbffbdfeeb225",
+			roleNameFilter: types.RoleAdmin,
+			expectedLBs: []*types.LoadBalancer{
+				{
+					ID:     "test_lb_3890ru23jfi32fj",
+					UserID: "test_user_04228205bd261a",
+					Applications: []*types.Application{
+						{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
+						{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
+					},
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
+						{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fetch only load balancers a given user is a MEMBER of when MEMBER filter provided",
+			userID:         "test_user_1dbffbdfeeb225",
+			roleNameFilter: types.RoleMember,
+			expectedLBs: []*types.LoadBalancer{
+				{
+					ID:     "test_lb_34987u329rfn23f",
+					UserID: "test_user_969710adbd9a8a",
+					Applications: []*types.Application{
+						{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
+						{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
+					},
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
+						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if an invalid role name filter query param is provided",
+			userID:         "test_user_969710adbd9a8a",
+			roleNameFilter: types.RoleName("test_sir_not_appearing_in_this_film"),
+			expectedStatus: http.StatusBadRequest,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if the user has no load balancers",
+			userID:         "test_sir_not_appearing_in_this_film",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+
+		rr := httptest.NewRecorder()
+
+		url := fmt.Sprintf("/v1/user/%s/load_balancer", test.userID)
+		if test.roleNameFilter != types.RoleName("") {
+			url = fmt.Sprintf("%s?filter=%s", url, string(test.roleNameFilter))
+		}
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var lbResp []*types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedLBs, lbResp)
+		}
+	}
+}
+
 func TestRouter_GetBlockchains(t *testing.T) {
 	c := require.New(t)
 
