@@ -1,7 +1,6 @@
 package v1_router
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -334,8 +333,6 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	PrettyString("LBS", lbs)
-
 	filteredLBs := []*types.LoadBalancer{}
 	switch {
 	case roleNameFilter == types.RoleName(""):
@@ -351,17 +348,6 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredLBs)
-}
-
-func PrettyString(label string, thing interface{}) {
-	jsonThing, _ := json.Marshal(thing)
-	str := string(jsonThing)
-
-	var prettyJSON bytes.Buffer
-	_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-	output := prettyJSON.String()
-
-	fmt.Println(label, output)
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
