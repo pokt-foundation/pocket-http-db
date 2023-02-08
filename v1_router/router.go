@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	errNoPayFound          = errors.New("pay plan not found")
-	errBalancerNotFound    = errors.New("load balancer not found")
-	errBlockchainNotFound  = errors.New("blockchain not found")
-	errApplicationNotFound = errors.New("applications not found")
+	errNoPayFound            = errors.New("pay plan not found")
+	errLoadBalancerNotFound  = errors.New("load balancer not found")
+	errBlockchainNotFound    = errors.New("blockchain not found")
+	errApplicationNotFound   = errors.New("applications not found")
+	errInvalidRoleNameFilter = errors.New("invalid role name filter")
 )
 
 // Router struct handler for router requests
@@ -74,9 +75,12 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/load_balancer", rt.CreateLoadBalancer).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v1/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
@@ -299,7 +303,7 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 	apps := rt.Cache.GetApplicationsByUserID(vars["id"])
 
 	if len(apps) == 0 {
-		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errApplicationNotFound))
+		rt.logError(fmt.Errorf("GetApplicationByUserID failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errApplicationNotFound.Error())
 		return
 	}
@@ -307,18 +311,43 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 	jsonresponse.RespondWithJSON(w, http.StatusOK, apps)
 }
 
-func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request) {
+/* Returns all load balancers for a given user.
+If no `filter` query param is provided, returns all load balancers that a user has ANY role in.
+If `filter` query param is provided, filters load balancers to only those the user has a specific role for.
+eg. only load balancers the user is the OWNER of -OR- only load balancers the user is an ADMIN of, etc. */
+// TODO add comment descriptions for all funcs in this repo
+func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	userID := vars["id"]
 
-	lbs := rt.Cache.GetLoadBalancersByUserID(vars["id"])
-
-	if len(lbs) == 0 {
-		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errBalancerNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
+	roleNameFilter := types.RoleName(r.URL.Query().Get("filter"))
+	if roleNameFilter != types.RoleName("") && !types.ValidRoleNames[roleNameFilter] {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
+	lbs := rt.Cache.GetLoadBalancersByUserID(userID)
+	if len(lbs) == 0 {
+		rt.logError(fmt.Errorf("GetLoadBalancersByUserID failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	filteredLBs := []*types.LoadBalancer{}
+	switch {
+	case roleNameFilter == types.RoleName(""):
+		filteredLBs = lbs
+	case roleNameFilter != types.RoleName(""):
+		for _, lb := range lbs {
+			for _, user := range lb.Users {
+				if user.UserID == userID && user.RoleName == roleNameFilter {
+					filteredLBs = append(filteredLBs, lb)
+				}
+			}
+		}
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredLBs)
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
@@ -403,8 +432,8 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 
 	if lb == nil {
-		rt.logError(fmt.Errorf("GetLoadBalancer failed: %w", errBalancerNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
+		rt.logError(fmt.Errorf("GetLoadBalancer failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
 	}
 
@@ -438,6 +467,45 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	fullLB.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
 
+	fullLB.Users[0].Accepted = true
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
+}
+
+func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+	if lb == nil {
+		rt.logError(fmt.Errorf("GetLoadBalancer in CreateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	var user types.UserAccess
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&user)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreateLoadBalancerUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = rt.Writer.WriteLoadBalancerUser(r.Context(), lb.ID, user)
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	user.Accepted = false
+	fullLB := *lb
+	fullLB.Users = append(fullLB.Users, user)
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
 }
 
@@ -446,8 +514,8 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 	if lb == nil {
-		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancer failed: %w", errBalancerNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBalancerNotFound.Error())
+		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancer failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
 	}
 
@@ -490,6 +558,45 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 				StickyMax:     updateInput.StickyOptions.StickyMax,
 				Stickiness:    *updateInput.StickyOptions.Stickiness,
 			}
+		}
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
+}
+
+func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+	if lb == nil {
+		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	var updateUser types.UpdateUserAccess
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&updateUser)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateLoadBalancerUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = rt.Writer.UpdateUserAccessRole(r.Context(), updateUser.UserID, lb.ID, updateUser.RoleName)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateUserAccessRole in UpdateLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	for i := range lb.Users {
+		if lb.Users[i].UserID == updateUser.UserID {
+			lb.Users[i].RoleName = updateUser.RoleName
 		}
 	}
 
@@ -540,4 +647,35 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
+}
+
+func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+	if lb == nil {
+		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	deleteUserID := vars["userID"]
+
+	filteredUsers := []types.UserAccess{}
+	for _, user := range lb.Users {
+		if user.UserID == deleteUserID {
+			err := rt.Writer.RemoveUserAccess(r.Context(), deleteUserID, lb.ID)
+			if err != nil {
+				rt.logError(fmt.Errorf("RemoveUserAccess in UpdateLoadBalancerUser failed: %w", err))
+				jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+		} else {
+			filteredUsers = append(filteredUsers, user)
+		}
+	}
+
+	lb.Users = filteredUsers
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
