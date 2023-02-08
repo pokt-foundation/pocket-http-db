@@ -129,6 +129,44 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		},
 	}, nil)
 
+	readerMock.On("ReadUserPermissions", mock.Anything).Return(map[types.UserID]types.UserPermissions{
+		"test_user_1dbffbdfeeb225": {
+			UserID: "test_user_1dbffbdfeeb225",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_15a3f7accb30783": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+				"test_lb_34987u329rfn23f": {
+					RoleName:    types.RoleMember,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+				},
+				"test_lb_3890ru23jfi32fj": {
+					RoleName:    types.RoleAdmin,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+		"test_user_969710adbd9a8a": {
+			UserID: "test_user_47fhf7rwejf943",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_34987u329rfn23f": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+		"test_user_04228205bd261a": {
+			UserID: "test_user_774900350d9c43",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_3890ru23jfi32fj": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+	}, nil)
+
 	return NewRouter(readerMock, nil, map[string]bool{"": true}, logrus.New())
 }
 
@@ -743,6 +781,86 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
 			c.NoError(err)
 			c.Equal(test.expectedLBs, lbResp)
+		}
+	}
+}
+
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
+	tests := []struct {
+		name                string
+		userID              string
+		expectedPermissions types.UserPermissions
+		expectedStatus      int
+		err                 error
+	}{
+		{
+			name:   "Should fetch all load balancer permissions for a given user",
+			userID: "test_user_1dbffbdfeeb225",
+			expectedPermissions: types.UserPermissions{
+				UserID: "test_user_1dbffbdfeeb225",
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+					"test_lb_15a3f7accb30783": {
+						RoleName:    types.RoleOwner,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+					},
+					"test_lb_34987u329rfn23f": {
+						RoleName:    types.RoleMember,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+					},
+					"test_lb_3890ru23jfi32fj": {
+						RoleName:    types.RoleAdmin,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:   "Should fetch all load balancer permissions for a given user",
+			userID: "test_user_969710adbd9a8a",
+			expectedPermissions: types.UserPermissions{
+				UserID: "test_user_47fhf7rwejf943",
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+					"test_lb_34987u329rfn23f": {
+						RoleName:    types.RoleOwner,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if a user has no permissions in the cache",
+			userID:         "test_not_a_real_user",
+			expectedStatus: http.StatusNotFound,
+			err:            errPermissionsNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+
+		rr := httptest.NewRecorder()
+
+		url := fmt.Sprintf("/v1/user/%s/permission", test.userID)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var permsResponse types.UserPermissions
+			err := json.Unmarshal(rr.Body.Bytes(), &permsResponse)
+			c.NoError(err)
+			c.Equal(test.expectedPermissions, permsResponse)
 		}
 	}
 }

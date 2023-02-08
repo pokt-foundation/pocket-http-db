@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -484,9 +485,9 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							},
 						},
 						Users: []types.UserAccess{
-							{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-							{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-							{RoleName: "MEMBER", UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+							{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+							{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+							{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
 						},
 						CreatedAt: mockTimestamp,
 						UpdatedAt: mockTimestamp,
@@ -506,8 +507,8 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 						},
 						Applications: []*types.Application{nil},
 						Users: []types.UserAccess{
-							{RoleName: "OWNER", UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
-							{RoleName: "MEMBER", UserID: "test_user_member5678", Email: "member2@test.com", Accepted: false},
+							{RoleName: types.RoleOwner, UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
+							{RoleName: types.RoleMember, UserID: "test_user_member5678", Email: "member2@test.com", Accepted: false},
 						},
 						CreatedAt: mockTimestamp,
 						UpdatedAt: mockTimestamp,
@@ -560,8 +561,8 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							},
 						},
 						Users: []types.UserAccess{
-							{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
-							{RoleName: "ADMIN", UserID: "test_user_admin5678", Email: "admin2@test.com", Accepted: true},
+							{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
+							{RoleName: types.RoleAdmin, UserID: "test_user_admin5678", Email: "admin2@test.com", Accepted: true},
 						},
 						CreatedAt: mockTimestamp,
 						UpdatedAt: mockTimestamp,
@@ -639,8 +640,8 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 						},
 					},
 					Users: []types.UserAccess{
-						{RoleName: "OWNER", UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
-						{RoleName: "ADMIN", UserID: "test_user_admin5678", Email: "admin2@test.com", Accepted: true},
+						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "owner2@test.com", Accepted: true},
+						{RoleName: types.RoleAdmin, UserID: "test_user_admin5678", Email: "admin2@test.com", Accepted: true},
 					},
 					CreatedAt: mockTimestamp,
 					UpdatedAt: mockTimestamp,
@@ -723,9 +724,9 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							},
 						},
 						Users: []types.UserAccess{
-							{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-							{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-							{RoleName: "MEMBER", UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+							{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+							{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+							{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
 						},
 						CreatedAt: mockTimestamp,
 						UpdatedAt: mockTimestamp,
@@ -784,9 +785,9 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							},
 						},
 						Users: []types.UserAccess{
-							{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-							{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-							{RoleName: "MEMBER", UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+							{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+							{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+							{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
 						},
 						CreatedAt: mockTimestamp,
 						UpdatedAt: mockTimestamp,
@@ -882,6 +883,59 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 			payPlanByType, err = ts.client2.GetPayPlanByType(testCtx, test.payPlanType)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedPayPlan, payPlanByType)
+		}
+	})
+
+	ts.Run("Test_GetUserPermissionsByUserID", func() {
+		tests := []struct {
+			name                string
+			userID              types.UserID
+			expectedPermissions types.UserPermissions
+			err                 error
+		}{
+			{
+
+				name:   "Should fetch a single users load balancer permissions",
+				userID: "test_user_1dbffbdfeeb225",
+				expectedPermissions: types.UserPermissions{
+					UserID: "test_user_1dbffbdfeeb225",
+					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+						"test_lb_34987u329rfn23f": {
+							RoleName:    types.RoleOwner,
+							Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+						},
+					},
+				},
+			},
+			{
+
+				name:   "Should fetch another single users load balancer permissions",
+				userID: "test_user_member1234",
+				expectedPermissions: types.UserPermissions{
+					UserID: "test_user_member1234",
+					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+						"test_lb_34987u329rfn23f": {
+							RoleName:    types.RoleMember,
+							Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+						},
+					},
+				},
+			},
+			{
+				name:   "Should fail is the user does not have any permissions",
+				userID: "test_user_hey_who_am_i_wow",
+				err:    fmt.Errorf("Response not OK. 404 Not Found: no permissions found for given user ID"),
+			},
+		}
+
+		for _, test := range tests {
+			permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, test.userID)
+			ts.Equal(test.err, err)
+			ts.Equal(test.expectedPermissions, permissionsByUserID)
+
+			permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, test.userID)
+			ts.Equal(test.err, err)
+			ts.Equal(test.expectedPermissions, permissionsByUserID)
 		}
 	})
 }
@@ -1296,21 +1350,26 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			loadBalancerID    string
 			user              types.UserAccess
 			loadBalancerUsers []types.UserAccess
+			userLBPermissions types.LoadBalancerPermissions
 			err               error
 		}{
 			{
 				name:           "Should add a single user to an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
 				user: types.UserAccess{
-					RoleName: "MEMBER",
+					RoleName: types.RoleMember,
 					UserID:   "test_user_create_new_member",
 					Email:    "member_new@test.com",
 				},
 				loadBalancerUsers: []types.UserAccess{
-					{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-					{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-					{RoleName: "MEMBER", UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
-					{RoleName: "MEMBER", UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleMember,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
 				},
 			},
 			{
@@ -1331,6 +1390,14 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.user.UserID))
+				ts.Equal(test.err, err)
+				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+
+				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.user.UserID))
+				ts.Equal(test.err, err)
+				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
 			}
 		}
 	})
@@ -1628,6 +1695,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			loadBalancerID    string
 			userUpdate        types.UpdateUserAccess
 			loadBalancerUsers []types.UserAccess
+			userLBPermissions types.LoadBalancerPermissions
 			err               error
 		}{
 			{
@@ -1638,10 +1706,14 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					UserID:   "test_user_create_new_member",
 				},
 				loadBalancerUsers: []types.UserAccess{
-					{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-					{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-					{RoleName: "MEMBER", UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
-					{RoleName: "ADMIN", UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleAdmin,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
 				},
 			},
 			{
@@ -1662,6 +1734,14 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userUpdate.UserID))
+				ts.Equal(test.err, err)
+				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+
+				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userUpdate.UserID))
+				ts.Equal(test.err, err)
+				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
 			}
 		}
 	})
@@ -1702,26 +1782,33 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 	ts.Run("Test_DeleteLoadBalancerUser", func() {
 		tests := []struct {
-			name                   string
-			loadBalancerID, userID string
-			loadBalancerUsers      []types.UserAccess
-			err                    error
+			name                       string
+			loadBalancerID, userID     string
+			loadBalancerUsers          []types.UserAccess
+			err, permissionsFetchError error
 		}{
 			{
-				name:           "Should add a single user to an existing load balancer in the DB",
+				name:           "Should delete a single user for an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
 				userID:         "test_user_member1234",
 				loadBalancerUsers: []types.UserAccess{
-					{RoleName: "OWNER", UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
-					{RoleName: "ADMIN", UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-					{RoleName: "ADMIN", UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
 				},
+				permissionsFetchError: errors.New("Response not OK. 404 Not Found: no permissions found for given user ID"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "why_am_i_not_a_load_balancer",
 				userID:         "test_user_member1234",
 				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
+			},
+			{
+				name:           "Should fail if attempting to delete the owner of a load balancer",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "test_user_1dbffbdfeeb225",
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: cannot delete the owner of a load balancer"),
 			},
 		}
 
@@ -1736,6 +1823,14 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+				if test.err == nil {
+					_, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+					ts.Equal(test.permissionsFetchError, err)
+
+					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+					ts.Equal(test.permissionsFetchError, err)
+				}
 			}
 		}
 	})
