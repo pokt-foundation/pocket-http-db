@@ -464,7 +464,10 @@ func (c *Cache) setLoadBalancers() error {
 
 		loadBalancers[i] = loadBalancer
 		loadBalancersMap[loadBalancer.ID] = loadBalancer
-		loadBalancersMapByUserID[loadBalancer.UserID] = append(loadBalancersMapByUserID[loadBalancer.UserID], loadBalancer)
+
+		for _, user := range loadBalancer.Users { // User ID map stores all load balancers that user is a team member on
+			loadBalancersMapByUserID[user.UserID] = append(loadBalancersMapByUserID[user.UserID], loadBalancer)
+		}
 	}
 
 	c.loadBalancers = loadBalancers
@@ -501,7 +504,10 @@ func (c *Cache) addLoadBalancer(lb types.LoadBalancer) {
 
 	c.loadBalancers = append(c.loadBalancers, &lb)
 	c.loadBalancersMap[lb.ID] = &lb
-	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], &lb)
+
+	for _, user := range lb.Users { // User ID map stores all load balancers that user is a team member on
+		c.loadBalancersMapByUserID[user.UserID] = append(c.loadBalancersMapByUserID[user.UserID], &lb)
+	}
 }
 
 func (c *Cache) addStickinessOptions(opts types.StickyOptions) {

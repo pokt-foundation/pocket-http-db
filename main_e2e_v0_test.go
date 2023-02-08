@@ -714,11 +714,11 @@ func (ts *phdE2ETestSuiteV0) Test_ReadTests() {
 		}
 
 		for _, test := range tests {
-			loadBalancersByUserID, err := ts.client1.GetLoadBalancersByUserID(testCtxv0, test.userID)
+			loadBalancersByUserID, err := ts.client1.GetLoadBalancersByUserID(testCtxv0, test.userID, nil)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancers, loadBalancersByUserID)
 
-			loadBalancersByUserID, err = ts.client2.GetLoadBalancersByUserID(testCtxv0, test.userID)
+			loadBalancersByUserID, err = ts.client2.GetLoadBalancersByUserID(testCtxv0, test.userID, nil)
 			ts.Equal(test.err, err)
 			ts.Equal(test.expectedLoadBalancers, loadBalancersByUserID)
 		}

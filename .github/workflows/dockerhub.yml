@@ -1,17 +1,21 @@
 name: docker
 
 on:
-  workflow_run:
-    workflows: ["Build & Test"]
-    branches: [master]
-    types:
-      - completed
   push:
-    tags:
-      - '*'
-  pull_request:
-    branches:
-      - 'master'
+    branches: ["never"]
+# TODO reenable if needed
+# on:
+#   workflow_run:
+#     workflows: ["Build & Test"]
+#     branches: [master]
+#     types:
+#       - completed
+#   push:
+#     tags:
+#       - "*"
+#   pull_request:
+#     branches:
+#       - "master"
 
 jobs:
   docker:

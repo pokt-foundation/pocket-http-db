@@ -12,7 +12,7 @@ import (
 
 var testCtx = context.Background()
 
-func Test_V1_Cache_SetCache(t *testing.T) {
+func TestCache_SetCache(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -62,6 +62,21 @@ func Test_V1_Cache_SetCache(t *testing.T) {
 				"test_app_e3591c4dea8566d",
 				"test_app_e3591c4dea8566a",
 			},
+			Users: []types.UserAccess{
+				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin},
+			},
+		},
+		{
+			ID:     "test_app_e3591c4dea8566a",
+			UserID: "test_user_774900350d9c43",
+			ApplicationIDs: []string{
+				"test_app_e3591c4dea8566f",
+			},
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleMember},
+			},
 		},
 	}, nil)
 
@@ -89,14 +104,16 @@ func Test_V1_Cache_SetCache(t *testing.T) {
 	c.Len(cache.GetBlockchains(), 1)
 
 	c.NotEmpty(cache.GetLoadBalancer("test_lb_67774900350d9c42"))
-	c.Len(cache.GetLoadBalancers(), 1)
+	c.Len(cache.GetLoadBalancers(), 2)
 	c.Len(cache.GetLoadBalancersByUserID("test_user_687463gh2h72gs"), 1)
+	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 1)
+	c.Len(cache.GetLoadBalancersByUserID("test_user_47fhf7rwejf943"), 2)
 
 	c.NotEmpty(cache.GetPayPlan(types.FreetierV0))
 	c.Len(cache.GetPayPlans(), 2)
 }
 
-func Test_V1_Cache_SetCacheFailure(t *testing.T) {
+func TestCache_SetCacheFailure(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -157,7 +174,7 @@ func Test_V1_Cache_SetCacheFailure(t *testing.T) {
 	}, nil)
 }
 
-func Test_V1_Cache_AddApplication(t *testing.T) {
+func TestCache_AddApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -212,7 +229,7 @@ func Test_V1_Cache_AddApplication(t *testing.T) {
 	c.Equal(cache.GetApplication("test_app_e3591c4dea8566b").DailyLimit(), 250000)
 }
 
-func Test_V1_Cache_UpdateApplication(t *testing.T) {
+func TestCache_UpdateApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -251,6 +268,9 @@ func Test_V1_Cache_UpdateApplication(t *testing.T) {
 				"test_app_e3591c4dea8566d",
 				"test_app_e3591c4dea8566a",
 			},
+			Users: []types.UserAccess{
+				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner},
+			},
 		},
 	}, nil)
 
@@ -282,7 +302,7 @@ func Test_V1_Cache_UpdateApplication(t *testing.T) {
 	c.Equal("papolo", cache.GetLoadBalancersByUserID("test_user_687463gh2h72gs")[0].Applications[1].Name)
 }
 
-func Test_V1_Cache_RemoveApplication(t *testing.T) {
+func TestCache_RemoveApplication(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -313,6 +333,9 @@ func Test_V1_Cache_RemoveApplication(t *testing.T) {
 				"test_app_e3591c4dea8566d",
 				"test_app_e3591c4dea8566a",
 			},
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+			},
 		},
 	}, nil)
 
@@ -333,7 +356,7 @@ func Test_V1_Cache_RemoveApplication(t *testing.T) {
 	c.Len(cache.GetApplicationsByUserID("test_user_774900350d9c43"), 1)
 }
 
-func Test_V1_Cache_AddLoadBalancer(t *testing.T) {
+func TestCache_AddLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -342,14 +365,23 @@ func Test_V1_Cache_AddLoadBalancer(t *testing.T) {
 		{
 			ID:     "test_app_e3591c4dea8566d",
 			UserID: "test_user_774900350d9c43",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+			},
 		},
 		{
 			ID:     "test_app_e3591c4dea8566a",
 			UserID: "test_user_774900350d9c43",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+			},
 		},
 		{
 			ID:     "test_app_e3591c4dea8566f",
 			UserID: "test_user_774900350d9c44",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c44", RoleName: types.RoleOwner},
+			},
 		},
 	}, nil)
 
@@ -371,13 +403,16 @@ func Test_V1_Cache_AddLoadBalancer(t *testing.T) {
 	cache.addLoadBalancer(types.LoadBalancer{
 		ID:     "test_app_e3591c4dea8566b",
 		UserID: "test_user_774900350d9c43",
+		Users: []types.UserAccess{
+			{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+		},
 	})
 
 	c.Len(cache.GetLoadBalancers(), 4)
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 3)
 }
 
-func Test_V1_Cache_UpdateLoadBalancer(t *testing.T) {
+func TestCache_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -386,14 +421,23 @@ func Test_V1_Cache_UpdateLoadBalancer(t *testing.T) {
 		{
 			ID:     "test_app_e3591c4dea8566d",
 			UserID: "test_user_774900350d9c43",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+			},
 		},
 		{
 			ID:     "test_app_e3591c4dea8566a",
 			UserID: "test_user_774900350d9c43",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+			},
 		},
 		{
 			ID:     "test_app_e3591c4dea8566f",
 			UserID: "test_user_774900350d9c44",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c44", RoleName: types.RoleOwner},
+			},
 		},
 	}, nil)
 
@@ -415,7 +459,7 @@ func Test_V1_Cache_UpdateLoadBalancer(t *testing.T) {
 	c.Equal("papolo", cache.GetLoadBalancer("test_app_e3591c4dea8566a").Name)
 }
 
-func Test_V1_Cache_RemoveLoadBalancer(t *testing.T) {
+func TestCache_RemoveLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := &ReaderMock{}
@@ -424,10 +468,16 @@ func Test_V1_Cache_RemoveLoadBalancer(t *testing.T) {
 		{
 			ID:     "test_app_e3591c4dea8566d",
 			UserID: "test_user_774900350d9c43",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+			},
 		},
 		{
 			ID:     "test_app_e3591c4dea8566a",
 			UserID: "test_user_774900350d9c43",
+			Users: []types.UserAccess{
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
+			},
 		},
 	}, nil)
 
@@ -445,7 +495,7 @@ func Test_V1_Cache_RemoveLoadBalancer(t *testing.T) {
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 1)
 }
 
-func Test_V1_Cache_AddBlockchain(t *testing.T) {
+func TestCache_AddBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -466,7 +516,7 @@ func Test_V1_Cache_AddBlockchain(t *testing.T) {
 	c.Len(cache.GetBlockchains(), 2)
 }
 
-func Test_V1_Cache_UpdateBlockchain(t *testing.T) {
+func TestCache_UpdateBlockchain(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)
@@ -492,7 +542,7 @@ func Test_V1_Cache_UpdateBlockchain(t *testing.T) {
 	c.Equal(cache.GetBlockchains()[0].Active, true)
 }
 
-func Test_V1_Cache_AddRedirect(t *testing.T) {
+func TestCache_AddRedirect(t *testing.T) {
 	c := require.New(t)
 
 	readerMock := NewReaderMock(t)

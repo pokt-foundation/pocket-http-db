@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	errNoPayFound           = errors.New("pay plan not found")
-	errLoadBalancerNotFound = errors.New("load balancer not found")
-	errBlockchainNotFound   = errors.New("blockchain not found")
-	errApplicationNotFound  = errors.New("applications not found")
+	errNoPayFound            = errors.New("pay plan not found")
+	errLoadBalancerNotFound  = errors.New("load balancer not found")
+	errBlockchainNotFound    = errors.New("blockchain not found")
+	errApplicationNotFound   = errors.New("applications not found")
+	errInvalidRoleNameFilter = errors.New("invalid role name filter")
 )
 
 // Router struct handler for router requests
@@ -79,7 +80,7 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancerByUserID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v1/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
@@ -302,7 +303,7 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 	apps := rt.Cache.GetApplicationsByUserID(vars["id"])
 
 	if len(apps) == 0 {
-		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errApplicationNotFound))
+		rt.logError(fmt.Errorf("GetApplicationByUserID failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errApplicationNotFound.Error())
 		return
 	}
@@ -310,18 +311,43 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 	jsonresponse.RespondWithJSON(w, http.StatusOK, apps)
 }
 
-func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request) {
+/* Returns all load balancers for a given user.
+If no `filter` query param is provided, returns all load balancers that a user has ANY role in.
+If `filter` query param is provided, filters load balancers to only those the user has a specific role for.
+eg. only load balancers the user is the OWNER of -OR- only load balancers the user is an ADMIN of, etc. */
+// TODO add comment descriptions for all funcs in this repo
+func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	userID := vars["id"]
 
-	lbs := rt.Cache.GetLoadBalancersByUserID(vars["id"])
+	roleNameFilter := types.RoleName(r.URL.Query().Get("filter"))
+	if roleNameFilter != types.RoleName("") && !types.ValidRoleNames[roleNameFilter] {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
+		return
+	}
 
+	lbs := rt.Cache.GetLoadBalancersByUserID(userID)
 	if len(lbs) == 0 {
-		rt.logError(fmt.Errorf("GetLoadBalancerByUserID failed: %w", errLoadBalancerNotFound))
+		rt.logError(fmt.Errorf("GetLoadBalancersByUserID failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
+	filteredLBs := []*types.LoadBalancer{}
+	switch {
+	case roleNameFilter == types.RoleName(""):
+		filteredLBs = lbs
+	case roleNameFilter != types.RoleName(""):
+		for _, lb := range lbs {
+			for _, user := range lb.Users {
+				if user.UserID == userID && user.RoleName == roleNameFilter {
+					filteredLBs = append(filteredLBs, lb)
+				}
+			}
+		}
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredLBs)
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
