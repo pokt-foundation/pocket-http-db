@@ -112,7 +112,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 			UserID: "test_user_969710adbd9a8a",
 			Users: []types.UserAccess{
 				{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
 			},
 		},
 		{
@@ -656,7 +656,7 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 					},
 					Users: []types.UserAccess{
 						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
 					},
 				},
 				{
@@ -736,7 +736,7 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 					},
 					Users: []types.UserAccess{
 						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
 					},
 				},
 			},
@@ -1170,7 +1170,7 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 		c.NoError(err)
 
 		router.Router.ServeHTTP(rr, req)
-		c.Equal(rr.Code, test.expectedStatus)
+		c.Equal(test.expectedStatus, rr.Code)
 
 		if test.err == nil {
 			var lbResp types.LoadBalancer
@@ -1332,13 +1332,81 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 		c.NoError(err)
 
 		router.Router.ServeHTTP(rr, req)
-		c.Equal(rr.Code, test.expectedStatus)
+		c.Equal(test.expectedStatus, rr.Code)
 
 		if test.err == nil {
 			var lbResp types.LoadBalancer
 			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
 			c.NoError(err)
 			c.Equal(test.expectedLBAfterUpdate, &lbResp)
+		}
+	}
+}
+
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
+	tests := []struct {
+		name                     string
+		userID, lbID             string
+		expectedUsersAfterUpdate []types.UserAccess
+		expectedStatus           int
+		runMock                  bool
+		err                      error
+	}{
+		{
+			name:   "Should update User for a LoadBalancer with a new role with correct input",
+			lbID:   "test_lb_34987u329rfn23f",
+			userID: "test_user_1dbffbdfeeb225",
+			expectedUsersAfterUpdate: []types.UserAccess{
+				{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
+				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+			},
+			expectedStatus: http.StatusOK,
+			runMock:        true,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if the load balancer does not exist",
+			lbID:           "test_not_real_lb",
+			userID:         "test_sir_not_appearing_in_this_film",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if DB driver throws an error",
+			lbID:           "test_lb_34987u329rfn23f",
+			userID:         "test_user_1dbffbdfeeb225",
+			expectedStatus: http.StatusInternalServerError,
+			runMock:        true,
+			err:            errors.New("dummy database driver error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+		writerMock := driver.NewMockDriver(t)
+		router.Writer = writerMock
+
+		if test.runMock {
+			writerMock.On("AcceptUserAccess", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s/user/%s/accept", test.lbID, test.userID), nil)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var lbResp types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedUsersAfterUpdate, lbResp.Users)
 		}
 	}
 }

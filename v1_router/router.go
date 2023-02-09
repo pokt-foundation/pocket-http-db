@@ -79,6 +79,7 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
@@ -616,6 +617,34 @@ func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 	for i := range lb.Users {
 		if lb.Users[i].UserID == updateUser.UserID {
 			lb.Users[i].RoleName = updateUser.RoleName
+		}
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
+}
+
+func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+	if lb == nil {
+		rt.logError(fmt.Errorf("GetLoadBalancer in AcceptLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	acceptUserID := vars["userID"]
+
+	err := rt.Writer.AcceptUserAccess(r.Context(), acceptUserID, lb.ID)
+	if err != nil {
+		rt.logError(fmt.Errorf("AcceptUserAccess in AcceptLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	for i := range lb.Users {
+		if lb.Users[i].UserID == acceptUserID {
+			lb.Users[i].Accepted = true
 		}
 	}
 
