@@ -129,7 +129,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUserPermissions", mock.Anything).Return(map[types.UserID]types.UserPermissions{
+	readerMock.On("ReadUserPermissions", mock.Anything).Return(map[types.UserID]*types.UserPermissions{
 		"test_user_1dbffbdfeeb225": {
 			UserID: "test_user_1dbffbdfeeb225",
 			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
@@ -790,14 +790,14 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 	tests := []struct {
 		name                string
 		userID              string
-		expectedPermissions types.UserPermissions
+		expectedPermissions *types.UserPermissions
 		expectedStatus      int
 		err                 error
 	}{
 		{
 			name:   "Should fetch all load balancer permissions for a given user",
 			userID: "test_user_1dbffbdfeeb225",
-			expectedPermissions: types.UserPermissions{
+			expectedPermissions: &types.UserPermissions{
 				UserID: "test_user_1dbffbdfeeb225",
 				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 					"test_lb_15a3f7accb30783": {
@@ -820,7 +820,7 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 		{
 			name:   "Should fetch all load balancer permissions for a given user",
 			userID: "test_user_969710adbd9a8a",
-			expectedPermissions: types.UserPermissions{
+			expectedPermissions: &types.UserPermissions{
 				UserID: "test_user_47fhf7rwejf943",
 				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 					"test_lb_34987u329rfn23f": {
@@ -857,7 +857,7 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 		c.Equal(test.expectedStatus, rr.Code)
 
 		if test.err == nil {
-			var permsResponse types.UserPermissions
+			var permsResponse *types.UserPermissions
 			err := json.Unmarshal(rr.Body.Bytes(), &permsResponse)
 			c.NoError(err)
 			c.Equal(test.expectedPermissions, permsResponse)
@@ -1352,6 +1352,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 		invalidJSON           bool
 		expectedLBAfterDelete *types.LoadBalancer
 		expectedStatus        int
+		runMock               bool
 		err                   error
 	}{
 		{
@@ -1370,6 +1371,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 				},
 			},
 			expectedStatus: http.StatusOK,
+			runMock:        true,
 			err:            nil,
 		},
 		{
@@ -1395,7 +1397,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 		writerMock := driver.NewMockDriver(t)
 		router.Writer = writerMock
 
-		if test.userToDelete != "" {
+		if test.runMock {
 			writerMock.On("RemoveUserAccess", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
 		}
 

@@ -91,7 +91,7 @@ func TestCache_SetCache(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]types.UserPermissions{
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
 		"test_user_687463gh2h72gs": {
 			UserID: "test_user_687463gh2h72gs",
 			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
@@ -212,7 +212,7 @@ func TestCache_SetCacheFailure(t *testing.T) {
 	}, nil)
 
 	errOnUserPermissions := errors.New("error on user permissions")
-	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]types.UserPermissions{}, errOnUserPermissions).Once()
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, errOnUserPermissions).Once()
 
 	err = cache.SetCache()
 	c.ErrorIs(err, errOnUserPermissions)
@@ -646,7 +646,7 @@ func TestCache_AddUserAccess(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]types.UserPermissions{
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
 		"test_user_687463gh2h72gs": {
 			UserID: "test_user_687463gh2h72gs",
 			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
@@ -734,7 +734,7 @@ func TestCache_UpdateUserAccess(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]types.UserPermissions{
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
 		"test_user_687463gh2h72gs": {
 			UserID: "test_user_687463gh2h72gs",
 			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
@@ -834,7 +834,7 @@ func TestCache_DeleteUserAccess(t *testing.T) {
 		},
 	}, nil)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]types.UserPermissions{
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
 		"test_user_687463gh2h72gs": {
 			UserID: "test_user_687463gh2h72gs",
 			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{

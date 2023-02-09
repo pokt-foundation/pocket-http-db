@@ -890,14 +890,14 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                string
 			userID              types.UserID
-			expectedPermissions types.UserPermissions
+			expectedPermissions *types.UserPermissions
 			err                 error
 		}{
 			{
 
 				name:   "Should fetch a single users load balancer permissions",
 				userID: "test_user_1dbffbdfeeb225",
-				expectedPermissions: types.UserPermissions{
+				expectedPermissions: &types.UserPermissions{
 					UserID: "test_user_1dbffbdfeeb225",
 					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 						"test_lb_34987u329rfn23f": {
@@ -911,7 +911,7 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 
 				name:   "Should fetch another single users load balancer permissions",
 				userID: "test_user_member1234",
-				expectedPermissions: types.UserPermissions{
+				expectedPermissions: &types.UserPermissions{
 					UserID: "test_user_member1234",
 					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 						"test_lb_34987u329rfn23f": {
