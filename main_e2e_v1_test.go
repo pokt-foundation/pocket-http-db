@@ -508,7 +508,7 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 						Applications: []*types.Application{nil},
 						Users: []types.UserAccess{
 							{RoleName: types.RoleOwner, UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
-							{RoleName: types.RoleMember, UserID: "test_user_member5678", Email: "member2@test.com", Accepted: false},
+							{RoleName: types.RoleMember, UserID: "", Email: "member2@test.com", Accepted: false},
 						},
 						CreatedAt: mockTimestamp,
 						UpdatedAt: mockTimestamp,
@@ -1017,6 +1017,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.CreateBlockchain(testCtx, test.blockchainInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainInput.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.blockchain.ID, blockchain.ID)
@@ -1113,6 +1114,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.CreateBlockchainRedirect(testCtx, test.redirectInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
 				ts.Equal(test.err, err)
 				ts.Len(blockchain.Redirects, len(test.redirects))
@@ -1191,6 +1193,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			createdApp, err := ts.client1.CreateApplication(testCtx, test.applicationInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(createdApp.ID, application.ID)
@@ -1309,6 +1312,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			createdLB, err := ts.client1.CreateLoadBalancer(testCtx, test.loadBalancerInput)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(createdLB.ID, loadBalancer.ID)
@@ -1350,7 +1354,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			loadBalancerID    string
 			user              types.UserAccess
 			loadBalancerUsers []types.UserAccess
-			userLBPermissions types.LoadBalancerPermissions
 			err               error
 		}{
 			{
@@ -1358,24 +1361,20 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				loadBalancerID: "test_lb_34987u329rfn23f",
 				user: types.UserAccess{
 					RoleName: types.RoleMember,
-					UserID:   "test_user_create_new_member",
 					Email:    "member_new@test.com",
 				},
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
 					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
 					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
-				},
-				userLBPermissions: types.LoadBalancerPermissions{
-					RoleName:    types.RoleMember,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+					{RoleName: types.RoleMember, UserID: "", Email: "member_new@test.com", Accepted: false},
 				},
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "sir_not_appearing_in_this_film",
-				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
+
+				err: fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 		}
 
@@ -1383,6 +1382,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, test.user)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
@@ -1390,14 +1390,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
-
-				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.user.UserID))
-				ts.Equal(test.err, err)
-				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
-
-				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.user.UserID))
-				ts.Equal(test.err, err)
-				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
 			}
 		}
 	})
@@ -1430,6 +1422,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.ActivateBlockchain(testCtx, test.blockchainID, test.active)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.active, blockchain.Active)
@@ -1572,6 +1565,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.UpdateAppFirstDateSurpassed(testCtx, test.update)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				for _, appID := range test.update.ApplicationIDs {
 					application, err := ts.client1.GetApplicationByID(testCtx, appID)
 					ts.NoError(err)
@@ -1608,6 +1602,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.RemoveApplication(testCtx, test.applicationID)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				application, err := ts.client1.GetApplicationByID(testCtx, test.applicationID)
 				ts.NoError(err)
 				ts.Equal(test.expectedStatus, application.Status)
@@ -1691,25 +1686,23 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdateLoadBalancerUserRole", func() {
 		tests := []struct {
-			name              string
-			loadBalancerID    string
-			userUpdate        types.UpdateUserAccess
-			loadBalancerUsers []types.UserAccess
-			userLBPermissions types.LoadBalancerPermissions
-			err               error
+			name                   string
+			loadBalancerID, userID string
+			roleName               types.RoleName
+			loadBalancerUsers      []types.UserAccess
+			userLBPermissions      types.LoadBalancerPermissions
+			err                    error
 		}{
 			{
-				name:           "Should add a single user to an existing load balancer in the DB",
+				name:           "Should update a single user to an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
-				userUpdate: types.UpdateUserAccess{
-					RoleName: types.RoleAdmin,
-					UserID:   "test_user_create_new_member",
-				},
+				userID:         "test_user_member1234",
+				roleName:       types.RoleAdmin,
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
 					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
-					{RoleName: types.RoleAdmin, UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
+					{RoleName: types.RoleAdmin, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "", Email: "member_new@test.com", Accepted: false},
 				},
 				userLBPermissions: types.LoadBalancerPermissions{
 					RoleName:    types.RoleAdmin,
@@ -1717,16 +1710,53 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name:           "Should update a single user to an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "test_user_member1234",
+				roleName:       types.RoleMember,
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleMember,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+				},
+			},
+			{
+				name:           "Should fail if load balancer ID not provided",
+				loadBalancerID: "",
+				err:            fmt.Errorf("no load balancer ID"),
+			},
+			{
+				name:           "Should fail if user ID not provided",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "",
+				err:            fmt.Errorf("no user ID"),
+			},
+			{
+				name:           "Should fail if invalid role name provided",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "test_user_member1234",
+				roleName:       types.RoleName("wrong_one"),
+				err:            fmt.Errorf("invalid role name"),
+			},
+			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "im_not_here",
+				userID:         "test_user_member1234",
+				roleName:       types.RoleMember,
 				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.userUpdate)
+			_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.userID, test.roleName)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
@@ -1735,11 +1765,11 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
-				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userUpdate.UserID))
+				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 				ts.Equal(test.err, err)
 				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
 
-				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userUpdate.UserID))
+				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 				ts.Equal(test.err, err)
 				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
 			}
@@ -1748,44 +1778,60 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 	ts.Run("Test_AcceptLoadBalancerUser", func() {
 		tests := []struct {
-			name                   string
-			loadBalancerID, userID string
-			loadBalancerUsers      []types.UserAccess
-			err                    error
+			name                          string
+			email, loadBalancerID, userID string
+			loadBalancerUsers             []types.UserAccess
+			userLBPermissions             types.LoadBalancerPermissions
+			err                           error
 		}{
 			{
-				name:           "Should update a single user to accepted: true for an existing load balancer in the DB",
-				loadBalancerID: "test_lb_34gg4g43g34g5hh",
-				userID:         "test_user_member5678",
+				name:           "Should update a single user's ID and Accepted field for an existing load balancer in the DB",
+				email:          "member_new@test.com",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "test_user_accept_member",
 				loadBalancerUsers: []types.UserAccess{
-					{RoleName: types.RoleOwner, UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "test_user_member5678", Email: "member2@test.com", Accepted: true},
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_accept_member", Email: "member_new@test.com", Accepted: true},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleMember,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
 				},
 			},
 			{
+				name:  "Should fail if email not provided",
+				email: "",
+				err:   fmt.Errorf("no user email"),
+			},
+			{
 				name:           "Should fail if load balancer ID not provided",
+				email:          "member_new@test.com",
 				loadBalancerID: "",
-				userID:         "test_user_member5678",
 				err:            fmt.Errorf("no load balancer ID"),
 			},
 			{
 				name:           "Should fail if user ID not provided",
-				loadBalancerID: "im_not_here",
+				email:          "member_new@test.com",
+				loadBalancerID: "test_lb_34987u329rfn23f",
 				userID:         "",
 				err:            fmt.Errorf("no user ID"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
+				email:          "member_new@test.com",
 				loadBalancerID: "im_not_here",
-				userID:         "test_user_member5678",
+				userID:         "test_user_accept_member",
 				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
+			_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.email, test.loadBalancerID, test.userID)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
@@ -1793,6 +1839,16 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+				if test.userID != "" {
+					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+					ts.Equal(test.err, err)
+					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+
+					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+					ts.Equal(test.err, err)
+					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+				}
 			}
 		}
 	})
@@ -1820,6 +1876,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.RemoveLoadBalancer(testCtx, test.loadBalancerID)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.NoError(err)
 				ts.Equal(test.expectedUserID, loadBalancer.UserID)
@@ -1845,7 +1902,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
 					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
-					{RoleName: types.RoleAdmin, UserID: "test_user_create_new_member", Email: "member_new@test.com", Accepted: false},
+					{RoleName: types.RoleMember, UserID: "test_user_accept_member", Email: "member_new@test.com", Accepted: true},
 				},
 				permissionsFetchError: errors.New("Response not OK. 404 Not Found: no permissions found for given user ID"),
 			},
@@ -1867,6 +1924,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
 			ts.Equal(test.err, err)
 			if test.err == nil {
+				<-time.After(50 * time.Millisecond)
 				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
@@ -1875,13 +1933,11 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
-				if test.err == nil {
-					_, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
-					ts.Equal(test.permissionsFetchError, err)
+				_, err = ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+				ts.Equal(test.permissionsFetchError, err)
 
-					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
-					ts.Equal(test.permissionsFetchError, err)
-				}
+				_, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+				ts.Equal(test.permissionsFetchError, err)
 			}
 		}
 	})
