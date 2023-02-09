@@ -62,7 +62,7 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		},
 	}, nil)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]types.UserPermissions{
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
 		"test_user_687463gh2h72gs": {
 			UserID: "test_user_687463gh2h72gs",
 			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{

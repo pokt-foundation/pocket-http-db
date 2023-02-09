@@ -21,7 +21,7 @@ type Cache struct {
 	blockchains              []*types.Blockchain
 	loadBalancersMap         map[string]*types.LoadBalancer
 	loadBalancersMapByUserID map[string][]*types.LoadBalancer
-	userPermissions          map[types.UserID]types.UserPermissions
+	userPermissions          map[types.UserID]*types.UserPermissions
 	loadBalancers            []*types.LoadBalancer
 	payPlansMap              map[types.PayPlanType]*types.PayPlan
 	payPlans                 []*types.PayPlan
@@ -61,7 +61,7 @@ func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
 }
 
 // GetUserPermissionsByUserID returns all load balancer UserPermissions for a given UserID
-func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermissions {
+func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) *types.UserPermissions {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -546,7 +546,7 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 	if userPermissions, ok := c.userPermissions[userID]; ok {
 		_, _ = userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
 	} else {
-		permissions := types.UserPermissions{
+		permissions := &types.UserPermissions{
 			UserID:        userID,
 			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
 		}

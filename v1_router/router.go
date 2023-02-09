@@ -361,7 +361,7 @@ func (rt *Router) GetUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 	userID := types.UserID(vars["id"])
 
 	permissions := rt.Cache.GetUserPermissionsByUserID(userID)
-	if permissions.IsEmpty() {
+	if permissions == nil || permissions.IsEmpty() {
 		rt.logError(fmt.Errorf("GetUserPermissionsByUserID failed: %w", errPermissionsNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errPermissionsNotFound.Error())
 		return
