@@ -21,6 +21,7 @@ type Cache struct {
 	blockchains              []*types.Blockchain
 	loadBalancersMap         map[string]*types.LoadBalancer
 	loadBalancersMapByUserID map[string][]*types.LoadBalancer
+	userPermissions          map[types.UserID]*types.UserPermissions
 	loadBalancers            []*types.LoadBalancer
 	payPlansMap              map[types.PayPlanType]*types.PayPlan
 	payPlans                 []*types.PayPlan
@@ -57,6 +58,14 @@ func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
 
 		log: logger,
 	}
+}
+
+// GetUserPermissionsByUserID returns all load balancer UserPermissions for a given UserID
+func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) *types.UserPermissions {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return c.userPermissions[userID]
 }
 
 // GetApplication returns Application from cache by applicationID
@@ -531,11 +540,25 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 	defer c.rwMutex.Unlock()
 
 	lbID := userAccess.ID
+	userID := types.UserID(userAccess.UserID)
 	userAccess.ID = "" // to avoid multiple sources of truth
+
+	if userPermissions, ok := c.userPermissions[userID]; ok {
+		_, _ = userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+	} else {
+		permissions := &types.UserPermissions{
+			UserID:        userID,
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
+		}
+		_, _ = permissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+
+		c.userPermissions[userID] = permissions
+	}
 
 	lb := c.loadBalancersMap[lbID]
 	if lb != nil {
 		lb.Users = append(lb.Users, userAccess)
+		c.loadBalancersMapByUserID[userAccess.UserID] = append(c.loadBalancersMapByUserID[userAccess.UserID], lb)
 		return
 	}
 
@@ -611,8 +634,14 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	defer c.rwMutex.Unlock()
 
 	lbID := inUser.ID
+	userID := types.UserID(inUser.UserID)
 	inUser.ID = "" // to avoid multiple sources of truth
 
+	if userPermissions, ok := c.userPermissions[userID]; ok {
+		_, _ = userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+	}
+
+	// Update load balancer users slice
 	lb := c.loadBalancersMap[lbID]
 
 	for i := range lb.Users {
@@ -628,8 +657,14 @@ func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	defer c.rwMutex.Unlock()
 
 	lbID := delUser.ID
+	userID := types.UserID(delUser.UserID)
 	delUser.ID = "" // to avoid multiple sources of truth
 
+	if userPermissions, ok := c.userPermissions[userID]; ok {
+		_ = userPermissions.DeletePermissions(types.LoadBalancerID(lbID))
+	}
+
+	// Remove from load balancer users slice
 	lb := c.loadBalancersMap[lbID]
 
 	filteredUsers := []types.UserAccess{}
@@ -639,6 +674,28 @@ func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 		}
 	}
 	lb.Users = filteredUsers
+
+	lbsForUser := c.loadBalancersMapByUserID[delUser.UserID]
+
+	lbsForUserAfterRemove := []*types.LoadBalancer{}
+	for i := range lbsForUser {
+		if lbsForUser[i].ID != lb.ID {
+			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
+		}
+	}
+
+	c.loadBalancersMapByUserID[delUser.UserID] = lbsForUserAfterRemove
+}
+
+func (c *Cache) setUserPermissions() error {
+	userPermissions, err := c.reader.ReadUserPermissions(context.Background())
+	if err != nil {
+		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
+	}
+
+	c.userPermissions = userPermissions
+
+	return nil
 }
 
 // SetCache gets all values from DB and stores them in cache
@@ -664,6 +721,11 @@ func (c *Cache) SetCache() error {
 
 	// Always call after setApplications
 	err = c.setLoadBalancers()
+	if err != nil {
+		return err
+	}
+
+	err = c.setUserPermissions()
 	if err != nil {
 		return err
 	}
