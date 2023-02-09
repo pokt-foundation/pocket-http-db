@@ -1746,6 +1746,57 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 		}
 	})
 
+	ts.Run("Test_AcceptLoadBalancerUser", func() {
+		tests := []struct {
+			name                   string
+			loadBalancerID, userID string
+			loadBalancerUsers      []types.UserAccess
+			err                    error
+		}{
+			{
+				name:           "Should update a single user to accepted: true for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34gg4g43g34g5hh",
+				userID:         "test_user_member5678",
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleOwner, UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member5678", Email: "member2@test.com", Accepted: true},
+				},
+			},
+			{
+				name:           "Should fail if load balancer ID not provided",
+				loadBalancerID: "",
+				userID:         "test_user_member5678",
+				err:            fmt.Errorf("no load balancer ID"),
+			},
+			{
+				name:           "Should fail if user ID not provided",
+				loadBalancerID: "im_not_here",
+				userID:         "",
+				err:            fmt.Errorf("no user ID"),
+			},
+			{
+				name:           "Should fail if load balancer cannot be found",
+				loadBalancerID: "im_not_here",
+				userID:         "test_user_member5678",
+				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
+			},
+		}
+
+		for _, test := range tests {
+			_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
+			ts.Equal(test.err, err)
+			if test.err == nil {
+				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+				ts.Equal(test.err, err)
+				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+				ts.Equal(test.err, err)
+				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+			}
+		}
+	})
+
 	ts.Run("Test_RemoveLoadBalancer", func() {
 		tests := []struct {
 			name           string

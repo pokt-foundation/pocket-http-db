@@ -647,6 +647,10 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	for i := range lb.Users {
 		if lb.Users[i].UserID == inUser.UserID {
 			lb.Users[i].RoleName = inUser.RoleName
+
+			if inUser.Accepted {
+				lb.Users[i].Accepted = inUser.Accepted
+			}
 		}
 	}
 }
