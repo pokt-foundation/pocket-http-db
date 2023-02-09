@@ -1,5 +1,5 @@
 site_name: "Pocket HTTP DB"
-site_description: "Documentation for the Pocket HTTP DB service"
+site_description: "Documentation for the Pocket HTTP DB service known as PHD"
 
 nav:
   - Home: index.md
