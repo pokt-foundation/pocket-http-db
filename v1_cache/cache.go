@@ -540,25 +540,35 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 	defer c.rwMutex.Unlock()
 
 	lbID := userAccess.ID
-	userID := types.UserID(userAccess.UserID)
 	userAccess.ID = "" // to avoid multiple sources of truth
 
-	if userPermissions, ok := c.userPermissions[userID]; ok {
-		_, _ = userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
-	} else {
-		permissions := &types.UserPermissions{
-			UserID:        userID,
-			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
-		}
-		_, _ = permissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+	// Add user to permissions map if they have a user ID
+	if userAccess.UserID != "" {
+		userID := types.UserID(userAccess.UserID)
 
-		c.userPermissions[userID] = permissions
+		if userPermissions, ok := c.userPermissions[userID]; ok {
+			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
+		} else {
+			permissions := &types.UserPermissions{
+				UserID:        userID,
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
+			}
+			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
+
+			c.userPermissions[userID] = permissions
+		}
 	}
 
 	lb := c.loadBalancersMap[lbID]
 	if lb != nil {
 		lb.Users = append(lb.Users, userAccess)
-		c.loadBalancersMapByUserID[userAccess.UserID] = append(c.loadBalancersMapByUserID[userAccess.UserID], lb)
+
+		if userAccess.UserID != "" {
+			c.loadBalancersMapByUserID[userAccess.UserID] = append(c.loadBalancersMapByUserID[userAccess.UserID], lb)
+		}
+
 		return
 	}
 
@@ -628,34 +638,53 @@ func (c *Cache) setPayPlans() error {
 	return nil
 }
 
-// updateUserAccess updates load balancer user saved in cache with a new role
+// updateUserAccess updates load balancer user saved in cache with a new role and updates permissions map
 func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
 	lbID := inUser.ID
-	userID := types.UserID(inUser.UserID)
 	inUser.ID = "" // to avoid multiple sources of truth
 
-	if userPermissions, ok := c.userPermissions[userID]; ok {
-		_, _ = userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+	// Add user to permissions map if they have a user ID (have been approved)
+	if inUser.UserID != "" {
+		userID := types.UserID(inUser.UserID)
+
+		if userPermissions, ok := c.userPermissions[userID]; ok {
+			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
+		} else {
+			permissions := &types.UserPermissions{
+				UserID:        userID,
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
+			}
+			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
+
+			c.userPermissions[userID] = permissions
+		}
 	}
 
 	// Update load balancer users slice
 	lb := c.loadBalancersMap[lbID]
+	if lb != nil {
+		for i := range lb.Users {
+			if lb.Users[i].UserID == inUser.UserID {
+				lb.Users[i].RoleName = inUser.RoleName
+			}
 
-	for i := range lb.Users {
-		if lb.Users[i].UserID == inUser.UserID {
-			lb.Users[i].RoleName = inUser.RoleName
-
-			if inUser.Accepted {
+			// Update new user when they accept their invite
+			if lb.Users[i].Email == inUser.Email && !lb.Users[i].Accepted && inUser.Accepted {
 				lb.Users[i].Accepted = inUser.Accepted
+				lb.Users[i].UserID = inUser.UserID
+
+				c.loadBalancersMapByUserID[inUser.UserID] = append(c.loadBalancersMapByUserID[inUser.UserID], lb)
 			}
 		}
 	}
 }
 
-// deleteUserAccess deletes load balancer user saved in cache
+// deleteUserAccess deletes load balancer user saved in cache  and updates permissions
 func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()

@@ -79,7 +79,7 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
@@ -523,6 +523,7 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	}
 
 	user.Accepted = false
+	user.UserID = ""
 	fullLB := *lb
 	fullLB.Users = append(fullLB.Users, user)
 
@@ -633,9 +634,25 @@ func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	acceptUserID := vars["userID"]
+	var acceptUserUpdate types.UpdateUserAccess
 
-	err := rt.Writer.AcceptUserAccess(r.Context(), acceptUserID, lb.ID)
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&acceptUserUpdate)
+	if err != nil {
+		rt.logError(fmt.Errorf("AcceptLoadBalancerUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	if acceptUserUpdate.Email == "" {
+		rt.logError(fmt.Errorf("AcceptLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+	}
+
+	err = rt.Writer.AcceptUserAccess(r.Context(), acceptUserUpdate.Email, acceptUserUpdate.UserID, lb.ID)
 	if err != nil {
 		rt.logError(fmt.Errorf("AcceptUserAccess in AcceptLoadBalancerUser failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -643,7 +660,8 @@ func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	}
 
 	for i := range lb.Users {
-		if lb.Users[i].UserID == acceptUserID {
+		if lb.Users[i].Email == acceptUserUpdate.Email {
+			lb.Users[i].UserID = acceptUserUpdate.UserID
 			lb.Users[i].Accepted = true
 		}
 	}
