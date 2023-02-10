@@ -1563,7 +1563,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, test.applicationUpdate)
-			fmt.Println("ERROR HERE", err)
 			ts.Equal(test.err, err)
 			if err == nil {
 				<-time.After(50 * time.Millisecond)
@@ -1586,20 +1585,39 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdateApplication_HugePayload", func() {
 		tests := []struct {
-			name                         string
-			applicationID                string
-			applicationUpdateJSONPath    string
-			contractsLength, numOfChains int
-			totalPayloadSizeKB           float64
-			err                          error
+			name                                       string
+			applicationID, applicationUpdateJSONPath   string
+			contractsLength, numOfChains, truncateList int
+			totalPayloadSizeKB                         float64
+			err                                        error
 		}{
 			{
-				name:                      "Should update a single application's whitelists even with an extremely large payload'",
+				name:                      "Should update a single application's whitelists even with an extremely large payload",
 				applicationID:             "test_app_47hfnths73j2se",
 				applicationUpdateJSONPath: "./testdata/long-whitelist-testdata.json",
 				contractsLength:           800,
 				numOfChains:               7,
 				totalPayloadSizeKB:        229.6875, // The maximum size of a single Postgres notification is 8kb
+				err:                       nil,
+			},
+			{
+				name:                      "Should update a single application's whitelists to a shorter list",
+				applicationID:             "test_app_47hfnths73j2se",
+				applicationUpdateJSONPath: "./testdata/long-whitelist-testdata.json",
+				contractsLength:           257,
+				numOfChains:               7,
+				truncateList:              257,
+				totalPayloadSizeKB:        73.787109375, // The maximum size of a single Postgres notification is 8kb
+				err:                       nil,
+			},
+			{
+				name:                      "Should update a single application's whitelists to a longer list",
+				applicationID:             "test_app_47hfnths73j2se",
+				applicationUpdateJSONPath: "./testdata/long-whitelist-testdata.json",
+				contractsLength:           673,
+				numOfChains:               7,
+				truncateList:              673,
+				totalPayloadSizeKB:        193.224609375, // The maximum size of a single Postgres notification is 8kb
 				err:                       nil,
 			},
 		}
@@ -1612,8 +1630,16 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			err = json.Unmarshal(data, &hugePayloadUpdate)
 			ts.NoError(err)
 
+			if test.truncateList != 0 {
+				for i := range hugePayloadUpdate.GatewaySettings.WhitelistContracts {
+					hugePayloadUpdate.GatewaySettings.WhitelistContracts[i].Contracts =
+						hugePayloadUpdate.GatewaySettings.WhitelistContracts[i].Contracts[:test.truncateList]
+				}
+			}
+
 			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, hugePayloadUpdate)
 			ts.Equal(test.err, err)
+
 			if err == nil {
 				<-time.After(2 * time.Second)
 				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
