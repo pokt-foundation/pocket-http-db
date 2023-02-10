@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
@@ -1578,6 +1580,67 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
 				ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 				ts.Equal(test.applicationAfterUpdate.Limit, application.Limit)
+			}
+		}
+	})
+
+	ts.Run("Test_UpdateApplication_HugePayload", func() {
+		tests := []struct {
+			name                         string
+			applicationID                string
+			applicationUpdateJSONPath    string
+			contractsLength, numOfChains int
+			totalPayloadSizeKB           float64
+			err                          error
+		}{
+			{
+				name:                      "Should update a single application's whitelists even with an extremely large payload'",
+				applicationID:             "test_app_47hfnths73j2se",
+				applicationUpdateJSONPath: "./testdata/long-whitelist-testdata.json",
+				contractsLength:           800,
+				numOfChains:               7,
+				totalPayloadSizeKB:        229.6875, // The maximum size of a single Postgres notification is 8kb
+				err:                       nil,
+			},
+		}
+
+		for _, test := range tests {
+			data, err := ioutil.ReadFile(test.applicationUpdateJSONPath)
+			ts.NoError(err)
+
+			var hugePayloadUpdate types.UpdateApplication
+			err = json.Unmarshal(data, &hugePayloadUpdate)
+			ts.NoError(err)
+
+			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, hugePayloadUpdate)
+			ts.Equal(test.err, err)
+			if err == nil {
+				<-time.After(2 * time.Second)
+				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
+				ts.NoError(err)
+				ts.Len(application.GatewaySettings.WhitelistContracts, test.numOfChains)
+
+				var totalByteSize int
+				for _, contract := range application.GatewaySettings.WhitelistContracts {
+					ts.Len(contract.Contracts, test.contractsLength)
+					for _, contractStr := range contract.Contracts {
+						totalByteSize += len([]byte(contractStr))
+					}
+				}
+				ts.Equal(float64(totalByteSize)/1024, test.totalPayloadSizeKB)
+
+				application, err = ts.client2.GetApplicationByID(testCtx, createdApp.ID)
+				ts.NoError(err)
+				ts.Len(application.GatewaySettings.WhitelistContracts, test.numOfChains)
+
+				var totalByteSize2 int
+				for _, contract := range application.GatewaySettings.WhitelistContracts {
+					ts.Len(contract.Contracts, test.contractsLength)
+					for _, contractStr := range contract.Contracts {
+						totalByteSize2 += len([]byte(contractStr))
+					}
+				}
+				ts.Equal(float64(totalByteSize2)/1024, test.totalPayloadSizeKB)
 			}
 		}
 	})
