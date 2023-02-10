@@ -657,13 +657,15 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 		userID := types.UserID(userAccess.UserID)
 
 		if userPermissions, ok := c.userPermissions[userID]; ok {
-			_, _ = userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
 		} else {
 			permissions := &types.UserPermissions{
 				UserID:        userID,
 				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
 			}
-			_, _ = permissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
 
 			c.userPermissions[userID] = permissions
 		}
@@ -759,13 +761,15 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 		userID := types.UserID(inUser.UserID)
 
 		if userPermissions, ok := c.userPermissions[userID]; ok {
-			_, _ = userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
 		} else {
 			permissions := &types.UserPermissions{
 				UserID:        userID,
 				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
 			}
-			_, _ = permissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			fmt.Println("error upserting user permissions: %w", err)
 
 			c.userPermissions[userID] = permissions
 		}

@@ -1345,19 +1345,19 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 			runMock:        true,
 			err:            nil,
 		},
-		// {
-		// 	name:           "Should fail if the load balancer does not exist",
-		// 	lbID:           "test_not_real_lb",
-		// 	expectedStatus: http.StatusNotFound,
-		// 	err:            errors.New("dummy error"),
-		// },
-		// {
-		// 	name:           "Should fail if DB driver throws an error",
-		// 	lbID:           "test_lb_34987u329rfn23f",
-		// 	expectedStatus: http.StatusInternalServerError,
-		// 	runMock:        true,
-		// 	err:            errors.New("dummy database driver error"),
-		// },
+		{
+			name:           "Should fail if the load balancer does not exist",
+			lbID:           "test_not_real_lb",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if DB driver throws an error",
+			lbID:           "test_lb_34987u329rfn23f",
+			expectedStatus: http.StatusInternalServerError,
+			runMock:        true,
+			err:            errors.New("dummy database driver error"),
+		},
 	}
 
 	for _, test := range tests {
