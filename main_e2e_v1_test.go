@@ -242,8 +242,19 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 						},
 						GatewaySettings: types.GatewaySettings{
-							SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-							SecretKeyRequired: true,
+							SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+							SecretKeyRequired:    true,
+							WhitelistBlockchains: []string{"chain_1"},
+							WhitelistOrigins:     []string{"origin_1", "origin_2"},
+							WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+							WhitelistContracts: []types.WhitelistContracts{
+								{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+								{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+							},
+							WhitelistMethods: []types.WhitelistMethods{
+								{BlockchainID: "TST1", Methods: []string{"GET"}},
+								{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+							},
 						},
 						Limit: types.AppLimit{
 							PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -467,8 +478,19 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 									PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 								},
 								GatewaySettings: types.GatewaySettings{
-									SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-									SecretKeyRequired: true,
+									SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+									SecretKeyRequired:    true,
+									WhitelistBlockchains: []string{"chain_1"},
+									WhitelistOrigins:     []string{"origin_1", "origin_2"},
+									WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+									WhitelistContracts: []types.WhitelistContracts{
+										{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+										{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+									},
+									WhitelistMethods: []types.WhitelistMethods{
+										{BlockchainID: "TST1", Methods: []string{"GET"}},
+										{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+									},
 								},
 								Limit: types.AppLimit{
 									PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -707,7 +729,17 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 								},
 								GatewaySettings: types.GatewaySettings{
 									SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-									SecretKeyRequired: true,
+									SecretKeyRequired: true, WhitelistBlockchains: []string{"chain_1"},
+									WhitelistOrigins:    []string{"origin_1", "origin_2"},
+									WhitelistUserAgents: []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+									WhitelistContracts: []types.WhitelistContracts{
+										{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+										{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+									},
+									WhitelistMethods: []types.WhitelistMethods{
+										{BlockchainID: "TST1", Methods: []string{"GET"}},
+										{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+									},
 								},
 								Limit: types.AppLimit{
 									PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -767,8 +799,19 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 									PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 								},
 								GatewaySettings: types.GatewaySettings{
-									SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-									SecretKeyRequired: true,
+									SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+									SecretKeyRequired:    true,
+									WhitelistBlockchains: []string{"chain_1"},
+									WhitelistOrigins:     []string{"origin_1", "origin_2"},
+									WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+									WhitelistContracts: []types.WhitelistContracts{
+										{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+										{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+									},
+									WhitelistMethods: []types.WhitelistMethods{
+										{BlockchainID: "TST1", Methods: []string{"GET"}},
+										{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+									},
 								},
 								Limit: types.AppLimit{
 									PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -1273,8 +1316,19 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 								PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 							},
 							GatewaySettings: types.GatewaySettings{
-								SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-								SecretKeyRequired: true,
+								SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+								SecretKeyRequired:    true,
+								WhitelistBlockchains: []string{"chain_1"},
+								WhitelistOrigins:     []string{"origin_1", "origin_2"},
+								WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+								WhitelistContracts: []types.WhitelistContracts{
+									{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+									{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+								},
+								WhitelistMethods: []types.WhitelistMethods{
+									{BlockchainID: "TST1", Methods: []string{"GET"}},
+									{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+								},
 							},
 							Limit: types.AppLimit{
 								PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -1446,8 +1500,8 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					GatewaySettings: &types.UpdateGatewaySettings{
 						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
 						WhitelistUserAgents:  []string{"test-agent1"},
-						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
-						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
+						WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
+						WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "01", Methods: []string{"test-method1"}}},
 						WhitelistBlockchains: []string{"test-chain1"},
 					},
 					NotificationSettings: &types.UpdateNotificationSettings{SignedUp: boolPointer(false), Quarter: boolPointer(true), Half: boolPointer(true), ThreeQuarters: boolPointer(false), Full: boolPointer(false)},
@@ -1460,8 +1514,8 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 						SecretKeyRequired:    true,
 						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
 						WhitelistUserAgents:  []string{"test-agent1"},
-						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
-						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
+						WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
+						WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "01", Methods: []string{"test-method1"}}},
 						WhitelistBlockchains: []string{"test-chain1"},
 					},
 					NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: true, ThreeQuarters: false, Full: false},
@@ -1485,10 +1539,9 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 						SecretKeyRequired:    true,
 						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
 						WhitelistUserAgents:  []string{"test-agent1"},
-						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
-						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
-						WhitelistBlockchains: []string{"test-chain1"},
-					},
+						WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
+						WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "01", Methods: []string{"test-method1"}}},
+						WhitelistBlockchains: []string{"test-chain1"}},
 					NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: true, ThreeQuarters: false, Full: false},
 					Limit: types.AppLimit{
 						PayPlan: types.PayPlan{
@@ -1508,8 +1561,10 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, test.applicationUpdate)
+			fmt.Println("ERROR HERE", err)
 			ts.Equal(test.err, err)
 			if err == nil {
+				<-time.After(50 * time.Millisecond)
 				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
 				ts.NoError(err)
 				ts.Equal(test.applicationAfterUpdate.Name, application.Name)

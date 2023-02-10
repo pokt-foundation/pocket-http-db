@@ -46,15 +46,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      # v0 tests - TODO remove when v0 dropped
-      - name: Set up Docker test stack for v0
+      - name: Set up Docker test stack
         run: make test_env_up
-      - name: Run all V0 tests
-        run: make run_all_tests_v0
-      - name: Tear down Docker test stack for v0
-        run: make test_env_down
-
-      - name: Set up Docker test stack for v1
-        run: make test_env_up
-      - name: Run all V1 tests
-        run: make run_all_tests_v1
+      - name: Run all tests
+        run: make run_all_tests
