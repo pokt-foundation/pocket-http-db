@@ -1563,7 +1563,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, test.applicationUpdate)
-			fmt.Println("ERROR HERE", err)
 			ts.Equal(test.err, err)
 			if err == nil {
 				<-time.After(50 * time.Millisecond)
