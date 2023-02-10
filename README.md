@@ -21,7 +21,7 @@ To use the Pocket HTTP DB in other packages, [a Go client is available](https://
 
 When adding new functionality to PHD, there is a order of operations that should be followed for best results.
 
-**This may seem convoluted but if all these steps are completed we can have an extremely high degree of confidence in any changes.**
+**This may appear convoluted but if all these steps are completed we can have a high degree of confidence in any changes.**
 
 1. **Add changes to the [Portal DB driver](https://github.com/pokt-foundation/portal-db) repository:**
 
