@@ -26,7 +26,7 @@ When adding new functionality to PHD, there is a order of operations that should
 1. **Add changes to the [Portal DB driver](https://github.com/pokt-foundation/portal-db) repository:**
 
 - Start by updating the `postgresdrver/sqlc/schema.yml` and/or `postgresdrver/sqlc/query.yml` files
-- Generate the SQLC Go code from theq SQL files using `make`
+- Generate the SQLC Go code from these SQL files using `make`
 - Add new functionality to the postgres driver methods and the Driver interface
 - Update the driver integration tests in the `Portal DB` repository to cover all code changes
 - Once merged to `main` a new version of the DB driver will be published, following semantic versioning standards based on the commit message(s).
@@ -42,7 +42,7 @@ When adding new functionality to PHD, there is a order of operations that should
 3. **Add the new functionality to the [DB Client](https://github.com/pokt-foundation/db-client) repository:**
 
 - Add or modify all of the relevant methods inside the `client.go` file and update the interface(s)
-- Update the `docker-compose.test.yml` file inside the `DB Client` repository to point to the PHD feature branch that was just pushed
+- Update the `docker-compose.test.yml` file **(line 9)** inside the `DB Client` repository to point to the PHD feature branch that was just pushed
 - Update or create E2E tests inside the `DB Client` to cover all code changes
 - As with the `Portal DB`, when these changes are merged to `main` a new version of the `DB Client` will be published.
 
