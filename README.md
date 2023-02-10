@@ -29,13 +29,13 @@ When adding new functionality, there is a order of operations that should be fol
 
 2. Open a new feature branch in PHD pointed to the `staging` branch. The newly published `Portal DB` driver version should be installed into PHD and all necessary changes made to both the `cache` and `router`. At this stage, unit tests should be updated or created to cover any and all changes and be passing; E2E tests will be added in step 4. At this point, the feature branch should be pushed to the PHD repo.
 
-3. The new functionality should be added to the [DB Client](https://github.com/pokt-foundation/db-client). Once this is done, the `docker-compose.test.yml` file inside this repo should be updated on `line 9` to point to the PHD feature branch that was just pushed to PHD. Once this is done, the E2E tests inside the `DB Client` should be updated or created to cover any and all changes. As with the `Portal DB`, when these changes are merged a new version will be published.
+3. The new functionality should be added to the [DB Client](https://github.com/pokt-foundation/db-client). Once this is done, the `docker-compose.test.yml` file inside this repo should be updated on `line 9` to point to the PHD feature branch that was just pushed to PHD. Once this is done, the E2E tests inside the `DB Client` should be updated or created to cover any and all changes. As with the `Portal DB`, when these changes are merged to `main` a new version will be published.
 
-4. The newly published `Portal DB` driver version should be installed into PHD and the E2E tests that were written or modified in the DB driver may be reused the main E2E test file (with the caveat that we add a test for the second test PHD instance that runs in the PHD E2E; follow the examples that already exist in the test file). Once the E2E tests pass with the new changes the PR can be submitted for review.
+4. The newly published `DB Client` version should be installed into PHD and the E2E tests that were written or modified in the DB driver in step 3 may be reused in the main E2E test file for PHD (with the caveat that we add an additional check for the second test PHD instance that runs in the PHD E2E; follow the examples that already exist in the test file). Once the E2E tests pass with the new changes the PR can be submitted for review.
+
+5. Once the PR has been merged to PHD `master`, update `line 7` of the `DB Client` `docker-compose.test.yml` file back to `master` branch.
 
 5. Profit.
-
-6. (_Bonus Step: Once the PR has been merged to PHD master, update `line 7` of the `DB Client` `docker-compose.test.yml` file back to `master` branch._)
 
 Again, this may seem like a lot of steps but if they are all followed then by the time the changes reach `staging` we can be very confident they work and as a side benefit the `DB Client` is ready to be used in all services.
 
