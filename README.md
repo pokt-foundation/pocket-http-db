@@ -37,6 +37,8 @@ When adding new functionality, there is a order of operations that should be fol
 
 Again, this may seem like a lot of steps but if they are all followed then by the time the changes reach `staging` we can be very confident they work and as a side benefit the `DB Client` is ready to be used in all services.
 
+When adding or modifying routes, the corresponding method should be created or updated in the DB client. Once the E2E test for the new or updated method in the DB client is completed, the latest DB client  version can be installed in PHD and the E2E test used to verify the changes in PHD as well.
+
 ## Pre-Commit Installation
 
 Before starting development work on this repo, `pre-commit` must be installed.
