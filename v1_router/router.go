@@ -16,11 +16,13 @@ import (
 )
 
 var (
-	errNoPayFound            = errors.New("pay plan not found")
-	errLoadBalancerNotFound  = errors.New("load balancer not found")
-	errBlockchainNotFound    = errors.New("blockchain not found")
-	errApplicationNotFound   = errors.New("applications not found")
-	errInvalidRoleNameFilter = errors.New("invalid role name filter")
+	errNoPayFound            error = errors.New("pay plan not found")
+	errLoadBalancerNotFound  error = errors.New("load balancer not found")
+	errBlockchainNotFound    error = errors.New("blockchain not found")
+	errApplicationNotFound   error = errors.New("applications not found")
+	errInvalidRoleNameFilter error = errors.New("invalid role name filter")
+	errPermissionsNotFound   error = errors.New("no permissions found for given user ID")
+	errCannotDeleteOwner     error = errors.New("cannot delete the owner of a load balancer")
 )
 
 // Router struct handler for router requests
@@ -77,10 +79,12 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v1/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
@@ -350,6 +354,22 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredLBs)
 }
 
+/* Returns all load balancer permissionss for a given user */
+// TODO add comment descriptions for all funcs in this repo
+func (rt *Router) GetUserPermissionsByUserID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := types.UserID(vars["id"])
+
+	permissions := rt.Cache.GetUserPermissionsByUserID(userID)
+	if permissions == nil || permissions.IsEmpty() {
+		rt.logError(fmt.Errorf("GetUserPermissionsByUserID failed: %w", errPermissionsNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errPermissionsNotFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, permissions)
+}
+
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
@@ -503,6 +523,7 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	}
 
 	user.Accepted = false
+	user.UserID = ""
 	fullLB := *lb
 	fullLB.Users = append(fullLB.Users, user)
 
@@ -603,6 +624,51 @@ func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
 
+func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+	if lb == nil {
+		rt.logError(fmt.Errorf("GetLoadBalancer in AcceptLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	var acceptUserUpdate types.UpdateUserAccess
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&acceptUserUpdate)
+	if err != nil {
+		rt.logError(fmt.Errorf("AcceptLoadBalancerUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	if acceptUserUpdate.Email == "" {
+		rt.logError(fmt.Errorf("AcceptLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+	}
+
+	err = rt.Writer.AcceptUserAccess(r.Context(), acceptUserUpdate.Email, acceptUserUpdate.UserID, lb.ID)
+	if err != nil {
+		rt.logError(fmt.Errorf("AcceptUserAccess in AcceptLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	for i := range lb.Users {
+		if lb.Users[i].Email == acceptUserUpdate.Email {
+			lb.Users[i].UserID = acceptUserUpdate.UserID
+			lb.Users[i].Accepted = true
+		}
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
+}
+
 func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancers())
 }
@@ -664,6 +730,12 @@ func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	filteredUsers := []types.UserAccess{}
 	for _, user := range lb.Users {
 		if user.UserID == deleteUserID {
+			if user.RoleName == types.RoleOwner {
+				rt.logError(fmt.Errorf("RemoveUserAccess in UpdateLoadBalancerUser failed: %w", errCannotDeleteOwner))
+				jsonresponse.RespondWithError(w, http.StatusInternalServerError, errCannotDeleteOwner.Error())
+				return
+			}
+
 			err := rt.Writer.RemoveUserAccess(r.Context(), deleteUserID, lb.ID)
 			if err != nil {
 				rt.logError(fmt.Errorf("RemoveUserAccess in UpdateLoadBalancerUser failed: %w", err))

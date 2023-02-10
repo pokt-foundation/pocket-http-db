@@ -112,7 +112,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 			UserID: "test_user_969710adbd9a8a",
 			Users: []types.UserAccess{
 				{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+				{RoleName: types.RoleMember, UserID: "", Email: "user1@test.com", Accepted: false},
 			},
 		},
 		{
@@ -125,6 +125,44 @@ func newTestRouter(t *testing.T) (*Router, error) {
 			Users: []types.UserAccess{
 				{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
 				{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+			},
+		},
+	}, nil)
+
+	readerMock.On("ReadUserPermissions", mock.Anything).Return(map[types.UserID]*types.UserPermissions{
+		"test_user_1dbffbdfeeb225": {
+			UserID: "test_user_1dbffbdfeeb225",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_15a3f7accb30783": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+				"test_lb_34987u329rfn23f": {
+					RoleName:    types.RoleMember,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+				},
+				"test_lb_3890ru23jfi32fj": {
+					RoleName:    types.RoleAdmin,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+		"test_user_969710adbd9a8a": {
+			UserID: "test_user_47fhf7rwejf943",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_34987u329rfn23f": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+		"test_user_04228205bd261a": {
+			UserID: "test_user_774900350d9c43",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_3890ru23jfi32fj": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
 			},
 		},
 	}, nil)
@@ -610,18 +648,6 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 					},
 				},
 				{
-					ID:     "test_lb_34987u329rfn23f",
-					UserID: "test_user_969710adbd9a8a",
-					Applications: []*types.Application{
-						{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
-						{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
-					},
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-					},
-				},
-				{
 					ID:     "test_lb_3890ru23jfi32fj",
 					UserID: "test_user_04228205bd261a",
 					Applications: []*types.Application{
@@ -685,23 +711,10 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 			err:            nil,
 		},
 		{
-			name:           "Should fetch only load balancers a given user is a MEMBER of when MEMBER filter provided",
+			name:           "Should not fetch a load balancer for a given user if they have not accepted their invite",
 			userID:         "test_user_1dbffbdfeeb225",
 			roleNameFilter: types.RoleMember,
-			expectedLBs: []*types.LoadBalancer{
-				{
-					ID:     "test_lb_34987u329rfn23f",
-					UserID: "test_user_969710adbd9a8a",
-					Applications: []*types.Application{
-						{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
-						{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
-					},
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-					},
-				},
-			},
+			expectedLBs:    []*types.LoadBalancer{},
 			expectedStatus: http.StatusOK,
 			err:            nil,
 		},
@@ -741,8 +754,89 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 		if test.err == nil {
 			var lbResp []*types.LoadBalancer
 			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+
 			c.NoError(err)
 			c.Equal(test.expectedLBs, lbResp)
+		}
+	}
+}
+
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
+	tests := []struct {
+		name                string
+		userID              string
+		expectedPermissions *types.UserPermissions
+		expectedStatus      int
+		err                 error
+	}{
+		{
+			name:   "Should fetch all load balancer permissions for a given user",
+			userID: "test_user_1dbffbdfeeb225",
+			expectedPermissions: &types.UserPermissions{
+				UserID: "test_user_1dbffbdfeeb225",
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+					"test_lb_15a3f7accb30783": {
+						RoleName:    types.RoleOwner,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+					},
+					"test_lb_34987u329rfn23f": {
+						RoleName:    types.RoleMember,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+					},
+					"test_lb_3890ru23jfi32fj": {
+						RoleName:    types.RoleAdmin,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:   "Should fetch all load balancer permissions for a given user",
+			userID: "test_user_969710adbd9a8a",
+			expectedPermissions: &types.UserPermissions{
+				UserID: "test_user_47fhf7rwejf943",
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+					"test_lb_34987u329rfn23f": {
+						RoleName:    types.RoleOwner,
+						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if a user has no permissions in the cache",
+			userID:         "test_not_a_real_user",
+			expectedStatus: http.StatusNotFound,
+			err:            errPermissionsNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+
+		rr := httptest.NewRecorder()
+
+		url := fmt.Sprintf("/v1/user/%s/permission", test.userID)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var permsResponse *types.UserPermissions
+			err := json.Unmarshal(rr.Body.Bytes(), &permsResponse)
+			c.NoError(err)
+			c.Equal(test.expectedPermissions, permsResponse)
 		}
 	}
 }
@@ -991,8 +1085,8 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 				},
 				Users: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: false},
+					{RoleName: types.RoleMember, UserID: "", Email: "user1@test.com", Accepted: false},
+					{RoleName: types.RoleMember, UserID: "", Email: "member1@test.com", Accepted: false},
 				},
 			},
 			expectedStatus: http.StatusOK,
@@ -1052,7 +1146,7 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 		c.NoError(err)
 
 		router.Router.ServeHTTP(rr, req)
-		c.Equal(rr.Code, test.expectedStatus)
+		c.Equal(test.expectedStatus, rr.Code)
 
 		if test.err == nil {
 			var lbResp types.LoadBalancer
@@ -1141,21 +1235,21 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 	}{
 		{
 			name: "Should update User for a LoadBalancer with a new role with correct input",
-			lbID: "test_lb_34987u329rfn23f",
+			lbID: "test_lb_3890ru23jfi32fj",
 			userUpdate: types.UpdateUserAccess{
 				UserID:   "test_user_1dbffbdfeeb225",
-				RoleName: types.RoleAdmin,
+				RoleName: types.RoleMember,
 			},
 			expectedLBAfterUpdate: &types.LoadBalancer{
-				ID:     "test_lb_34987u329rfn23f",
-				UserID: "test_user_969710adbd9a8a",
+				ID: "test_lb_3890ru23jfi32fj",
 				Applications: []*types.Application{
-					{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
-					{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
+					{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
+					{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
 				},
+				UserID: "test_user_04228205bd261a",
 				Users: []types.UserAccess{
-					{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-					{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+					{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
 				},
 			},
 			expectedStatus: http.StatusOK,
@@ -1214,13 +1308,86 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 		c.NoError(err)
 
 		router.Router.ServeHTTP(rr, req)
-		c.Equal(rr.Code, test.expectedStatus)
+		c.Equal(test.expectedStatus, rr.Code)
 
 		if test.err == nil {
 			var lbResp types.LoadBalancer
 			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
 			c.NoError(err)
 			c.Equal(test.expectedLBAfterUpdate, &lbResp)
+		}
+	}
+}
+
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
+	tests := []struct {
+		name                     string
+		lbID                     string
+		acceptUserUpdate         types.UpdateUserAccess
+		expectedUsersAfterUpdate []types.UserAccess
+		expectedStatus           int
+		runMock                  bool
+		err                      error
+	}{
+		{
+			name: "Should update User ID and Accepted field for a LoadBalancer",
+			lbID: "test_lb_34987u329rfn23f",
+			acceptUserUpdate: types.UpdateUserAccess{
+				Email:  "user1@test.com",
+				UserID: "test_user_1dbffbdfeeb225",
+			},
+			expectedUsersAfterUpdate: []types.UserAccess{
+				{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
+				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+			},
+			expectedStatus: http.StatusOK,
+			runMock:        true,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if the load balancer does not exist",
+			lbID:           "test_not_real_lb",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if DB driver throws an error",
+			lbID:           "test_lb_34987u329rfn23f",
+			expectedStatus: http.StatusInternalServerError,
+			runMock:        true,
+			err:            errors.New("dummy database driver error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+		writerMock := driver.NewMockDriver(t)
+		router.Writer = writerMock
+
+		if test.runMock {
+			writerMock.On("AcceptUserAccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		acceptUserUpdate, err := json.Marshal(test.acceptUserUpdate)
+		c.NoError(err)
+
+		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s/user/accept", test.lbID), bytes.NewBuffer(acceptUserUpdate))
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var lbResp types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedUsersAfterUpdate, lbResp.Users)
 		}
 	}
 }
@@ -1234,6 +1401,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 		invalidJSON           bool
 		expectedLBAfterDelete *types.LoadBalancer
 		expectedStatus        int
+		runMock               bool
 		err                   error
 	}{
 		{
@@ -1252,6 +1420,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 				},
 			},
 			expectedStatus: http.StatusOK,
+			runMock:        true,
 			err:            nil,
 		},
 		{
@@ -1277,7 +1446,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 		writerMock := driver.NewMockDriver(t)
 		router.Writer = writerMock
 
-		if test.userToDelete != "" {
+		if test.runMock {
 			writerMock.On("RemoveUserAccess", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
 		}
 

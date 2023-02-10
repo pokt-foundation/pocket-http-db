@@ -55,6 +55,31 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 				"test_app_e3591c4dea8566d",
 				"test_app_e3591c4dea8566a",
 			},
+			Users: []types.UserAccess{
+				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin},
+			},
+		},
+	}, nil)
+
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
+		"test_user_687463gh2h72gs": {
+			UserID: "test_user_687463gh2h72gs",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_67774900350d9c42": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+		"test_user_47fhf7rwejf943": {
+			UserID: "test_user_47fhf7rwejf943",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_67774900350d9c42": {
+					RoleName:    types.RoleAdmin,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
 		},
 	}, nil)
 
@@ -284,6 +309,9 @@ func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 	c.Equal([]string{"ohana"}, lb.StickyOptions.StickyOrigins)
 	c.Equal("user_id_12345", lb.Users[0].UserID)
 	c.Equal(types.RoleAdmin, lb.Users[0].RoleName)
+	c.Len(cache.GetLoadBalancersByUserID("user_id_12345"), 1)
+	c.Len(cache.GetUserPermissionsByUserID("user_id_12345").LoadBalancers, 1)
+	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("user_id_12345").LoadBalancers["123"].RoleName)
 
 	// Add new load balancer User Access event
 	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionInsert, &types.LoadBalancer{
@@ -306,6 +334,9 @@ func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 	c.Equal("user_id_12345", lb.Users[0].UserID)
 	c.Equal("test_user_admin4309tug4g", lb.Users[1].UserID)
 	c.Equal("admin1@test.com", lb.Users[1].Email)
+	c.Len(cache.GetLoadBalancersByUserID("test_user_admin4309tug4g"), 1)
+	c.Len(cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers, 1)
+	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers["123"].RoleName)
 
 	// Delete load balancer User Access event
 	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.LoadBalancer{
@@ -326,6 +357,8 @@ func Test_V1_Cache_listenLoadBalancer(t *testing.T) {
 	lb = cache.GetLoadBalancer("123")
 	c.Len(lb.Users, 1)
 	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Len(cache.GetLoadBalancersByUserID("test_user_admin4309tug4g"), 0)
+	c.Len(cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers, 0)
 
 	// Delete load balancer event
 	lbs := cache.GetLoadBalancersByUserID("user_id_12345")
