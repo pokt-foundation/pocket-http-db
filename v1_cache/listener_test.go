@@ -168,7 +168,7 @@ func Test_V1_Cache_listenApplication(t *testing.T) {
 	c.Equal(types.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
 	c.Equal(2000000, app.DailyLimit())
 
-	// Update Whitelist Contrats & Methods
+	// Update Whitelist Contracts & Methods
 	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
 		ID:     "321",
 		UserID: "user_id_12345",
@@ -201,7 +201,6 @@ func Test_V1_Cache_listenApplication(t *testing.T) {
 	methodsMap := make(map[string][]string, 2)
 	for _, method := range app.GatewaySettings.WhitelistMethods {
 		methodsMap[method.BlockchainID] = method.Methods
-
 	}
 	c.Equal([]string{"GET", "POST", "PUT"}, methodsMap["001"])
 	c.Equal([]string{"DELETE", "GET"}, methodsMap["003"])
