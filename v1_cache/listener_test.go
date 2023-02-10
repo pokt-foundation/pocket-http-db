@@ -168,6 +168,105 @@ func Test_V1_Cache_listenApplication(t *testing.T) {
 	c.Equal(types.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
 	c.Equal(2000000, app.DailyLimit())
 
+	// Update Whitelist Contracts & Methods
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		Name:   "orlando",
+		GatewaySettings: types.GatewaySettings{
+			SecretKey:            "123",
+			WhitelistBlockchains: []string{"test-chain-1", "test-chain-2"},
+			WhitelistContracts: []types.WhitelistContracts{
+				{BlockchainID: "001", Contracts: []string{"test123", "test456"}},
+				{BlockchainID: "002", Contracts: []string{"test789", "test9999"}},
+			},
+			WhitelistMethods: []types.WhitelistMethods{
+				{BlockchainID: "001", Methods: []string{"POST", "GET", "PUT"}},
+				{BlockchainID: "003", Methods: []string{"DELETE", "GET"}},
+			},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+
+	contractsMap := make(map[string][]string, 2)
+	for _, contract := range app.GatewaySettings.WhitelistContracts {
+		contractsMap[contract.BlockchainID] = contract.Contracts
+	}
+	c.Equal([]string{"test123", "test456"}, contractsMap["001"])
+	c.Equal([]string{"test789", "test9999"}, contractsMap["002"])
+
+	methodsMap := make(map[string][]string, 2)
+	for _, method := range app.GatewaySettings.WhitelistMethods {
+		methodsMap[method.BlockchainID] = method.Methods
+	}
+	c.Equal([]string{"GET", "POST", "PUT"}, methodsMap["001"])
+	c.Equal([]string{"DELETE", "GET"}, methodsMap["003"])
+
+	// Remove Whitelist Contracts
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistContracts: []types.WhitelistContracts{
+				{BlockchainID: "001", Contracts: []string{"test123"}},
+			},
+		},
+	})
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistContracts: []types.WhitelistContracts{
+				{BlockchainID: "002", Contracts: []string{"test789", "test9999"}},
+			},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+
+	contractsMap = make(map[string][]string, 2)
+	for _, contract := range app.GatewaySettings.WhitelistContracts {
+		contractsMap[contract.BlockchainID] = contract.Contracts
+	}
+	c.Equal([]string{"test456"}, contractsMap["001"])
+	c.Equal([]string(nil), contractsMap["002"])
+
+	// Remove Whitelist Methods
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistMethods: []types.WhitelistMethods{
+				{BlockchainID: "001", Methods: []string{"POST", "GET"}},
+			},
+		},
+	})
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistMethods: []types.WhitelistMethods{
+				{BlockchainID: "003", Methods: []string{"DELETE", "GET"}},
+			},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+
+	methodsMap = make(map[string][]string, 2)
+	for _, method := range app.GatewaySettings.WhitelistMethods {
+		methodsMap[method.BlockchainID] = method.Methods
+	}
+	c.Equal([]string{"PUT"}, methodsMap["001"])
+	c.Equal([]string(nil), methodsMap["003"])
+
 	// Delete application event
 	apps := cache.GetApplicationsByUserID("user_id_12345")
 	c.NotEmpty(apps)

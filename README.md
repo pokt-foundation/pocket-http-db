@@ -17,6 +17,8 @@
 
 To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client).
 
+When adding or modifying routes, the corresponding method should be created or updated in the DB client. Once the E2E test for the new or updated method in the DB client is completed, the latest DB client  version can be installed in PHD and the E2E test used to verify the changes in PHD as well.
+
 ## Pre-Commit Installation
 
 Before starting development work on this repo, `pre-commit` must be installed.
