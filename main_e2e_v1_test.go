@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
@@ -242,8 +244,19 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 						},
 						GatewaySettings: types.GatewaySettings{
-							SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-							SecretKeyRequired: true,
+							SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+							SecretKeyRequired:    true,
+							WhitelistBlockchains: []string{"chain_1"},
+							WhitelistOrigins:     []string{"origin_1", "origin_2"},
+							WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+							WhitelistContracts: []types.WhitelistContracts{
+								{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+								{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+							},
+							WhitelistMethods: []types.WhitelistMethods{
+								{BlockchainID: "TST1", Methods: []string{"GET"}},
+								{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+							},
 						},
 						Limit: types.AppLimit{
 							PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -467,8 +480,19 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 									PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 								},
 								GatewaySettings: types.GatewaySettings{
-									SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-									SecretKeyRequired: true,
+									SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+									SecretKeyRequired:    true,
+									WhitelistBlockchains: []string{"chain_1"},
+									WhitelistOrigins:     []string{"origin_1", "origin_2"},
+									WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+									WhitelistContracts: []types.WhitelistContracts{
+										{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+										{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+									},
+									WhitelistMethods: []types.WhitelistMethods{
+										{BlockchainID: "TST1", Methods: []string{"GET"}},
+										{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+									},
 								},
 								Limit: types.AppLimit{
 									PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -707,7 +731,17 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 								},
 								GatewaySettings: types.GatewaySettings{
 									SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-									SecretKeyRequired: true,
+									SecretKeyRequired: true, WhitelistBlockchains: []string{"chain_1"},
+									WhitelistOrigins:    []string{"origin_1", "origin_2"},
+									WhitelistUserAgents: []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+									WhitelistContracts: []types.WhitelistContracts{
+										{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+										{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+									},
+									WhitelistMethods: []types.WhitelistMethods{
+										{BlockchainID: "TST1", Methods: []string{"GET"}},
+										{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+									},
 								},
 								Limit: types.AppLimit{
 									PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -767,8 +801,19 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 									PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 								},
 								GatewaySettings: types.GatewaySettings{
-									SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-									SecretKeyRequired: true,
+									SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+									SecretKeyRequired:    true,
+									WhitelistBlockchains: []string{"chain_1"},
+									WhitelistOrigins:     []string{"origin_1", "origin_2"},
+									WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+									WhitelistContracts: []types.WhitelistContracts{
+										{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+										{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+									},
+									WhitelistMethods: []types.WhitelistMethods{
+										{BlockchainID: "TST1", Methods: []string{"GET"}},
+										{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+									},
 								},
 								Limit: types.AppLimit{
 									PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -1273,8 +1318,19 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 								PrivateKey:           "test_d2ce53f115f4ecb2208e9188800a85cf",
 							},
 							GatewaySettings: types.GatewaySettings{
-								SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
-								SecretKeyRequired: true,
+								SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+								SecretKeyRequired:    true,
+								WhitelistBlockchains: []string{"chain_1"},
+								WhitelistOrigins:     []string{"origin_1", "origin_2"},
+								WhitelistUserAgents:  []string{"user_agent_1", "user_agent_2", "user_agent_3"},
+								WhitelistContracts: []types.WhitelistContracts{
+									{BlockchainID: "TST2", Contracts: []string{"test_address_67890"}},
+									{BlockchainID: "TST1", Contracts: []string{"test_address_12345", "test_address_44444"}},
+								},
+								WhitelistMethods: []types.WhitelistMethods{
+									{BlockchainID: "TST1", Methods: []string{"GET"}},
+									{BlockchainID: "TST2", Methods: []string{"PUT", "POST"}},
+								},
 							},
 							Limit: types.AppLimit{
 								PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250_000},
@@ -1446,8 +1502,8 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					GatewaySettings: &types.UpdateGatewaySettings{
 						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
 						WhitelistUserAgents:  []string{"test-agent1"},
-						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
-						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
+						WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
+						WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "01", Methods: []string{"test-method1"}}},
 						WhitelistBlockchains: []string{"test-chain1"},
 					},
 					NotificationSettings: &types.UpdateNotificationSettings{SignedUp: boolPointer(false), Quarter: boolPointer(true), Half: boolPointer(true), ThreeQuarters: boolPointer(false), Full: boolPointer(false)},
@@ -1460,8 +1516,8 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 						SecretKeyRequired:    true,
 						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
 						WhitelistUserAgents:  []string{"test-agent1"},
-						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
-						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
+						WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
+						WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "01", Methods: []string{"test-method1"}}},
 						WhitelistBlockchains: []string{"test-chain1"},
 					},
 					NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: true, ThreeQuarters: false, Full: false},
@@ -1485,10 +1541,9 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 						SecretKeyRequired:    true,
 						WhitelistOrigins:     []string{"test-origin1", "test-origin2"},
 						WhitelistUserAgents:  []string{"test-agent1"},
-						WhitelistContracts:   []types.WhitelistContract{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
-						WhitelistMethods:     []types.WhitelistMethod{{BlockchainID: "01", Methods: []string{"test-method1"}}},
-						WhitelistBlockchains: []string{"test-chain1"},
-					},
+						WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "01", Contracts: []string{"test-contract1"}}},
+						WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "01", Methods: []string{"test-method1"}}},
+						WhitelistBlockchains: []string{"test-chain1"}},
 					NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: true, ThreeQuarters: false, Full: false},
 					Limit: types.AppLimit{
 						PayPlan: types.PayPlan{
@@ -1510,6 +1565,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, test.applicationUpdate)
 			ts.Equal(test.err, err)
 			if err == nil {
+				<-time.After(50 * time.Millisecond)
 				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
 				ts.NoError(err)
 				ts.Equal(test.applicationAfterUpdate.Name, application.Name)
@@ -1523,6 +1579,94 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
 				ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 				ts.Equal(test.applicationAfterUpdate.Limit, application.Limit)
+			}
+		}
+	})
+
+	ts.Run("Test_UpdateApplication_HugePayload", func() {
+		tests := []struct {
+			name                                       string
+			applicationID, applicationUpdateJSONPath   string
+			contractsLength, numOfChains, truncateList int
+			totalPayloadSizeKB                         float64
+			err                                        error
+		}{
+			{
+				name:                      "Should update a single application's whitelists even with an extremely large payload",
+				applicationID:             "test_app_47hfnths73j2se",
+				applicationUpdateJSONPath: "./testdata/long-whitelist-testdata.json",
+				contractsLength:           800,
+				numOfChains:               7,
+				totalPayloadSizeKB:        229.6875, // The maximum size of a single Postgres notification is 8kb
+				err:                       nil,
+			},
+			{
+				name:                      "Should update a single application's whitelists to a shorter list",
+				applicationID:             "test_app_47hfnths73j2se",
+				applicationUpdateJSONPath: "./testdata/long-whitelist-testdata.json",
+				contractsLength:           257,
+				numOfChains:               7,
+				truncateList:              257,
+				totalPayloadSizeKB:        73.787109375, // The maximum size of a single Postgres notification is 8kb
+				err:                       nil,
+			},
+			{
+				name:                      "Should update a single application's whitelists to a longer list",
+				applicationID:             "test_app_47hfnths73j2se",
+				applicationUpdateJSONPath: "./testdata/long-whitelist-testdata.json",
+				contractsLength:           673,
+				numOfChains:               7,
+				truncateList:              673,
+				totalPayloadSizeKB:        193.224609375, // The maximum size of a single Postgres notification is 8kb
+				err:                       nil,
+			},
+		}
+
+		for _, test := range tests {
+			data, err := ioutil.ReadFile(test.applicationUpdateJSONPath)
+			ts.NoError(err)
+
+			var hugePayloadUpdate types.UpdateApplication
+			err = json.Unmarshal(data, &hugePayloadUpdate)
+			ts.NoError(err)
+
+			if test.truncateList != 0 {
+				for i := range hugePayloadUpdate.GatewaySettings.WhitelistContracts {
+					hugePayloadUpdate.GatewaySettings.WhitelistContracts[i].Contracts =
+						hugePayloadUpdate.GatewaySettings.WhitelistContracts[i].Contracts[:test.truncateList]
+				}
+			}
+
+			createdApp, err := ts.client1.UpdateApplication(testCtx, test.applicationID, hugePayloadUpdate)
+			ts.Equal(test.err, err)
+
+			if err == nil {
+				<-time.After(2 * time.Second)
+				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
+				ts.NoError(err)
+				ts.Len(application.GatewaySettings.WhitelistContracts, test.numOfChains)
+
+				var totalByteSize int
+				for _, contract := range application.GatewaySettings.WhitelistContracts {
+					ts.Len(contract.Contracts, test.contractsLength)
+					for _, contractStr := range contract.Contracts {
+						totalByteSize += len([]byte(contractStr))
+					}
+				}
+				ts.Equal(float64(totalByteSize)/1024, test.totalPayloadSizeKB)
+
+				application, err = ts.client2.GetApplicationByID(testCtx, createdApp.ID)
+				ts.NoError(err)
+				ts.Len(application.GatewaySettings.WhitelistContracts, test.numOfChains)
+
+				var totalByteSize2 int
+				for _, contract := range application.GatewaySettings.WhitelistContracts {
+					ts.Len(contract.Contracts, test.contractsLength)
+					for _, contractStr := range contract.Contracts {
+						totalByteSize2 += len([]byte(contractStr))
+					}
+				}
+				ts.Equal(float64(totalByteSize2)/1024, test.totalPayloadSizeKB)
 			}
 		}
 	})

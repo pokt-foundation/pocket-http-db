@@ -102,26 +102,33 @@ func (c *Cache) parseGatewaySettingsNotification(n types.Notification) {
 }
 
 func (c *Cache) parseWhitelistContractsNotification(n types.Notification) {
-	contracts, ok := n.Data.(*types.WhitelistContract)
+
+	contract, ok := n.Data.(*types.WhitelistContract)
 	if !ok {
 		c.logError(fmt.Errorf("parseWhitelistContractsNotification failed: %w", errParseWhitelistContractsFailed))
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addWhitelistContract(*contracts)
+		c.addWhitelistContract(*contract)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteWhitelistContract(*contract)
 	}
 }
 
 func (c *Cache) parseWhitelistMethodsNotification(n types.Notification) {
-	methods, ok := n.Data.(*types.WhitelistMethod)
+	method, ok := n.Data.(*types.WhitelistMethod)
 	if !ok {
 		c.logError(fmt.Errorf("parseWhitelistMethodsNotification failed: %w", errParseWhitelistMethodsFailed))
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addWhitelistMethod(*methods)
+		c.addWhitelistMethod(*method)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteWhitelistMethod(*method)
 	}
 }
 

@@ -3,10 +3,12 @@ package v1_cache
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/pokt-foundation/portal-db/driver"
 	"github.com/pokt-foundation/portal-db/types"
+	stringUtils "github.com/pokt-foundation/utils-go/strings"
 	"github.com/sirupsen/logrus"
 )
 
@@ -271,6 +273,9 @@ func (c *Cache) addGatewaySettings(settings types.GatewaySettings) {
 
 // Updates the gateway settings whitelist contracts from a listener notification
 func (c *Cache) addWhitelistContract(inContract types.WhitelistContract) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
 	appID := inContract.ID
 	inContract.ID = "" // to avoid multiple sources of truth
 
@@ -280,26 +285,80 @@ func (c *Cache) addWhitelistContract(inContract types.WhitelistContract) {
 	}
 
 	appSettings := app.GatewaySettings
+
 	var chainIDExists bool
 	for i := range appSettings.WhitelistContracts {
 		if appSettings.WhitelistContracts[i].BlockchainID == inContract.BlockchainID {
-			appSettings.WhitelistContracts[i].Contracts = inContract.Contracts
 			chainIDExists = true
+
+			if stringUtils.ExactContains(appSettings.WhitelistContracts[i].Contracts, inContract.Contract) {
+				break
+			}
+
+			appSettings.WhitelistContracts[i].Contracts = append(
+				appSettings.WhitelistContracts[i].Contracts, inContract.Contract,
+			)
+			sort.Strings(appSettings.WhitelistContracts[i].Contracts)
+
 			break
 		}
 	}
+
 	if !chainIDExists {
-		appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, inContract)
+		appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, types.WhitelistContracts{
+			BlockchainID: inContract.BlockchainID,
+			Contracts:    []string{inContract.Contract},
+		})
 	}
 
+	app.GatewaySettings = appSettings
+}
+
+// Removes a contract from the gateway settings whitelist contracts from a listener notification
+func (c *Cache) deleteWhitelistContract(inContract types.WhitelistContract) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+
+	appID := inContract.ID
+	inContract.ID = "" // to avoid multiple sources of truth
+
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
+		return
+	}
+
+	appSettings := app.GatewaySettings
+
+	for i, whitelistContract := range appSettings.WhitelistContracts {
+		if whitelistContract.BlockchainID != inContract.BlockchainID {
+			continue
+		}
+
+		filteredContracts := []string{}
+		for _, contract := range whitelistContract.Contracts {
+			if contract != inContract.Contract {
+				filteredContracts = append(filteredContracts, contract)
+			}
+		}
+
+		// If no contracts remain remove the WhitelistContracts from the slice
+		if len(filteredContracts) == 0 {
+			appSettings.WhitelistContracts = append(appSettings.WhitelistContracts[:i], appSettings.WhitelistContracts[i+1:]...)
+			break
+		}
+
+		appSettings.WhitelistContracts[i].Contracts = filteredContracts
+		break
+	}
 
 	app.GatewaySettings = appSettings
 }
 
 // Updates the gateway settings whitelist methods from a listener notification
 func (c *Cache) addWhitelistMethod(inMethod types.WhitelistMethod) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
 	appID := inMethod.ID
 	inMethod.ID = "" // to avoid multiple sources of truth
 
@@ -309,20 +368,71 @@ func (c *Cache) addWhitelistMethod(inMethod types.WhitelistMethod) {
 	}
 
 	appSettings := app.GatewaySettings
+
 	var chainIDExists bool
 	for i := range appSettings.WhitelistMethods {
 		if appSettings.WhitelistMethods[i].BlockchainID == inMethod.BlockchainID {
-			appSettings.WhitelistMethods[i].Methods = inMethod.Methods
 			chainIDExists = true
+
+			if stringUtils.ExactContains(appSettings.WhitelistMethods[i].Methods, inMethod.Method) {
+				break
+			}
+
+			appSettings.WhitelistMethods[i].Methods = append(
+				appSettings.WhitelistMethods[i].Methods, inMethod.Method,
+			)
+			sort.Strings(appSettings.WhitelistMethods[i].Methods)
+
 			break
 		}
 	}
+
 	if !chainIDExists {
-		appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, inMethod)
+		appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, types.WhitelistMethods{
+			BlockchainID: inMethod.BlockchainID,
+			Methods:      []string{inMethod.Method},
+		})
 	}
 
+	app.GatewaySettings = appSettings
+}
+
+// Removes a method from the gateway settings whitelist methods from a listener notification
+func (c *Cache) deleteWhitelistMethod(inMethod types.WhitelistMethod) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+
+	appID := inMethod.ID
+	inMethod.ID = "" // to avoid multiple sources of truth
+
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
+		return
+	}
+
+	appSettings := app.GatewaySettings
+
+	for i, whitelistMethod := range appSettings.WhitelistMethods {
+		if whitelistMethod.BlockchainID != inMethod.BlockchainID {
+			continue
+		}
+
+		filteredMethods := []string{}
+		for _, method := range whitelistMethod.Methods {
+			if method != inMethod.Method {
+				filteredMethods = append(filteredMethods, method)
+			}
+		}
+
+		// If no methods remain remove the WhitelistMethods from the slice
+		if len(filteredMethods) == 0 {
+			appSettings.WhitelistMethods = append(appSettings.WhitelistMethods[:i], appSettings.WhitelistMethods[i+1:]...)
+			break
+		}
+
+		appSettings.WhitelistMethods[i].Methods = filteredMethods
+		break
+	}
 
 	app.GatewaySettings = appSettings
 }
