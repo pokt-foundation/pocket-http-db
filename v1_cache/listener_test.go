@@ -141,32 +141,32 @@ func Test_V1_Cache_listenApplication(t *testing.T) {
 	c.Equal(250000, app.DailyLimit())
 	c.True(app.NotificationSettings.Full)
 
-	// readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
-	// 	ID:     "321",
-	// 	UserID: "user_id_12345",
-	// 	Name:   "orlando",
-	// 	GatewaySettings: types.GatewaySettings{
-	// 		SecretKey: "1234",
-	// 	},
-	// 	NotificationSettings: types.NotificationSettings{
-	// 		Full:     true,
-	// 		SignedUp: true,
-	// 	},
-	// 	Limit: types.AppLimit{
-	// 		PayPlan: types.PayPlan{
-	// 			Type: types.Enterprise,
-	// 		},
-	// 		CustomLimit: 2000000,
-	// 	},
-	// })
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		Name:   "orlando",
+		GatewaySettings: types.GatewaySettings{
+			SecretKey: "1234",
+		},
+		NotificationSettings: types.NotificationSettings{
+			Full:     true,
+			SignedUp: true,
+		},
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type: types.Enterprise,
+			},
+			CustomLimit: 2000000,
+		},
+	})
 
-	// time.Sleep(1 * time.Second) // need time for cache refresh
+	time.Sleep(1 * time.Second) // need time for cache refresh
 
-	// app = cache.GetApplication("321")
-	// c.Equal("orlando", app.Name)
-	// c.Equal("1234", app.GatewaySettings.SecretKey)
-	// c.Equal(types.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
-	// c.Equal(2000000, app.DailyLimit())
+	app = cache.GetApplication("321")
+	c.Equal("orlando", app.Name)
+	c.Equal("1234", app.GatewaySettings.SecretKey)
+	c.Equal(types.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
+	c.Equal(2000000, app.DailyLimit())
 
 	// Update Whitelist Contrats & Methods
 	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
