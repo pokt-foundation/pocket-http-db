@@ -1237,7 +1237,7 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 			name: "Should update User for a LoadBalancer with a new role with correct input",
 			lbID: "test_lb_3890ru23jfi32fj",
 			userUpdate: types.UpdateUserAccess{
-				UserID:   "test_user_1dbffbdfeeb225",
+				Email:    "user1@test.com",
 				RoleName: types.RoleMember,
 			},
 			expectedLBAfterUpdate: &types.LoadBalancer{
@@ -1352,8 +1352,12 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 			err:            errors.New("dummy error"),
 		},
 		{
-			name:           "Should fail if DB driver throws an error",
-			lbID:           "test_lb_34987u329rfn23f",
+			name: "Should fail if DB driver throws an error",
+			lbID: "test_lb_34987u329rfn23f",
+			acceptUserUpdate: types.UpdateUserAccess{
+				Email:  "user1@test.com",
+				UserID: "test_user_1dbffbdfeeb225",
+			},
 			expectedStatus: http.StatusInternalServerError,
 			runMock:        true,
 			err:            errors.New("dummy database driver error"),
