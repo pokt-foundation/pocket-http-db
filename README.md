@@ -17,9 +17,9 @@
 
 To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and should allow easy use of PHD from other backend services.
 
-## Adding New Functionality
+## Modifying Functionality
 
-When adding new functionality to PHD, there is a order of operations that should be followed for best results.
+When adding or updating functionality to PHD, there is a order of operations that should be followed for best results.
 
 **This may appear convoluted but if all these steps are completed we can have a high degree of confidence in any changes.**
 
@@ -29,7 +29,7 @@ When adding new functionality to PHD, there is a order of operations that should
 - Generate the SQLC Go code from these SQL files using `make`
 - Add new functionality to the postgres driver methods and the Driver interface
 - Update the driver integration tests in the `Portal DB` repository to cover all code changes
-- Once merged to `main` a new version of the DB driver will be published, following semantic versioning standards based on the commit message(s).
+- Once merged to `main` a new version of the DB driver will be published, following semantic versioning standards based on the commit message(s)
 
 2. **Add the new functionality to PHD:**
 
@@ -44,10 +44,11 @@ When adding new functionality to PHD, there is a order of operations that should
 - Add or modify all of the relevant methods inside the `client.go` file and update the interface(s)
 - Update the `docker-compose.test.yml` file **(line 9)** inside the `DB Client` repository to point to the PHD feature branch that was just pushed
 - Update or create E2E tests inside the `DB Client` to cover all code changes
-- As with the `Portal DB`, when these changes are merged to `main` a new version of the `DB Client` will be published.
+- As with the `Portal DB`, when these changes are merged to `main` a new version of the `DB Client` will be published
 
 4. **Update PHD E2E tests using new `DB Client` version:**
 
+- Install the newly published `DB Client` version into the PHD feature branch (this is only used for the E2E tests)
 - The E2E tests that were written or modified in the `DB Client` in **step 3** may be reused in the main E2E test file
 - Following the example of the already existing tests, add a check to confirm the second PHD test container also registered DB updates
 - Once the E2E tests are passing the PR may be submitted for review
