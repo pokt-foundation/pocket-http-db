@@ -1641,7 +1641,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			ts.Equal(test.err, err)
 
 			if err == nil {
-				<-time.After(2 * time.Second)
+				<-time.After(3 * time.Second)
 				application, err := ts.client1.GetApplicationByID(testCtx, createdApp.ID)
 				ts.NoError(err)
 				ts.Len(application.GatewaySettings.WhitelistContracts, test.numOfChains)
@@ -1830,16 +1830,17 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdateLoadBalancerUserRole", func() {
 		tests := []struct {
-			name                   string
-			loadBalancerID, userID string
-			roleName               types.RoleName
-			loadBalancerUsers      []types.UserAccess
-			userLBPermissions      types.LoadBalancerPermissions
-			err                    error
+			name                          string
+			loadBalancerID, userID, email string
+			roleName                      types.RoleName
+			loadBalancerUsers             []types.UserAccess
+			userLBPermissions             types.LoadBalancerPermissions
+			err                           error
 		}{
 			{
 				name:           "Should update a single user to an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "member1@test.com",
 				userID:         "test_user_member1234",
 				roleName:       types.RoleAdmin,
 				loadBalancerUsers: []types.UserAccess{
@@ -1856,6 +1857,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			{
 				name:           "Should update a single user to an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "member1@test.com",
 				userID:         "test_user_member1234",
 				roleName:       types.RoleMember,
 				loadBalancerUsers: []types.UserAccess{
@@ -1875,29 +1877,30 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				err:            fmt.Errorf("no load balancer ID"),
 			},
 			{
-				name:           "Should fail if user ID not provided",
+				name:           "Should fail if user email not provided",
 				loadBalancerID: "test_lb_34987u329rfn23f",
-				userID:         "",
-				err:            fmt.Errorf("no user ID"),
+				email:          "",
+				roleName:       types.RoleAdmin,
+				err:            fmt.Errorf("no user email"),
 			},
 			{
 				name:           "Should fail if invalid role name provided",
 				loadBalancerID: "test_lb_34987u329rfn23f",
-				userID:         "test_user_member1234",
+				email:          "member1@test.com",
 				roleName:       types.RoleName("wrong_one"),
 				err:            fmt.Errorf("invalid role name"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "im_not_here",
-				userID:         "test_user_member1234",
+				email:          "member1@test.com",
 				roleName:       types.RoleMember,
 				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.userID, test.roleName)
+			_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.email, test.roleName)
 			ts.Equal(test.err, err)
 			if test.err == nil {
 				<-time.After(50 * time.Millisecond)
