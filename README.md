@@ -15,29 +15,47 @@
 
 ## DB Client
 
-To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHd supports and should allow easy use of PHD from other backend services.
+To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and should allow easy use of PHD from other backend services.
 
-## Adding New Functionality
+## Modifying Functionality
 
-When adding new functionality, there is a order of operations that should be followed for best results.
+When adding or updating functionality to PHD, there is a order of operations that should be followed for best results.
 
-**This may seem convoluted but if all these steps are completed we can have an extremely high degree of confidence in any modifications as they are all fully tested at every stage of development from the database to the PHD API to the DB client used in other packages.**
+**This may appear convoluted but if all these steps are completed we can have a high degree of confidence in any changes.**
 
-1. Add new functionality to the [Portal DB](https://github.com/pokt-foundation/db-client) driver repository. This should start with the `sqlc/schema.yml` and/or `sqlc/query.yml` files, followed by generating the Go code using `make` and moving to the postgres driver methods (as well as updating the `Driver` interface). Finally, the tests in the `Portal DB` repo should be updated to cover any and all new changes. Once merged to `main` a new version of the DB driver will be published, following semantic versioning standards based on the commit message(s).
+1. **Add changes to the [Portal DB driver](https://github.com/pokt-foundation/portal-db) repository:**
 
-2. Open a new feature branch in PHD pointed to the `staging` branch. The newly published `Portal DB` driver version should be installed into PHD and all necessary changes made to both the `cache` and `router`. At this stage, unit tests should be updated or created to cover any and all changes and be passing; E2E tests will be added in step 4. At this point, the feature branch should be pushed to the PHD repo.
+- Start by updating the `postgresdrver/sqlc/schema.yml` and/or `postgresdrver/sqlc/query.yml` files
+- Generate the SQLC Go code from these SQL files using `make`
+- Add new functionality to the postgres driver methods and the Driver interface
+- Update the driver integration tests in the `Portal DB` repository to cover all code changes
+- Once merged to `main` a new version of the DB driver will be published, following semantic versioning standards based on the commit message(s)
 
-3. The new functionality should be added to the [DB Client](https://github.com/pokt-foundation/db-client). The `docker-compose.test.yml` file inside this repo should be updated on `line 9` to point to the PHD feature branch that was just pushed to PHD. Once this is done, the E2E tests inside the `DB Client` should be updated or created to cover any and all changes. As with the `Portal DB`, when these changes are merged to `main` a new version of the `DB Client` will be published.
+2. **Add the new functionality to PHD:**
 
-4. The newly published `DB Client` version should be installed into PHD and the E2E tests that were written or modified in the DB driver in step 3 may be reused in the main E2E test file for PHD (with the caveat that we add an additional check for the second test PHD instance that runs in the PHD E2E; follow the examples that already exist in the test file). Once the E2E tests pass with the new changes the PR can be submitted for review.
+- Open a new feature branch in PHD, pointed to the `staging` branch
+- Install the newly published `Portal DB driver` version into PHD
+- Make any necessary changes to both the `cache.go` and `router.go`
+- Update or create unit tests to cover all changes, ensuring they pass _(E2E tests will be added in **step 4**)_
+- Push the feature branch to the PHD repository
 
-5. Once the PR has been merged to PHD `master`, update `line 7` of the `DB Client` `docker-compose.test.yml` file back to `master` branch.
+3. **Add the new functionality to the [DB Client](https://github.com/pokt-foundation/db-client) repository:**
 
-5. Profit.
+- Add or modify all of the relevant methods inside the `client.go` file and update the interface(s)
+- Update the `docker-compose.test.yml` file **(line 9)** inside the `DB Client` repository to point to the PHD feature branch that was just pushed
+- Update or create E2E tests inside the `DB Client` to cover all code changes
+- As with the `Portal DB`, when these changes are merged to `main` a new version of the `DB Client` will be published
 
-Again, this may seem like a lot of steps but if they are all followed then by the time the changes reach `staging` we can be very confident they work and as a side benefit the `DB Client` is ready to be used in all services.
+4. **Update PHD E2E tests using new `DB Client` version:**
 
-When adding or modifying routes, the corresponding method should be created or updated in the DB client. Once the E2E test for the new or updated method in the DB client is completed, the latest DB client  version can be installed in PHD and the E2E test used to verify the changes in PHD as well.
+- Install the newly published `DB Client` version into the PHD feature branch (this is only used for the E2E tests)
+- The E2E tests that were written or modified in the `DB Client` in **step 3** may be reused in the main E2E test file
+- Following the example of the already existing tests, add a check to confirm the second PHD test container also registered DB updates
+- Once the E2E tests are passing the PR may be submitted for review
+
+5. **Finally, update the DB Client `docker-compose.test.yml` file (**line 7**) back to the `master` branch of PHD**
+
+By following these steps, you can ensure all changes are tested at every stage of development, from the database to the PHD API to the DB client used in other packages. This will give you a high degree of confidence in any modifications. In addition, the `DB Client` will be up to date and ready for use in any other repos that require these updates.
 
 ## Pre-Commit Installation
 
