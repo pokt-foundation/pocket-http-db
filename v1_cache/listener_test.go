@@ -300,7 +300,7 @@ func Test_V1_Cache_listenAppLimit(t *testing.T) {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	app := cache.GetApplication("321")
-	c.Nil(app)
+	c.Empty(app)
 
 	pendingUpdates := cache.pendingAppLimit
 	c.Len(pendingUpdates, 1)

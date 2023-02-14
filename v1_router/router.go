@@ -134,7 +134,7 @@ func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 
 	app := rt.Cache.GetApplication(vars["id"])
 
-	if app == nil {
+	if app.ID == "" {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errApplicationNotFound.Error())
 		return
 	}
@@ -173,7 +173,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	app := rt.Cache.GetApplication(vars["id"])
-	if app == nil {
+	if app.ID == "" {
 		rt.logError(fmt.Errorf("GetApplication in UpdateApplication failed: %w", errApplicationNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errApplicationNotFound.Error())
 		return
@@ -275,11 +275,11 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var appsToUpdate []*types.Application
+	var appsToUpdate []types.Application
 
 	for _, appID := range updateInput.ApplicationIDs {
 		app := rt.Cache.GetApplication(appID)
-		if app == nil {
+		if app.ID == "" {
 			jsonresponse.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s not found", appID))
 			return
 		}
@@ -337,7 +337,7 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	filteredLBs := []*types.LoadBalancer{}
+	filteredLBs := []types.LoadBalancer{}
 	switch {
 	case roleNameFilter == types.RoleName(""):
 		filteredLBs = lbs
@@ -361,7 +361,7 @@ func (rt *Router) GetUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 	userID := types.UserID(vars["id"])
 
 	permissions := rt.Cache.GetUserPermissionsByUserID(userID)
-	if permissions == nil || permissions.IsEmpty() {
+	if permissions.IsEmpty() {
 		rt.logError(fmt.Errorf("GetUserPermissionsByUserID failed: %w", errPermissionsNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errPermissionsNotFound.Error())
 		return
@@ -375,7 +375,7 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	blockchain := rt.Cache.GetBlockchain(vars["id"])
 
-	if blockchain == nil {
+	if blockchain.ID == "" {
 		rt.logError(fmt.Errorf("GetBlockchain failed: %w", errBlockchainNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
 		return
@@ -389,7 +389,7 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 	blockchainID := vars["id"]
 
 	chain := rt.Cache.GetBlockchain(blockchainID)
-	if chain == nil {
+	if chain.ID == "" {
 		rt.logError(fmt.Errorf("GetBlockchain in ActivateBlockchain failed: %w", errBlockchainNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
 		return
@@ -451,7 +451,7 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 
-	if lb == nil {
+	if lb.ID == "" {
 		rt.logError(fmt.Errorf("GetLoadBalancer failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
@@ -482,7 +482,8 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, appID := range fullLB.ApplicationIDs {
-		fullLB.Applications = append(fullLB.Applications, rt.Cache.GetApplication(appID))
+		appToAdd := rt.Cache.GetApplication(appID)
+		fullLB.Applications = append(fullLB.Applications, &appToAdd)
 	}
 
 	fullLB.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
@@ -496,7 +497,7 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
-	if lb == nil {
+	if lb.ID == "" {
 		rt.logError(fmt.Errorf("GetLoadBalancer in CreateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
@@ -524,7 +525,7 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 
 	user.Accepted = false
 	user.UserID = ""
-	fullLB := *lb
+	fullLB := lb
 	fullLB.Users = append(fullLB.Users, user)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
@@ -534,7 +535,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
-	if lb == nil {
+	if lb.ID == "" {
 		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancer failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
@@ -589,7 +590,7 @@ func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
-	if lb == nil {
+	if lb.ID == "" {
 		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
@@ -628,7 +629,7 @@ func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
-	if lb == nil {
+	if lb.ID == "" {
 		rt.logError(fmt.Errorf("GetLoadBalancer in AcceptLoadBalancerUser failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
@@ -678,7 +679,7 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 
 	plan := rt.Cache.GetPayPlan(types.PayPlanType(strings.ToUpper(vars["type"])))
 
-	if plan == nil {
+	if plan.Type == "" {
 		rt.logError(fmt.Errorf("GetPayPlan failed: %w", errNoPayFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPayFound.Error())
 		return
@@ -719,7 +720,7 @@ func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
-	if lb == nil {
+	if lb.ID == "" {
 		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
