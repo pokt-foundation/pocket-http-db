@@ -52,7 +52,7 @@ func (rt *Router) logError(err error) {
 	rt.log.WithFields(fields).Error(err)
 }
 
-// NewRouter returns router instance
+// NewRouter returns router instance of v0 router
 func NewRouter(reader cache.Reader, writer Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
 	cache := cache.NewCache(reader, logger)
 
