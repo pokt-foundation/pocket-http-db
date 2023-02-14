@@ -75,7 +75,7 @@ func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermis
 	return *permission
 }
 
-// getApplication returns Application from cache by applicationID
+// GetApplication returns Application from cache by applicationID
 func (c *Cache) GetApplication(applicationID string) types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
