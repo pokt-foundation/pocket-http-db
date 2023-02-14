@@ -67,8 +67,8 @@ func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermis
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	permission := c.userPermissions[userID]
-	if permission == nil {
+	permission, ok := c.userPermissions[userID]
+	if !ok {
 		return types.UserPermissions{}
 	}
 
@@ -80,12 +80,12 @@ func (c *Cache) GetApplication(applicationID string) types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	app := c.applicationsMap[applicationID]
-	if app == nil {
+	app, ok := c.applicationsMap[applicationID]
+	if !ok {
 		return types.Application{}
 	}
 
-	return *c.applicationsMap[applicationID]
+	return *app
 }
 
 // GetApplicationsByUserID returns Applications from cache by userID
@@ -121,8 +121,8 @@ func (c *Cache) GetBlockchain(blockchainID string) types.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	blockchain := c.blockchainsMap[blockchainID]
-	if blockchain == nil {
+	blockchain, ok := c.blockchainsMap[blockchainID]
+	if !ok {
 		return types.Blockchain{}
 	}
 
@@ -148,8 +148,8 @@ func (c *Cache) GetLoadBalancer(loadBalancerID string) types.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	lb := c.loadBalancersMap[loadBalancerID]
-	if lb == nil {
+	lb, ok := c.loadBalancersMap[loadBalancerID]
+	if !ok {
 		return types.LoadBalancer{}
 	}
 
@@ -188,8 +188,8 @@ func (c *Cache) GetPayPlan(planType types.PayPlanType) types.PayPlan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	payPlan := c.payPlansMap[planType]
-	if payPlan == nil {
+	payPlan, ok := c.payPlansMap[planType]
+	if !ok {
 		return types.PayPlan{}
 	}
 
