@@ -22,4 +22,10 @@ tmp/*
 .vscode
 .vscode/*
 
+# Go Binaries
+bin
+bin/*
 pocket-http-db
+pre-commit-2.20.0.pyz
+
+portal-api-go

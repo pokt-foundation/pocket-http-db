@@ -1,17 +1,64 @@
-name: Production deployment us-west-2
+name: Staging deployment us-west-2
 
 on:
   push:
-    branches: [staging]
+    branches:
+      - staging
 
 jobs:
-  deploy:
-    name: Postgres HTTP API Staging
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Run Golang ci Action
+        uses: golangci/golangci-lint-action@v3
+
+  test:
+    name: Test
+    runs-on: ubuntu-18.04
+    needs: [lint]
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Set up Docker test stack
+        run: make test_env_up
+      - name: Run all tests
+        run: make run_all_tests
+
+  deploy:
+    name: Postgres HTTP API Staging
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+
+    steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
