@@ -46,7 +46,7 @@ type Cache struct {
 	log                        *logrus.Logger
 }
 
-// NewCache returns cache instance from reader interface
+// NewCache returns cache v0 instance from reader interface
 func NewCache(reader Reader, logger *logrus.Logger) *Cache {
 	return &Cache{
 		reader:                     reader,
