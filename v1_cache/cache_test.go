@@ -270,7 +270,7 @@ func TestCache_AddApplication(t *testing.T) {
 
 	c.Len(cache.GetApplications(), 4)
 	c.Len(cache.GetApplicationsByUserID("test_user_774900350d9c43"), 3)
-	c.Equal(cache.GetApplication("test_app_e3591c4dea8566b").DailyLimit(), 250000)
+	c.Equal(cache.GetApplication("test_app_e3591c4dea8566b").Limit.PayPlan.Limit, 250000)
 }
 
 func TestCache_UpdateApplication(t *testing.T) {

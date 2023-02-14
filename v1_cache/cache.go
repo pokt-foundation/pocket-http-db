@@ -63,90 +63,151 @@ func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
 }
 
 // GetUserPermissionsByUserID returns all load balancer UserPermissions for a given UserID
-func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) *types.UserPermissions {
+func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermissions {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.userPermissions[userID]
+	permission := c.userPermissions[userID]
+	if permission == nil {
+		return types.UserPermissions{}
+	}
+
+	return *permission
 }
 
-// GetApplication returns Application from cache by applicationID
-func (c *Cache) GetApplication(applicationID string) *types.Application {
+// getApplication returns Application from cache by applicationID
+func (c *Cache) GetApplication(applicationID string) types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.applicationsMap[applicationID]
+	app := c.applicationsMap[applicationID]
+	if app == nil {
+		return types.Application{}
+	}
+
+	return *c.applicationsMap[applicationID]
 }
 
 // GetApplicationsByUserID returns Applications from cache by userID
-func (c *Cache) GetApplicationsByUserID(userID string) []*types.Application {
+func (c *Cache) GetApplicationsByUserID(userID string) []types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.applicationsMapByUserID[userID]
+	var appsToReturn []types.Application
+
+	for _, app := range c.applicationsMapByUserID[userID] {
+		appsToReturn = append(appsToReturn, *app)
+	}
+
+	return appsToReturn
 }
 
 // GetApplications returns all Applications in cache
-func (c *Cache) GetApplications() []*types.Application {
+func (c *Cache) GetApplications() []types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.applications
+	var appsToReturn []types.Application
+
+	for _, app := range c.applications {
+		appsToReturn = append(appsToReturn, *app)
+	}
+
+	return appsToReturn
 }
 
 // GetBlockchain returns Blockchain from cache by blockchainID
-func (c *Cache) GetBlockchain(blockchainID string) *types.Blockchain {
+func (c *Cache) GetBlockchain(blockchainID string) types.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.blockchainsMap[blockchainID]
+	blockchain := c.blockchainsMap[blockchainID]
+	if blockchain == nil {
+		return types.Blockchain{}
+	}
+
+	return *blockchain
 }
 
 // GetBlockchains returns all Blockchains from cache
-func (c *Cache) GetBlockchains() []*types.Blockchain {
+func (c *Cache) GetBlockchains() []types.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.blockchains
+	var blockchainsToReturn []types.Blockchain
+
+	for _, blockchain := range c.blockchains {
+		blockchainsToReturn = append(blockchainsToReturn, *blockchain)
+	}
+
+	return blockchainsToReturn
 }
 
 // GetLoadBalancer returns Loadbalancer by loadbalancerID
-func (c *Cache) GetLoadBalancer(loadBalancerID string) *types.LoadBalancer {
+func (c *Cache) GetLoadBalancer(loadBalancerID string) types.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.loadBalancersMap[loadBalancerID]
+	lb := c.loadBalancersMap[loadBalancerID]
+	if lb == nil {
+		return types.LoadBalancer{}
+	}
+
+	return *lb
 }
 
 // GetLoadBalancers returns all Loadbalancers on cache
-func (c *Cache) GetLoadBalancers() []*types.LoadBalancer {
+func (c *Cache) GetLoadBalancers() []types.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.loadBalancers
+	var lbsToReturn []types.LoadBalancer
+
+	for _, lb := range c.loadBalancers {
+		lbsToReturn = append(lbsToReturn, *lb)
+	}
+
+	return lbsToReturn
 }
 
-func (c *Cache) GetLoadBalancersByUserID(userID string) []*types.LoadBalancer {
+func (c *Cache) GetLoadBalancersByUserID(userID string) []types.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.loadBalancersMapByUserID[userID]
+	var lbsToReturn []types.LoadBalancer
+
+	for _, lb := range c.loadBalancersMapByUserID[userID] {
+		lbsToReturn = append(lbsToReturn, *lb)
+	}
+
+	return lbsToReturn
 }
 
 // GetPayPlan returns PayPlan from cache by planType
-func (c *Cache) GetPayPlan(planType types.PayPlanType) *types.PayPlan {
+func (c *Cache) GetPayPlan(planType types.PayPlanType) types.PayPlan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.payPlansMap[planType]
+	payPlan := c.payPlansMap[planType]
+	if payPlan == nil {
+		return types.PayPlan{}
+	}
+
+	return *payPlan
 }
 
 // GetPayPlans returns all PayPlans in cache
-func (c *Cache) GetPayPlans() []*types.PayPlan {
+func (c *Cache) GetPayPlans() []types.PayPlan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.payPlans
+	var payPlansToReturn []types.PayPlan
+
+	for _, payPlan := range c.payPlans {
+		payPlansToReturn = append(payPlansToReturn, *payPlan)
+	}
+
+	return payPlansToReturn
 }
 
 func (c *Cache) setApplications() error {
