@@ -5,9 +5,6 @@ on:
     types: [closed]
     branches:
       - staging
-  push:
-    branches:
-      - master
 
 jobs:
   reset-staging:
