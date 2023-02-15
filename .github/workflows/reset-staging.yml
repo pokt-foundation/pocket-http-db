@@ -5,6 +5,9 @@ on:
     types: [closed]
     branches:
       - staging
+  push:
+    branches:
+      - master
 
 jobs:
   reset-staging:
@@ -19,5 +22,6 @@ jobs:
       - name: Reset staging branch
         run: |
           git checkout staging
+          git pull origin master
           git reset --hard origin/master
           git push -f origin staging
