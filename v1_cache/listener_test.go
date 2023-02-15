@@ -273,7 +273,7 @@ func Test_V1_Cache_listenApplication(t *testing.T) {
 
 	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
 		ID:     "321",
-		UserID: "",
+		Status: types.AwaitingGracePeriod,
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
