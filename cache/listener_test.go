@@ -4,19 +4,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
 func newMockCache(readerMock *ReaderMock) *Cache {
-	readerMock.On("ReadApplications").Return([]*repository.Application{
+	readerMock.On("ReadApplications", testCtx).Return([]*types.Application{
 		{
 			ID:     "test_app_e3591c4dea8566d",
 			UserID: "test_user_774900350d9c43",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type:  repository.FreetierV0,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type:  types.FreetierV0,
 					Limit: 250000,
 				},
 			},
@@ -24,9 +24,9 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		{
 			ID:     "test_app_e3591c4dea8566a",
 			UserID: "test_user_774900350d9c43",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type: repository.Enterprise,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type: types.Enterprise,
 				},
 				CustomLimit: 2000000,
 			},
@@ -34,20 +34,20 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		{
 			ID:     "test_app_e3591c4dea8566f",
 			UserID: "test_user_774900350d9c44",
-			Limit: repository.AppLimit{
-				PayPlan: repository.PayPlan{
-					Type:  repository.PayAsYouGoV0,
+			Limit: types.AppLimit{
+				PayPlan: types.PayPlan{
+					Type:  types.PayAsYouGoV0,
 					Limit: 0,
 				},
 			},
 		},
 	}, nil)
 
-	readerMock.On("ReadBlockchains").Return([]*repository.Blockchain{
-		{ID: "0021"},
+	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
+		{ID: "0021", Redirects: []types.Redirect{}},
 	}, nil)
 
-	readerMock.On("ReadLoadBalancers").Return([]*repository.LoadBalancer{
+	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
 		{
 			ID:     "test_lb_67774900350d9c42",
 			UserID: "test_user_687463gh2h72gs",
@@ -55,32 +55,42 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 				"test_app_e3591c4dea8566d",
 				"test_app_e3591c4dea8566a",
 			},
+			Users: []types.UserAccess{
+				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin},
+			},
 		},
 	}, nil)
 
-	readerMock.On("ReadPayPlans").Return([]*repository.PayPlan{
+	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
+		"test_user_687463gh2h72gs": {
+			UserID: "test_user_687463gh2h72gs",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_67774900350d9c42": {
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+		"test_user_47fhf7rwejf943": {
+			UserID: "test_user_47fhf7rwejf943",
+			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+				"test_lb_67774900350d9c42": {
+					RoleName:    types.RoleAdmin,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+		},
+	}, nil)
+
+	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
 		{
-			Type:  repository.FreetierV0,
+			Type:  types.FreetierV0,
 			Limit: 250000,
 		},
 		{
-			Type:  repository.PayAsYouGoV0,
+			Type:  types.PayAsYouGoV0,
 			Limit: 0,
-		},
-	}, nil)
-
-	readerMock.On("ReadRedirects").Return([]*repository.Redirect{
-		{
-			BlockchainID:   "0021",
-			Alias:          "pokt-mainnet",
-			Domain:         "pokt-mainnet.gateway.network",
-			LoadBalancerID: "12345",
-		},
-		{
-			BlockchainID:   "0022",
-			Alias:          "eth-mainnet",
-			Domain:         "eth-mainnet.gateway.network",
-			LoadBalancerID: "45678",
 		},
 	}, nil)
 
@@ -94,28 +104,28 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 	return cache
 }
 
-func Test_V0_Cache_listenApplication(t *testing.T) {
+func Test_Cache_listenApplication(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Application{
 		ID:     "321",
 		UserID: "user_id_12345",
 		Name:   "pablo",
-		GatewayAAT: repository.GatewayAAT{
+		GatewayAAT: types.GatewayAAT{
 			Address: "123",
 		},
-		GatewaySettings: repository.GatewaySettings{
+		GatewaySettings: types.GatewaySettings{
 			SecretKey: "123",
 		},
-		NotificationSettings: repository.NotificationSettings{
+		NotificationSettings: types.NotificationSettings{
 			Full: true,
 		},
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.FreetierV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.FreetierV0,
 				Limit: 250000,
 			},
 		},
@@ -127,24 +137,24 @@ func Test_V0_Cache_listenApplication(t *testing.T) {
 	c.Equal("pablo", app.Name)
 	c.Equal("123", app.GatewayAAT.Address)
 	c.Equal("123", app.GatewaySettings.SecretKey)
-	c.Equal(repository.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
+	c.Equal(types.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
 	c.Equal(250000, app.DailyLimit())
 	c.True(app.NotificationSettings.Full)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
 		ID:     "321",
 		UserID: "user_id_12345",
 		Name:   "orlando",
-		GatewaySettings: repository.GatewaySettings{
+		GatewaySettings: types.GatewaySettings{
 			SecretKey: "1234",
 		},
-		NotificationSettings: repository.NotificationSettings{
+		NotificationSettings: types.NotificationSettings{
 			Full:     true,
 			SignedUp: true,
 		},
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type: repository.Enterprise,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type: types.Enterprise,
 			},
 			CustomLimit: 2000000,
 		},
@@ -155,16 +165,115 @@ func Test_V0_Cache_listenApplication(t *testing.T) {
 	app = cache.GetApplication("321")
 	c.Equal("orlando", app.Name)
 	c.Equal("1234", app.GatewaySettings.SecretKey)
-	c.Equal(repository.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
+	c.Equal(types.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
 	c.Equal(2000000, app.DailyLimit())
+
+	// Update Whitelist Contracts & Methods
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		Name:   "orlando",
+		GatewaySettings: types.GatewaySettings{
+			SecretKey:            "123",
+			WhitelistBlockchains: []string{"test-chain-1", "test-chain-2"},
+			WhitelistContracts: []types.WhitelistContracts{
+				{BlockchainID: "001", Contracts: []string{"test123", "test456"}},
+				{BlockchainID: "002", Contracts: []string{"test789", "test9999"}},
+			},
+			WhitelistMethods: []types.WhitelistMethods{
+				{BlockchainID: "001", Methods: []string{"POST", "GET", "PUT"}},
+				{BlockchainID: "003", Methods: []string{"DELETE", "GET"}},
+			},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+
+	contractsMap := make(map[string][]string, 2)
+	for _, contract := range app.GatewaySettings.WhitelistContracts {
+		contractsMap[contract.BlockchainID] = contract.Contracts
+	}
+	c.Equal([]string{"test123", "test456"}, contractsMap["001"])
+	c.Equal([]string{"test789", "test9999"}, contractsMap["002"])
+
+	methodsMap := make(map[string][]string, 2)
+	for _, method := range app.GatewaySettings.WhitelistMethods {
+		methodsMap[method.BlockchainID] = method.Methods
+	}
+	c.Equal([]string{"GET", "POST", "PUT"}, methodsMap["001"])
+	c.Equal([]string{"DELETE", "GET"}, methodsMap["003"])
+
+	// Remove Whitelist Contracts
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistContracts: []types.WhitelistContracts{
+				{BlockchainID: "001", Contracts: []string{"test123"}},
+			},
+		},
+	})
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistContracts: []types.WhitelistContracts{
+				{BlockchainID: "002", Contracts: []string{"test789", "test9999"}},
+			},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+
+	contractsMap = make(map[string][]string, 2)
+	for _, contract := range app.GatewaySettings.WhitelistContracts {
+		contractsMap[contract.BlockchainID] = contract.Contracts
+	}
+	c.Equal([]string{"test456"}, contractsMap["001"])
+	c.Equal([]string(nil), contractsMap["002"])
+
+	// Remove Whitelist Methods
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistMethods: []types.WhitelistMethods{
+				{BlockchainID: "001", Methods: []string{"POST", "GET"}},
+			},
+		},
+	})
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
+		ID:     "321",
+		UserID: "user_id_12345",
+		GatewaySettings: types.GatewaySettings{
+			WhitelistMethods: []types.WhitelistMethods{
+				{BlockchainID: "003", Methods: []string{"DELETE", "GET"}},
+			},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	app = cache.GetApplication("321")
+
+	methodsMap = make(map[string][]string, 2)
+	for _, method := range app.GatewaySettings.WhitelistMethods {
+		methodsMap[method.BlockchainID] = method.Methods
+	}
+	c.Equal([]string{"PUT"}, methodsMap["001"])
+	c.Equal([]string(nil), methodsMap["003"])
 
 	// Delete application event
 	apps := cache.GetApplicationsByUserID("user_id_12345")
 	c.NotEmpty(apps)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
 		ID:     "321",
-		UserID: "",
+		Status: types.AwaitingGracePeriod,
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
@@ -173,35 +282,35 @@ func Test_V0_Cache_listenApplication(t *testing.T) {
 	c.Empty(apps)
 }
 
-func Test_V0_Cache_listenAppLimit(t *testing.T) {
+func Test_Cache_listenAppLimit(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	cache.payPlansMap = map[repository.PayPlanType]*repository.PayPlan{
-		repository.PayAsYouGoV0: {Type: repository.PayAsYouGoV0, Limit: 0},
+	cache.payPlansMap = map[types.PayPlanType]*types.PayPlan{
+		types.PayAsYouGoV0: {Type: types.PayAsYouGoV0, Limit: 0},
 	}
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.AppLimit{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.AppLimit{
 		ID:      "321",
-		PayPlan: repository.PayPlan{Type: repository.PayAsYouGoV0, Limit: 0},
+		PayPlan: types.PayPlan{Type: types.PayAsYouGoV0, Limit: 0},
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	app := cache.GetApplication("321")
-	c.Nil(app)
+	c.Empty(app)
 
 	pendingUpdates := cache.pendingAppLimit
 	c.Len(pendingUpdates, 1)
-	c.Equal(repository.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
+	c.Equal(types.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Application{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Application{
 		ID: "321",
-		Limit: repository.AppLimit{
-			PayPlan: repository.PayPlan{
-				Type:  repository.PayAsYouGoV0,
+		Limit: types.AppLimit{
+			PayPlan: types.PayPlan{
+				Type:  types.PayAsYouGoV0,
 				Limit: 0,
 			},
 		},
@@ -210,23 +319,23 @@ func Test_V0_Cache_listenAppLimit(t *testing.T) {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	app = cache.GetApplication("321")
-	c.Equal(repository.PayPlanType("PAY_AS_YOU_GO_V0"), app.Limit.PayPlan.Type)
+	c.Equal(types.PayPlanType("PAY_AS_YOU_GO_V0"), app.Limit.PayPlan.Type)
 	c.Equal(0, app.DailyLimit())
 
 	pendingUpdates = cache.pendingAppLimit
 	c.Len(pendingUpdates, 0)
 }
 
-func Test_V0_Cache_listenBlockchain(t *testing.T) {
+func Test_Cache_listenBlockchain(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Blockchain{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Blockchain{
 		ID:   "0023",
 		Path: "path",
-		SyncCheckOptions: repository.SyncCheckOptions{
+		SyncCheckOptions: types.SyncCheckOptions{
 			BlockchainID: "0023",
 			Body:         "yeh",
 		},
@@ -238,7 +347,7 @@ func Test_V0_Cache_listenBlockchain(t *testing.T) {
 	c.Equal("path", blockchain.Path)
 	c.Equal("yeh", blockchain.SyncCheckOptions.Body)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.Blockchain{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Blockchain{
 		ID:     "0023",
 		Active: true,
 	})
@@ -249,19 +358,22 @@ func Test_V0_Cache_listenBlockchain(t *testing.T) {
 	c.True(blockchain.Active)
 }
 
-func Test_V0_Cache_listenLoadBalancer(t *testing.T) {
+func Test_Cache_listenLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.LoadBalancer{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.LoadBalancer{
 		ID:     "123",
 		UserID: "user_id_12345",
 		Name:   "pablo",
-		StickyOptions: repository.StickyOptions{
+		StickyOptions: types.StickyOptions{
 			StickyOrigins: []string{"oahu"},
 			Stickiness:    true,
+		},
+		Users: []types.UserAccess{
+			{RoleName: "OWNER", UserID: "user_id_12345", Email: "owner1@test.com", Accepted: true},
 		},
 		ApplicationIDs: []string{"test_app_e3591c4dea8566a"},
 	})
@@ -272,14 +384,20 @@ func Test_V0_Cache_listenLoadBalancer(t *testing.T) {
 	c.Equal("pablo", lb.Name)
 	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
 	c.Equal("test_app_e3591c4dea8566a", lb.Applications[0].ID)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Equal("owner1@test.com", lb.Users[0].Email)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
+	// Update load balancer event (including updating User Access)
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
 		ID:     "123",
 		UserID: "user_id_12345",
 		Name:   "orlando",
-		StickyOptions: repository.StickyOptions{
+		StickyOptions: types.StickyOptions{
 			StickyOrigins: []string{"ohana"},
 			Stickiness:    true,
+		},
+		Users: []types.UserAccess{
+			{RoleName: "ADMIN", UserID: "user_id_12345", Email: "owner1@test.com", Accepted: true},
 		},
 	})
 
@@ -288,12 +406,64 @@ func Test_V0_Cache_listenLoadBalancer(t *testing.T) {
 	lb = cache.GetLoadBalancer("123")
 	c.Equal("orlando", lb.Name)
 	c.Equal([]string{"ohana"}, lb.StickyOptions.StickyOrigins)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Equal(types.RoleAdmin, lb.Users[0].RoleName)
+	c.Len(cache.GetLoadBalancersByUserID("user_id_12345"), 1)
+	c.Len(cache.GetUserPermissionsByUserID("user_id_12345").LoadBalancers, 1)
+	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("user_id_12345").LoadBalancers["123"].RoleName)
+
+	// Add new load balancer User Access event
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionInsert, &types.LoadBalancer{
+		ID:     "123",
+		UserID: "user_id_12345",
+		Name:   "orlando",
+		StickyOptions: types.StickyOptions{
+			StickyOrigins: []string{"ohana"},
+			Stickiness:    true,
+		},
+		Users: []types.UserAccess{
+			{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	lb = cache.GetLoadBalancer("123")
+	c.Len(lb.Users, 2)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Equal("test_user_admin4309tug4g", lb.Users[1].UserID)
+	c.Equal("admin1@test.com", lb.Users[1].Email)
+	c.Len(cache.GetLoadBalancersByUserID("test_user_admin4309tug4g"), 1)
+	c.Len(cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers, 1)
+	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers["123"].RoleName)
+
+	// Delete load balancer User Access event
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.LoadBalancer{
+		ID:     "123",
+		UserID: "user_id_12345",
+		Name:   "orlando",
+		StickyOptions: types.StickyOptions{
+			StickyOrigins: []string{"ohana"},
+			Stickiness:    true,
+		},
+		Users: []types.UserAccess{
+			{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	lb = cache.GetLoadBalancer("123")
+	c.Len(lb.Users, 1)
+	c.Equal("user_id_12345", lb.Users[0].UserID)
+	c.Len(cache.GetLoadBalancersByUserID("test_user_admin4309tug4g"), 0)
+	c.Len(cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers, 0)
 
 	// Delete load balancer event
 	lbs := cache.GetLoadBalancersByUserID("user_id_12345")
 	c.NotEmpty(lbs)
 
-	readerMock.lMock.MockEvent(repository.ActionUpdate, repository.ActionUpdate, &repository.LoadBalancer{
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
 		ID:     "123",
 		UserID: "",
 	})
@@ -304,19 +474,19 @@ func Test_V0_Cache_listenLoadBalancer(t *testing.T) {
 	c.Empty(lbs)
 }
 
-func Test_V0_Cache_listenRedirect(t *testing.T) {
+func Test_Cache_listenRedirect(t *testing.T) {
 	c := require.New(t)
 
-	readerMock := NewReaderMock()
+	readerMock := NewReaderMock(t)
 	cache := newMockCache(readerMock)
 
-	readerMock.lMock.MockEvent(repository.ActionInsert, repository.ActionInsert, &repository.Redirect{
+	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Redirect{
 		BlockchainID: "0021",
 		Alias:        "papolo",
 	})
 
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
-	redirects := cache.GetRedirects("0021")
-	c.Equal("papolo", redirects[1].Alias)
+	redirects := cache.GetBlockchain("0021").Redirects
+	c.Equal("papolo", redirects[0].Alias)
 }
