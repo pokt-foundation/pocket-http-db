@@ -2038,13 +2038,15 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 	ts.Run("Test_DeleteLoadBalancerUser", func() {
 		tests := []struct {
 			name                       string
-			loadBalancerID, userID     string
+			loadBalancerID, email      string
+			userID                     string
 			loadBalancerUsers          []types.UserAccess
 			err, permissionsFetchError error
 		}{
 			{
 				name:           "Should delete a single user for an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "member1@test.com",
 				userID:         "test_user_member1234",
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
@@ -2056,19 +2058,33 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "why_am_i_not_a_load_balancer",
+				email:          "member1@test.com",
 				userID:         "test_user_member1234",
 				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 			{
 				name:           "Should fail if attempting to delete the owner of a load balancer",
 				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "owner1@test.com",
 				userID:         "test_user_1dbffbdfeeb225",
 				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: cannot delete the owner of a load balancer"),
+			},
+			{
+				name:           "Should fail if load balancer ID not provided",
+				loadBalancerID: "",
+				email:          "member1@test.com",
+				err:            fmt.Errorf("no load balancer ID"),
+			},
+			{
+				name:           "Should fail if email not provided",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "",
+				err:            fmt.Errorf("no user email"),
 			},
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
+			_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.email)
 			ts.Equal(test.err, err)
 			if test.err == nil {
 				<-time.After(50 * time.Millisecond)
