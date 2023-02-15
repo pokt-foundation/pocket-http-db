@@ -521,7 +521,7 @@ func (c *Cache) updateApplication(inApp types.Application) {
 
 	app := c.applicationsMap[inApp.ID]
 
-	if inApp.UserID == "" {
+	if inApp.Status == types.AwaitingGracePeriod {
 		c.removeApplicationFromUserIDMap(inApp, app)
 	}
 
@@ -545,12 +545,10 @@ func (c *Cache) updateApplication(inApp types.Application) {
 func (c *Cache) removeApplicationFromUserIDMap(inApp types.Application, oldApp *types.Application) {
 	userID := oldApp.UserID
 
-	appsForUser := c.applicationsMapByUserID[userID]
-	appsForUserAfterRemove := []*types.Application{}
-
-	for i := range appsForUser {
-		if appsForUser[i].ID != inApp.ID {
-			appsForUserAfterRemove = append(appsForUserAfterRemove, appsForUser[i])
+	var appsForUserAfterRemove []*types.Application
+	for _, app := range c.applicationsMapByUserID[userID] {
+		if app.ID != inApp.ID {
+			appsForUserAfterRemove = append(appsForUserAfterRemove, app)
 		}
 	}
 
@@ -783,16 +781,20 @@ func (c *Cache) updateLoadBalancer(inLB types.LoadBalancer) {
 func (c *Cache) removeLoadBalancerFromUserIDMap(inLB types.LoadBalancer, oldLB *types.LoadBalancer) {
 	userID := oldLB.UserID
 
-	lbsForUser := c.loadBalancersMapByUserID[userID]
-	lbsForUserAfterRemove := []*types.LoadBalancer{}
+	for _, ownerLB := range c.loadBalancersMapByUserID[userID] {
+		// The removed LB must be removed from the LB maps of all team members (this includes the OWNER)
+		for _, user := range ownerLB.Users {
+			lbsForMemberAfterRemove := []*types.LoadBalancer{}
 
-	for i := range lbsForUser {
-		if lbsForUser[i].ID != inLB.ID {
-			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
+			for _, memberLB := range c.loadBalancersMapByUserID[user.UserID] {
+				if memberLB.ID != inLB.ID {
+					lbsForMemberAfterRemove = append(lbsForMemberAfterRemove, memberLB)
+				}
+			}
+
+			c.loadBalancersMapByUserID[user.UserID] = lbsForMemberAfterRemove
 		}
 	}
-
-	c.loadBalancersMapByUserID[userID] = lbsForUserAfterRemove
 }
 
 func (c *Cache) setPayPlans() error {
