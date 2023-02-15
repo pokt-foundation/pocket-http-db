@@ -2,10 +2,10 @@ build:
 	CGO_ENABLED=0 GOOS=linux go build -a -o bin/pocket-http-db ./main.go
 
 test_env_up:
-	docker-compose -f ./docker-compose.test.yml up -d --remove-orphans --build;
+	docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build;
 	sleep 2;
 test_env_down:
-	docker-compose -f ./docker-compose.test.yml down --remove-orphans -v
+	docker-compose -f ./testdata/docker-compose.test.yml down --remove-orphans -v
 
 run_e2e_tests:
 	-go test -run E2E -count=1 -v
