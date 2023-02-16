@@ -55,11 +55,8 @@ func (rt *Router) logV0Usage(r *http.Request, method string) {
 	rt.log.WithFields(logrus.Fields{
 		"method":         method,
 		"remote_address": r.RemoteAddr,
-<<<<<<< HEAD
 		"header":         r.Header,
 		"request_url":    r.URL,
-=======
->>>>>>> 92b7ea9 (chore: add remote address to logs (#122))
 	}).Info("------- V0 Endpoint Used -------")
 }
 
