@@ -1988,6 +1988,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 				if test.userID != "" {
+					// user should have been added to the user permissions in the cache
 					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 					ts.Equal(test.err, err)
 					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
@@ -1995,6 +1996,31 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 					ts.Equal(test.err, err)
 					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+
+					// user's LB should have been added to the user's LBs map in the cache
+					roleMember := types.RoleMember
+
+					exists := false
+					loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.userID, &roleMember)
+					ts.Equal(test.err, err)
+					for _, lb := range loadBalancers {
+						if lb.ID == test.loadBalancerID {
+							exists = true
+							break
+						}
+					}
+					ts.True(exists)
+
+					exists = false
+					loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID, &roleMember)
+					ts.Equal(test.err, err)
+					for _, lb := range loadBalancers {
+						if lb.ID == test.loadBalancerID {
+							exists = true
+							break
+						}
+					}
+					ts.True(exists)
 				}
 			}
 		}
@@ -2096,11 +2122,19 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
+				// user should have been removed from the user permissions in the cache
 				_, err = ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 				ts.Equal(test.permissionsFetchError, err)
 
 				_, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 				ts.Equal(test.permissionsFetchError, err)
+
+				// user's LB should have been removed from the user's LBs map in the cache
+				_, err = ts.client1.GetLoadBalancersByUserID(testCtx, test.userID, nil)
+				ts.Equal(fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"), err)
+
+				_, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID, nil)
+				ts.Equal(fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"), err)
 			}
 		}
 	})
