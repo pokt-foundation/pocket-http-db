@@ -51,8 +51,11 @@ func (rt *Router) logError(err error) {
 
 	rt.log.WithFields(fields).Error(err)
 }
-func (rt *Router) logV0Usage(method string) {
-	rt.log.WithFields(logrus.Fields{"method": method}).Info("------- V0 Endpoint Used -------")
+func (rt *Router) logV0Usage(r *http.Request, method string) {
+	rt.log.WithFields(logrus.Fields{
+		"method":         method,
+		"remote_address": r.RemoteAddr,
+	}).Info("------- V0 Endpoint Used -------")
 }
 
 // NewRouter returns router instance of v0 router
@@ -122,7 +125,7 @@ func (rt *Router) AuthorizationHandler(h http.Handler) http.Handler {
 }
 
 func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("HealthCheck") // log usage of V0 endpoints
+	rt.logV0Usage(r, "HealthCheck") // log usage of V0 endpoints
 
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte("Pocket HTTP DB is up and running!"))
@@ -132,7 +135,7 @@ func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetApplications") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetApplications") // log usage of V0 endpoints
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetApplications())
 }
@@ -140,7 +143,7 @@ func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
 // TODO - This Endpoint is DEPRECATED. Remove once Rate Limiter & Portal Workers are updated
 // to parse fields currently found in AppLimits from the /application endpoint instead.
 func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetApplicationsLimits") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetApplicationsLimits") // log usage of V0 endpoints
 
 	apps := rt.Cache.GetApplications()
 
@@ -168,7 +171,7 @@ func (rt *Router) GetApplicationsLimits(w http.ResponseWriter, r *http.Request) 
 }
 
 func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetApplication") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetApplication") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -183,7 +186,7 @@ func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("CreateApplication") // log usage of V0 endpoints
+	rt.logV0Usage(r, "CreateApplication") // log usage of V0 endpoints
 
 	var app repository.Application
 
@@ -212,7 +215,7 @@ func (rt *Router) CreateApplication(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("UpdateApplication") // log usage of V0 endpoints
+	rt.logV0Usage(r, "UpdateApplication") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -280,7 +283,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("UpdateFirstDateSurpassed") // log usage of V0 endpoints
+	rt.logV0Usage(r, "UpdateFirstDateSurpassed") // log usage of V0 endpoints
 
 	var updateInput repository.UpdateFirstDateSurpassed
 
@@ -327,7 +330,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetApplicationByUserID") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetApplicationByUserID") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -343,7 +346,7 @@ func (rt *Router) GetApplicationByUserID(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetLoadBalancerByUserID") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetLoadBalancerByUserID") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -359,7 +362,7 @@ func (rt *Router) GetLoadBalancerByUserID(w http.ResponseWriter, r *http.Request
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetBlockchain") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetBlockchain") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -375,7 +378,7 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("ActivateBlockchain") // log usage of V0 endpoints
+	rt.logV0Usage(r, "ActivateBlockchain") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 	blockchainID := vars["id"]
@@ -404,7 +407,7 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("CreateBlockchain") // log usage of V0 endpoints
+	rt.logV0Usage(r, "CreateBlockchain") // log usage of V0 endpoints
 
 	var blockchain repository.Blockchain
 
@@ -430,13 +433,13 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetBlockchains") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetBlockchains") // log usage of V0 endpoints
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetBlockchains())
 }
 
 func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetLoadBalancer") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetLoadBalancer") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -452,7 +455,7 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("CreateLoadBalancer") // log usage of V0 endpoints
+	rt.logV0Usage(r, "CreateLoadBalancer") // log usage of V0 endpoints
 
 	var lb repository.LoadBalancer
 
@@ -484,7 +487,7 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("UpdateLoadBalancer") // log usage of V0 endpoints
+	rt.logV0Usage(r, "UpdateLoadBalancer") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -536,13 +539,13 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetLoadBalancers") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetLoadBalancers") // log usage of V0 endpoints
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetLoadBalancers())
 }
 
 func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetPayPlan") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetPayPlan") // log usage of V0 endpoints
 
 	vars := mux.Vars(r)
 
@@ -558,13 +561,13 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("GetPayPlans") // log usage of V0 endpoints
+	rt.logV0Usage(r, "GetPayPlans") // log usage of V0 endpoints
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetPayPlans())
 }
 
 func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
-	rt.logV0Usage("CreateRedirect") // log usage of V0 endpoints
+	rt.logV0Usage(r, "CreateRedirect") // log usage of V0 endpoints
 
 	var redirect repository.Redirect
 
