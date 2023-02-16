@@ -795,7 +795,7 @@ func TestCache_UpdateUserAccess(t *testing.T) {
 		UserID:   "test_user_access_1234",
 		RoleName: types.RoleAdmin,
 		Email:    "test@test.com",
-		Accepted: false,
+		Accepted: true,
 	})
 
 	c.Len(cache.GetLoadBalancer("test_lb_4nf37fhfy27dj28d").Users, 3)
@@ -803,6 +803,7 @@ func TestCache_UpdateUserAccess(t *testing.T) {
 	c.Len(cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers, 1)
 	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers["test_lb_4nf37fhfy27dj28d"].RoleName)
 }
+
 func TestCache_DeleteUserAccess(t *testing.T) {
 	c := require.New(t)
 

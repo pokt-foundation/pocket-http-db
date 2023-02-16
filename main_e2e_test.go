@@ -26,7 +26,7 @@ type phdE2ETestSuite struct {
 	mu               sync.Mutex
 }
 
-func Test_E2E_PocketHTTPDBTestSuite(t *testing.T) {
+func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping end to end test")
 	}
@@ -1988,6 +1988,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 				if test.userID != "" {
+					// user should have been added to the user permissions in the cache
 					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 					ts.Equal(test.err, err)
 					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
@@ -1995,6 +1996,31 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 					ts.Equal(test.err, err)
 					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+
+					// user's LB should have been added to the user's LBs map in the cache
+					roleMember := types.RoleMember
+
+					exists := false
+					loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.userID, &roleMember)
+					ts.Equal(test.err, err)
+					for _, lb := range loadBalancers {
+						if lb.ID == test.loadBalancerID {
+							exists = true
+							break
+						}
+					}
+					ts.True(exists)
+
+					exists = false
+					loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID, &roleMember)
+					ts.Equal(test.err, err)
+					for _, lb := range loadBalancers {
+						if lb.ID == test.loadBalancerID {
+							exists = true
+							break
+						}
+					}
+					ts.True(exists)
 				}
 			}
 		}
@@ -2038,13 +2064,15 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 	ts.Run("Test_DeleteLoadBalancerUser", func() {
 		tests := []struct {
 			name                       string
-			loadBalancerID, userID     string
+			loadBalancerID, email      string
+			userID                     string
 			loadBalancerUsers          []types.UserAccess
 			err, permissionsFetchError error
 		}{
 			{
 				name:           "Should delete a single user for an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "member1@test.com",
 				userID:         "test_user_member1234",
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
@@ -2056,19 +2084,33 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "why_am_i_not_a_load_balancer",
+				email:          "member1@test.com",
 				userID:         "test_user_member1234",
 				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 			{
 				name:           "Should fail if attempting to delete the owner of a load balancer",
 				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "owner1@test.com",
 				userID:         "test_user_1dbffbdfeeb225",
 				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: cannot delete the owner of a load balancer"),
+			},
+			{
+				name:           "Should fail if load balancer ID not provided",
+				loadBalancerID: "",
+				email:          "member1@test.com",
+				err:            fmt.Errorf("no load balancer ID"),
+			},
+			{
+				name:           "Should fail if email not provided",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				email:          "",
+				err:            fmt.Errorf("no user email"),
 			},
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
+			_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.email)
 			ts.Equal(test.err, err)
 			if test.err == nil {
 				<-time.After(50 * time.Millisecond)
@@ -2080,11 +2122,19 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
+				// user should have been removed from the user permissions in the cache
 				_, err = ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 				ts.Equal(test.permissionsFetchError, err)
 
 				_, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
 				ts.Equal(test.permissionsFetchError, err)
+
+				// user's LB should have been removed from the user's LBs map in the cache
+				_, err = ts.client1.GetLoadBalancersByUserID(testCtx, test.userID, nil)
+				ts.Equal(fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"), err)
+
+				_, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID, nil)
+				ts.Equal(fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"), err)
 			}
 		}
 	})

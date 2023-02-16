@@ -80,7 +80,7 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{email}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
@@ -721,25 +721,25 @@ func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 
 	lb := rt.Cache.GetLoadBalancer(vars["id"])
 	if lb.ID == "" {
-		rt.logError(fmt.Errorf("GetLoadBalancer in UpdateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		rt.logError(fmt.Errorf("GetLoadBalancer in DeleteLoadBalancerUser failed: %w", errLoadBalancerNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
 		return
 	}
 
-	deleteUserID := vars["userID"]
+	deleteEmail := vars["email"]
 
 	filteredUsers := []types.UserAccess{}
 	for _, user := range lb.Users {
-		if user.UserID == deleteUserID {
+		if user.Email == deleteEmail {
 			if user.RoleName == types.RoleOwner {
-				rt.logError(fmt.Errorf("RemoveUserAccess in UpdateLoadBalancerUser failed: %w", errCannotDeleteOwner))
+				rt.logError(fmt.Errorf("RemoveUserAccess in DeleteLoadBalancerUser failed: %w", errCannotDeleteOwner))
 				jsonresponse.RespondWithError(w, http.StatusInternalServerError, errCannotDeleteOwner.Error())
 				return
 			}
 
-			err := rt.Writer.RemoveUserAccess(r.Context(), deleteUserID, lb.ID)
+			err := rt.Writer.RemoveUserAccess(r.Context(), deleteEmail, lb.ID)
 			if err != nil {
-				rt.logError(fmt.Errorf("RemoveUserAccess in UpdateLoadBalancerUser failed: %w", err))
+				rt.logError(fmt.Errorf("RemoveUserAccess in DeleteLoadBalancerUser failed: %w", err))
 				jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 				return
 			}

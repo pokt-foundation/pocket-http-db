@@ -1401,7 +1401,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 	tests := []struct {
 		name                  string
 		lbID                  string
-		userToDelete          string
+		emailOfUserToDelete   string
 		invalidJSON           bool
 		expectedLBAfterDelete *types.LoadBalancer
 		expectedStatus        int
@@ -1409,9 +1409,9 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 		err                   error
 	}{
 		{
-			name:         "Should delete User for a LoadBalancer with correct input",
-			lbID:         "test_lb_3890ru23jfi32fj",
-			userToDelete: "test_user_1dbffbdfeeb225",
+			name:                "Should delete User for a LoadBalancer with correct input",
+			lbID:                "test_lb_3890ru23jfi32fj",
+			emailOfUserToDelete: "user1@test.com",
 			expectedLBAfterDelete: &types.LoadBalancer{
 				ID:     "test_lb_3890ru23jfi32fj",
 				UserID: "test_user_04228205bd261a",
@@ -1434,11 +1434,12 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 			err:            errors.New("dummy error"),
 		},
 		{
-			name:           "Should fail if DB driver throws an error",
-			lbID:           "test_lb_3890ru23jfi32fj",
-			userToDelete:   "test_user_04228205bd261a",
-			expectedStatus: http.StatusInternalServerError,
-			err:            errors.New("dummy database driver error"),
+			name:                "Should fail if DB driver throws an error",
+			lbID:                "test_lb_3890ru23jfi32fj",
+			emailOfUserToDelete: "user1@test.com",
+			expectedStatus:      http.StatusInternalServerError,
+			runMock:             true,
+			err:                 errors.New("dummy database driver error"),
 		},
 	}
 
@@ -1456,7 +1457,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 
 		rr := httptest.NewRecorder()
 
-		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/load_balancer/%s/user/%s", test.lbID, test.userToDelete), nil)
+		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/load_balancer/%s/user/%s", test.lbID, test.emailOfUserToDelete), nil)
 		c.NoError(err)
 
 		router.Router.ServeHTTP(rr, req)
