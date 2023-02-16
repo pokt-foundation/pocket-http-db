@@ -815,7 +815,7 @@ func (c *Cache) setPayPlans() error {
 	return nil
 }
 
-// updateUserAccess updates load balancer user saved in cache with a new role and updates permissions map
+// updateUserAccess updates updates permissions map, load balancer user and user LBs map saved in cache
 func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
@@ -823,8 +823,8 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	lbID := inUser.ID
 	inUser.ID = "" // to avoid multiple sources of truth
 
-	// Add user to permissions map if they have a user ID (have been approved)
-	if inUser.UserID != "" {
+	// add user to permissions map if they have been accepted
+	if inUser.Accepted {
 		userID := types.UserID(inUser.UserID)
 
 		if userPermissions, ok := c.userPermissions[userID]; ok {
@@ -846,26 +846,32 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 		}
 	}
 
-	// Update load balancer users slice
-	lb := c.loadBalancersMap[lbID]
-	if lb != nil {
+	if lb, ok := c.loadBalancersMap[lbID]; ok {
 		for i := range lb.Users {
-			if lb.Users[i].UserID == inUser.UserID {
+			if lb.Users[i].Email == inUser.Email {
+				// update user fields when user_access listener event for create/update received
 				lb.Users[i].RoleName = inUser.RoleName
-			}
-
-			// Update new user when they accept their invite
-			if lb.Users[i].Email == inUser.Email && !lb.Users[i].Accepted && inUser.Accepted {
-				lb.Users[i].Accepted = inUser.Accepted
 				lb.Users[i].UserID = inUser.UserID
+				lb.Users[i].Accepted = inUser.Accepted
 
-				c.loadBalancersMapByUserID[inUser.UserID] = append(c.loadBalancersMapByUserID[inUser.UserID], lb)
+				// add LB to user's LBs map if it doesn't already exist there
+				var exists bool
+				for _, userLB := range c.loadBalancersMapByUserID[inUser.UserID] {
+					if userLB.ID == lb.ID {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					c.loadBalancersMapByUserID[inUser.UserID] = append(c.loadBalancersMapByUserID[inUser.UserID], lb)
+				}
 			}
+
 		}
 	}
 }
 
-// deleteUserAccess deletes load balancer user saved in cache  and updates permissions
+// deleteUserAccess deletes load balancer user saved in cache and updates permissions
 func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
