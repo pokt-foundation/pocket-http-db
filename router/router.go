@@ -64,6 +64,7 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 	rt.Router.HandleFunc("/v1/blockchain", rt.GetBlockchains).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/blockchain", rt.CreateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/blockchain/{id}", rt.GetBlockchain).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/blockchain/{id}", rt.UpdateBlockchain).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/blockchain/{id}/activate", rt.ActivateBlockchain).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/blockchain/redirect", rt.CreateRedirect).Methods(http.MethodPost)
 
@@ -382,6 +383,42 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, blockchain)
+}
+
+func (rt *Router) UpdateBlockchain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	blockchainID := vars["id"]
+
+	chain := rt.Cache.GetBlockchain(blockchainID)
+	if chain.ID == "" {
+		rt.logError(fmt.Errorf("GetBlockchain in UpdateBlockchain failed: %w", errBlockchainNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
+		return
+	}
+
+	var update *types.UpdateBlockchain
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&update)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateBlockchain decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	err = rt.Writer.UpdateChain(r.Context(), blockchainID, update)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateBlockchain failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	updatedChain := chain.UpdateBlockchain(update)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedChain)
 }
 
 func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {

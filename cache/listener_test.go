@@ -44,7 +44,15 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 	}, nil)
 
 	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
-		{ID: "0021", Redirects: []types.Redirect{}},
+		{
+			ID: "0021",
+			Redirects: []types.Redirect{
+				{
+					BlockchainID: "0021",
+					Domain:       "test-domain123",
+				},
+			},
+		},
 	}, nil)
 
 	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
@@ -356,6 +364,22 @@ func Test_Cache_listenBlockchain(t *testing.T) {
 
 	blockchain = cache.GetBlockchain("0023")
 	c.True(blockchain.Active)
+
+	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Blockchain{
+		ID:          "0023",
+		Description: "such blockchain wow",
+		SyncCheckOptions: types.SyncCheckOptions{
+			BlockchainID: "0023",
+			ResultKey:    "test-key",
+		},
+	})
+
+	time.Sleep(1 * time.Second) // need time for cache refresh
+
+	blockchain = cache.GetBlockchain("0023")
+	c.Equal("such blockchain wow", blockchain.Description)
+	c.Equal("test-key", blockchain.SyncCheckOptions.ResultKey)
+	c.Equal("test-key", blockchain.SyncCheckOptions.ResultKey)
 }
 
 func Test_Cache_listenLoadBalancer(t *testing.T) {
@@ -488,5 +512,6 @@ func Test_Cache_listenRedirect(t *testing.T) {
 	time.Sleep(1 * time.Second) // need time for cache refresh
 
 	redirects := cache.GetBlockchain("0021").Redirects
-	c.Equal("papolo", redirects[0].Alias)
+	c.Len(redirects, 2)
+	c.Equal("papolo", redirects[1].Alias)
 }
