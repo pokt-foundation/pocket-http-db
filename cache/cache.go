@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/pokt-foundation/portal-db/driver"
 	"github.com/pokt-foundation/portal-db/types"
@@ -28,8 +29,6 @@ type Cache struct {
 	payPlansMap              map[types.PayPlanType]*types.PayPlan
 	payPlans                 []*types.PayPlan
 
-	listening bool
-
 	pendingAppLimit            map[string]types.AppLimit
 	pendingGatewayAAT          map[string]types.GatewayAAT
 	pendingGatewaySettings     map[string]types.GatewaySettings
@@ -43,9 +42,9 @@ type Cache struct {
 	log *logrus.Logger
 }
 
-// NewCache returns cache instance from reader interface
-func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
-	return &Cache{
+// NewCache returns cache instance from reader interface and starts the cache refresh handler and listener in separate goroutines
+func NewCache(reader driver.Reader, cacheRefreshMinutes time.Duration, logger *logrus.Logger) (*Cache, error) {
+	cache := &Cache{
 		reader: reader,
 
 		pendingAppLimit:            make(map[string]types.AppLimit),
@@ -60,7 +59,173 @@ func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
 
 		log: logger,
 	}
+
+	err := cache.setCache()
+	if err != nil {
+		cache.log.Error(fmt.Errorf("err in NewCache: %w", err))
+		return nil, err
+	}
+	cache.log.WithFields(logrus.Fields{"cache_refresh_minutes": cacheRefreshMinutes.Minutes()}).Info("cache successfully set")
+
+	go cache.cacheRefreshHandler(cacheRefreshMinutes)
+
+	go cache.listen()
+
+	return cache, nil
 }
+
+// cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes)
+func (c *Cache) cacheRefreshHandler(cacheRefreshMinutes time.Duration) {
+	for {
+		<-time.After(cacheRefreshMinutes)
+
+		err := c.setCache()
+		if err != nil {
+			c.log.Error("err in cacheRefreshHandler: %w", err)
+		}
+
+		c.log.WithFields(logrus.Fields{"cache_refresh_minutes": cacheRefreshMinutes.Minutes()}).Info("cache successfully set")
+	}
+}
+
+// setCache gets all values from DB and stores them in cache
+func (c *Cache) setCache() error {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	err := c.setPayPlans()
+	if err != nil {
+		return fmt.Errorf("err in setPayPlans: %w", err)
+	}
+
+	err = c.setBlockchains()
+	if err != nil {
+		return fmt.Errorf("err in setBlockchains: %w", err)
+	}
+
+	// Always call after setPayPlans
+	err = c.setApplications()
+	if err != nil {
+		return fmt.Errorf("err in setApplications: %w", err)
+	}
+
+	// Always call after setApplications
+	err = c.setLoadBalancers()
+	if err != nil {
+		return err
+	}
+
+	err = c.setUserPermissions()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Cache) setPayPlans() error {
+	payPlans, err := c.reader.ReadPayPlans(context.Background())
+	if err != nil {
+		return err
+	}
+
+	payPlansMap := make(map[types.PayPlanType]*types.PayPlan)
+
+	for _, payPlan := range payPlans {
+		payPlansMap[payPlan.Type] = payPlan
+	}
+
+	c.payPlans = payPlans
+	c.payPlansMap = payPlansMap
+
+	return nil
+}
+
+func (c *Cache) setBlockchains() error {
+	blockchains, err := c.reader.ReadBlockchains(context.Background())
+	if err != nil {
+		return err
+	}
+
+	blockchainsMap := make(map[string]*types.Blockchain)
+
+	for _, blockchain := range blockchains {
+		blockchainsMap[blockchain.ID] = blockchain
+	}
+
+	c.blockchains = blockchains
+	c.blockchainsMap = blockchainsMap
+
+	return nil
+}
+
+func (c *Cache) setApplications() error {
+	applications, err := c.reader.ReadApplications(context.Background())
+	if err != nil {
+		return err
+	}
+
+	applicationsMap := make(map[string]*types.Application)
+	applicationsMapByUserID := make(map[string][]*types.Application)
+
+	for i := 0; i < len(applications); i++ {
+		app := applications[i]
+		applicationID, userID := app.ID, app.UserID
+
+		applicationsMap[applicationID] = app
+		applicationsMapByUserID[userID] = append(applicationsMapByUserID[userID], app)
+	}
+
+	c.applications = applications
+	c.applicationsMap = applicationsMap
+	c.applicationsMapByUserID = applicationsMapByUserID
+
+	return nil
+}
+
+func (c *Cache) setLoadBalancers() error {
+	loadBalancers, err := c.reader.ReadLoadBalancers(context.Background())
+	if err != nil {
+		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
+	}
+
+	loadBalancersMap := make(map[string]*types.LoadBalancer)
+	loadBalancersMapByUserID := make(map[string][]*types.LoadBalancer)
+
+	for i, loadBalancer := range loadBalancers {
+		for _, appID := range loadBalancer.ApplicationIDs {
+			loadBalancer.Applications = append(loadBalancer.Applications, c.applicationsMap[appID])
+		}
+
+		loadBalancer.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
+
+		loadBalancers[i] = loadBalancer
+		loadBalancersMap[loadBalancer.ID] = loadBalancer
+
+		for _, user := range loadBalancer.Users { // User ID map stores all load balancers that user is a team member on
+			loadBalancersMapByUserID[user.UserID] = append(loadBalancersMapByUserID[user.UserID], loadBalancer)
+		}
+	}
+
+	c.loadBalancers = loadBalancers
+	c.loadBalancersMap = loadBalancersMap
+	c.loadBalancersMapByUserID = loadBalancersMapByUserID
+
+	return nil
+}
+
+func (c *Cache) setUserPermissions() error {
+	userPermissions, err := c.reader.ReadUserPermissions(context.Background())
+	if err != nil {
+		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
+	}
+
+	c.userPermissions = userPermissions
+
+	return nil
+}
+
+/* ----- Read Methods ----- */
 
 // GetUserPermissionsByUserID returns all load balancer UserPermissions for a given UserID
 func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermissions {
@@ -210,29 +375,7 @@ func (c *Cache) GetPayPlans() []types.PayPlan {
 	return payPlansToReturn
 }
 
-func (c *Cache) setApplications() error {
-	applications, err := c.reader.ReadApplications(context.Background())
-	if err != nil {
-		return err
-	}
-
-	applicationsMap := make(map[string]*types.Application)
-	applicationsMapByUserID := make(map[string][]*types.Application)
-
-	for i := 0; i < len(applications); i++ {
-		app := applications[i]
-		applicationID, userID := app.ID, app.UserID
-
-		applicationsMap[applicationID] = app
-		applicationsMapByUserID[userID] = append(applicationsMapByUserID[userID], app)
-	}
-
-	c.applications = applications
-	c.applicationsMap = applicationsMap
-	c.applicationsMapByUserID = applicationsMapByUserID
-
-	return nil
-}
+/* ----- Write Methods ----- */
 
 // addApplication adds application to cache
 func (c *Cache) addApplication(app types.Application) {
@@ -555,24 +698,6 @@ func (c *Cache) removeApplicationFromUserIDMap(inApp types.Application, oldApp *
 	c.applicationsMapByUserID[userID] = appsForUserAfterRemove
 }
 
-func (c *Cache) setBlockchains() error {
-	blockchains, err := c.reader.ReadBlockchains(context.Background())
-	if err != nil {
-		return err
-	}
-
-	blockchainsMap := make(map[string]*types.Blockchain)
-
-	for _, blockchain := range blockchains {
-		blockchainsMap[blockchain.ID] = blockchain
-	}
-
-	c.blockchains = blockchains
-	c.blockchainsMap = blockchainsMap
-
-	return nil
-}
-
 // addBlockchain adds blockchain to cache
 func (c *Cache) addBlockchain(blockchain types.Blockchain) {
 	c.rwMutex.Lock()
@@ -625,37 +750,6 @@ func (c *Cache) updateBlockchain(inBlockchain types.Blockchain) {
 		// update cache with all incoming fields
 		*blockchain = inBlockchain
 	}
-}
-
-func (c *Cache) setLoadBalancers() error {
-	loadBalancers, err := c.reader.ReadLoadBalancers(context.Background())
-	if err != nil {
-		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
-	}
-
-	loadBalancersMap := make(map[string]*types.LoadBalancer)
-	loadBalancersMapByUserID := make(map[string][]*types.LoadBalancer)
-
-	for i, loadBalancer := range loadBalancers {
-		for _, appID := range loadBalancer.ApplicationIDs {
-			loadBalancer.Applications = append(loadBalancer.Applications, c.applicationsMap[appID])
-		}
-
-		loadBalancer.ApplicationIDs = nil // set to nil to avoid having two proofs of truth
-
-		loadBalancers[i] = loadBalancer
-		loadBalancersMap[loadBalancer.ID] = loadBalancer
-
-		for _, user := range loadBalancer.Users { // User ID map stores all load balancers that user is a team member on
-			loadBalancersMapByUserID[user.UserID] = append(loadBalancersMapByUserID[user.UserID], loadBalancer)
-		}
-	}
-
-	c.loadBalancers = loadBalancers
-	c.loadBalancersMap = loadBalancersMap
-	c.loadBalancersMapByUserID = loadBalancersMapByUserID
-
-	return nil
 }
 
 // addLoadBalancer adds load balancer to cache
@@ -800,24 +894,6 @@ func (c *Cache) removeLoadBalancerFromUserIDMap(inLB types.LoadBalancer, oldLB *
 	}
 }
 
-func (c *Cache) setPayPlans() error {
-	payPlans, err := c.reader.ReadPayPlans(context.Background())
-	if err != nil {
-		return err
-	}
-
-	payPlansMap := make(map[types.PayPlanType]*types.PayPlan)
-
-	for _, payPlan := range payPlans {
-		payPlansMap[payPlan.Type] = payPlan
-	}
-
-	c.payPlans = payPlans
-	c.payPlansMap = payPlansMap
-
-	return nil
-}
-
 // updateUserAccess updates updates permissions map, load balancer user and user LBs map saved in cache
 func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	c.rwMutex.Lock()
@@ -909,54 +985,4 @@ func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	}
 
 	c.loadBalancersMapByUserID[delUser.UserID] = lbsForUserAfterRemove
-}
-
-func (c *Cache) setUserPermissions() error {
-	userPermissions, err := c.reader.ReadUserPermissions(context.Background())
-	if err != nil {
-		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
-	}
-
-	c.userPermissions = userPermissions
-
-	return nil
-}
-
-// SetCache gets all values from DB and stores them in cache
-func (c *Cache) SetCache() error {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	err := c.setPayPlans()
-	if err != nil {
-		return fmt.Errorf("err in setPayPlans: %w", err)
-	}
-
-	err = c.setBlockchains()
-	if err != nil {
-		return fmt.Errorf("err in setBlockchains: %w", err)
-	}
-
-	// Always call after setPayPlans
-	err = c.setApplications()
-	if err != nil {
-		return fmt.Errorf("err in setApplications: %w", err)
-	}
-
-	// Always call after setApplications
-	err = c.setLoadBalancers()
-	if err != nil {
-		return err
-	}
-
-	err = c.setUserPermissions()
-	if err != nil {
-		return err
-	}
-
-	if !c.listening {
-		go c.listen()
-	}
-
-	return nil
 }

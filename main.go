@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
 	"github.com/pokt-foundation/utils-go/environment"
@@ -19,46 +20,35 @@ const (
 	cacheRefresh     = "CACHE_REFRESH"
 	port             = "PORT"
 
-	defaultCacheRefreshMinutes = 10
+	defaultCacheRefreshMinutes = 5
 	defaultPort                = "8080"
 )
 
 type options struct {
-	connectionString string
-	apiKeys          map[string]bool
-	cacheRefresh     int64
-	port             string
+	connectionString    string
+	apiKeys             map[string]bool
+	cacheRefreshMinutes time.Duration
+	port                string
 }
 
 func gatherOptions() options {
 	return options{
-		connectionString: environment.MustGetString(connectionString),
-		apiKeys:          environment.MustGetStringMap(apiKeys, ","),
-		cacheRefresh:     environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes),
-		port:             environment.GetString(port, defaultPort),
-	}
-}
-
-func cacheHandler(router *router.Router, cacheRefresh int64, log *logrus.Logger) {
-	for {
-		time.Sleep(time.Duration(cacheRefresh) * time.Minute)
-
-		err := router.Cache.SetCache()
-		if err != nil {
-			log.WithFields(logrus.Fields{"err": err.Error()}).Error(err)
-		}
+		connectionString:    environment.MustGetString(connectionString),
+		apiKeys:             environment.MustGetStringMap(apiKeys, ","),
+		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
+		port:                environment.GetString(port, defaultPort),
 	}
 }
 
 func httpHandler(router *router.Router, port string, log *logrus.Logger) {
-	log.Printf("Postgres API v1 running in port: %s\n", port)
+	log.Printf("Postgres API v1 running in port: %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, router.Router))
 }
 
 func main() {
-	log := logrus.New()
+	logger := logrus.New()
 	// log as JSON instead of the default ASCII formatter.
-	log.SetFormatter(&logrus.JSONFormatter{})
+	logger.SetFormatter(&logrus.JSONFormatter{})
 
 	options := gatherOptions()
 
@@ -75,7 +65,12 @@ func main() {
 		panic(err)
 	}
 
-	router, err := router.NewRouter(driver, driver, options.apiKeys, log)
+	cache, err := cache.NewCache(driver, options.cacheRefreshMinutes, logger)
+	if err != nil {
+		panic(err)
+	}
+
+	router, err := router.NewRouter(cache, driver, driver, options.apiKeys, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -84,9 +79,7 @@ func main() {
 
 	wg.Add(1)
 
-	go httpHandler(router, options.port, log)
-
-	go cacheHandler(router, options.cacheRefresh, log)
+	go httpHandler(router, options.port, logger)
 
 	wg.Wait()
 }
