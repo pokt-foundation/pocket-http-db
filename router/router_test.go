@@ -1776,7 +1776,7 @@ func TestRouter_UpdateBlockchain(t *testing.T) {
 		router.Writer = writerMock
 
 		if test.runMock {
-			writerMock.On("UpdateChain", mock.Anything, mock.Anything).Return(test.err)
+			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
 		}
 
 		rr := httptest.NewRecorder()

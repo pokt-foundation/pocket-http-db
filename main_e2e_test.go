@@ -1757,6 +1757,8 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 	})
 
 	ts.Run("Test_UpdateBlockchain", func() {
+		allowanceInt := 123
+
 		tests := []struct {
 			name             string
 			blockchainID     string
@@ -1765,7 +1767,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			err              error
 		}{
 			{
-				name:         "Should update a single loadBalancer in the DB",
+				name:         "Should update a single blockchain in the DB",
 				blockchainID: "0001",
 				blockchainUpdate: types.UpdateBlockchain{
 					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
@@ -1795,23 +1797,42 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					LogLimitBlocks:    100_010,
 					Active:            true,
 					RequestTimeout:    66_654,
-					Redirects: []types.Redirect{
-						{
-							Alias:          "test-mainnet",
-							Domain:         "test-rpc1.testnet.pokt.network",
-							LoadBalancerID: "test_lb_34gg4g43g34g5hh",
-						},
-						{
-							Alias:          "test-mainnet",
-							Domain:         "test-rpc2.testnet.pokt.network",
-							LoadBalancerID: "test_lb_34gg4g43g34g5hh",
-						},
-					},
+					// Redirects are handled via their own update process
 					SyncCheckOptions: types.SyncCheckOptions{
-						Body:      `{"new-body": "alliance"}`,
-						Path:      "/v1/query/wow-new",
-						ResultKey: "updated-key",
-						Allowance: 1,
+						BlockchainID: "0001",
+						Body:         `{"new-body": "alliance"}`,
+						Path:         "/v1/query/wow-new",
+						ResultKey:    "updated-key",
+						Allowance:    1,
+					},
+				},
+			},
+			{
+				name:         "Should update Allowance for a single blockchain in the DB",
+				blockchainID: "0001",
+				blockchainUpdate: types.UpdateBlockchain{
+					Allowance: &allowanceInt,
+				},
+				expectedChain: types.Blockchain{
+					ID:                "0001",
+					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
+					Blockchain:        "pokt-mainnet-updated",
+					Description:       "POKT Network Mainnet Updated",
+					EnforceResult:     "JSON-2",
+					Network:           "new-network",
+					Ticker:            "SUCH-WOW",
+					Path:              "new-path",
+					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
+					LogLimitBlocks:    100_010,
+					Active:            true,
+					RequestTimeout:    66_654,
+					// Redirects are handled via their own update process
+					SyncCheckOptions: types.SyncCheckOptions{
+						BlockchainID: "0001",
+						Body:         `{"new-body": "alliance"}`,
+						Path:         "/v1/query/wow-new",
+						ResultKey:    "updated-key",
+						Allowance:    123,
 					},
 				},
 			},
@@ -1838,9 +1859,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
 				ts.Equal(test.expectedChain.Path, blockchain.Path)
-				ts.Equal(test.expectedChain.SyncCheckOptions.ResultKey, blockchain.SyncCheckOptions.ResultKey)
-				ts.Equal(test.expectedChain.SyncCheckOptions.Path, blockchain.SyncCheckOptions.Path)
-				ts.Equal(test.expectedChain.SyncCheckOptions.Body, blockchain.SyncCheckOptions.Body)
+				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 
 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
 				ts.NoError(err)
@@ -1853,9 +1872,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
 				ts.Equal(test.expectedChain.Path, blockchain.Path)
-				ts.Equal(test.expectedChain.SyncCheckOptions.ResultKey, blockchain.SyncCheckOptions.ResultKey)
-				ts.Equal(test.expectedChain.SyncCheckOptions.Path, blockchain.SyncCheckOptions.Path)
-				ts.Equal(test.expectedChain.SyncCheckOptions.Body, blockchain.SyncCheckOptions.Body)
+				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 			}
 		}
 	})
