@@ -1074,7 +1074,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.blockchain.EnforceResult, blockchain.EnforceResult)
 				ts.Equal(test.blockchain.Network, blockchain.Network)
 				ts.Equal(test.blockchain.Path, blockchain.Path)
-				ts.Equal(test.blockchain.SyncCheck, blockchain.SyncCheck)
 				ts.Equal(test.blockchain.Ticker, blockchain.Ticker)
 				ts.Equal(test.blockchain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.blockchain.LogLimitBlocks, blockchain.LogLimitBlocks)
@@ -1096,7 +1095,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.blockchain.EnforceResult, blockchain.EnforceResult)
 				ts.Equal(test.blockchain.Network, blockchain.Network)
 				ts.Equal(test.blockchain.Path, blockchain.Path)
-				ts.Equal(test.blockchain.SyncCheck, blockchain.SyncCheck)
 				ts.Equal(test.blockchain.Ticker, blockchain.Ticker)
 				ts.Equal(test.blockchain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.blockchain.LogLimitBlocks, blockchain.LogLimitBlocks)
@@ -1758,6 +1756,110 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 		}
 	})
 
+	ts.Run("Test_UpdateBlockchain", func() {
+		tests := []struct {
+			name             string
+			blockchainID     string
+			blockchainUpdate types.UpdateBlockchain
+			expectedChain    types.Blockchain
+			err              error
+		}{
+			{
+				name:         "Should update a single loadBalancer in the DB",
+				blockchainID: "0001",
+				blockchainUpdate: types.UpdateBlockchain{
+					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
+					Blockchain:        "pokt-mainnet-updated",
+					Description:       "POKT Network Mainnet Updated",
+					RequestTimeout:    66_654,
+					ResultKey:         "updated-key",
+					LogLimitBlocks:    100_010,
+					Network:           "new-network",
+					Ticker:            "SUCH-WOW",
+					SyncCheckPath:     "/v1/query/wow-new",
+					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
+					EnforceResult:     "JSON-2",
+					Path:              "new-path",
+					Body:              `{"new-body": "alliance"}`,
+				},
+				expectedChain: types.Blockchain{
+					ID:                "0001",
+					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
+					Blockchain:        "pokt-mainnet-updated",
+					Description:       "POKT Network Mainnet Updated",
+					EnforceResult:     "JSON-2",
+					Network:           "new-network",
+					Ticker:            "SUCH-WOW",
+					Path:              "new-path",
+					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
+					LogLimitBlocks:    100_010,
+					Active:            true,
+					RequestTimeout:    66_654,
+					Redirects: []types.Redirect{
+						{
+							Alias:          "test-mainnet",
+							Domain:         "test-rpc1.testnet.pokt.network",
+							LoadBalancerID: "test_lb_34gg4g43g34g5hh",
+						},
+						{
+							Alias:          "test-mainnet",
+							Domain:         "test-rpc2.testnet.pokt.network",
+							LoadBalancerID: "test_lb_34gg4g43g34g5hh",
+						},
+					},
+					SyncCheckOptions: types.SyncCheckOptions{
+						Body:      `{"new-body": "alliance"}`,
+						Path:      "/v1/query/wow-new",
+						ResultKey: "updated-key",
+						Allowance: 1,
+					},
+				},
+			},
+			{
+				name:         "Should fail if blockchain cannot be found",
+				blockchainID: "9000",
+				err:          fmt.Errorf("Response not OK. 404 Not Found: blockchain not found"),
+			},
+		}
+
+		for _, test := range tests {
+			updatedChain, err := ts.client1.UpdateBlockchain(testCtx, test.blockchainID, test.blockchainUpdate)
+			ts.Equal(test.err, err)
+			if err == nil {
+				<-time.After(50 * time.Millisecond)
+				blockchain, err := ts.client1.GetBlockchainByID(testCtx, updatedChain.ID)
+				ts.NoError(err)
+				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+				ts.Equal(test.expectedChain.Description, blockchain.Description)
+				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+				ts.Equal(test.expectedChain.Network, blockchain.Network)
+				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+				ts.Equal(test.expectedChain.Path, blockchain.Path)
+				ts.Equal(test.expectedChain.SyncCheckOptions.ResultKey, blockchain.SyncCheckOptions.ResultKey)
+				ts.Equal(test.expectedChain.SyncCheckOptions.Path, blockchain.SyncCheckOptions.Path)
+				ts.Equal(test.expectedChain.SyncCheckOptions.Body, blockchain.SyncCheckOptions.Body)
+
+				blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
+				ts.NoError(err)
+				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+				ts.Equal(test.expectedChain.Description, blockchain.Description)
+				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+				ts.Equal(test.expectedChain.Network, blockchain.Network)
+				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+				ts.Equal(test.expectedChain.Path, blockchain.Path)
+				ts.Equal(test.expectedChain.SyncCheckOptions.ResultKey, blockchain.SyncCheckOptions.ResultKey)
+				ts.Equal(test.expectedChain.SyncCheckOptions.Path, blockchain.SyncCheckOptions.Path)
+				ts.Equal(test.expectedChain.SyncCheckOptions.Body, blockchain.SyncCheckOptions.Body)
+			}
+		}
+	})
+
 	ts.Run("Test_UpdateLoadBalancer", func() {
 		tests := []struct {
 			name                    string
@@ -1812,15 +1914,15 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
-			createdLB, err := ts.client1.UpdateLoadBalancer(testCtx, test.loadBalancerID, test.loadBalancerUpdate)
+			updatedLB, err := ts.client1.UpdateLoadBalancer(testCtx, test.loadBalancerID, test.loadBalancerUpdate)
 			ts.Equal(test.err, err)
 			if err == nil {
-				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
+				loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, updatedLB.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerAfterUpdate.Name, loadBalancer.Name)
 				ts.Equal(test.loadBalancerAfterUpdate.StickyOptions, loadBalancer.StickyOptions)
 
-				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
+				loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, updatedLB.ID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerAfterUpdate.Name, loadBalancer.Name)
 				ts.Equal(test.loadBalancerAfterUpdate.StickyOptions, loadBalancer.StickyOptions)
