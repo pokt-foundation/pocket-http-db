@@ -1,161 +1,223 @@
 package cache
 
 import (
+	"context"
 	"fmt"
+	"sort"
 	"sync"
 
-	"github.com/pokt-foundation/portal-api-go/repository"
+	"github.com/pokt-foundation/portal-db/driver"
+	"github.com/pokt-foundation/portal-db/types"
+	stringUtils "github.com/pokt-foundation/utils-go/strings"
 	"github.com/sirupsen/logrus"
 )
 
-// Reader represents implementation of reader interface
-type Reader interface {
-	ReadApplications() ([]*repository.Application, error)
-	ReadBlockchains() ([]*repository.Blockchain, error)
-	ReadLoadBalancers() ([]*repository.LoadBalancer, error)
-	ReadPayPlans() ([]*repository.PayPlan, error)
-	ReadRedirects() ([]*repository.Redirect, error)
-	NotificationChannel() <-chan *repository.Notification
-}
-
 // Cache struct handler for cache operations
 type Cache struct {
-	reader                     Reader
-	rwMutex                    sync.RWMutex
-	applicationsMap            map[string]*repository.Application
-	applicationsMapByUserID    map[string][]*repository.Application
-	applications               []*repository.Application
-	blockchainsMap             map[string]*repository.Blockchain
-	blockchains                []*repository.Blockchain
-	loadBalancersMap           map[string]*repository.LoadBalancer
-	loadBalancersMapByUserID   map[string][]*repository.LoadBalancer
-	loadBalancers              []*repository.LoadBalancer
-	payPlansMap                map[repository.PayPlanType]*repository.PayPlan
-	payPlans                   []*repository.PayPlan
-	redirectsMapByBlockchainID map[string][]*repository.Redirect
+	reader                   driver.Reader
+	rwMutex                  sync.RWMutex
+	applicationsMap          map[string]*types.Application
+	applicationsMapByUserID  map[string][]*types.Application
+	applications             []*types.Application
+	blockchainsMap           map[string]*types.Blockchain
+	blockchains              []*types.Blockchain
+	loadBalancersMap         map[string]*types.LoadBalancer
+	loadBalancersMapByUserID map[string][]*types.LoadBalancer
+	userPermissions          map[types.UserID]*types.UserPermissions
+	loadBalancers            []*types.LoadBalancer
+	payPlansMap              map[types.PayPlanType]*types.PayPlan
+	payPlans                 []*types.PayPlan
 
 	listening bool
 
-	pendingAppLimit            map[string]repository.AppLimit
-	pendingGatewayAAT          map[string]repository.GatewayAAT
-	pendingGatewaySettings     map[string]repository.GatewaySettings
-	pendingNotifactionSettings map[string]repository.NotificationSettings
-	pendingSyncCheckOptions    map[string]repository.SyncCheckOptions
-	pendingStickyOptions       map[string]repository.StickyOptions
-	pendingLbApps              map[string][]repository.LbApp
-	log                        *logrus.Logger
+	pendingAppLimit            map[string]types.AppLimit
+	pendingGatewayAAT          map[string]types.GatewayAAT
+	pendingGatewaySettings     map[string]types.GatewaySettings
+	pendingNotifactionSettings map[string]types.NotificationSettings
+	pendingRedirects           map[string]types.Redirect
+	pendingSyncCheckOptions    map[string]types.SyncCheckOptions
+	pendingStickyOptions       map[string]types.StickyOptions
+	pendingUserAccess          map[string][]types.UserAccess
+	pendingLbApps              map[string][]types.LbApp
+
+	log *logrus.Logger
 }
 
-// NewCache returns cache v0 instance from reader interface
-func NewCache(reader Reader, logger *logrus.Logger) *Cache {
+// NewCache returns cache instance from reader interface
+func NewCache(reader driver.Reader, logger *logrus.Logger) *Cache {
 	return &Cache{
-		reader:                     reader,
-		pendingAppLimit:            make(map[string]repository.AppLimit),
-		pendingGatewayAAT:          make(map[string]repository.GatewayAAT),
-		pendingGatewaySettings:     make(map[string]repository.GatewaySettings),
-		pendingNotifactionSettings: make(map[string]repository.NotificationSettings),
-		pendingSyncCheckOptions:    make(map[string]repository.SyncCheckOptions),
-		pendingStickyOptions:       make(map[string]repository.StickyOptions),
-		pendingLbApps:              make(map[string][]repository.LbApp),
-		log:                        logger,
+		reader: reader,
+
+		pendingAppLimit:            make(map[string]types.AppLimit),
+		pendingGatewayAAT:          make(map[string]types.GatewayAAT),
+		pendingGatewaySettings:     make(map[string]types.GatewaySettings),
+		pendingNotifactionSettings: make(map[string]types.NotificationSettings),
+		pendingRedirects:           make(map[string]types.Redirect),
+		pendingSyncCheckOptions:    make(map[string]types.SyncCheckOptions),
+		pendingStickyOptions:       make(map[string]types.StickyOptions),
+		pendingUserAccess:          make(map[string][]types.UserAccess),
+		pendingLbApps:              make(map[string][]types.LbApp),
+
+		log: logger,
 	}
 }
 
-// GetApplication returns Application from cache by applicationID
-func (c *Cache) GetApplication(applicationID string) *repository.Application {
+// GetUserPermissionsByUserID returns all load balancer UserPermissions for a given UserID
+func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermissions {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.applicationsMap[applicationID]
+	permission, ok := c.userPermissions[userID]
+	if !ok {
+		return types.UserPermissions{}
+	}
+
+	return *permission
+}
+
+// GetApplication returns Application from cache by applicationID
+func (c *Cache) GetApplication(applicationID string) types.Application {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	app, ok := c.applicationsMap[applicationID]
+	if !ok {
+		return types.Application{}
+	}
+
+	return *app
 }
 
 // GetApplicationsByUserID returns Applications from cache by userID
-func (c *Cache) GetApplicationsByUserID(userID string) []*repository.Application {
+func (c *Cache) GetApplicationsByUserID(userID string) []types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.applicationsMapByUserID[userID]
+	var appsToReturn []types.Application
+
+	for _, app := range c.applicationsMapByUserID[userID] {
+		appsToReturn = append(appsToReturn, *app)
+	}
+
+	return appsToReturn
 }
 
 // GetApplications returns all Applications in cache
-func (c *Cache) GetApplications() []*repository.Application {
+func (c *Cache) GetApplications() []types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.applications
+	var appsToReturn []types.Application
+
+	for _, app := range c.applications {
+		appsToReturn = append(appsToReturn, *app)
+	}
+
+	return appsToReturn
 }
 
 // GetBlockchain returns Blockchain from cache by blockchainID
-func (c *Cache) GetBlockchain(blockchainID string) *repository.Blockchain {
+func (c *Cache) GetBlockchain(blockchainID string) types.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.blockchainsMap[blockchainID]
+	blockchain, ok := c.blockchainsMap[blockchainID]
+	if !ok {
+		return types.Blockchain{}
+	}
+
+	return *blockchain
 }
 
 // GetBlockchains returns all Blockchains from cache
-func (c *Cache) GetBlockchains() []*repository.Blockchain {
+func (c *Cache) GetBlockchains() []types.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.blockchains
+	var blockchainsToReturn []types.Blockchain
+
+	for _, blockchain := range c.blockchains {
+		blockchainsToReturn = append(blockchainsToReturn, *blockchain)
+	}
+
+	return blockchainsToReturn
 }
 
 // GetLoadBalancer returns Loadbalancer by loadbalancerID
-func (c *Cache) GetLoadBalancer(loadBalancerID string) *repository.LoadBalancer {
+func (c *Cache) GetLoadBalancer(loadBalancerID string) types.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.loadBalancersMap[loadBalancerID]
+	lb, ok := c.loadBalancersMap[loadBalancerID]
+	if !ok {
+		return types.LoadBalancer{}
+	}
+
+	return *lb
 }
 
 // GetLoadBalancers returns all Loadbalancers on cache
-func (c *Cache) GetLoadBalancers() []*repository.LoadBalancer {
+func (c *Cache) GetLoadBalancers() []types.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.loadBalancers
+	var lbsToReturn []types.LoadBalancer
+
+	for _, lb := range c.loadBalancers {
+		lbsToReturn = append(lbsToReturn, *lb)
+	}
+
+	return lbsToReturn
 }
 
-func (c *Cache) GetLoadBalancersByUserID(userID string) []*repository.LoadBalancer {
+func (c *Cache) GetLoadBalancersByUserID(userID string) []types.LoadBalancer {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.loadBalancersMapByUserID[userID]
+	var lbsToReturn []types.LoadBalancer
+
+	for _, lb := range c.loadBalancersMapByUserID[userID] {
+		lbsToReturn = append(lbsToReturn, *lb)
+	}
+
+	return lbsToReturn
 }
 
 // GetPayPlan returns PayPlan from cache by planType
-func (c *Cache) GetPayPlan(planType repository.PayPlanType) *repository.PayPlan {
+func (c *Cache) GetPayPlan(planType types.PayPlanType) types.PayPlan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.payPlansMap[planType]
+	payPlan, ok := c.payPlansMap[planType]
+	if !ok {
+		return types.PayPlan{}
+	}
+
+	return *payPlan
 }
 
 // GetPayPlans returns all PayPlans in cache
-func (c *Cache) GetPayPlans() []*repository.PayPlan {
+func (c *Cache) GetPayPlans() []types.PayPlan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.payPlans
-}
+	var payPlansToReturn []types.PayPlan
 
-// GetRedirects returns all Redirects from cache by blockchainID
-func (c *Cache) GetRedirects(blockchainID string) []*repository.Redirect {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
+	for _, payPlan := range c.payPlans {
+		payPlansToReturn = append(payPlansToReturn, *payPlan)
+	}
 
-	return c.redirectsMapByBlockchainID[blockchainID]
+	return payPlansToReturn
 }
 
 func (c *Cache) setApplications() error {
-	applications, err := c.reader.ReadApplications()
+	applications, err := c.reader.ReadApplications(context.Background())
 	if err != nil {
 		return err
 	}
 
-	applicationsMap := make(map[string]*repository.Application)
-	applicationsMapByUserID := make(map[string][]*repository.Application)
+	applicationsMap := make(map[string]*types.Application)
+	applicationsMapByUserID := make(map[string][]*types.Application)
 
 	for i := 0; i < len(applications); i++ {
 		app := applications[i]
@@ -173,7 +235,7 @@ func (c *Cache) setApplications() error {
 }
 
 // addApplication adds application to cache
-func (c *Cache) addApplication(app repository.Application) {
+func (c *Cache) addApplication(app types.Application) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -208,14 +270,14 @@ func (c *Cache) addApplication(app repository.Application) {
 	c.applicationsMapByUserID[app.UserID] = append(c.applicationsMapByUserID[app.UserID], &app)
 }
 
-func (c *Cache) addAppLimit(limit repository.AppLimit) {
+func (c *Cache) addAppLimit(limit types.AppLimit) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
 	appID := limit.ID
 	limit.ID = "" // to avoid multiple sources of truth
 
-	if limit.PayPlan.Type != repository.Enterprise {
+	if limit.PayPlan.Type != types.Enterprise {
 		payPlan, ok := c.payPlansMap[limit.PayPlan.Type]
 		if !ok {
 			fmt.Println("invalid pay plan type on add app limit")
@@ -232,7 +294,7 @@ func (c *Cache) addAppLimit(limit repository.AppLimit) {
 	c.pendingAppLimit[appID] = limit
 }
 
-func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
+func (c *Cache) addGatewayAAT(aat types.GatewayAAT) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -249,7 +311,7 @@ func (c *Cache) addGatewayAAT(aat repository.GatewayAAT) {
 }
 
 // Updates the gateway settings from a listener notification
-func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
+func (c *Cache) addGatewaySettings(settings types.GatewaySettings) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -271,7 +333,10 @@ func (c *Cache) addGatewaySettings(settings repository.GatewaySettings) {
 }
 
 // Updates the gateway settings whitelist contracts from a listener notification
-func (c *Cache) addWhitelistContract(inContract repository.WhitelistContract) {
+func (c *Cache) addWhitelistContract(inContract types.WhitelistContract) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
 	appID := inContract.ID
 	inContract.ID = "" // to avoid multiple sources of truth
 
@@ -281,26 +346,80 @@ func (c *Cache) addWhitelistContract(inContract repository.WhitelistContract) {
 	}
 
 	appSettings := app.GatewaySettings
+
 	var chainIDExists bool
 	for i := range appSettings.WhitelistContracts {
 		if appSettings.WhitelistContracts[i].BlockchainID == inContract.BlockchainID {
-			appSettings.WhitelistContracts[i].Contracts = inContract.Contracts
 			chainIDExists = true
+
+			if stringUtils.ExactContains(appSettings.WhitelistContracts[i].Contracts, inContract.Contract) {
+				break
+			}
+
+			appSettings.WhitelistContracts[i].Contracts = append(
+				appSettings.WhitelistContracts[i].Contracts, inContract.Contract,
+			)
+			sort.Strings(appSettings.WhitelistContracts[i].Contracts)
+
 			break
 		}
 	}
+
 	if !chainIDExists {
-		appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, inContract)
+		appSettings.WhitelistContracts = append(appSettings.WhitelistContracts, types.WhitelistContracts{
+			BlockchainID: inContract.BlockchainID,
+			Contracts:    []string{inContract.Contract},
+		})
 	}
 
+	app.GatewaySettings = appSettings
+}
+
+// Removes a contract from the gateway settings whitelist contracts from a listener notification
+func (c *Cache) deleteWhitelistContract(inContract types.WhitelistContract) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+
+	appID := inContract.ID
+	inContract.ID = "" // to avoid multiple sources of truth
+
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
+		return
+	}
+
+	appSettings := app.GatewaySettings
+
+	for i, whitelistContract := range appSettings.WhitelistContracts {
+		if whitelistContract.BlockchainID != inContract.BlockchainID {
+			continue
+		}
+
+		filteredContracts := []string{}
+		for _, contract := range whitelistContract.Contracts {
+			if contract != inContract.Contract {
+				filteredContracts = append(filteredContracts, contract)
+			}
+		}
+
+		// If no contracts remain remove the WhitelistContracts from the slice
+		if len(filteredContracts) == 0 {
+			appSettings.WhitelistContracts = append(appSettings.WhitelistContracts[:i], appSettings.WhitelistContracts[i+1:]...)
+			break
+		}
+
+		appSettings.WhitelistContracts[i].Contracts = filteredContracts
+		break
+	}
 
 	app.GatewaySettings = appSettings
 }
 
 // Updates the gateway settings whitelist methods from a listener notification
-func (c *Cache) addWhitelistMethod(inMethod repository.WhitelistMethod) {
+func (c *Cache) addWhitelistMethod(inMethod types.WhitelistMethod) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
 	appID := inMethod.ID
 	inMethod.ID = "" // to avoid multiple sources of truth
 
@@ -310,25 +429,76 @@ func (c *Cache) addWhitelistMethod(inMethod repository.WhitelistMethod) {
 	}
 
 	appSettings := app.GatewaySettings
+
 	var chainIDExists bool
 	for i := range appSettings.WhitelistMethods {
 		if appSettings.WhitelistMethods[i].BlockchainID == inMethod.BlockchainID {
-			appSettings.WhitelistMethods[i].Methods = inMethod.Methods
 			chainIDExists = true
+
+			if stringUtils.ExactContains(appSettings.WhitelistMethods[i].Methods, inMethod.Method) {
+				break
+			}
+
+			appSettings.WhitelistMethods[i].Methods = append(
+				appSettings.WhitelistMethods[i].Methods, inMethod.Method,
+			)
+			sort.Strings(appSettings.WhitelistMethods[i].Methods)
+
 			break
 		}
 	}
-	if !chainIDExists {
-		appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, inMethod)
-	}
 
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
+	if !chainIDExists {
+		appSettings.WhitelistMethods = append(appSettings.WhitelistMethods, types.WhitelistMethods{
+			BlockchainID: inMethod.BlockchainID,
+			Methods:      []string{inMethod.Method},
+		})
+	}
 
 	app.GatewaySettings = appSettings
 }
 
-func (c *Cache) addNotificationSettings(settings repository.NotificationSettings) {
+// Removes a method from the gateway settings whitelist methods from a listener notification
+func (c *Cache) deleteWhitelistMethod(inMethod types.WhitelistMethod) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	appID := inMethod.ID
+	inMethod.ID = "" // to avoid multiple sources of truth
+
+	app, ok := c.applicationsMap[appID]
+	if !ok { // No pending map since whitelist methods are never set on a new app
+		return
+	}
+
+	appSettings := app.GatewaySettings
+
+	for i, whitelistMethod := range appSettings.WhitelistMethods {
+		if whitelistMethod.BlockchainID != inMethod.BlockchainID {
+			continue
+		}
+
+		filteredMethods := []string{}
+		for _, method := range whitelistMethod.Methods {
+			if method != inMethod.Method {
+				filteredMethods = append(filteredMethods, method)
+			}
+		}
+
+		// If no methods remain remove the WhitelistMethods from the slice
+		if len(filteredMethods) == 0 {
+			appSettings.WhitelistMethods = append(appSettings.WhitelistMethods[:i], appSettings.WhitelistMethods[i+1:]...)
+			break
+		}
+
+		appSettings.WhitelistMethods[i].Methods = filteredMethods
+		break
+	}
+
+	app.GatewaySettings = appSettings
+}
+
+func (c *Cache) addNotificationSettings(settings types.NotificationSettings) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -345,19 +515,19 @@ func (c *Cache) addNotificationSettings(settings repository.NotificationSettings
 }
 
 // updateApplication updates application saved in cache
-func (c *Cache) updateApplication(inApp repository.Application) {
+func (c *Cache) updateApplication(inApp types.Application) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
 	app := c.applicationsMap[inApp.ID]
 
-	if inApp.UserID == "" {
+	if inApp.Status == types.AwaitingGracePeriod {
 		c.removeApplicationFromUserIDMap(inApp, app)
 	}
 
 	limit := app.Limit
 
-	if limit.PayPlan.Type != repository.Enterprise {
+	if limit.PayPlan.Type != types.Enterprise {
 		payPlan, ok := c.payPlansMap[limit.PayPlan.Type]
 		if ok {
 			limit.PayPlan.Limit = payPlan.Limit
@@ -372,15 +542,13 @@ func (c *Cache) updateApplication(inApp repository.Application) {
 }
 
 // removeApplicationFromUserIDMap removes applications saved in cache from the applicationsMapByUserID as they no longer have a userID
-func (c *Cache) removeApplicationFromUserIDMap(inApp repository.Application, oldApp *repository.Application) {
+func (c *Cache) removeApplicationFromUserIDMap(inApp types.Application, oldApp *types.Application) {
 	userID := oldApp.UserID
 
-	appsForUser := c.applicationsMapByUserID[userID]
-	appsForUserAfterRemove := []*repository.Application{}
-
-	for i := range appsForUser {
-		if appsForUser[i].ID != inApp.ID {
-			appsForUserAfterRemove = append(appsForUserAfterRemove, appsForUser[i])
+	var appsForUserAfterRemove []*types.Application
+	for _, app := range c.applicationsMapByUserID[userID] {
+		if app.ID != inApp.ID {
+			appsForUserAfterRemove = append(appsForUserAfterRemove, app)
 		}
 	}
 
@@ -388,22 +556,14 @@ func (c *Cache) removeApplicationFromUserIDMap(inApp repository.Application, old
 }
 
 func (c *Cache) setBlockchains() error {
-	blockchains, err := c.reader.ReadBlockchains()
+	blockchains, err := c.reader.ReadBlockchains(context.Background())
 	if err != nil {
 		return err
 	}
 
-	blockchainsMap := make(map[string]*repository.Blockchain)
+	blockchainsMap := make(map[string]*types.Blockchain)
 
 	for _, blockchain := range blockchains {
-		if blockchainRedirects, exists := c.redirectsMapByBlockchainID[blockchain.ID]; exists {
-			redirects := []repository.Redirect{}
-			for _, redirect := range blockchainRedirects {
-				redirects = append(redirects, *redirect)
-			}
-			blockchain.Redirects = redirects
-		}
-
 		blockchainsMap[blockchain.ID] = blockchain
 	}
 
@@ -414,7 +574,7 @@ func (c *Cache) setBlockchains() error {
 }
 
 // addBlockchain adds blockchain to cache
-func (c *Cache) addBlockchain(blockchain repository.Blockchain) {
+func (c *Cache) addBlockchain(blockchain types.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -428,7 +588,7 @@ func (c *Cache) addBlockchain(blockchain repository.Blockchain) {
 	c.blockchainsMap[blockchain.ID] = &blockchain
 }
 
-func (c *Cache) addSyncOptions(opts repository.SyncCheckOptions) {
+func (c *Cache) addSyncOptions(opts types.SyncCheckOptions) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -441,8 +601,21 @@ func (c *Cache) addSyncOptions(opts repository.SyncCheckOptions) {
 	c.pendingSyncCheckOptions[opts.BlockchainID] = opts
 }
 
+func (c *Cache) addRedirect(redirect types.Redirect) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	blockchain := c.blockchainsMap[redirect.BlockchainID]
+	if blockchain != nil {
+		blockchain.Redirects = append(blockchain.Redirects, redirect)
+		return
+	}
+
+	c.pendingRedirects[redirect.BlockchainID] = redirect
+}
+
 // updateBlockchain updates blockchain saved in cache
-func (c *Cache) updateBlockchain(inBlockchain repository.Blockchain) {
+func (c *Cache) updateBlockchain(inBlockchain types.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -452,13 +625,13 @@ func (c *Cache) updateBlockchain(inBlockchain repository.Blockchain) {
 }
 
 func (c *Cache) setLoadBalancers() error {
-	loadBalancers, err := c.reader.ReadLoadBalancers()
+	loadBalancers, err := c.reader.ReadLoadBalancers(context.Background())
 	if err != nil {
 		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
 	}
 
-	loadBalancersMap := make(map[string]*repository.LoadBalancer)
-	loadBalancersMapByUserID := make(map[string][]*repository.LoadBalancer)
+	loadBalancersMap := make(map[string]*types.LoadBalancer)
+	loadBalancersMapByUserID := make(map[string][]*types.LoadBalancer)
 
 	for i, loadBalancer := range loadBalancers {
 		for _, appID := range loadBalancer.ApplicationIDs {
@@ -469,7 +642,10 @@ func (c *Cache) setLoadBalancers() error {
 
 		loadBalancers[i] = loadBalancer
 		loadBalancersMap[loadBalancer.ID] = loadBalancer
-		loadBalancersMapByUserID[loadBalancer.UserID] = append(loadBalancersMapByUserID[loadBalancer.UserID], loadBalancer)
+
+		for _, user := range loadBalancer.Users { // User ID map stores all load balancers that user is a team member on
+			loadBalancersMapByUserID[user.UserID] = append(loadBalancersMapByUserID[user.UserID], loadBalancer)
+		}
 	}
 
 	c.loadBalancers = loadBalancers
@@ -480,7 +656,7 @@ func (c *Cache) setLoadBalancers() error {
 }
 
 // addLoadBalancer adds load balancer to cache
-func (c *Cache) addLoadBalancer(lb repository.LoadBalancer) {
+func (c *Cache) addLoadBalancer(lb types.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -488,6 +664,12 @@ func (c *Cache) addLoadBalancer(lb repository.LoadBalancer) {
 	if ok {
 		lb.StickyOptions = opts
 		delete(c.pendingStickyOptions, lb.ID)
+	}
+
+	users, ok := c.pendingUserAccess[lb.ID]
+	if ok {
+		lb.Users = append(lb.Users, users...)
+		delete(c.pendingUserAccess, lb.ID)
 	}
 
 	lbApps, ok := c.pendingLbApps[lb.ID]
@@ -500,10 +682,13 @@ func (c *Cache) addLoadBalancer(lb repository.LoadBalancer) {
 
 	c.loadBalancers = append(c.loadBalancers, &lb)
 	c.loadBalancersMap[lb.ID] = &lb
-	c.loadBalancersMapByUserID[lb.UserID] = append(c.loadBalancersMapByUserID[lb.UserID], &lb)
+
+	for _, user := range lb.Users { // User ID map stores all load balancers that user is a team member on
+		c.loadBalancersMapByUserID[user.UserID] = append(c.loadBalancersMapByUserID[user.UserID], &lb)
+	}
 }
 
-func (c *Cache) addStickinessOptions(opts repository.StickyOptions) {
+func (c *Cache) addStickinessOptions(opts types.StickyOptions) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -519,7 +704,51 @@ func (c *Cache) addStickinessOptions(opts repository.StickyOptions) {
 	c.pendingStickyOptions[lbID] = opts
 }
 
-func (c *Cache) addLbApp(lbApp repository.LbApp) {
+func (c *Cache) addUserAccess(userAccess types.UserAccess) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	lbID := userAccess.ID
+	userAccess.ID = "" // to avoid multiple sources of truth
+
+	// Add user to permissions map if they have a user ID
+	if userAccess.UserID != "" {
+		userID := types.UserID(userAccess.UserID)
+
+		if userPermissions, ok := c.userPermissions[userID]; ok {
+			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			if err != nil {
+				fmt.Println("error upserting user permissions: %w", err)
+			}
+		} else {
+			permissions := &types.UserPermissions{
+				UserID:        userID,
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
+			}
+			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+			if err != nil {
+				fmt.Println("error upserting user permissions: %w", err)
+			}
+
+			c.userPermissions[userID] = permissions
+		}
+	}
+
+	lb := c.loadBalancersMap[lbID]
+	if lb != nil {
+		lb.Users = append(lb.Users, userAccess)
+
+		if userAccess.UserID != "" {
+			c.loadBalancersMapByUserID[userAccess.UserID] = append(c.loadBalancersMapByUserID[userAccess.UserID], lb)
+		}
+
+		return
+	}
+
+	c.pendingUserAccess[lbID] = append(c.pendingUserAccess[lbID], userAccess)
+}
+
+func (c *Cache) addLbApp(lbApp types.LbApp) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -533,7 +762,7 @@ func (c *Cache) addLbApp(lbApp repository.LbApp) {
 }
 
 // updateLoadBalancer updates load balancer saved in cache
-func (c *Cache) updateLoadBalancer(inLB repository.LoadBalancer) {
+func (c *Cache) updateLoadBalancer(inLB types.LoadBalancer) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -549,28 +778,32 @@ func (c *Cache) updateLoadBalancer(inLB repository.LoadBalancer) {
 }
 
 // removeApplication removes load balancers saved in cache from the loadBalancersMapByUserID as they no longer have a userID
-func (c *Cache) removeLoadBalancerFromUserIDMap(inLB repository.LoadBalancer, oldLB *repository.LoadBalancer) {
+func (c *Cache) removeLoadBalancerFromUserIDMap(inLB types.LoadBalancer, oldLB *types.LoadBalancer) {
 	userID := oldLB.UserID
 
-	lbsForUser := c.loadBalancersMapByUserID[userID]
-	lbsForUserAfterRemove := []*repository.LoadBalancer{}
+	for _, ownerLB := range c.loadBalancersMapByUserID[userID] {
+		// The removed LB must be removed from the LB maps of all team members (this includes the OWNER)
+		for _, user := range ownerLB.Users {
+			lbsForMemberAfterRemove := []*types.LoadBalancer{}
 
-	for i := range lbsForUser {
-		if lbsForUser[i].ID != inLB.ID {
-			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
+			for _, memberLB := range c.loadBalancersMapByUserID[user.UserID] {
+				if memberLB.ID != inLB.ID {
+					lbsForMemberAfterRemove = append(lbsForMemberAfterRemove, memberLB)
+				}
+			}
+
+			c.loadBalancersMapByUserID[user.UserID] = lbsForMemberAfterRemove
 		}
 	}
-
-	c.loadBalancersMapByUserID[userID] = lbsForUserAfterRemove
 }
 
 func (c *Cache) setPayPlans() error {
-	payPlans, err := c.reader.ReadPayPlans()
+	payPlans, err := c.reader.ReadPayPlans(context.Background())
 	if err != nil {
 		return err
 	}
 
-	payPlansMap := make(map[repository.PayPlanType]*repository.PayPlan)
+	payPlansMap := make(map[types.PayPlanType]*types.PayPlan)
 
 	for _, payPlan := range payPlans {
 		payPlansMap[payPlan.Type] = payPlan
@@ -582,31 +815,108 @@ func (c *Cache) setPayPlans() error {
 	return nil
 }
 
-func (c *Cache) setRedirects() error {
-	redirects, err := c.reader.ReadRedirects()
-	if err != nil {
-		return err
+// updateUserAccess updates updates permissions map, load balancer user and user LBs map saved in cache
+func (c *Cache) updateUserAccess(inUser types.UserAccess) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	lbID := inUser.ID
+	inUser.ID = "" // to avoid multiple sources of truth
+
+	// add user to permissions map if they have been accepted
+	if inUser.Accepted {
+		userID := types.UserID(inUser.UserID)
+
+		if userPermissions, ok := c.userPermissions[userID]; ok {
+			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			if err != nil {
+				fmt.Println("error upserting user permissions: %w", err)
+			}
+		} else {
+			permissions := &types.UserPermissions{
+				UserID:        userID,
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
+			}
+			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+			if err != nil {
+				fmt.Println("error upserting user permissions: %w", err)
+			}
+
+			c.userPermissions[userID] = permissions
+		}
+
 	}
 
-	redirectsMap := make(map[string][]*repository.Redirect)
+	if lb, ok := c.loadBalancersMap[lbID]; ok {
+		for i := range lb.Users {
+			if lb.Users[i].Email == inUser.Email {
+				// update user fields when user_access listener event for create/update received
+				lb.Users[i].RoleName = inUser.RoleName
+				lb.Users[i].UserID = inUser.UserID
+				lb.Users[i].Accepted = inUser.Accepted
 
-	for _, redirect := range redirects {
-		redirectsMap[redirect.BlockchainID] = append(redirectsMap[redirect.BlockchainID], redirect)
+				// add LB to user's LBs map if it doesn't already exist there
+				var exists bool
+				for _, userLB := range c.loadBalancersMapByUserID[inUser.UserID] {
+					if userLB.ID == lb.ID {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					c.loadBalancersMapByUserID[inUser.UserID] = append(c.loadBalancersMapByUserID[inUser.UserID], lb)
+				}
+			}
+
+		}
 	}
-
-	c.redirectsMapByBlockchainID = redirectsMap
-
-	return nil
 }
 
-// AddRedirects adds blockchain redirect to cache and updates cached blockchain entry
-func (c *Cache) addRedirect(redirect repository.Redirect) {
+// deleteUserAccess deletes load balancer user saved in cache and updates permissions
+func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	c.rwMutex.Lock()
-	c.redirectsMapByBlockchainID[redirect.BlockchainID] = append(c.redirectsMapByBlockchainID[redirect.BlockchainID], &redirect)
-	c.rwMutex.Unlock()
+	defer c.rwMutex.Unlock()
 
-	blockchain := c.GetBlockchain(redirect.BlockchainID)
-	blockchain.Redirects = append(blockchain.Redirects, redirect)
+	lbID := delUser.ID
+	userID := types.UserID(delUser.UserID)
+	delUser.ID = "" // to avoid multiple sources of truth
+
+	if userPermissions, ok := c.userPermissions[userID]; ok {
+		_ = userPermissions.DeletePermissions(types.LoadBalancerID(lbID))
+	}
+
+	// Remove from load balancer users slice
+	lb := c.loadBalancersMap[lbID]
+
+	filteredUsers := []types.UserAccess{}
+	for _, user := range lb.Users {
+		if user.UserID != delUser.UserID {
+			filteredUsers = append(filteredUsers, user)
+		}
+	}
+	lb.Users = filteredUsers
+
+	lbsForUser := c.loadBalancersMapByUserID[delUser.UserID]
+
+	lbsForUserAfterRemove := []*types.LoadBalancer{}
+	for i := range lbsForUser {
+		if lbsForUser[i].ID != lb.ID {
+			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
+		}
+	}
+
+	c.loadBalancersMapByUserID[delUser.UserID] = lbsForUserAfterRemove
+}
+
+func (c *Cache) setUserPermissions() error {
+	userPermissions, err := c.reader.ReadUserPermissions(context.Background())
+	if err != nil {
+		return fmt.Errorf("err in ReadLoadBalancers: %w", err)
+	}
+
+	c.userPermissions = userPermissions
+
+	return nil
 }
 
 // SetCache gets all values from DB and stores them in cache
@@ -619,12 +929,6 @@ func (c *Cache) SetCache() error {
 		return fmt.Errorf("err in setPayPlans: %w", err)
 	}
 
-	err = c.setRedirects()
-	if err != nil {
-		return fmt.Errorf("err in setRedirects: %w", err)
-	}
-
-	// Always call after setRedirects
 	err = c.setBlockchains()
 	if err != nil {
 		return fmt.Errorf("err in setBlockchains: %w", err)
@@ -638,6 +942,11 @@ func (c *Cache) SetCache() error {
 
 	// Always call after setApplications
 	err = c.setLoadBalancers()
+	if err != nil {
+		return err
+	}
+
+	err = c.setUserPermissions()
 	if err != nil {
 		return err
 	}
