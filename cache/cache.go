@@ -588,25 +588,23 @@ func (c *Cache) addBlockchain(blockchain types.Blockchain) {
 	c.blockchainsMap[blockchain.ID] = &blockchain
 }
 
-func (c *Cache) addSyncOptions(opts types.SyncCheckOptions) {
+func (c *Cache) addSyncOptions(inOpts types.SyncCheckOptions) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	blockchain := c.blockchainsMap[opts.BlockchainID]
-	if blockchain != nil {
-		blockchain.SyncCheckOptions = opts
+	if blockchain, ok := c.blockchainsMap[inOpts.BlockchainID]; ok {
+		blockchain.SyncCheckOptions = inOpts
 		return
 	}
 
-	c.pendingSyncCheckOptions[opts.BlockchainID] = opts
+	c.pendingSyncCheckOptions[inOpts.BlockchainID] = inOpts
 }
 
 func (c *Cache) addRedirect(redirect types.Redirect) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	blockchain := c.blockchainsMap[redirect.BlockchainID]
-	if blockchain != nil {
+	if blockchain, ok := c.blockchainsMap[redirect.BlockchainID]; ok {
 		blockchain.Redirects = append(blockchain.Redirects, redirect)
 		return
 	}
@@ -619,9 +617,14 @@ func (c *Cache) updateBlockchain(inBlockchain types.Blockchain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	blockchain := c.blockchainsMap[inBlockchain.ID]
-	blockchain.Active = inBlockchain.Active
-	blockchain.UpdatedAt = inBlockchain.UpdatedAt
+	if blockchain, ok := c.blockchainsMap[inBlockchain.ID]; ok {
+		// keep the update from overwriting
+		inBlockchain.SyncCheckOptions = blockchain.SyncCheckOptions
+		inBlockchain.Redirects = blockchain.Redirects
+
+		// update cache with all incoming fields
+		*blockchain = inBlockchain
+	}
 }
 
 func (c *Cache) setLoadBalancers() error {

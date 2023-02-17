@@ -68,7 +68,8 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 	readerMock.On("ReadBlockchains", mock.Anything).Return([]*types.Blockchain{
 		{
-			ID: "0021",
+			ID:          "0021",
+			Description: "test-chain-21",
 			Redirects: []types.Redirect{
 				{
 					BlockchainID:   "0021",
@@ -79,7 +80,8 @@ func newTestRouter(t *testing.T) (*Router, error) {
 			},
 		},
 		{
-			ID: "0022",
+			ID:          "0022",
+			Description: "test-chain-22",
 			Redirects: []types.Redirect{
 				{
 					BlockchainID:   "0022",
@@ -858,7 +860,8 @@ func TestRouter_GetBlockchains(t *testing.T) {
 
 	expectedBody, err := json.Marshal([]*types.Blockchain{
 		{
-			ID: "0021",
+			ID:          "0021",
+			Description: "test-chain-21",
 			Redirects: []types.Redirect{
 				{
 					BlockchainID:   "0021",
@@ -869,7 +872,8 @@ func TestRouter_GetBlockchains(t *testing.T) {
 			},
 		},
 		{
-			ID: "0022",
+			ID:          "0022",
+			Description: "test-chain-22",
 			Redirects: []types.Redirect{
 				{
 					BlockchainID:   "0022",
@@ -901,7 +905,8 @@ func TestRouter_GetBlockchain(t *testing.T) {
 	c.Equal(http.StatusOK, rr.Code)
 
 	expectedBody, err := json.Marshal(&types.Blockchain{
-		ID: "0021",
+		ID:          "0021",
+		Description: "test-chain-21",
 		Redirects: []types.Redirect{
 			{
 				BlockchainID:   "0021",
@@ -1695,6 +1700,103 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	router.Router.ServeHTTP(rr, req)
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
+}
+
+// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func TestRouter_UpdateBlockchain(t *testing.T) {
+	tests := []struct {
+		name                          string
+		blockchainID                  string
+		blockchainUpdate              types.UpdateBlockchain
+		expectedBlockchainAfterUpdate types.Blockchain
+		expectedStatus                int
+		runMock                       bool
+		err                           error
+	}{
+		{
+			name:         "Should update User ID and Accepted field for a LoadBalancer",
+			blockchainID: "0021",
+			blockchainUpdate: types.UpdateBlockchain{
+				Description:   "test-chain-21-updated",
+				Ticker:        "TEST-123",
+				Altruist:      "https://wwww.whatever.com/rpc",
+				SyncCheckPath: "update-path",
+				ResultKey:     "test-key",
+			},
+			expectedBlockchainAfterUpdate: types.Blockchain{
+				ID:          "0021",
+				Description: "test-chain-21-updated",
+				Ticker:      "TEST-123",
+				Altruist:    "https://wwww.whatever.com/rpc",
+				Redirects: []types.Redirect{
+					{
+						BlockchainID:   "0021",
+						Alias:          "pokt-mainnet",
+						Domain:         "pokt-mainnet.gateway.network",
+						LoadBalancerID: "12345",
+					},
+				},
+				SyncCheckOptions: types.SyncCheckOptions{
+					Path:      "update-path",
+					ResultKey: "test-key",
+				},
+			},
+			expectedStatus: http.StatusOK,
+			runMock:        true,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if the blockchain does not exist",
+			blockchainID:   "test_not_real_chain",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:         "Should fail if DB driver throws an error",
+			blockchainID: "0021",
+			blockchainUpdate: types.UpdateBlockchain{
+				Description:   "test-chain-21-updated",
+				Ticker:        "TEST-123",
+				Altruist:      "https://wwww.whatever.com/rpc",
+				SyncCheckPath: "update-path",
+				ResultKey:     "test-key",
+			},
+			expectedStatus: http.StatusInternalServerError,
+			runMock:        true,
+			err:            errors.New("dummy database driver error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+		writerMock := driver.NewMockDriver(t)
+		router.Writer = writerMock
+
+		if test.runMock {
+			writerMock.On("UpdateChain", mock.Anything, mock.Anything).Return(test.err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		chainUpdateJSON, err := json.Marshal(test.blockchainUpdate)
+		c.NoError(err)
+
+		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/blockchain/%s", test.blockchainID), bytes.NewBuffer(chainUpdateJSON))
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var chainResp types.Blockchain
+			err := json.Unmarshal(rr.Body.Bytes(), &chainResp)
+			c.NoError(err)
+			c.Equal(test.expectedBlockchainAfterUpdate, chainResp)
+		}
+	}
 }
 
 func TestRouter_ActivateBlockchain(t *testing.T) {

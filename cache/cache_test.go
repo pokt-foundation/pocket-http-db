@@ -577,7 +577,7 @@ func TestCache_UpdateBlockchain(t *testing.T) {
 	c.NoError(err)
 
 	c.Len(cache.GetBlockchains(), 1)
-	c.Equal(cache.GetBlockchains()[0].Active, false)
+	c.Equal(false, cache.GetBlockchains()[0].Active)
 
 	cache.updateBlockchain(types.Blockchain{
 		ID:     "0001",
@@ -585,7 +585,7 @@ func TestCache_UpdateBlockchain(t *testing.T) {
 	})
 
 	c.Len(cache.GetBlockchains(), 1)
-	c.Equal(cache.GetBlockchains()[0].Active, true)
+	c.Equal(true, cache.GetBlockchains()[0].Active)
 }
 
 func TestCache_AddRedirect(t *testing.T) {
