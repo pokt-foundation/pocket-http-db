@@ -258,6 +258,8 @@ func pointerToBool(value *bool) bool {
 }
 
 func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
+	rt.log.Info("Received UpdateFirstDateSurpassed request")
+
 	var updateInput types.UpdateFirstDateSurpassed
 
 	decoder := json.NewDecoder(r.Body)
