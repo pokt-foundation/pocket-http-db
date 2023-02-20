@@ -271,6 +271,11 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 
 	defer r.Body.Close()
 
+	rt.log.WithFields(logrus.Fields{
+		"applicationIDs":     updateInput.ApplicationIDs,
+		"firstDateSurpassed": updateInput.FirstDateSurpassed,
+	}).Info("Received UpdateFirstDateSurpassed request")
+
 	if len(updateInput.ApplicationIDs) == 0 {
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, "no application IDs on input")
 		return
@@ -281,6 +286,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 	for _, appID := range updateInput.ApplicationIDs {
 		app := rt.Cache.GetApplication(appID)
 		if app.ID == "" {
+			rt.logError(fmt.Errorf("UpdateFirstDateSurpassed failed: %s not found", appID))
 			jsonresponse.RespondWithError(w, http.StatusNotFound, fmt.Sprintf("%s not found", appID))
 			return
 		}
