@@ -947,7 +947,7 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 						"test_lb_34987u329rfn23f": {
 							RoleName:    types.RoleOwner,
-							Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+							Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint, types.DeleteEndpoint},
 						},
 					},
 				},
