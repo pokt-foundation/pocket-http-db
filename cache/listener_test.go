@@ -102,9 +102,7 @@ func newMockCache(readerMock *ReaderMock) *Cache {
 		},
 	}, nil)
 
-	cache := NewCache(readerMock, logrus.New())
-
-	err := cache.SetCache()
+	cache, err := NewCache(readerMock, time.Minute*5, logrus.New())
 	if err != nil {
 		panic(err)
 	}

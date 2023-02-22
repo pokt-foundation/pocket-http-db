@@ -43,14 +43,7 @@ func (rt *Router) logError(err error) {
 }
 
 // NewRouter returns router instance
-func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
-	cache := cache.NewCache(reader, logger)
-
-	err := cache.SetCache()
-	if err != nil {
-		return nil, err
-	}
-
+func NewRouter(cache *cache.Cache, reader driver.Reader, writer driver.Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
 	rt := &Router{
 		Cache:   cache,
 		Writer:  writer,
