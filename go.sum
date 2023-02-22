@@ -27,6 +27,8 @@ github.com/pokt-foundation/db-client v1.6.1 h1:dLvyPk7590BkBb1MXlatZeSPZml9QpOkU
 github.com/pokt-foundation/db-client v1.6.1/go.mod h1:iQzlBDAXnVpbq1rDILegW/vWNalKGoFoZt6jJal6VTA=
 github.com/pokt-foundation/portal-db v1.7.10 h1:V/8yZJpI8+BnFdw2zGw30lbj2fLgdDEHyr0f/nuqMtA=
 github.com/pokt-foundation/portal-db v1.7.10/go.mod h1:u6xOhAbNQL0xQIPbK/jKeXMKOkRT789TYWt/uldZawM=
+github.com/pokt-foundation/portal-db v1.7.11 h1:qqgcJDatavr10qV0mFOSF3nICh+mEJ/IRN9w9VuHABY=
+github.com/pokt-foundation/portal-db v1.7.11/go.mod h1:u6xOhAbNQL0xQIPbK/jKeXMKOkRT789TYWt/uldZawM=
 github.com/pokt-foundation/utils-go v0.2.5 h1:zHmqBOBm7JO5oIOJlMEjp/LhMmS+C5FUbWpZPOWOr34=
 github.com/pokt-foundation/utils-go v0.2.5/go.mod h1:c92FV9S9qY4PEyeOv4fGkI9FTZSv8oh1MiARGC+BC2E=
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
