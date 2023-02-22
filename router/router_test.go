@@ -169,7 +169,14 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		},
 	}, nil)
 
-	return NewRouter(readerMock, nil, map[string]bool{"": true}, logrus.New())
+	testLog := logrus.New()
+
+	cache, err := cache.NewCache(readerMock, time.Minute*5, testLog)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewRouter(cache, readerMock, nil, map[string]bool{"": true}, testLog)
 }
 
 func TestRouter_HealthCheck(t *testing.T) {
@@ -754,6 +761,74 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 		c.Equal(test.expectedStatus, rr.Code)
 
 		if test.err == nil {
+			var lbResp []*types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+
+			c.NoError(err)
+			c.Equal(test.expectedLBs, lbResp)
+		}
+	}
+}
+
+func TestRouter_GetPendingLoadBalancersByEmail(t *testing.T) {
+	tests := []struct {
+		name           string
+		userEmail      string
+		expectedLBs    []*types.LoadBalancer
+		expectedStatus int
+		err            error
+	}{
+		{
+			name:      "Should fetch all pending load balancers for a given email",
+			userEmail: "user1@test.com",
+			expectedLBs: []*types.LoadBalancer{
+				{
+					ID: "test_lb_34987u329rfn23f",
+					Applications: []*types.Application{
+						{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
+						{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
+					},
+					UserID: "test_user_969710adbd9a8a",
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
+						{RoleName: types.RoleMember, UserID: "", Email: "user1@test.com", Accepted: false},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should not fetch a load balancer for a given email if they have already accepted all their invites",
+			userEmail:      "test_user_969710adbd9a8a",
+			expectedStatus: http.StatusNotFound,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if the email has no load balancers",
+			userEmail:      "test_sir@not_appearing_in_this_film.com",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+
+		rr := httptest.NewRecorder()
+
+		url := fmt.Sprintf("/v1/user/%s/load_balancer/pending", test.userEmail)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if rr.Code == http.StatusOK {
 			var lbResp []*types.LoadBalancer
 			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
 

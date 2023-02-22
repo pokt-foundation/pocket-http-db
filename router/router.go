@@ -43,14 +43,7 @@ func (rt *Router) logError(err error) {
 }
 
 // NewRouter returns router instance
-func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
-	cache := cache.NewCache(reader, logger)
-
-	err := cache.SetCache()
-	if err != nil {
-		return nil, err
-	}
-
+func NewRouter(cache *cache.Cache, reader driver.Reader, writer driver.Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
 	rt := &Router{
 		Cache:   cache,
 		Writer:  writer,
@@ -85,6 +78,7 @@ func NewRouter(reader driver.Reader, writer driver.Writer, apiKeys map[string]bo
 
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/user/{email}/load_balancer/pending", rt.GetPendingLoadBalancersByEmail).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v1/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
@@ -350,6 +344,7 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 	switch {
 	case roleNameFilter == types.RoleName(""):
 		filteredLBs = lbs
+
 	case roleNameFilter != types.RoleName(""):
 		for _, lb := range lbs {
 			for _, user := range lb.Users {
@@ -361,6 +356,22 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredLBs)
+}
+
+/* Returns all pending load balancers for a given user email. */
+// TODO add comment descriptions for all funcs in this repo
+func (rt *Router) GetPendingLoadBalancersByEmail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userEmail := vars["email"]
+
+	lbs := rt.Cache.GetPendingLoadBalancersByEmail(userEmail)
+	if len(lbs) == 0 {
+		rt.logError(fmt.Errorf("GetPendingLoadBalancersByEmail failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
 }
 
 /* Returns all load balancer permissionss for a given user */
