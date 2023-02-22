@@ -262,8 +262,6 @@ func (c *Cache) parseNotification(n types.Notification) {
 }
 
 func (c *Cache) listen() {
-	c.listening = true
-
 	for {
 		n := <-c.reader.NotificationChannel()
 		go c.parseNotification(*n)

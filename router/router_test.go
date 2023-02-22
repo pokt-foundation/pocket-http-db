@@ -169,7 +169,14 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		},
 	}, nil)
 
-	return NewRouter(readerMock, nil, map[string]bool{"": true}, logrus.New())
+	testLog := logrus.New()
+
+	cache, err := cache.NewCache(readerMock, time.Minute*5, testLog)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewRouter(cache, readerMock, nil, map[string]bool{"": true}, testLog)
 }
 
 func TestRouter_HealthCheck(t *testing.T) {
