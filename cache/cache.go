@@ -15,19 +15,20 @@ import (
 
 // Cache struct handler for cache operations
 type Cache struct {
-	reader                   driver.Reader
-	rwMutex                  sync.RWMutex
-	applicationsMap          map[string]*types.Application
-	applicationsMapByUserID  map[string][]*types.Application
-	applications             []*types.Application
-	blockchainsMap           map[string]*types.Blockchain
-	blockchains              []*types.Blockchain
-	loadBalancersMap         map[string]*types.LoadBalancer
-	loadBalancersMapByUserID map[string][]*types.LoadBalancer
-	userPermissions          map[types.UserID]*types.UserPermissions
-	loadBalancers            []*types.LoadBalancer
-	payPlansMap              map[types.PayPlanType]*types.PayPlan
-	payPlans                 []*types.PayPlan
+	reader                         driver.Reader
+	rwMutex                        sync.RWMutex
+	applicationsMap                map[string]*types.Application
+	applicationsMapByUserID        map[string][]*types.Application
+	applications                   []*types.Application
+	blockchainsMap                 map[string]*types.Blockchain
+	blockchains                    []*types.Blockchain
+	loadBalancersMap               map[string]*types.LoadBalancer
+	loadBalancersMapByUserID       map[string][]*types.LoadBalancer
+	pendingLoadBalancersMapByEmail map[string][]*types.LoadBalancer
+	userPermissions                map[types.UserID]*types.UserPermissions
+	loadBalancers                  []*types.LoadBalancer
+	payPlansMap                    map[types.PayPlanType]*types.PayPlan
+	payPlans                       []*types.PayPlan
 
 	pendingAppLimit            map[string]types.AppLimit
 	pendingGatewayAAT          map[string]types.GatewayAAT
@@ -191,6 +192,7 @@ func (c *Cache) setLoadBalancers() error {
 
 	loadBalancersMap := make(map[string]*types.LoadBalancer)
 	loadBalancersMapByUserID := make(map[string][]*types.LoadBalancer)
+	pendingLoadBalancersMapByEmail := make(map[string][]*types.LoadBalancer)
 
 	for i, loadBalancer := range loadBalancers {
 		for _, appID := range loadBalancer.ApplicationIDs {
@@ -202,14 +204,21 @@ func (c *Cache) setLoadBalancers() error {
 		loadBalancers[i] = loadBalancer
 		loadBalancersMap[loadBalancer.ID] = loadBalancer
 
-		for _, user := range loadBalancer.Users { // User ID map stores all load balancers that user is a team member on
+		for _, user := range loadBalancer.Users {
+			// user ID map stores all load balancers that user is a team member on
+			// if the user has not accepted their invite they do not have a user ID and won't be added to this map
 			loadBalancersMapByUserID[user.UserID] = append(loadBalancersMapByUserID[user.UserID], loadBalancer)
+			// if not yet accepted, add to pending LBs map
+			if !user.Accepted {
+				pendingLoadBalancersMapByEmail[user.Email] = append(pendingLoadBalancersMapByEmail[user.Email], loadBalancer)
+			}
 		}
 	}
 
 	c.loadBalancers = loadBalancers
 	c.loadBalancersMap = loadBalancersMap
 	c.loadBalancersMapByUserID = loadBalancersMapByUserID
+	c.pendingLoadBalancersMapByEmail = pendingLoadBalancersMapByEmail
 
 	return nil
 }
@@ -342,6 +351,19 @@ func (c *Cache) GetLoadBalancersByUserID(userID string) []types.LoadBalancer {
 	var lbsToReturn []types.LoadBalancer
 
 	for _, lb := range c.loadBalancersMapByUserID[userID] {
+		lbsToReturn = append(lbsToReturn, *lb)
+	}
+
+	return lbsToReturn
+}
+
+func (c *Cache) GetPendingLoadBalancersByEmail(email string) []types.LoadBalancer {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	var lbsToReturn []types.LoadBalancer
+
+	for _, lb := range c.pendingLoadBalancersMapByEmail[email] {
 		lbsToReturn = append(lbsToReturn, *lb)
 	}
 
@@ -808,35 +830,55 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 	lbID := userAccess.ID
 	userAccess.ID = "" // to avoid multiple sources of truth
 
-	// Add user to permissions map if they have a user ID
+	// Add user to permissions map if they have a user ID (have accepted their invitation)
 	if userAccess.UserID != "" {
 		userID := types.UserID(userAccess.UserID)
 
-		if userPermissions, ok := c.userPermissions[userID]; ok {
-			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
-			if err != nil {
-				fmt.Println("error upserting user permissions: %w", err)
-			}
-		} else {
-			permissions := &types.UserPermissions{
+		userPermissions, ok := c.userPermissions[userID]
+		if !ok {
+			userPermissions = &types.UserPermissions{
 				UserID:        userID,
 				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
 			}
-			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
-			if err != nil {
-				fmt.Println("error upserting user permissions: %w", err)
-			}
+			c.userPermissions[userID] = userPermissions
+		}
 
-			c.userPermissions[userID] = permissions
+		_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), userAccess.RoleName)
+		if err != nil {
+			fmt.Printf("error upserting user permissions: %v\n", err)
 		}
 	}
 
+	// Add or update user's LBs
 	lb := c.loadBalancersMap[lbID]
 	if lb != nil {
-		lb.Users = append(lb.Users, userAccess)
+		emailExists := false
+		for _, user := range lb.Users {
+			if user.Email == userAccess.Email {
+				emailExists = true
+				break
+			}
+		}
+		if !emailExists {
+			lb.Users = append(lb.Users, userAccess)
+		}
 
-		if userAccess.UserID != "" {
+		switch {
+		// If user has just been created add to pending LBs map by email
+		case !userAccess.Accepted || userAccess.UserID == "":
+			c.pendingLoadBalancersMapByEmail[userAccess.Email] = append(c.pendingLoadBalancersMapByEmail[userAccess.Email], lb)
+
+		// If user has an ID (has accepted invitation) add to LBs map by user ID and remove from pending map
+		case userAccess.UserID != "" || userAccess.Accepted:
 			c.loadBalancersMapByUserID[userAccess.UserID] = append(c.loadBalancersMapByUserID[userAccess.UserID], lb)
+
+			filteredPendingLBs := []*types.LoadBalancer{}
+			for _, pendingLB := range c.pendingLoadBalancersMapByEmail[userAccess.Email] {
+				if pendingLB.ID != lbID {
+					filteredPendingLBs = append(filteredPendingLBs, pendingLB)
+				}
+			}
+			c.pendingLoadBalancersMapByEmail[userAccess.Email] = filteredPendingLBs
 		}
 
 		return
@@ -879,19 +921,23 @@ func (c *Cache) removeLoadBalancerFromUserIDMap(inLB types.LoadBalancer, oldLB *
 	userID := oldLB.UserID
 
 	for _, ownerLB := range c.loadBalancersMapByUserID[userID] {
-		// The removed LB must be removed from the LB maps of all team members (this includes the OWNER)
 		for _, user := range ownerLB.Users {
-			lbsForMemberAfterRemove := []*types.LoadBalancer{}
-
-			for _, memberLB := range c.loadBalancersMapByUserID[user.UserID] {
-				if memberLB.ID != inLB.ID {
-					lbsForMemberAfterRemove = append(lbsForMemberAfterRemove, memberLB)
-				}
-			}
-
-			c.loadBalancersMapByUserID[user.UserID] = lbsForMemberAfterRemove
+			c.loadBalancersMapByUserID[user.UserID] = removeLoadBalancerByID(c.loadBalancersMapByUserID[user.UserID], inLB.ID)
+			c.pendingLoadBalancersMapByEmail[user.Email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[user.Email], inLB.ID)
 		}
 	}
+}
+
+func removeLoadBalancerByID(lbs []*types.LoadBalancer, lbID string) []*types.LoadBalancer {
+	for i, lb := range lbs {
+		if lb.ID == lbID {
+			lbs[i] = lbs[len(lbs)-1]
+			lbs = lbs[:len(lbs)-1]
+			break
+		}
+	}
+
+	return lbs
 }
 
 // updateUserAccess updates updates permissions map, load balancer user and user LBs map saved in cache
@@ -902,28 +948,23 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	lbID := inUser.ID
 	inUser.ID = "" // to avoid multiple sources of truth
 
-	// add user to permissions map if they have been accepted
+	// add user to permissions map if they have accepted their invitation
 	if inUser.Accepted {
 		userID := types.UserID(inUser.UserID)
 
-		if userPermissions, ok := c.userPermissions[userID]; ok {
-			_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
-			if err != nil {
-				fmt.Println("error upserting user permissions: %w", err)
-			}
-		} else {
-			permissions := &types.UserPermissions{
+		userPermissions, ok := c.userPermissions[userID]
+		if !ok {
+			userPermissions = &types.UserPermissions{
 				UserID:        userID,
 				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{},
 			}
-			_, err := permissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
-			if err != nil {
-				fmt.Println("error upserting user permissions: %w", err)
-			}
-
-			c.userPermissions[userID] = permissions
+			c.userPermissions[userID] = userPermissions
 		}
 
+		_, err := userPermissions.UpsertPermissions(types.LoadBalancerID(lbID), inUser.RoleName)
+		if err != nil {
+			fmt.Printf("error upserting user permissions: %v\n", err)
+		}
 	}
 
 	if lb, ok := c.loadBalancersMap[lbID]; ok {
@@ -960,29 +1001,20 @@ func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	userID := types.UserID(delUser.UserID)
 	delUser.ID = "" // to avoid multiple sources of truth
 
-	if userPermissions, ok := c.userPermissions[userID]; ok {
-		_ = userPermissions.DeletePermissions(types.LoadBalancerID(lbID))
-	}
+	delete(c.userPermissions[userID].LoadBalancers, types.LoadBalancerID(lbID))
 
 	// Remove from load balancer users slice
-	lb := c.loadBalancersMap[lbID]
-
-	filteredUsers := []types.UserAccess{}
-	for _, user := range lb.Users {
-		if user.UserID != delUser.UserID {
-			filteredUsers = append(filteredUsers, user)
+	lb, ok := c.loadBalancersMap[lbID]
+	if ok {
+		filteredUsers := []types.UserAccess{}
+		for _, user := range lb.Users {
+			if user.UserID != delUser.UserID {
+				filteredUsers = append(filteredUsers, user)
+			}
 		}
+		lb.Users = filteredUsers
+
+		c.loadBalancersMapByUserID[delUser.UserID] = removeLoadBalancerByID(c.loadBalancersMapByUserID[delUser.UserID], lb.ID)
+		c.pendingLoadBalancersMapByEmail[delUser.Email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[delUser.Email], lb.ID)
 	}
-	lb.Users = filteredUsers
-
-	lbsForUser := c.loadBalancersMapByUserID[delUser.UserID]
-
-	lbsForUserAfterRemove := []*types.LoadBalancer{}
-	for i := range lbsForUser {
-		if lbsForUser[i].ID != lb.ID {
-			lbsForUserAfterRemove = append(lbsForUserAfterRemove, lbsForUser[i])
-		}
-	}
-
-	c.loadBalancersMapByUserID[delUser.UserID] = lbsForUserAfterRemove
 }

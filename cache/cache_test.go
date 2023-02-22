@@ -399,7 +399,7 @@ func TestCache_AddRedirect(t *testing.T) {
 	c.Len(cache.GetBlockchain("0001").Redirects, 3)
 }
 
-func TestCache_AddUserAccess(t *testing.T) {
+func TestCache_UpsertUserAccess(t *testing.T) {
 	c := require.New(t)
 
 	cache := NewTestCache(t)
@@ -408,39 +408,31 @@ func TestCache_AddUserAccess(t *testing.T) {
 
 	cache.addUserAccess(types.UserAccess{
 		ID:       "test_lb_4nf37fhfy27dj28d",
-		UserID:   "test_user_access_1234",
+		UserID:   "",
 		RoleName: types.RoleMember,
 		Email:    "test@test.com",
 		Accepted: false,
 	})
 
 	c.Len(cache.GetLoadBalancer("test_lb_4nf37fhfy27dj28d").Users, 3)
-	c.Len(cache.GetLoadBalancersByUserID("test_user_access_1234"), 1)
-	c.Len(cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers, 1)
-	c.Equal(types.RoleMember, cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers["test_lb_4nf37fhfy27dj28d"].RoleName)
-}
-
-func TestCache_UpdateUserAccess(t *testing.T) {
-	c := require.New(t)
-
-	cache := NewTestCache(t)
-
-	c.Len(cache.GetLoadBalancers(), 2)
+	c.Len(cache.GetPendingLoadBalancersByEmail("test@test.com"), 1)
+	c.Empty(cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers)
 
 	cache.addUserAccess(types.UserAccess{
 		ID:       "test_lb_4nf37fhfy27dj28d",
 		UserID:   "test_user_access_1234",
 		RoleName: types.RoleMember,
 		Email:    "test@test.com",
-		Accepted: false,
+		Accepted: true,
 	})
 
 	c.Len(cache.GetLoadBalancer("test_lb_4nf37fhfy27dj28d").Users, 3)
 	c.Len(cache.GetLoadBalancersByUserID("test_user_access_1234"), 1)
+	c.Empty(cache.GetPendingLoadBalancersByEmail("test@test.com"))
 	c.Len(cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers, 1)
 	c.Equal(types.RoleMember, cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers["test_lb_4nf37fhfy27dj28d"].RoleName)
 
-	cache.updateUserAccess(types.UserAccess{
+	cache.addUserAccess(types.UserAccess{
 		ID:       "test_lb_4nf37fhfy27dj28d",
 		UserID:   "test_user_access_1234",
 		RoleName: types.RoleAdmin,
@@ -448,9 +440,6 @@ func TestCache_UpdateUserAccess(t *testing.T) {
 		Accepted: true,
 	})
 
-	c.Len(cache.GetLoadBalancer("test_lb_4nf37fhfy27dj28d").Users, 3)
-	c.Len(cache.GetLoadBalancersByUserID("test_user_access_1234"), 1)
-	c.Len(cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers, 1)
 	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("test_user_access_1234").LoadBalancers["test_lb_4nf37fhfy27dj28d"].RoleName)
 }
 
@@ -466,7 +455,7 @@ func TestCache_DeleteUserAccess(t *testing.T) {
 		UserID:   "test_user_access_1234",
 		RoleName: types.RoleMember,
 		Email:    "test@test.com",
-		Accepted: false,
+		Accepted: true,
 	})
 
 	c.Len(cache.GetLoadBalancer("test_lb_4nf37fhfy27dj28d").Users, 3)
