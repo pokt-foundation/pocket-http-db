@@ -89,7 +89,7 @@ jobs:
           environment-variables: |
             PORT=${{ secrets.PORT }}
             CONNECTION_STRING=${{ secrets.CONNECTION_STRING_STAGING }}
-            API_KEYS=${{ secrets.API_KEYS }}
+            API_KEYS=${{ secrets.PHD_API_KEYS_STAGING }}
             CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
 
       - name: Deploy / us-west-2
