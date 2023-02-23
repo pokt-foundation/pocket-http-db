@@ -94,7 +94,6 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 						Blockchain:        "pokt-mainnet",
 						Description:       "POKT Network Mainnet",
 						EnforceResult:     "JSON",
-						Network:           "POKT-mainnet",
 						Ticker:            "POKT",
 						BlockchainAliases: []string{"pokt-mainnet"},
 						LogLimitBlocks:    100_000,
@@ -113,7 +112,6 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 						},
 						SyncCheckOptions: types.SyncCheckOptions{
 							Body:      `{}`,
-							Path:      "/v1/query/height",
 							ResultKey: "height",
 							Allowance: 1,
 						},
@@ -128,7 +126,6 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 						ChainIDCheck:      `{\"method\":\"eth_chainId\",\"id\":1,\"jsonrpc\":\"2.0\"}`,
 						Description:       "Ethereum Mainnet",
 						EnforceResult:     "JSON",
-						Network:           "ETH-1",
 						Ticker:            "ETH",
 						BlockchainAliases: []string{"eth-mainnet"},
 						LogLimitBlocks:    100_000,
@@ -181,7 +178,6 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 					ChainIDCheck:      `{\"method\":\"eth_chainId\",\"id\":1,\"jsonrpc\":\"2.0\"}`,
 					Description:       "Ethereum Mainnet",
 					EnforceResult:     "JSON",
-					Network:           "ETH-1",
 					Ticker:            "ETH",
 					BlockchainAliases: []string{"eth-mainnet"},
 					LogLimitBlocks:    100_000,
@@ -292,6 +288,37 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 						Limit: types.AppLimit{
 							PayPlan:     types.PayPlan{Type: types.Enterprise},
 							CustomLimit: 2_000_000,
+						},
+						NotificationSettings: types.NotificationSettings{
+							SignedUp:      true,
+							Quarter:       false,
+							Half:          false,
+							ThreeQuarters: true,
+							Full:          true,
+						},
+						CreatedAt: mockTimestamp,
+						UpdatedAt: mockTimestamp,
+					},
+					{
+						ID:     "test_app_97djd63jd78r7f",
+						UserID: "test_user_redirect233344",
+						Name:   "pokt_app_789",
+						URL:    "https://test.app789.io",
+						Dummy:  true,
+						Status: types.InService,
+						GatewayAAT: types.GatewayAAT{
+							Address:              "test_58a37510a103f3de57296af882b2603c",
+							ApplicationPublicKey: "test_cc49729227c22f3934a966d99a6be72b",
+							ApplicationSignature: "test_8d5f4a3006b5603bcecfb44a819c272a",
+							ClientPublicKey:      "test_28a54385e49b65a860f61db62449703b",
+							PrivateKey:           "test_8d5f4a3006b5603bcecfb44a819c272a",
+						},
+						GatewaySettings: types.GatewaySettings{
+							SecretKey:         "test_8fd84jf74jf83kd83kd92okg355",
+							SecretKeyRequired: false,
+						},
+						Limit: types.AppLimit{
+							PayPlan: types.PayPlan{Type: types.PayAsYouGoV0, Limit: 0},
 						},
 						NotificationSettings: types.NotificationSettings{
 							SignedUp:      true,
@@ -529,7 +556,39 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							StickyMax:     600,
 							Stickiness:    false,
 						},
-						Applications: []*types.Application{nil},
+						Applications: []*types.Application{
+							{
+								ID:     "test_app_97djd63jd78r7f",
+								UserID: "test_user_redirect233344",
+								Name:   "pokt_app_789",
+								URL:    "https://test.app789.io",
+								Dummy:  true,
+								Status: types.InService,
+								GatewayAAT: types.GatewayAAT{
+									Address:              "test_58a37510a103f3de57296af882b2603c",
+									ApplicationPublicKey: "test_cc49729227c22f3934a966d99a6be72b",
+									ApplicationSignature: "test_8d5f4a3006b5603bcecfb44a819c272a",
+									ClientPublicKey:      "test_28a54385e49b65a860f61db62449703b",
+									PrivateKey:           "test_8d5f4a3006b5603bcecfb44a819c272a",
+								},
+								GatewaySettings: types.GatewaySettings{
+									SecretKey:         "test_8fd84jf74jf83kd83kd92okg355",
+									SecretKeyRequired: false,
+								},
+								Limit: types.AppLimit{
+									PayPlan: types.PayPlan{Type: types.PayAsYouGoV0, Limit: 0},
+								},
+								NotificationSettings: types.NotificationSettings{
+									SignedUp:      true,
+									Quarter:       false,
+									Half:          false,
+									ThreeQuarters: true,
+									Full:          true,
+								},
+								CreatedAt: mockTimestamp,
+								UpdatedAt: mockTimestamp,
+							},
+						},
 						Users: []types.UserAccess{
 							{RoleName: types.RoleOwner, UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
 							{RoleName: types.RoleMember, UserID: "", Email: "member2@test.com", Accepted: false},
@@ -892,7 +951,39 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 							StickyMax:     600,
 							Stickiness:    false,
 						},
-						Applications: []*types.Application{nil},
+						Applications: []*types.Application{
+							{
+								ID:     "test_app_97djd63jd78r7f",
+								UserID: "test_user_redirect233344",
+								Name:   "pokt_app_789",
+								URL:    "https://test.app789.io",
+								Dummy:  true,
+								Status: types.InService,
+								GatewayAAT: types.GatewayAAT{
+									Address:              "test_58a37510a103f3de57296af882b2603c",
+									ApplicationPublicKey: "test_cc49729227c22f3934a966d99a6be72b",
+									ApplicationSignature: "test_8d5f4a3006b5603bcecfb44a819c272a",
+									ClientPublicKey:      "test_28a54385e49b65a860f61db62449703b",
+									PrivateKey:           "test_8d5f4a3006b5603bcecfb44a819c272a",
+								},
+								GatewaySettings: types.GatewaySettings{
+									SecretKey:         "test_8fd84jf74jf83kd83kd92okg355",
+									SecretKeyRequired: false,
+								},
+								Limit: types.AppLimit{
+									PayPlan: types.PayPlan{Type: types.PayAsYouGoV0, Limit: 0},
+								},
+								NotificationSettings: types.NotificationSettings{
+									SignedUp:      true,
+									Quarter:       false,
+									Half:          false,
+									ThreeQuarters: true,
+									Full:          true,
+								},
+								CreatedAt: mockTimestamp,
+								UpdatedAt: mockTimestamp,
+							},
+						},
 						Users: []types.UserAccess{
 							{RoleName: types.RoleOwner, UserID: "test_user_redirect233344", Email: "owner3@test.com", Accepted: true},
 							{RoleName: types.RoleMember, UserID: "", Email: "member2@test.com", Accepted: false},
@@ -1062,7 +1153,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					Blockchain:        "pol-mainnet",
 					Description:       "Polygon Mainnet",
 					EnforceResult:     "JSON",
-					Network:           "POL-mainnet",
 					Ticker:            "POL",
 					BlockchainAliases: []string{"pol-mainnet"},
 					LogLimitBlocks:    100000,
@@ -1079,7 +1169,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					Blockchain:        "pol-mainnet",
 					Description:       "Polygon Mainnet",
 					EnforceResult:     "JSON",
-					Network:           "POL-mainnet",
 					Ticker:            "POL",
 					BlockchainAliases: []string{"pol-mainnet"},
 					LogLimitBlocks:    100000,
@@ -1100,7 +1189,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					Blockchain:        "pol-mainnet",
 					Description:       "Polygon Mainnet",
 					EnforceResult:     "JSON",
-					Network:           "POL-mainnet",
 					Ticker:            "POL",
 					BlockchainAliases: []string{"pol-mainnet"},
 					LogLimitBlocks:    100000,
@@ -1129,13 +1217,11 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.blockchain.ChainIDCheck, blockchain.ChainIDCheck)
 				ts.Equal(test.blockchain.Description, blockchain.Description)
 				ts.Equal(test.blockchain.EnforceResult, blockchain.EnforceResult)
-				ts.Equal(test.blockchain.Network, blockchain.Network)
 				ts.Equal(test.blockchain.Path, blockchain.Path)
 				ts.Equal(test.blockchain.Ticker, blockchain.Ticker)
 				ts.Equal(test.blockchain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.blockchain.LogLimitBlocks, blockchain.LogLimitBlocks)
 				ts.Equal(test.blockchain.RequestTimeout, blockchain.RequestTimeout)
-				ts.Equal(test.blockchain.SyncAllowance, blockchain.SyncAllowance)
 				ts.Equal(test.blockchain.Active, blockchain.Active)
 				ts.Equal(test.blockchain.SyncCheckOptions, blockchain.SyncCheckOptions)
 				ts.NotEmpty(blockchain.CreatedAt)
@@ -1150,13 +1236,11 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.blockchain.ChainIDCheck, blockchain.ChainIDCheck)
 				ts.Equal(test.blockchain.Description, blockchain.Description)
 				ts.Equal(test.blockchain.EnforceResult, blockchain.EnforceResult)
-				ts.Equal(test.blockchain.Network, blockchain.Network)
 				ts.Equal(test.blockchain.Path, blockchain.Path)
 				ts.Equal(test.blockchain.Ticker, blockchain.Ticker)
 				ts.Equal(test.blockchain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.blockchain.LogLimitBlocks, blockchain.LogLimitBlocks)
 				ts.Equal(test.blockchain.RequestTimeout, blockchain.RequestTimeout)
-				ts.Equal(test.blockchain.SyncAllowance, blockchain.SyncAllowance)
 				ts.Equal(test.blockchain.Active, blockchain.Active)
 				ts.Equal(test.blockchain.SyncCheckOptions, blockchain.SyncCheckOptions)
 				ts.NotEmpty(blockchain.CreatedAt)
@@ -1245,7 +1329,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			{
 				name: "Should create a single application in the DB",
 				applicationInput: types.Application{
-					Name:   "pokt_app_789",
+					Name:   "pokt_app_101",
 					UserID: "test_user_47fhsd75jd756sh",
 					Dummy:  true,
 					Status: types.InService,
@@ -1266,7 +1350,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					NotificationSettings: types.NotificationSettings{SignedUp: true, Quarter: false, Half: false, ThreeQuarters: true, Full: true},
 				},
 				application: types.Application{
-					Name:   "pokt_app_789",
+					Name:   "pokt_app_101",
 					UserID: "test_user_47fhsd75jd756sh",
 					Dummy:  true,
 					Status: types.InService,
@@ -1833,9 +1917,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					RequestTimeout:    66_654,
 					ResultKey:         "updated-key",
 					LogLimitBlocks:    100_010,
-					Network:           "new-network",
 					Ticker:            "SUCH-WOW",
-					SyncCheckPath:     "/v1/query/wow-new",
 					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
 					EnforceResult:     "JSON-2",
 					Path:              "new-path",
@@ -1847,7 +1929,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					Blockchain:        "pokt-mainnet-updated",
 					Description:       "POKT Network Mainnet Updated",
 					EnforceResult:     "JSON-2",
-					Network:           "new-network",
 					Ticker:            "SUCH-WOW",
 					Path:              "new-path",
 					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
@@ -1858,7 +1939,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					SyncCheckOptions: types.SyncCheckOptions{
 						BlockchainID: "0001",
 						Body:         `{"new-body": "alliance"}`,
-						Path:         "/v1/query/wow-new",
 						ResultKey:    "updated-key",
 						Allowance:    1,
 					},
@@ -1876,7 +1956,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					Blockchain:        "pokt-mainnet-updated",
 					Description:       "POKT Network Mainnet Updated",
 					EnforceResult:     "JSON-2",
-					Network:           "new-network",
 					Ticker:            "SUCH-WOW",
 					Path:              "new-path",
 					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
@@ -1887,7 +1966,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					SyncCheckOptions: types.SyncCheckOptions{
 						BlockchainID: "0001",
 						Body:         `{"new-body": "alliance"}`,
-						Path:         "/v1/query/wow-new",
 						ResultKey:    "updated-key",
 						Allowance:    123,
 					},
@@ -1911,7 +1989,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.expectedChain.Description, blockchain.Description)
 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-				ts.Equal(test.expectedChain.Network, blockchain.Network)
 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
@@ -1924,7 +2001,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.expectedChain.Description, blockchain.Description)
 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-				ts.Equal(test.expectedChain.Network, blockchain.Network)
 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
