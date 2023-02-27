@@ -2143,6 +2143,13 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				err:            fmt.Errorf("invalid role name"),
 			},
 			{
+				name:           "Should fail if attempting to make user OWNER if they haven't accepted their invitation",
+				loadBalancerID: "test_lb_34gg4g43g34g5hh",
+				email:          "member2@test.com",
+				roleName:       types.RoleOwner,
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error: cannot set a user to owner if they have not yet accepted their invitation"),
+			},
+			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "im_not_here",
 				email:          "member1@test.com",
