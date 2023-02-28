@@ -2348,6 +2348,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			loadBalancerID, email      string
 			userID                     string
 			loadBalancerUsers          []types.UserAccess
+			testPendingUser            bool
 			err, permissionsFetchError error
 		}{
 			{
@@ -2361,6 +2362,19 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					{RoleName: types.RoleMember, UserID: "test_user_accept_member", Email: "member_new@test.com", Accepted: true},
 				},
 				permissionsFetchError: errors.New("Response not OK. 404 Not Found: no permissions found for given user ID"),
+			},
+			{
+				name:            "Should delete a single pending user for an existing load balancer in the DB",
+				loadBalancerID:  "test_lb_34987u329rfn23f",
+				testPendingUser: true,
+				email:           "owner2@test.com",
+				userID:          "test_user_04228205bd261a",
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_accept_member", Email: "member_new@test.com", Accepted: true},
+				},
+				permissionsFetchError: nil, // this test user has other permissions for other LBs so will still return permissions
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
@@ -2391,6 +2405,15 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 		}
 
 		for _, test := range tests {
+			if test.testPendingUser {
+				lb, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, types.UserAccess{
+					RoleName: types.RoleMember,
+					Email:    test.email,
+				})
+				ts.NoError(err)
+				ts.Len(lb.Users, 4)
+			}
+
 			_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.email)
 			ts.Equal(test.err, err)
 			if test.err == nil {
