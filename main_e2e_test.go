@@ -1694,6 +1694,28 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name:          "Should remove all of a  single application's whitelists",
+				applicationID: "test_app_47hfnths73j2se",
+				applicationUpdate: types.UpdateApplication{
+					GatewaySettings: &types.UpdateGatewaySettings{},
+				},
+				applicationAfterUpdate: types.Application{
+					Name: "pokt_app_updated_lb",
+					GatewaySettings: types.GatewaySettings{
+						SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
+						SecretKeyRequired: true,
+					},
+					NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: true, ThreeQuarters: false, Full: false},
+					Limit: types.AppLimit{
+						PayPlan: types.PayPlan{
+							Type:  types.FreetierV0,
+							Limit: 250_000,
+						},
+						CustomLimit: 0,
+					},
+				},
+			},
+			{
 				name:          "Should fail if application cannot be found",
 				applicationID: "9000",
 				err:           fmt.Errorf("Response not OK. 404 Not Found: applications not found"),
