@@ -1001,7 +1001,9 @@ func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	userID := types.UserID(delUser.UserID)
 	delUser.ID = "" // to avoid multiple sources of truth
 
-	delete(c.userPermissions[userID].LoadBalancers, types.LoadBalancerID(lbID))
+	if userPermissions, ok := c.userPermissions[userID]; ok {
+		delete(userPermissions.LoadBalancers, types.LoadBalancerID(lbID))
+	}
 
 	// Remove from load balancer users slice
 	lb, ok := c.loadBalancersMap[lbID]
