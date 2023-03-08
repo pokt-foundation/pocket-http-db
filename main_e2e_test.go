@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -1823,11 +1823,13 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				data, err := ioutil.ReadFile(test.applicationUpdateJSONPath)
+				file, err := os.Open(test.applicationUpdateJSONPath)
 				ts.NoError(err)
+				defer file.Close()
 
+				decoder := json.NewDecoder(file)
 				var hugePayloadUpdate types.UpdateApplication
-				err = json.Unmarshal(data, &hugePayloadUpdate)
+				err = decoder.Decode(&hugePayloadUpdate)
 				ts.NoError(err)
 
 				if test.truncateList != 0 {
@@ -2544,7 +2546,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			loadBalancerID, email      string
 			userID                     string
 			loadBalancerUsers          []types.UserAccess
-			testPendingUser            bool
+			testPendingUsers           []types.UserAccess
 			err, permissionsFetchError error
 		}{
 			{
@@ -2560,15 +2562,36 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				permissionsFetchError: errors.New("Response not OK. 404 Not Found: no permissions found for given user ID"),
 			},
 			{
-				name:            "Should delete a single pending user for an existing load balancer in the DB",
-				loadBalancerID:  "test_lb_34987u329rfn23f",
-				testPendingUser: true,
-				email:           "owner2@test.com",
-				userID:          "test_user_04228205bd261a",
+				name:           "Should delete a single pending user for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				testPendingUsers: []types.UserAccess{
+					{Email: "owner2@test.com", RoleName: types.RoleMember},
+				},
+				email:  "owner2@test.com",
+				userID: "test_user_04228205bd261a",
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
 					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
 					{RoleName: types.RoleMember, UserID: "test_user_accept_member", Email: "member_new@test.com", Accepted: true},
+				},
+				permissionsFetchError: nil, // this test user has other permissions for other LBs so will still return permissions
+			},
+			{
+				name:           "Should delete only one pending user even if multiple pending users exist for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				testPendingUsers: []types.UserAccess{
+					{Email: "owner2@test.com", RoleName: types.RoleMember},
+					{Email: "test-delete-user-2@test.com", RoleName: types.RoleAdmin},
+					{Email: "test-delete-user-3@test.com", RoleName: types.RoleMember},
+				},
+				email:  "owner2@test.com",
+				userID: "test_user_04228205bd261a",
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_accept_member", Email: "member_new@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "", Email: "test-delete-user-2@test.com", Accepted: false},
+					{RoleName: types.RoleMember, UserID: "", Email: "test-delete-user-3@test.com", Accepted: false},
 				},
 				permissionsFetchError: nil, // this test user has other permissions for other LBs so will still return permissions
 			},
@@ -2602,13 +2625,14 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				if test.testPendingUser {
-					lb, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, types.UserAccess{
-						RoleName: types.RoleMember,
-						Email:    test.email,
-					})
-					ts.NoError(err)
-					ts.Len(lb.Users, 4)
+				if len(test.testPendingUsers) != 0 {
+					var updatedLB *types.LoadBalancer
+					for _, user := range test.testPendingUsers {
+						lb, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, user)
+						ts.NoError(err)
+						updatedLB = lb
+					}
+					ts.Len(updatedLB.Users, 3+len(test.testPendingUsers))
 				}
 
 				_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.email)
