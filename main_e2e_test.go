@@ -2104,19 +2104,21 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdateLoadBalancerUserRole", func() {
 		tests := []struct {
-			name                          string
-			loadBalancerID, userID, email string
-			roleName                      types.RoleName
-			loadBalancerUsers             []types.UserAccess
-			userLBPermissions             types.LoadBalancerPermissions
-			err                           error
+			name                   string
+			loadBalancerID, userID string
+			update                 types.UpdateUserAccess
+			loadBalancerUsers      []types.UserAccess
+			userLBPermissions      types.LoadBalancerPermissions
+			err                    error
 		}{
 			{
-				name:           "Should update a single user to an existing load balancer in the DB",
+				name:           "Should update a single user TO ADMIN for an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
-				email:          "member1@test.com",
 				userID:         "test_user_member1234",
-				roleName:       types.RoleAdmin,
+				update: types.UpdateUserAccess{
+					Email:    "member1@test.com",
+					RoleName: types.RoleAdmin,
+				},
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
 					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
@@ -2129,11 +2131,13 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name:           "Should update a single user to an existing load balancer in the DB",
+				name:           "Should update a single user to MEMBER for an existing load balancer in the DB",
 				loadBalancerID: "test_lb_34987u329rfn23f",
-				email:          "member1@test.com",
 				userID:         "test_user_member1234",
-				roleName:       types.RoleMember,
+				update: types.UpdateUserAccess{
+					Email:    "member1@test.com",
+					RoleName: types.RoleMember,
+				},
 				loadBalancerUsers: []types.UserAccess{
 					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
 					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
@@ -2146,6 +2150,124 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name:           "Should transfer OWNERship for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "test_user_admin1234",
+				update: types.UpdateUserAccess{
+					Email:        "admin1@test.com",
+					RoleName:     types.RoleOwner,
+					UpdaterEmail: "owner1@test.com",
+				},
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleOwner, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint, types.DeleteEndpoint, types.TransferEndpoint},
+				},
+			},
+			{
+				name:           "Should transfer OWNERship again for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "test_user_member1234",
+				update: types.UpdateUserAccess{
+					Email:        "member1@test.com",
+					RoleName:     types.RoleOwner,
+					UpdaterEmail: "admin1@test.com",
+				},
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleOwner, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint, types.DeleteEndpoint, types.TransferEndpoint},
+				},
+			},
+			{
+				name:           "Should transfer OWNERship back to original owner for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "test_user_1dbffbdfeeb225",
+				update: types.UpdateUserAccess{
+					Email:        "owner1@test.com",
+					RoleName:     types.RoleOwner,
+					UpdaterEmail: "member1@test.com",
+				},
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleOwner,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint, types.DeleteEndpoint, types.TransferEndpoint},
+				},
+			},
+			{
+				name:           "Should update a single unaccepted user to ADMIN for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "",
+				update: types.UpdateUserAccess{
+					Email:    "member_new@test.com",
+					RoleName: types.RoleAdmin,
+				},
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleAdmin,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+			},
+			{
+				name:           "Should update a single unaccepted user back to MEMBER for an existing load balancer in the DB",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				userID:         "",
+				update: types.UpdateUserAccess{
+					Email:    "member_new@test.com",
+					RoleName: types.RoleMember,
+				},
+				loadBalancerUsers: []types.UserAccess{
+					{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "owner1@test.com", Accepted: true},
+					{RoleName: types.RoleAdmin, UserID: "test_user_admin1234", Email: "admin1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "test_user_member1234", Email: "member1@test.com", Accepted: true},
+					{RoleName: types.RoleMember, UserID: "", Email: "member_new@test.com", Accepted: false},
+				},
+				userLBPermissions: types.LoadBalancerPermissions{
+					RoleName:    types.RoleMember,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+				},
+			},
+			{
+				name:           "Should fail if attempting to transfer ownership and the UpdaterEmail is not provided",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				update: types.UpdateUserAccess{
+					Email:        "member1@test.com",
+					RoleName:     types.RoleOwner,
+					UpdaterEmail: "",
+				},
+				err: fmt.Errorf("TODO"), // TODO
+			},
+			{
+				name:           "Should fail if attempting to transfer ownership and the user has not accepted their invite",
+				loadBalancerID: "test_lb_34987u329rfn23f",
+				update: types.UpdateUserAccess{
+					Email:        "member_new@test.com",
+					RoleName:     types.RoleOwner,
+					UpdaterEmail: "owner1@test.com",
+				},
+				err: fmt.Errorf("TODO"), // TODO
+			},
+			{
 				name:           "Should fail if load balancer ID not provided",
 				loadBalancerID: "",
 				err:            fmt.Errorf("no load balancer ID"),
@@ -2153,35 +2275,43 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			{
 				name:           "Should fail if user email not provided",
 				loadBalancerID: "test_lb_34987u329rfn23f",
-				email:          "",
-				roleName:       types.RoleAdmin,
-				err:            fmt.Errorf("no user email"),
+				update: types.UpdateUserAccess{
+					Email:    "",
+					RoleName: types.RoleAdmin,
+				},
+				err: fmt.Errorf("no user email"),
 			},
 			{
 				name:           "Should fail if invalid role name provided",
 				loadBalancerID: "test_lb_34987u329rfn23f",
-				email:          "member1@test.com",
-				roleName:       types.RoleName("wrong_one"),
-				err:            fmt.Errorf("invalid role name"),
+				update: types.UpdateUserAccess{
+					Email:    "member1@test.com",
+					RoleName: types.RoleName("wrong_one"),
+				},
+				err: fmt.Errorf("invalid role name"),
 			},
 			{
 				name:           "Should fail if attempting to make user OWNER if they haven't accepted their invitation",
 				loadBalancerID: "test_lb_34gg4g43g34g5hh",
-				email:          "member2@test.com",
-				roleName:       types.RoleOwner,
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error: cannot set a user to owner if they have not yet accepted their invitation"),
+				update: types.UpdateUserAccess{
+					Email:    "member2@test.com",
+					RoleName: types.RoleOwner,
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error: cannot set a user to owner if they have not yet accepted their invitation"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "im_not_here",
-				email:          "member1@test.com",
-				roleName:       types.RoleMember,
-				err:            fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
+				update: types.UpdateUserAccess{
+					Email:    "member1@test.com",
+					RoleName: types.RoleMember,
+				},
+				err: fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 		}
 
 		for _, test := range tests {
-			_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.email, test.roleName)
+			_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.update)
 			ts.Equal(test.err, err)
 			if test.err == nil {
 				<-time.After(50 * time.Millisecond)
@@ -2193,13 +2323,15 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 				ts.Equal(test.err, err)
 				ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
-				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
-				ts.Equal(test.err, err)
-				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+				if test.userID != "" {
+					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+					ts.Equal(test.err, err)
+					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
 
-				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
-				ts.Equal(test.err, err)
-				ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, types.UserID(test.userID))
+					ts.Equal(test.err, err)
+					ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[types.LoadBalancerID(test.loadBalancerID)])
+				}
 			}
 		}
 	})

@@ -675,6 +675,23 @@ func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 	for i := range lb.Users {
 		if lb.Users[i].Email == updateUser.Email {
 			lb.Users[i].RoleName = updateUser.RoleName
+			break
+		}
+	}
+
+	if updateUser.RoleName == types.RoleOwner {
+		err = rt.Writer.UpdateUserAccessRole(r.Context(), updateUser.UpdaterEmail, lb.ID, types.RoleAdmin)
+		if err != nil {
+			rt.logError(fmt.Errorf("UpdateUserAccessRole in UpdateLoadBalancerUser failed: %w", err))
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		for i := range lb.Users {
+			if lb.Users[i].Email == updateUser.UpdaterEmail {
+				lb.Users[i].RoleName = types.RoleAdmin
+				break
+			}
 		}
 	}
 
