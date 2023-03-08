@@ -667,14 +667,33 @@ func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 
 	err = rt.Writer.UpdateUserAccessRole(r.Context(), updateUser.Email, lb.ID, updateUser.RoleName)
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateUserAccessRole in UpdateLoadBalancerUser failed: %w", err))
+		rt.logError(fmt.Errorf("UpdateUserAccessRole for team member in UpdateLoadBalancerUser failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
+	// update LB users in cache to new role
 	for i := range lb.Users {
 		if lb.Users[i].Email == updateUser.Email {
 			lb.Users[i].RoleName = updateUser.RoleName
+			break
+		}
+	}
+
+	// if transferring ownership send the OWNER/updater's email to handle updating the OWNER to ADMIN
+	if updateUser.RoleName == types.RoleOwner {
+		err = rt.Writer.UpdateUserAccessRole(r.Context(), updateUser.UpdaterEmail, lb.ID, types.RoleAdmin)
+		if err != nil {
+			rt.logError(fmt.Errorf("UpdateUserAccessRole for OWNER in UpdateLoadBalancerUser failed: %w", err))
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		// update LB OWNER in cache to ADMIN
+		for i := range lb.Users {
+			if lb.Users[i].Email == updateUser.UpdaterEmail {
+				lb.Users[i].RoleName = types.RoleAdmin
+				break
+			}
 		}
 	}
 
