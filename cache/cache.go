@@ -1001,20 +1001,26 @@ func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	userID := types.UserID(delUser.UserID)
 	delUser.ID = "" // to avoid multiple sources of truth
 
-	delete(c.userPermissions[userID].LoadBalancers, types.LoadBalancerID(lbID))
+	if userPermissions, ok := c.userPermissions[userID]; ok {
+		delete(userPermissions.LoadBalancers, types.LoadBalancerID(lbID))
+	}
 
 	// Remove from load balancer users slice
 	lb, ok := c.loadBalancersMap[lbID]
 	if ok {
 		filteredUsers := []types.UserAccess{}
 		for _, user := range lb.Users {
-			if user.UserID != delUser.UserID {
+			if user.Email != delUser.Email {
 				filteredUsers = append(filteredUsers, user)
 			}
 		}
 		lb.Users = filteredUsers
 
-		c.loadBalancersMapByUserID[delUser.UserID] = removeLoadBalancerByID(c.loadBalancersMapByUserID[delUser.UserID], lb.ID)
-		c.pendingLoadBalancersMapByEmail[delUser.Email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[delUser.Email], lb.ID)
+		switch delUser.UserID {
+		case "":
+			c.pendingLoadBalancersMapByEmail[delUser.Email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[delUser.Email], lb.ID)
+		default:
+			c.loadBalancersMapByUserID[delUser.UserID] = removeLoadBalancerByID(c.loadBalancersMapByUserID[delUser.UserID], lb.ID)
+		}
 	}
 }
