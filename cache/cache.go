@@ -25,6 +25,7 @@ type Cache struct {
 	loadBalancersMap               map[string]*types.LoadBalancer
 	loadBalancersMapByUserID       map[string][]*types.LoadBalancer
 	pendingLoadBalancersMapByEmail map[string][]*types.LoadBalancer
+	loadBalancersCountByEmail      map[string]int
 	userPermissions                map[types.UserID]*types.UserPermissions
 	loadBalancers                  []*types.LoadBalancer
 	payPlansMap                    map[types.PayPlanType]*types.PayPlan
@@ -193,6 +194,7 @@ func (c *Cache) setLoadBalancers() error {
 	loadBalancersMap := make(map[string]*types.LoadBalancer)
 	loadBalancersMapByUserID := make(map[string][]*types.LoadBalancer)
 	pendingLoadBalancersMapByEmail := make(map[string][]*types.LoadBalancer)
+	loadBalancersCountByEmail := make(map[string]int)
 
 	for i, loadBalancer := range loadBalancers {
 		for _, appID := range loadBalancer.ApplicationIDs {
@@ -212,6 +214,10 @@ func (c *Cache) setLoadBalancers() error {
 			if !user.Accepted {
 				pendingLoadBalancersMapByEmail[user.Email] = append(pendingLoadBalancersMapByEmail[user.Email], loadBalancer)
 			}
+
+			if user.RoleName == types.RoleOwner {
+				loadBalancersCountByEmail[user.Email]++
+			}
 		}
 	}
 
@@ -219,6 +225,7 @@ func (c *Cache) setLoadBalancers() error {
 	c.loadBalancersMap = loadBalancersMap
 	c.loadBalancersMapByUserID = loadBalancersMapByUserID
 	c.pendingLoadBalancersMapByEmail = pendingLoadBalancersMapByEmail
+	c.loadBalancersCountByEmail = loadBalancersCountByEmail
 
 	return nil
 }
@@ -368,6 +375,13 @@ func (c *Cache) GetPendingLoadBalancersByEmail(email string) []types.LoadBalance
 	}
 
 	return lbsToReturn
+}
+
+func (c *Cache) GetLoadBalancersCountByEmail(email string) int {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return c.loadBalancersCountByEmail[email]
 }
 
 // GetPayPlan returns PayPlan from cache by planType
