@@ -1915,3 +1915,51 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 	c.Equal(http.StatusInternalServerError, rr.Code)
 }
+
+func TestRouter_GetLoadBalancersCountByEmail(t *testing.T) {
+	tests := []struct {
+		name           string
+		email          string
+		expectedCount  int
+		expectedStatus int
+		err            error
+	}{
+		{
+			name:           "Should return the exact number of load balancers owned by an email",
+			email:          "user1@test.com",
+			expectedStatus: http.StatusOK,
+			expectedCount:  1,
+			err:            nil,
+		},
+		{
+			name:           "Should return 0 if there's not load balanced binded with this email",
+			email:          "fakeuser@test.com",
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+
+		rr := httptest.NewRecorder()
+
+		url := fmt.Sprintf("/v1/user/%s/load_balancer/count", test.email)
+
+		req, err := http.NewRequest(http.MethodGet, url, nil)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var lbCount int
+			err := json.Unmarshal(rr.Body.Bytes(), &lbCount)
+			c.NoError(err)
+			c.Equal(test.expectedCount, lbCount)
+		}
+	}
+}

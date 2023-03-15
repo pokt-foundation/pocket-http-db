@@ -307,6 +307,8 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 
 	cache := NewTestCache(t)
 
+	c.Equal(1, cache.GetLoadBalancersCountByEmail("774900350d9c43@test.com"))
+
 	cache.addLoadBalancer(types.LoadBalancer{
 		ID:     "test_lb_47cjd72kd82kd98d",
 		UserID: "test_user_774900350d9c43",
