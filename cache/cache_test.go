@@ -76,8 +76,8 @@ func NewTestCache(t *testing.T) *Cache {
 				"test_app_e3591c4dea8566a",
 			},
 			Users: []types.UserAccess{
-				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner},
-				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin},
+				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner, Email: "687463gh2h72gs@test.com"},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin, Email: "47fhf7rwejf943@test.com"},
 			},
 		},
 		{
@@ -87,8 +87,8 @@ func NewTestCache(t *testing.T) *Cache {
 				"test_app_e3591c4dea8566f",
 			},
 			Users: []types.UserAccess{
-				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
-				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleMember},
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner, Email: "774900350d9c43@test.com"},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleMember, Email: "47fhf7rwejf943@test.com"},
 			},
 		},
 	}, nil)
@@ -166,6 +166,10 @@ func TestCache_SetCache(t *testing.T) {
 	c.Len(cache.GetUserPermissionsByUserID("test_user_687463gh2h72gs").LoadBalancers, 1)
 	c.Len(cache.GetUserPermissionsByUserID("test_user_47fhf7rwejf943").LoadBalancers, 2)
 	c.Len(cache.GetUserPermissionsByUserID("test_user_774900350d9c43").LoadBalancers, 1)
+
+	c.Equal(1, cache.GetLoadBalancersCountByEmail("687463gh2h72gs@test.com"))
+	c.Equal(0, cache.GetLoadBalancersCountByEmail("47fhf7rwejf943@test.com"))
+	c.Equal(1, cache.GetLoadBalancersCountByEmail("774900350d9c43@test.com"))
 
 	c.NotEmpty(cache.GetPayPlan(types.FreetierV0))
 	c.Len(cache.GetPayPlans(), 2)
@@ -307,14 +311,15 @@ func TestCache_AddLoadBalancer(t *testing.T) {
 		ID:     "test_lb_47cjd72kd82kd98d",
 		UserID: "test_user_774900350d9c43",
 		Users: []types.UserAccess{
-			{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner},
-			{UserID: "test_user_774900350d9c44", RoleName: types.RoleAdmin},
+			{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner, Email: "774900350d9c43@test.com"},
+			{UserID: "test_user_774900350d9c44", RoleName: types.RoleAdmin, Email: "774900350d9c44@test.com"},
 		},
 	})
 
 	c.Len(cache.GetLoadBalancers(), 3)
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 2)
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c44"), 1)
+	c.Equal(2, cache.GetLoadBalancersCountByEmail("774900350d9c43@test.com"))
 }
 
 func TestCache_UpdateLoadBalancer(t *testing.T) {
@@ -341,6 +346,7 @@ func TestCache_RemoveLoadBalancer(t *testing.T) {
 	cache := NewTestCache(t)
 
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 1)
+	c.Equal(1, cache.GetLoadBalancersCountByEmail("774900350d9c43@test.com"))
 
 	cache.updateLoadBalancer(types.LoadBalancer{
 		ID:     "test_lb_4nf37fhfy27dj28d",
@@ -348,6 +354,7 @@ func TestCache_RemoveLoadBalancer(t *testing.T) {
 	})
 
 	c.Len(cache.GetLoadBalancersByUserID("test_user_774900350d9c43"), 0)
+	c.Equal(0, cache.GetLoadBalancersCountByEmail("774900350d9c43@test.com"))
 }
 
 func TestCache_AddBlockchain(t *testing.T) {
