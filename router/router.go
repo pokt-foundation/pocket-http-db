@@ -79,6 +79,7 @@ func NewRouter(cache *cache.Cache, reader driver.Reader, writer driver.Writer, a
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{email}/load_balancer/pending", rt.GetPendingLoadBalancersByEmail).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/user/{email}/load_balancer/count", rt.GetLoadBalancersCountByEmail).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v1/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
@@ -372,6 +373,17 @@ func (rt *Router) GetPendingLoadBalancersByEmail(w http.ResponseWriter, r *http.
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
+}
+
+/* Returns the number of load balancers a given user owns, by email */
+// TODO add comment descriptions for all funcs in this repo
+func (rt *Router) GetLoadBalancersCountByEmail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userEmail := vars["email"]
+
+	lbsCount := rt.Cache.GetLoadBalancersCountByEmail(userEmail)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lbsCount)
 }
 
 /* Returns all load balancer permissionss for a given user */
