@@ -1155,6 +1155,47 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 			})
 		}
 	})
+
+	ts.Run("Test_GetLoadBalancersCountByEmail", func() {
+		tests := []struct {
+			name          string
+			email         string
+			expectedCount int
+			err           error
+		}{
+			{
+				name:          "Should return the count of load balancer owned by an email",
+				email:         "owner1@test.com",
+				expectedCount: 1,
+			},
+			{
+				name:          "Should return the count of load balancer owned by an email (the remix)",
+				email:         "owner2@test.com",
+				expectedCount: 1,
+			},
+			{
+				name:  "Should return 0 if there's no lb owned by this email",
+				email: "ownerfake@test.com",
+			},
+			{
+				name:  "Should return missing email if there's no email",
+				email: "",
+				err:   fmt.Errorf("no user email"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				count, err := ts.client1.GetLoadBalancersCountByEmail(testCtx, test.email)
+				ts.Equal(test.err, err)
+				ts.Equal(test.expectedCount, count)
+
+				count, err = ts.client2.GetLoadBalancersCountByEmail(testCtx, test.email)
+				ts.Equal(test.err, err)
+				ts.Equal(test.expectedCount, count)
+			})
+		}
+	})
 }
 
 // Runs all the write endpoint tests after the read tests
