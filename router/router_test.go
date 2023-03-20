@@ -129,6 +129,18 @@ func newTestRouter(t *testing.T) (*Router, error) {
 				{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
 			},
 		},
+		{
+			ID: "test_lb_3890ru23jfi32fj2",
+			ApplicationIDs: []string{
+				"test_app_f2dcb22a518d2ce",
+				"test_app_2b21b25b12ad62d",
+			},
+			UserID: "test_user_04228205bd261a",
+			Users: []types.UserAccess{
+				{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
+				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
+			},
+		},
 	}, nil)
 
 	readerMock.On("ReadUserPermissions", mock.Anything).Return(map[types.UserID]*types.UserPermissions{
@@ -146,6 +158,10 @@ func newTestRouter(t *testing.T) (*Router, error) {
 				"test_lb_3890ru23jfi32fj": {
 					RoleName:    types.RoleAdmin,
 					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+				},
+				"test_lb_3890ru23jfi32fj2": {
+					RoleName:    types.RoleMember,
+					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
 				},
 			},
 		},
@@ -794,6 +810,19 @@ func TestRouter_GetPendingLoadBalancersByEmail(t *testing.T) {
 						{RoleName: types.RoleMember, UserID: "", Email: "user1@test.com", Accepted: false},
 					},
 				},
+				{
+					ID: "test_lb_3890ru23jfi32fj2",
+
+					Applications: []*types.Application{
+						{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
+						{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
+					},
+					UserID: "test_user_04228205bd261a",
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
+						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
+					},
+				},
 			},
 			expectedStatus: http.StatusOK,
 			err:            nil,
@@ -1402,13 +1431,14 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 // TODO - rewrite all Router & Cache tests as table-driven like the test below
 func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 	tests := []struct {
-		name                     string
-		lbID                     string
-		acceptUserUpdate         types.UpdateUserAccess
-		expectedUsersAfterUpdate []types.UserAccess
-		expectedStatus           int
-		runMock                  bool
-		err                      error
+		name                         string
+		lbID                         string
+		acceptUserUpdate             types.UpdateUserAccess
+		expectedUsersAfterUpdate     []types.UserAccess
+		expectedRemainingInvitations []*types.LoadBalancer
+		expectedStatus               int
+		runMock                      bool
+		err                          error
 	}{
 		{
 			name: "Should update User ID and Accepted field for a LoadBalancer",
@@ -1420,6 +1450,20 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 			expectedUsersAfterUpdate: []types.UserAccess{
 				{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
 				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
+			},
+			expectedRemainingInvitations: []*types.LoadBalancer{
+				{
+					ID: "test_lb_3890ru23jfi32fj2",
+					Applications: []*types.Application{
+						{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
+						{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
+					},
+					UserID: "test_user_04228205bd261a",
+					Users: []types.UserAccess{
+						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
+						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
+					},
+				},
 			},
 			expectedStatus: http.StatusOK,
 			runMock:        true,
@@ -1472,6 +1516,17 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
 			c.NoError(err)
 			c.Equal(test.expectedUsersAfterUpdate, lbResp.Users)
+
+			var invitationsResponse []*types.LoadBalancer
+			req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/user/%s/load_balancer/pending", test.acceptUserUpdate.Email), nil)
+			c.NoError(err)
+
+			rr = httptest.NewRecorder()
+			router.Router.ServeHTTP(rr, req)
+
+			err = json.Unmarshal(rr.Body.Bytes(), &invitationsResponse)
+			c.NoError(err)
+			c.Equal(test.expectedRemainingInvitations, invitationsResponse)
 		}
 	}
 }

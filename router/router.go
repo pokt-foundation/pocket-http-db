@@ -754,6 +754,8 @@ func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	rt.Cache.RemovePendingInvitationFromUser(acceptUserUpdate.Email, lb.ID)
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
 

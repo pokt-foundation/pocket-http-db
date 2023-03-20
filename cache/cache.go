@@ -917,6 +917,13 @@ func (c *Cache) addLbApp(lbApp types.LbApp) {
 	c.pendingLbApps[lbApp.LbID] = append(c.pendingLbApps[lbApp.LbID], lbApp)
 }
 
+func (c *Cache) RemovePendingInvitationFromUser(email, loadBalancerID string) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.pendingLoadBalancersMapByEmail[email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[email], loadBalancerID)
+}
+
 // updateLoadBalancer updates load balancer saved in cache
 func (c *Cache) updateLoadBalancer(inLB types.LoadBalancer) {
 	c.rwMutex.Lock()

@@ -2538,6 +2538,29 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 							}
 						}
 						ts.True(exists)
+
+						// user should be removed from pending lb list
+						removed := true
+						pendingLoadBalancers, err := ts.client1.GetPendingLoadBalancersByEmail(testCtx, test.email)
+						ts.Equal(test.err, err)
+						for _, lb := range pendingLoadBalancers {
+							if lb.ID == test.loadBalancerID {
+								removed = false
+								break
+							}
+						}
+						ts.True(removed)
+
+						removed = true
+						pendingLoadBalancers, err = ts.client2.GetPendingLoadBalancersByEmail(testCtx, test.email)
+						ts.Equal(test.err, err)
+						for _, lb := range pendingLoadBalancers {
+							if lb.ID == test.loadBalancerID {
+								removed = false
+								break
+							}
+						}
+						ts.True(removed)
 					}
 				}
 			})
