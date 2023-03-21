@@ -25,6 +25,7 @@ type Cache struct {
 	loadBalancersMap               map[string]*types.LoadBalancer
 	loadBalancersMapByUserID       map[string][]*types.LoadBalancer
 	pendingLoadBalancersMapByEmail map[string][]*types.LoadBalancer
+	loadBalancersOwnedByEmail      map[string][]*types.LoadBalancer
 	userPermissions                map[types.UserID]*types.UserPermissions
 	loadBalancers                  []*types.LoadBalancer
 	payPlansMap                    map[types.PayPlanType]*types.PayPlan
@@ -193,6 +194,7 @@ func (c *Cache) setLoadBalancers() error {
 	loadBalancersMap := make(map[string]*types.LoadBalancer)
 	loadBalancersMapByUserID := make(map[string][]*types.LoadBalancer)
 	pendingLoadBalancersMapByEmail := make(map[string][]*types.LoadBalancer)
+	loadBalancersMapByEmail := make(map[string][]*types.LoadBalancer)
 
 	for i, loadBalancer := range loadBalancers {
 		for _, appID := range loadBalancer.ApplicationIDs {
@@ -212,6 +214,10 @@ func (c *Cache) setLoadBalancers() error {
 			if !user.Accepted {
 				pendingLoadBalancersMapByEmail[user.Email] = append(pendingLoadBalancersMapByEmail[user.Email], loadBalancer)
 			}
+
+			if user.RoleName == types.RoleOwner {
+				loadBalancersMapByEmail[user.Email] = append(loadBalancersMapByEmail[user.Email], loadBalancer)
+			}
 		}
 	}
 
@@ -219,6 +225,7 @@ func (c *Cache) setLoadBalancers() error {
 	c.loadBalancersMap = loadBalancersMap
 	c.loadBalancersMapByUserID = loadBalancersMapByUserID
 	c.pendingLoadBalancersMapByEmail = pendingLoadBalancersMapByEmail
+	c.loadBalancersOwnedByEmail = loadBalancersMapByEmail
 
 	return nil
 }
@@ -368,6 +375,13 @@ func (c *Cache) GetPendingLoadBalancersByEmail(email string) []types.LoadBalance
 	}
 
 	return lbsToReturn
+}
+
+func (c *Cache) GetLoadBalancersCountByEmail(email string) int {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return len(c.loadBalancersOwnedByEmail[email])
 }
 
 // GetPayPlan returns PayPlan from cache by planType
@@ -804,6 +818,9 @@ func (c *Cache) addLoadBalancer(lb types.LoadBalancer) {
 
 	for _, user := range lb.Users { // User ID map stores all load balancers that user is a team member on
 		c.loadBalancersMapByUserID[user.UserID] = append(c.loadBalancersMapByUserID[user.UserID], &lb)
+		if user.RoleName == types.RoleOwner {
+			c.loadBalancersOwnedByEmail[user.Email] = append(c.loadBalancersOwnedByEmail[user.Email], &lb)
+		}
 	}
 }
 
@@ -900,6 +917,13 @@ func (c *Cache) addLbApp(lbApp types.LbApp) {
 	c.pendingLbApps[lbApp.LbID] = append(c.pendingLbApps[lbApp.LbID], lbApp)
 }
 
+func (c *Cache) RemovePendingInvitationFromUser(email, loadBalancerID string) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.pendingLoadBalancersMapByEmail[email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[email], loadBalancerID)
+}
+
 // updateLoadBalancer updates load balancer saved in cache
 func (c *Cache) updateLoadBalancer(inLB types.LoadBalancer) {
 	c.rwMutex.Lock()
@@ -908,7 +932,7 @@ func (c *Cache) updateLoadBalancer(inLB types.LoadBalancer) {
 	lb := c.loadBalancersMap[inLB.ID]
 
 	if inLB.UserID == "" {
-		c.removeLoadBalancerFromUserIDMap(inLB, lb)
+		c.removeLoadBalancersFromUsersMap(inLB, lb)
 	}
 
 	lb.Name = inLB.Name
@@ -916,14 +940,15 @@ func (c *Cache) updateLoadBalancer(inLB types.LoadBalancer) {
 	lb.UpdatedAt = inLB.UpdatedAt
 }
 
-// removeApplication removes load balancers saved in cache from the loadBalancersMapByUserID as they no longer have a userID
-func (c *Cache) removeLoadBalancerFromUserIDMap(inLB types.LoadBalancer, oldLB *types.LoadBalancer) {
+// removeLoadBalancersFromUsersMap removes load balancers saved in cache from the loadBalancersMapByUserID as they no longer have a userID
+func (c *Cache) removeLoadBalancersFromUsersMap(inLB types.LoadBalancer, oldLB *types.LoadBalancer) {
 	userID := oldLB.UserID
 
 	for _, ownerLB := range c.loadBalancersMapByUserID[userID] {
 		for _, user := range ownerLB.Users {
 			c.loadBalancersMapByUserID[user.UserID] = removeLoadBalancerByID(c.loadBalancersMapByUserID[user.UserID], inLB.ID)
 			c.pendingLoadBalancersMapByEmail[user.Email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[user.Email], inLB.ID)
+			c.loadBalancersOwnedByEmail[user.Email] = removeLoadBalancerByID(c.loadBalancersOwnedByEmail[user.Email], inLB.ID)
 		}
 	}
 }
@@ -969,7 +994,17 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 
 	if lb, ok := c.loadBalancersMap[lbID]; ok {
 		for i := range lb.Users {
+			newOwner := false
 			if lb.Users[i].Email == inUser.Email {
+				// remove the LB from the user if he's no longer the owner
+				if lb.Users[i].RoleName == types.RoleOwner && inUser.RoleName != types.RoleOwner {
+					c.loadBalancersOwnedByEmail[inUser.Email] = removeLoadBalancerByID(c.loadBalancersOwnedByEmail[inUser.Email], lb.ID)
+				}
+
+				if lb.Users[i].RoleName != types.RoleOwner && inUser.RoleName == types.RoleOwner {
+					newOwner = true
+				}
+
 				// update user fields when user_access listener event for create/update received
 				lb.Users[i].RoleName = inUser.RoleName
 				lb.Users[i].UserID = inUser.UserID
@@ -985,6 +1020,9 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 				}
 				if !exists {
 					c.loadBalancersMapByUserID[inUser.UserID] = append(c.loadBalancersMapByUserID[inUser.UserID], lb)
+				}
+				if newOwner {
+					c.loadBalancersOwnedByEmail[inUser.Email] = append(c.loadBalancersOwnedByEmail[inUser.Email], lb)
 				}
 			}
 
@@ -1015,6 +1053,11 @@ func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 			}
 		}
 		lb.Users = filteredUsers
+
+		// Just a safety check since the owner can't leave the loadbalancer
+		if delUser.RoleName == types.RoleOwner {
+			c.loadBalancersOwnedByEmail[delUser.Email] = removeLoadBalancerByID(c.loadBalancersOwnedByEmail[delUser.Email], lb.ID)
+		}
 
 		switch delUser.UserID {
 		case "":
