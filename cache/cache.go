@@ -36,8 +36,8 @@ type (
 		pendingAAT              map[types.PortalAppID]types.AAT
 		pendingSettings         map[types.PortalAppID]types.Settings
 		pendingAppNotifications map[types.PortalAppID]types.AppNotification
-		pendingStickyOptions    map[types.PortalAppID]types.StickyOptions
 		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
+		pendingStickyOptions    map[types.PortalAppID]types.StickyOptions
 
 		chains                    map[types.ChainID]*types.Chain
 		pendingAltruists          map[types.ChainID][]types.Altruist
@@ -90,7 +90,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 
 	go cache.cacheRefreshHandler(ctx, config.CacheRefreshMinutes)
 
-	// go cache.listen() // TODO turn listener back on
+	go cache.listen()
 
 	return cache, nil
 }
@@ -438,6 +438,13 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		delete(c.pendingWhitelists, portalApp.ID)
 	}
 
+	// TODO - remove when v2 migration finished
+	pendingStickyOptions, ok := c.pendingStickyOptions[portalApp.ID]
+	if ok {
+		portalApp.LegacyFields.StickyOptions = pendingStickyOptions
+		delete(c.pendingStickyOptions, portalApp.ID)
+	}
+
 	c.portalApps[portalApp.ID] = &portalApp
 }
 
@@ -472,9 +479,7 @@ func (c *Cache) addPortalAppSettings(settings types.Settings) {
 		return
 	}
 
-	// The below fields are sent from the listener on the Settings struct
-	portalApp.Settings.SecretKey = settings.SecretKey
-	portalApp.Settings.SecretKeyRequired = settings.SecretKeyRequired
+	portalApp.Settings = settings
 }
 
 // addPortalAppSettings adds or updates the AppNotifications for a PortalApp in cache
@@ -491,6 +496,9 @@ func (c *Cache) addAppNotification(notification types.AppNotification) {
 		return
 	}
 
+	if portalApp.Notifications == nil {
+		portalApp.Notifications = make(map[types.NotificationType]types.AppNotification)
+	}
 	portalApp.Notifications[notification.Type] = notification
 }
 
@@ -512,6 +520,24 @@ func (c *Cache) addWhitelist(whitelist types.Whitelist) {
 	}
 
 	portalApp.AddWhitelist(whitelist)
+}
+
+// addStickinessOptions adds or updates the StickinesSOptions for a PortalApp in cache
+// TODO - remove when v2 migration finished
+func (c *Cache) addStickinessOptions(stickyOptions types.StickyOptions) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	appID := types.PortalAppID(stickyOptions.ID)
+	stickyOptions.ID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
+	portalApp, ok := c.portalApps[appID]
+	if !ok {
+		c.pendingStickyOptions[appID] = stickyOptions
+		return
+	}
+
+	portalApp.LegacyFields.StickyOptions = stickyOptions
 }
 
 // Removes a Whitelist from a PortalApp in cache
@@ -566,6 +592,12 @@ func (c *Cache) upsertChain(chain types.Chain) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	if existingChain, ok := c.chains[chain.ID]; ok {
+		chain.Altruists = existingChain.Altruists
+		chain.Redirects = existingChain.Redirects
+		chain.Checks = existingChain.Checks
+	}
+
 	pendingAltruists, ok := c.pendingAltruists[chain.ID]
 	if ok {
 		chain.Altruists = pendingAltruists
@@ -600,12 +632,26 @@ func (c *Cache) addAltruist(altruist types.Altruist) {
 	chainID := altruist.ChainID
 	altruist.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	altruistExists := func(altruists []types.Altruist) bool {
+		for i, existingAltruist := range altruists {
+			if existingAltruist.URL == altruist.URL {
+				altruists[i] = altruist
+				return true
+			}
+		}
+		return false
+	}
+
 	if chain, ok := c.chains[chainID]; ok {
-		chain.Altruists = append(chain.Altruists, altruist)
+		if !altruistExists(chain.Altruists) {
+			chain.Altruists = append(chain.Altruists, altruist)
+		}
 		return
 	}
 
-	c.pendingAltruists[chainID] = append(c.pendingAltruists[chainID], altruist)
+	if !altruistExists(c.pendingAltruists[chainID]) {
+		c.pendingAltruists[chainID] = append(c.pendingAltruists[chainID], altruist)
+	}
 }
 
 // addGigastakeRedirect adds or updates GigastakeRedirect saved in cache
@@ -616,12 +662,26 @@ func (c *Cache) addGigastakeRedirect(redirect types.GigastakeRedirect) {
 	chainID := redirect.ChainID
 	redirect.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	redirectExists := func(redirects []types.GigastakeRedirect) bool {
+		for i, existingRedirect := range redirects {
+			if existingRedirect.AccountID == redirect.AccountID && existingRedirect.Domain == redirect.Domain {
+				redirects[i] = redirect
+				return true
+			}
+		}
+		return false
+	}
+
 	if chain, ok := c.chains[chainID]; ok {
-		chain.Redirects = append(chain.Redirects, redirect)
+		if !redirectExists(chain.Redirects) {
+			chain.Redirects = append(chain.Redirects, redirect)
+		}
 		return
 	}
 
-	c.pendingGigastakeRedirects[chainID] = append(c.pendingGigastakeRedirects[chainID], redirect)
+	if !redirectExists(c.pendingGigastakeRedirects[chainID]) {
+		c.pendingGigastakeRedirects[chainID] = append(c.pendingGigastakeRedirects[chainID], redirect)
+	}
 }
 
 // addCheck adds or updates Check saved in cache
