@@ -1,4 +1,4 @@
-// package cache stores data in memeory to reduce database calls and increase speef of data fetching
+// package cache stores data in memeory to reduce database calls and increase speed of data fetching
 package cache
 
 import (
