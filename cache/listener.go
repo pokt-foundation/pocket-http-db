@@ -1,263 +1,262 @@
 package cache
 
 import (
-	"errors"
-	"fmt"
-
-	"github.com/pokt-foundation/portal-db/types"
-	"github.com/sirupsen/logrus"
+	"github.com/pokt-foundation/portal-db/v2/types"
 )
 
-var (
-	errParseLoadBalancerFailed      = errors.New("parse load balancer failed")
-	errParseStickinessOptionsFailed = errors.New("parse stickiness options failed")
-	errParseUserAccessFailed        = errors.New("parse user access failed")
+/* ---------- Accounts ---------- */
 
-	errParseLBAppsFailed = errors.New("parse lb app failed")
-
-	errParseApplicationFailed          = errors.New("parse application failed")
-	errParseGatewayAATFailed           = errors.New("parse gateway aat failed")
-	errParseGatewaySettingsFailed      = errors.New("parse gateway settings failed")
-	errParseWhitelistMethodsFailed     = errors.New("parse whitelist contracts failed")
-	errParseWhitelistContractsFailed   = errors.New("parse whitelist methods failed")
-	errParseNotificationSettingsFailed = errors.New("parse notification failed")
-
-	errParseBlockchainFailed       = errors.New("parse blockchain failed")
-	errParseSyncCheckOptionsFailed = errors.New("parse sync check options failed")
-	errParseRedirectFailed         = errors.New("parse redirect failed")
-)
-
-func (c *Cache) logError(err error) {
-	fields := logrus.Fields{
-		"err": err.Error(),
-	}
-
-	c.log.WithFields(fields).Error(err)
-}
-
-func (c *Cache) parseApplicationNotification(n types.Notification) {
-	app, ok := n.Data.(*types.Application)
+func (c *Cache) parseAccountNotification(n types.Notification) {
+	account, ok := n.Data.(*types.Account)
 	if !ok {
-		c.logError(fmt.Errorf("parseApplicationNotification failed: %w", errParseApplicationFailed))
-		return
-	}
-
-	if n.Action == types.ActionInsert {
-		c.addApplication(*app)
-	}
-	if n.Action == types.ActionUpdate {
-		c.updateApplication(*app)
-	}
-}
-
-func (c *Cache) parseBlockchainNotification(n types.Notification) {
-	blockchain, ok := n.Data.(*types.Blockchain)
-	if !ok {
-		c.logError(fmt.Errorf("parseBlockchainNotification failed: %w", errParseBlockchainFailed))
-		return
-	}
-
-	if n.Action == types.ActionInsert {
-		c.addBlockchain(*blockchain)
-	}
-	if n.Action == types.ActionUpdate {
-		c.updateBlockchain(*blockchain)
-	}
-}
-
-func (c *Cache) parseAppLimitNotification(n types.Notification) {
-	limit, ok := n.Data.(*types.AppLimit)
-	if !ok {
-		fmt.Println("parse app limit failed")
+		c.log.Error("parseAccountNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addAppLimit(*limit)
+		c.upsertAccount(*account)
 	}
 }
 
-func (c *Cache) parseGatewayAATNotification(n types.Notification) {
-	aat, ok := n.Data.(*types.GatewayAAT)
+func (c *Cache) parseAccountUserAccessNotification(n types.Notification) {
+	accountUserAccess, ok := n.Data.(*types.AccountUserAccess)
 	if !ok {
-		c.logError(fmt.Errorf("parseGatewayAATNotification failed: %w", errParseGatewayAATFailed))
-		return
-	}
-
-	if n.Action == types.ActionInsert {
-		c.addGatewayAAT(*aat)
-	}
-}
-
-func (c *Cache) parseGatewaySettingsNotification(n types.Notification) {
-	settings, ok := n.Data.(*types.GatewaySettings)
-	if !ok {
-		c.logError(fmt.Errorf("parseGatewaySettingsNotification failed: %w", errParseGatewaySettingsFailed))
+		c.log.Error("parseAccountUserAccessNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addGatewaySettings(*settings)
-	}
-}
-
-func (c *Cache) parseWhitelistContractsNotification(n types.Notification) {
-
-	contract, ok := n.Data.(*types.WhitelistContract)
-	if !ok {
-		c.logError(fmt.Errorf("parseWhitelistContractsNotification failed: %w", errParseWhitelistContractsFailed))
-		return
-	}
-
-	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addWhitelistContract(*contract)
+		c.upsertAccountUser(*accountUserAccess)
 	}
 	if n.Action == types.ActionDelete {
-		c.deleteWhitelistContract(*contract)
+		c.deleteAccountUser(*accountUserAccess)
 	}
 }
 
-func (c *Cache) parseWhitelistMethodsNotification(n types.Notification) {
-	method, ok := n.Data.(*types.WhitelistMethod)
+/* ---------- PortalApps ---------- */
+
+func (c *Cache) parsePortalAppNotification(n types.Notification) {
+	portalApp, ok := n.Data.(*types.PortalApp)
 	if !ok {
-		c.logError(fmt.Errorf("parseWhitelistMethodsNotification failed: %w", errParseWhitelistMethodsFailed))
+		c.log.Error("parsePortalAppNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addWhitelistMethod(*method)
-	}
-	if n.Action == types.ActionDelete {
-		c.deleteWhitelistMethod(*method)
+		c.upsertPortalApp(*portalApp)
 	}
 }
 
-func (c *Cache) parseLoadBalancerNotification(n types.Notification) {
-	lb, ok := n.Data.(*types.LoadBalancer)
+func (c *Cache) parseAATNotification(n types.Notification) {
+	appAAT, ok := n.Data.(*types.AAT)
 	if !ok {
-		c.logError(fmt.Errorf("parseLoadBalancerNotification failed: %w", errParseLoadBalancerFailed))
-		return
-	}
-
-	if n.Action == types.ActionInsert {
-		c.addLoadBalancer(*lb)
-	}
-	if n.Action == types.ActionUpdate {
-		c.updateLoadBalancer(*lb)
-	}
-}
-
-func (c *Cache) parseNotificationSettingsNotification(n types.Notification) {
-	settings, ok := n.Data.(*types.NotificationSettings)
-	if !ok {
-		c.logError(fmt.Errorf("parseNotificationSettingsNotification failed: %w", errParseNotificationSettingsFailed))
+		c.log.Error("parseAppAATsNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addNotificationSettings(*settings)
+		c.addPortalAppAAT(*appAAT)
 	}
 }
 
-func (c *Cache) parseRedirectNotification(n types.Notification) {
-	redirect, ok := n.Data.(*types.Redirect)
+func (c *Cache) parseSettingsNotification(n types.Notification) {
+	appSettings, ok := n.Data.(*types.Settings)
 	if !ok {
-		c.logError(fmt.Errorf("parseRedirectNotification failed: %w", errParseRedirectFailed))
+		c.log.Error("parseSettingsNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addPortalAppSettings(*appSettings)
+	}
+}
+
+func (c *Cache) parseWhitelistNotification(n types.Notification) {
+	appWhitelist, ok := n.Data.(*types.Whitelist)
+	if !ok {
+		c.log.Error("parseWhitelistNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert {
-		c.addRedirect(*redirect)
+		c.addWhitelist(*appWhitelist)
+	} else if n.Action == types.ActionDelete {
+		c.deleteWhitelist(*appWhitelist)
 	}
 }
 
+func (c *Cache) parseAppNotificationNotification(n types.Notification) {
+	appNotification, ok := n.Data.(*types.AppNotification)
+	if !ok {
+		c.log.Error("parseAppNotificationNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addAppNotification(*appNotification)
+	}
+}
+
+// TODO - remove when v2 migration finished
 func (c *Cache) parseStickinessOptionsNotification(n types.Notification) {
-	opts, ok := n.Data.(*types.StickyOptions)
+	stickinessOptions, ok := n.Data.(*types.StickyOptions)
 	if !ok {
-		c.logError(fmt.Errorf("parseStickinessOptionsNotification failed: %w", errParseStickinessOptionsFailed))
+		c.log.Error("parseStickinessOptionsNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addStickinessOptions(*opts)
+		c.addStickinessOptions(*stickinessOptions)
 	}
 }
 
-func (c *Cache) parseUserAccessNotification(n types.Notification) {
-	userAccess, ok := n.Data.(*types.UserAccess)
-	if !ok {
-		c.logError(fmt.Errorf("parseUserAccessNotification failed: %w", errParseUserAccessFailed))
-		return
-	}
+/* ---------- Chains ---------- */
 
-	if n.Action == types.ActionInsert {
-		c.addUserAccess(*userAccess)
-	}
-	if n.Action == types.ActionUpdate {
-		c.updateUserAccess(*userAccess)
-	}
-	if n.Action == types.ActionDelete {
-		c.deleteUserAccess(*userAccess)
-	}
-}
-
-func (c *Cache) parseSyncOptionsNotification(n types.Notification) {
-	opts, ok := n.Data.(*types.SyncCheckOptions)
+func (c *Cache) parseChainNotification(n types.Notification) {
+	chain, ok := n.Data.(*types.Chain)
 	if !ok {
-		c.logError(fmt.Errorf("parseSyncOptionsNotification failed: %w", errParseSyncCheckOptionsFailed))
+		c.log.Error("parseChainNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addSyncOptions(*opts)
+		c.upsertChain(*chain)
 	}
 }
 
-func (c *Cache) parseLbApps(n types.Notification) {
-	lbApp, ok := n.Data.(*types.LbApp)
+func (c *Cache) parseChainAltruistNotification(n types.Notification) {
+	chainAltruist, ok := n.Data.(*types.Altruist)
 	if !ok {
-		c.logError(fmt.Errorf("parseLbApps failed: %w", errParseLBAppsFailed))
+		c.log.Error("parseChainAltruistNotification failed")
 		return
 	}
 
-	if n.Action == types.ActionInsert {
-		c.addLbApp(*lbApp)
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addAltruist(*chainAltruist)
 	}
 }
+
+func (c *Cache) parseGigastakeRedirectNotification(n types.Notification) {
+	redirect, ok := n.Data.(*types.GigastakeRedirect)
+	if !ok {
+		c.log.Error("parseGigastakeRedirectNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addGigastakeRedirect(*redirect)
+	}
+}
+
+func (c *Cache) parseChainCheckNotification(n types.Notification) {
+	chainCheck, ok := n.Data.(*types.Check)
+	if !ok {
+		c.log.Error("parseChainCheckNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addCheck(*chainCheck)
+	}
+}
+
+/* ---------- Users ---------- */
+
+// TODO - implement in cache
+// func (c *Cache) parseUsersNotification(n types.Notification) {
+// 	user, ok := n.Data.(*types.User)
+// 	if !ok {
+// 		c.log.Error("parseUsersNotification failed")
+// 		return
+// 	}
+
+// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+// 		c.upsertUser(*user)
+// 	}
+// }
+
+// TODO - implement in cache
+// func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
+// 	userAuthProvider, ok := n.Data.(*types.UserAuthProvider)
+// 	if !ok {
+// 		c.log.Error("parseUserAuthProviderNotification failed")
+// 		return
+// 	}
+
+// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+// 		c.upsertUserAuthProvider(*userAuthProvider)
+// 	}
+// }
+
+/* ---------- Plans ---------- */
+
+// TODO - implement in cache
+// func (c *Cache) parsePayPlanNotification(n types.Notification) {
+// 	payPlan, ok := n.Data.(*types.Plan)
+// 	if !ok {
+// 		c.log.Error("parsePayPlanNotification failed")
+// 		return
+// 	}
+
+// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+// 		c.upsertPayPlan(*payPlan)
+// 	}
+// }
+
+// TODO - implement in cache
+// func (c *Cache) parseGlobalBlockedContractNotification(n types.Notification) {
+// 	blockedContract, ok := n.Data.(*types.BlockedContract)
+// 	if !ok {
+// 		c.log.Error("parseGlobalBlockedContractNotification failed")
+// 		return
+// 	}
+
+// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+// 		c.upsertGlobalBlockedContract(*blockedContract)
+// 	}
+// }
 
 func (c *Cache) parseNotification(n types.Notification) {
 	switch n.Table {
-	case types.TableLoadBalancers:
-		c.parseLoadBalancerNotification(n)
+	case types.TableAccounts:
+		c.parseAccountNotification(n)
+	case types.TableAccountUserAccess:
+		c.parseAccountUserAccessNotification(n)
+
+	case types.TablePortalApps:
+		c.parsePortalAppNotification(n)
+	case types.TableAppAATs:
+		c.parseAATNotification(n)
+	case types.TableAppSettings:
+		c.parseSettingsNotification(n)
+	case types.TableAppWhitelists:
+		c.parseWhitelistNotification(n)
+	case types.TableAppNotifications:
+		c.parseAppNotificationNotification(n)
+		// TODO - remove when v2 migration finished
 	case types.TableStickinessOptions:
 		c.parseStickinessOptionsNotification(n)
-	case types.TableUserAccess:
-		c.parseUserAccessNotification(n)
 
-	case types.TableLbApps:
-		c.parseLbApps(n)
+	case types.TableChains:
+		c.parseChainNotification(n)
+	case types.TableChainAltruists:
+		c.parseChainAltruistNotification(n)
+	case types.TableChainGigastakeRedirects:
+		c.parseGigastakeRedirectNotification(n)
+	case types.TableChainChecks:
+		c.parseChainCheckNotification(n)
 
-	case types.TableApplications:
-		c.parseApplicationNotification(n)
-	case types.TableAppLimits:
-		c.parseAppLimitNotification(n)
-	case types.TableGatewayAAT:
-		c.parseGatewayAATNotification(n)
-	case types.TableGatewaySettings:
-		c.parseGatewaySettingsNotification(n)
-	case types.TableWhitelistContracts:
-		c.parseWhitelistContractsNotification(n)
-	case types.TableWhitelistMethods:
-		c.parseWhitelistMethodsNotification(n)
-	case types.TableNotificationSettings:
-		c.parseNotificationSettingsNotification(n)
+		// TODO - implement in cache
+		// case types.TableUsers:
+		// 	c.parseUsersNotification(n)
+		// case types.TableUserAuthProviders:
+		// 	c.parseUserAuthProviderNotification(n)
 
-	case types.TableBlockchains:
-		c.parseBlockchainNotification(n)
-	case types.TableRedirects:
-		c.parseRedirectNotification(n)
-	case types.TableSyncCheckOptions:
-		c.parseSyncOptionsNotification(n)
+		// case types.TablePayPlans:
+		// 	c.parsePayPlanNotification(n)
+
+		// case types.TableGlobalBlockedContracts:
+		// 	c.parseGlobalBlockedContractNotification(n)
 	}
 }
 
