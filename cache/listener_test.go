@@ -4,512 +4,770 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pokt-foundation/portal-db/types"
+	"github.com/pokt-foundation/portal-db/v2/testdata"
+	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
-func newMockCache(readerMock *ReaderMock) *Cache {
-	readerMock.On("ReadApplications", testCtx).Return([]*types.Application{
-		{
-			ID:     "test_app_e3591c4dea8566d",
-			UserID: "test_user_774900350d9c43",
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
-					Type:  types.FreetierV0,
-					Limit: 250000,
-				},
-			},
-		},
-		{
-			ID:     "test_app_e3591c4dea8566a",
-			UserID: "test_user_774900350d9c43",
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
-					Type: types.Enterprise,
-				},
-				CustomLimit: 2000000,
-			},
-		},
-		{
-			ID:     "test_app_e3591c4dea8566f",
-			UserID: "test_user_774900350d9c44",
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
-					Type:  types.PayAsYouGoV0,
-					Limit: 0,
-				},
-			},
-		},
-	}, nil)
-
-	readerMock.On("ReadBlockchains", testCtx).Return([]*types.Blockchain{
-		{
-			ID: "0021",
-			Redirects: []types.Redirect{
-				{
-					BlockchainID: "0021",
-					Domain:       "test-domain123",
-				},
-			},
-		},
-	}, nil)
-
-	readerMock.On("ReadLoadBalancers", testCtx).Return([]*types.LoadBalancer{
-		{
-			ID:     "test_lb_67774900350d9c42",
-			UserID: "test_user_687463gh2h72gs",
-			ApplicationIDs: []string{
-				"test_app_e3591c4dea8566d",
-				"test_app_e3591c4dea8566a",
-			},
-			Users: []types.UserAccess{
-				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner},
-				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin},
-			},
-		},
-	}, nil)
-
-	readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{
-		"test_user_687463gh2h72gs": {
-			UserID: "test_user_687463gh2h72gs",
-			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
-				"test_lb_67774900350d9c42": {
-					RoleName:    types.RoleOwner,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
-				},
-			},
-		},
-		"test_user_47fhf7rwejf943": {
-			UserID: "test_user_47fhf7rwejf943",
-			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
-				"test_lb_67774900350d9c42": {
-					RoleName:    types.RoleAdmin,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
-				},
-			},
-		},
-	}, nil)
-
-	readerMock.On("ReadPayPlans", testCtx).Return([]*types.PayPlan{
-		{
-			Type:  types.FreetierV0,
-			Limit: 250000,
-		},
-		{
-			Type:  types.PayAsYouGoV0,
-			Limit: 0,
-		},
-	}, nil)
-
-	cache, err := NewCache(readerMock, time.Minute*5, logrus.New())
-	if err != nil {
-		panic(err)
-	}
-
-	return cache
-}
-
-func Test_Cache_listenApplication(t *testing.T) {
+func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	c := require.New(t)
 
-	readerMock := NewReaderMock(t)
-	cache := newMockCache(readerMock)
+	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
+	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
+	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
+	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
 
-	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Application{
-		ID:     "321",
-		UserID: "user_id_12345",
-		Name:   "pablo",
-		GatewayAAT: types.GatewayAAT{
-			Address: "123",
-		},
-		GatewaySettings: types.GatewaySettings{
-			SecretKey: "123",
-		},
-		NotificationSettings: types.NotificationSettings{
-			Full: true,
-		},
-		Limit: types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type:  types.FreetierV0,
-				Limit: 250000,
-			},
-		},
+	cacheInstance, err := NewCache(testCtx, Config{
+		Reader:              readerMock,
+		Logger:              logrus.New(),
+		CacheRefreshMinutes: 5 * time.Minute,
 	})
+	c.NoError(err)
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	app := cache.GetApplication("321")
-	c.Equal("pablo", app.Name)
-	c.Equal("123", app.GatewayAAT.Address)
-	c.Equal("123", app.GatewaySettings.SecretKey)
-	c.Equal(types.PayPlanType("FREETIER_V0"), app.Limit.PayPlan.Type)
-	c.Equal(250000, app.DailyLimit())
-	c.True(app.NotificationSettings.Full)
-
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
-		ID:     "321",
-		UserID: "user_id_12345",
-		Name:   "orlando",
-		GatewaySettings: types.GatewaySettings{
-			SecretKey: "1234",
-		},
-		NotificationSettings: types.NotificationSettings{
-			Full:     true,
-			SignedUp: true,
-		},
-		Limit: types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type: types.Enterprise,
-			},
-			CustomLimit: 2000000,
-		},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	app = cache.GetApplication("321")
-	c.Equal("orlando", app.Name)
-	c.Equal("1234", app.GatewaySettings.SecretKey)
-	c.Equal(types.PayPlanType("ENTERPRISE"), app.Limit.PayPlan.Type)
-	c.Equal(2000000, app.DailyLimit())
-
-	// Update Whitelist Contracts & Methods
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
-		ID:     "321",
-		UserID: "user_id_12345",
-		Name:   "orlando",
-		GatewaySettings: types.GatewaySettings{
-			SecretKey:            "123",
-			WhitelistBlockchains: []string{"test-chain-1", "test-chain-2"},
-			WhitelistContracts: []types.WhitelistContracts{
-				{BlockchainID: "001", Contracts: []string{"test123", "test456"}},
-				{BlockchainID: "002", Contracts: []string{"test789", "test9999"}},
-			},
-			WhitelistMethods: []types.WhitelistMethods{
-				{BlockchainID: "001", Methods: []string{"POST", "GET", "PUT"}},
-				{BlockchainID: "003", Methods: []string{"DELETE", "GET"}},
-			},
-		},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	app = cache.GetApplication("321")
-
-	contractsMap := make(map[string][]string, 2)
-	for _, contract := range app.GatewaySettings.WhitelistContracts {
-		contractsMap[contract.BlockchainID] = contract.Contracts
-	}
-	c.Equal([]string{"test123", "test456"}, contractsMap["001"])
-	c.Equal([]string{"test789", "test9999"}, contractsMap["002"])
-
-	methodsMap := make(map[string][]string, 2)
-	for _, method := range app.GatewaySettings.WhitelistMethods {
-		methodsMap[method.BlockchainID] = method.Methods
-	}
-	c.Equal([]string{"GET", "POST", "PUT"}, methodsMap["001"])
-	c.Equal([]string{"DELETE", "GET"}, methodsMap["003"])
-
-	// Remove Whitelist Contracts
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
-		ID:     "321",
-		UserID: "user_id_12345",
-		GatewaySettings: types.GatewaySettings{
-			WhitelistContracts: []types.WhitelistContracts{
-				{BlockchainID: "001", Contracts: []string{"test123"}},
-			},
-		},
-	})
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
-		ID:     "321",
-		UserID: "user_id_12345",
-		GatewaySettings: types.GatewaySettings{
-			WhitelistContracts: []types.WhitelistContracts{
-				{BlockchainID: "002", Contracts: []string{"test789", "test9999"}},
-			},
-		},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	app = cache.GetApplication("321")
-
-	contractsMap = make(map[string][]string, 2)
-	for _, contract := range app.GatewaySettings.WhitelistContracts {
-		contractsMap[contract.BlockchainID] = contract.Contracts
-	}
-	c.Equal([]string{"test456"}, contractsMap["001"])
-	c.Equal([]string(nil), contractsMap["002"])
-
-	// Remove Whitelist Methods
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
-		ID:     "321",
-		UserID: "user_id_12345",
-		GatewaySettings: types.GatewaySettings{
-			WhitelistMethods: []types.WhitelistMethods{
-				{BlockchainID: "001", Methods: []string{"POST", "GET"}},
-			},
-		},
-	})
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.Application{
-		ID:     "321",
-		UserID: "user_id_12345",
-		GatewaySettings: types.GatewaySettings{
-			WhitelistMethods: []types.WhitelistMethods{
-				{BlockchainID: "003", Methods: []string{"DELETE", "GET"}},
-			},
-		},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	app = cache.GetApplication("321")
-
-	methodsMap = make(map[string][]string, 2)
-	for _, method := range app.GatewaySettings.WhitelistMethods {
-		methodsMap[method.BlockchainID] = method.Methods
-	}
-	c.Equal([]string{"PUT"}, methodsMap["001"])
-	c.Equal([]string(nil), methodsMap["003"])
-
-	// Delete application event
-	apps := cache.GetApplicationsByUserID("user_id_12345")
-	c.NotEmpty(apps)
-
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Application{
-		ID:     "321",
-		Status: types.AwaitingGracePeriod,
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	apps = cache.GetApplicationsByUserID("user_id_12345")
-	c.Empty(apps)
+	return cacheInstance
 }
 
-func Test_Cache_listenAppLimit(t *testing.T) {
-	c := require.New(t)
+/* ---------- Accounts ---------- */
 
-	readerMock := NewReaderMock(t)
-	cache := newMockCache(readerMock)
-
-	cache.payPlansMap = map[types.PayPlanType]*types.PayPlan{
-		types.PayAsYouGoV0: {Type: types.PayAsYouGoV0, Limit: 0},
-	}
-
-	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.AppLimit{
-		ID:      "321",
-		PayPlan: types.PayPlan{Type: types.PayAsYouGoV0, Limit: 0},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	app := cache.GetApplication("321")
-	c.Empty(app)
-
-	pendingUpdates := cache.pendingAppLimit
-	c.Len(pendingUpdates, 1)
-	c.Equal(types.PayAsYouGoV0, cache.pendingAppLimit["321"].PayPlan.Type)
-
-	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Application{
-		ID: "321",
-		Limit: types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type:  types.PayAsYouGoV0,
-				Limit: 0,
+func Test_parseAccountNotification(t *testing.T) {
+	tests := []struct {
+		name             string
+		mainTableAction  types.Action
+		sideTablesAction types.Action
+		accountID        types.AccountID
+		account          *types.Account
+	}{
+		{
+			name:             "Should insert Account in cache when receiving an insert notification",
+			mainTableAction:  types.ActionInsert,
+			sideTablesAction: types.ActionInsert,
+			accountID:        6,
+			account:          testdata.TestCreateAccount,
+		},
+		{
+			name:             "Should update Account in cache when receiving an update notification",
+			mainTableAction:  types.ActionUpdate,
+			sideTablesAction: types.ActionUpdate,
+			accountID:        1,
+			account: &types.Account{
+				Name:                   "test_update_account_1",
+				PlanType:               types.PayPlanType("enterprise_plan"),
+				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}},
+				PartnerThroughputLimit: 1_000,
+				PartnerAppLimit:        2,
 			},
 		},
-	})
+		{
+			name:             "Should delete Account in cache when receiving an update notification with Account.Deleted = true",
+			mainTableAction:  types.ActionUpdate,
+			sideTablesAction: types.ActionUpdate,
+			accountID:        1,
+			account: &types.Account{
+				Name:                   "test_update_account_1",
+				PlanType:               types.PayPlanType("enterprise_plan"),
+				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}},
+				PartnerThroughputLimit: 1_000,
+				PartnerAppLimit:        2,
+				Deleted:                true,
+			},
+		},
+	}
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-	app = cache.GetApplication("321")
-	c.Equal(types.PayPlanType("PAY_AS_YOU_GO_V0"), app.Limit.PayPlan.Type)
-	c.Equal(0, app.DailyLimit())
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
 
-	pendingUpdates = cache.pendingAppLimit
-	c.Len(pendingUpdates, 0)
+			test.account.ID = test.accountID
+			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, test.account)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			c.Equal(*test.account, cache.GetAccount(test.accountID))
+
+			accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), test.accountID)
+			if test.account.Deleted {
+				c.False(accountFound, "Account should be removed from accounts map")
+			} else {
+				c.True(accountFound, "Account should be found in accounts map")
+			}
+		})
+	}
 }
 
-func Test_Cache_listenBlockchain(t *testing.T) {
-	c := require.New(t)
-
-	readerMock := NewReaderMock(t)
-	cache := newMockCache(readerMock)
-
-	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Blockchain{
-		ID:   "0023",
-		Path: "path",
-		SyncCheckOptions: types.SyncCheckOptions{
-			BlockchainID: "0023",
-			Body:         "yeh",
+func Test_parseAccountUserAccessNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		userID          types.UserID
+		accountID       types.AccountID
+		account         *types.Account
+	}{
+		{
+			name:            "Should upsert AccountUserAccess in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			userID:          3,
+			accountID:       1,
+			account: &types.Account{
+				Users: map[types.UserID]types.AccountUserAccess{
+					3: testdata.AccountUserAccess[3],
+				},
+			},
 		},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	blockchain := cache.GetBlockchain("0023")
-	c.Equal("path", blockchain.Path)
-	c.Equal("yeh", blockchain.SyncCheckOptions.Body)
-
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Blockchain{
-		ID:     "0023",
-		Active: true,
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	blockchain = cache.GetBlockchain("0023")
-	c.True(blockchain.Active)
-
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.Blockchain{
-		ID:          "0023",
-		Description: "such blockchain wow",
-		SyncCheckOptions: types.SyncCheckOptions{
-			BlockchainID: "0023",
-			ResultKey:    "test-key",
+		{
+			name:            "Should upsert AccountUserAccess in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			userID:          2,
+			accountID:       1,
+			account: &types.Account{
+				Users: map[types.UserID]types.AccountUserAccess{
+					3: {
+						UserID:   2,
+						Email:    "paul.atreides456@test.com",
+						RoleName: types.RoleMember,
+						Accepted: true,
+						ProviderUserIDs: map[types.AuthType]string{
+							types.AuthTypeAuth0Username: "auth0|paul_atreides",
+							types.AuthTypeAuth0Github:   "github|paul_atreides",
+						},
+					},
+				},
+			},
 		},
-	})
+		{
+			name:            "Should delete AccountUserAccess from cache when receiving a delete notification",
+			sideTableAction: types.ActionDelete,
+			userID:          8,
+			accountID:       1,
+			account: &types.Account{
+				Users: map[types.UserID]types.AccountUserAccess{
+					8: testdata.AccountUserAccess[8],
+				},
+			},
+		},
+	}
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-	blockchain = cache.GetBlockchain("0023")
-	c.Equal("such blockchain wow", blockchain.Description)
-	c.Equal("test-key", blockchain.SyncCheckOptions.ResultKey)
-	c.Equal("test-key", blockchain.SyncCheckOptions.ResultKey)
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			test.account.ID = test.accountID
+			readerMock.listener.MockEvent("", test.sideTableAction, test.account)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			if test.sideTableAction == types.ActionDelete {
+				accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
+				c.False(accountFound, "Account should be removed from accountsByUserID map")
+			} else {
+				accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
+				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
+			}
+		})
+	}
 }
 
-func Test_Cache_listenLoadBalancer(t *testing.T) {
-	c := require.New(t)
-
-	readerMock := NewReaderMock(t)
-	cache := newMockCache(readerMock)
-
-	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.LoadBalancer{
-		ID:     "123",
-		UserID: "user_id_12345",
-		Name:   "pablo",
-		StickyOptions: types.StickyOptions{
-			StickyOrigins: []string{"oahu"},
-			Stickiness:    true,
+func Test_parsePortalAppNotification(t *testing.T) {
+	tests := []struct {
+		name             string
+		mainTableAction  types.Action
+		sideTablesAction types.Action
+		portalAppID      types.PortalAppID
+		portalApp        types.PortalApp
+	}{
+		{
+			name:             "Should insert PortalApp in cache when receiving an insert notification",
+			mainTableAction:  types.ActionInsert,
+			sideTablesAction: types.ActionInsert,
+			portalAppID:      "test_app_create_e2887s4",
+			portalApp: types.PortalApp{
+				ID:        "test_app_create_e2887s4",
+				AccountID: 1,
+				Name:      "create_pokt_app_2",
+				Gigastake: true,
+				Staked:    false,
+				AAT: types.AAT{
+					Address:         "test_162789bdf3fec1da21e3b28a757bb648",
+					PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
+					ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
+					PrivateKey:      "test_dceabfd53f9b9c90552ba1eef2c49c78",
+					Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
+					Version:         "0.0.1",
+				},
+				Settings: types.Settings{
+					Environment:       types.EnvironmentProduction,
+					SecretKey:         "test_59a1cc884196e66cdfabe1f130159124",
+					SecretKeyRequired: true,
+				},
+			},
 		},
-		Users: []types.UserAccess{
-			{RoleName: "OWNER", UserID: "user_id_12345", Email: "owner1@test.com", Accepted: true},
+		{
+			name:             "Should update PortalApp in cache when receiving an update notification",
+			mainTableAction:  types.ActionUpdate,
+			sideTablesAction: types.ActionUpdate,
+			portalAppID:      "test_app_update_b03ca84c",
+			portalApp:        *testdata.TestUpdatePortalApp,
 		},
-		ApplicationIDs: []string{"test_app_e3591c4dea8566a"},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	lb := cache.GetLoadBalancer("123")
-	c.Equal("pablo", lb.Name)
-	c.Equal([]string{"oahu"}, lb.StickyOptions.StickyOrigins)
-	c.Equal("test_app_e3591c4dea8566a", lb.Applications[0].ID)
-	c.Equal("user_id_12345", lb.Users[0].UserID)
-	c.Equal("owner1@test.com", lb.Users[0].Email)
-
-	// Update load balancer event (including updating User Access)
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
-		ID:     "123",
-		UserID: "user_id_12345",
-		Name:   "orlando",
-		StickyOptions: types.StickyOptions{
-			StickyOrigins: []string{"ohana"},
-			Stickiness:    true,
+		{
+			name:             "Should delete Account in cache when receiving an update notification with Account.Deleted = true",
+			mainTableAction:  types.ActionUpdate,
+			sideTablesAction: types.ActionUpdate,
+			portalAppID:      "test_app_update_b03ca84c",
+			portalApp: types.PortalApp{
+				ID:        "test_app_create_e2887s4",
+				AccountID: 1,
+				Name:      "create_pokt_app_2",
+				Deleted:   true,
+			},
 		},
-		Users: []types.UserAccess{
-			{RoleName: "ADMIN", UserID: "user_id_12345", Email: "owner1@test.com", Accepted: true},
-		},
-	})
+	}
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-	lb = cache.GetLoadBalancer("123")
-	c.Equal("orlando", lb.Name)
-	c.Equal([]string{"ohana"}, lb.StickyOptions.StickyOrigins)
-	c.Equal("user_id_12345", lb.Users[0].UserID)
-	c.Equal(types.RoleAdmin, lb.Users[0].RoleName)
-	c.Len(cache.GetLoadBalancersByUserID("user_id_12345"), 1)
-	c.Len(cache.GetUserPermissionsByUserID("user_id_12345").LoadBalancers, 1)
-	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("user_id_12345").LoadBalancers["123"].RoleName)
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
 
-	// Add new load balancer User Access event
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionInsert, &types.LoadBalancer{
-		ID:     "123",
-		UserID: "user_id_12345",
-		Name:   "orlando",
-		StickyOptions: types.StickyOptions{
-			StickyOrigins: []string{"ohana"},
-			Stickiness:    true,
-		},
-		Users: []types.UserAccess{
-			{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
-		},
-	})
+			test.portalApp.ID = test.portalAppID
+			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, &test.portalApp)
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-	lb = cache.GetLoadBalancer("123")
-	c.Len(lb.Users, 2)
-	c.Equal("user_id_12345", lb.Users[0].UserID)
-	c.Equal("test_user_admin4309tug4g", lb.Users[1].UserID)
-	c.Equal("admin1@test.com", lb.Users[1].Email)
-	c.Len(cache.GetLoadBalancersByUserID("test_user_admin4309tug4g"), 1)
-	c.Len(cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers, 1)
-	c.Equal(types.RoleAdmin, cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers["123"].RoleName)
+			c.Equal(test.portalApp, cache.GetPortalApp(test.portalAppID))
 
-	// Delete load balancer User Access event
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionDelete, &types.LoadBalancer{
-		ID:     "123",
-		UserID: "user_id_12345",
-		Name:   "orlando",
-		StickyOptions: types.StickyOptions{
-			StickyOrigins: []string{"ohana"},
-			Stickiness:    true,
-		},
-		Users: []types.UserAccess{
-			{RoleName: "ADMIN", UserID: "test_user_admin4309tug4g", Email: "admin1@test.com", Accepted: true},
-		},
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	lb = cache.GetLoadBalancer("123")
-	c.Len(lb.Users, 1)
-	c.Equal("user_id_12345", lb.Users[0].UserID)
-	c.Len(cache.GetLoadBalancersByUserID("test_user_admin4309tug4g"), 0)
-	c.Len(cache.GetUserPermissionsByUserID("test_user_admin4309tug4g").LoadBalancers, 0)
-
-	// Delete load balancer event
-	lbs := cache.GetLoadBalancersByUserID("user_id_12345")
-	c.NotEmpty(lbs)
-
-	readerMock.lMock.MockEvent(types.ActionUpdate, types.ActionUpdate, &types.LoadBalancer{
-		ID:     "123",
-		UserID: "",
-	})
-
-	time.Sleep(1 * time.Second) // need time for cache refresh
-
-	lbs = cache.GetLoadBalancersByUserID("user_id_12345")
-	c.Empty(lbs)
+			portalAppFound := findPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalAppID)
+			if test.portalApp.Deleted {
+				c.False(portalAppFound, "PortalApp should be removed from portal apps map")
+			} else {
+				c.True(portalAppFound, "PortalApp should be found in portal apps map")
+			}
+		})
+	}
 }
 
-func Test_Cache_listenRedirect(t *testing.T) {
-	c := require.New(t)
+func Test_parseAATNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		portalApp       *types.PortalApp
+	}{
+		{
+			name:            "Should add AAT to PortalApp in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			portalApp: &types.PortalApp{
+				AAT: types.AAT{
+					AppID:           "test_app_47fhs7j4hs7fj24",
+					Address:         "test_162789bdf3fec1da21e3b28a757bb648",
+					PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
+					ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
+					PrivateKey:      "test_dceabfd53f9b9c90552ba1eef2c49c78",
+					Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
+					Version:         "0.0.1",
+				},
+			},
+		},
+		{
+			name:            "Should update AAT in PortalApp in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			portalApp: &types.PortalApp{
+				AAT: types.AAT{
+					AppID:           "test_app_47fhs7j4hs7fj24",
+					Address:         "test_80bd695bd00e788aefb90931beeb4354",
+					PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
+					ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",
+					PrivateKey:      "test_fd8b15e5d309e2837bc563b82ef71a9c",
+					Signature:       "test_bef7b8a4562c500d9a16802364d4eb57",
+					Version:         "0.0.1",
+				},
+			},
+		},
+	}
 
-	readerMock := NewReaderMock(t)
-	cache := newMockCache(readerMock)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-	readerMock.lMock.MockEvent(types.ActionInsert, types.ActionInsert, &types.Redirect{
-		BlockchainID: "0021",
-		Alias:        "papolo",
-	})
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
 
-	time.Sleep(1 * time.Second) // need time for cache refresh
+			// Add the PortalApp to the cache
+			cache.upsertPortalApp(*test.portalApp)
 
-	redirects := cache.GetBlockchain("0021").Redirects
-	c.Len(redirects, 2)
-	c.Equal("papolo", redirects[1].Alias)
+			test.portalApp.AAT.AppID = "" // is unset in the cache TODO will be changed soon
+
+			readerMock.listener.MockEvent("", test.sideTableAction, test.portalApp)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			portalApp := cache.GetPortalApp(test.portalApp.ID)
+			c.Equal(test.portalApp.AAT, portalApp.AAT)
+		})
+	}
+}
+
+func Test_parseSettingsNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		portalApp       *types.PortalApp
+	}{
+		{
+			name:            "Should add Settings to PortalApp in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			portalApp: &types.PortalApp{
+				Settings: types.Settings{
+					AppID:             "test_app_47fhs7j4hs7fj24",
+					SecretKey:         "test_3eb65b62717d9e062610d92abfe98873",
+					MonthlyRelayLimit: 50_000_000,
+				},
+			},
+		},
+		{
+			name:            "Should update Settings in PortalApp in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			portalApp: &types.PortalApp{
+				Settings: types.Settings{
+					AppID:             "test_app_47fhs7j4hs7fj24",
+					SecretKey:         "test_6faf7a9f573e9f7a1ee44f85faae1ffd",
+					MonthlyRelayLimit: 120_000_000,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			// Add the PortalApp to the cache
+			cache.upsertPortalApp(*test.portalApp)
+
+			test.portalApp.Settings.AppID = "" // is unset in the cache TODO will be changed soon
+
+			readerMock.listener.MockEvent("", test.sideTableAction, test.portalApp)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			portalApp := cache.GetPortalApp(test.portalApp.ID)
+			c.Equal(test.portalApp.Settings, portalApp.Settings)
+		})
+	}
+}
+
+func Test_parseWhitelistNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		chain           types.ChainID
+		portalApp       *types.PortalApp
+	}{
+		{
+			name:            "Should add Whitelist to PortalApp in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			chain:           "0082",
+			portalApp: &types.PortalApp{
+				ID: "test_app_2308rj09r23r9r2",
+				Whitelists: types.Whitelists{
+					Blockchains: map[types.ChainID]struct{}{"0082": {}},
+				},
+			},
+		},
+		{
+			name:            "Should delete Whitelist from PortalApp in cache when receiving a delete notification",
+			sideTableAction: types.ActionDelete,
+			chain:           "0021",
+			portalApp: &types.PortalApp{
+				ID: "test_app_2308rj09r23r9r2",
+				Whitelists: types.Whitelists{
+					Blockchains: map[types.ChainID]struct{}{"0021": {}},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			if test.sideTableAction == types.ActionDelete {
+				storedPortalApp := cache.GetPortalApp(test.portalApp.ID)
+				ok := storedPortalApp.IsBlockchainWhitelisted(test.chain)
+				c.True(ok, "Whitelist should be present in the PortalApp in cache before deletion")
+			}
+
+			readerMock.listener.MockEvent("", test.sideTableAction, test.portalApp)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			storedPortalApp := cache.GetPortalApp(test.portalApp.ID)
+			ok := storedPortalApp.IsBlockchainWhitelisted(test.chain)
+			if test.sideTableAction == types.ActionInsert {
+				c.True(ok, "Whitelist should be added to the PortalApp in cache")
+			} else if test.sideTableAction == types.ActionDelete {
+				c.False(ok, "Whitelist should be removed from the PortalApp in cache")
+			}
+		})
+	}
+}
+
+func Test_parseStickinessOptionsNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		portalApp       *types.PortalApp
+	}{
+		{
+			name:            "Should add StickyOptions to PortalApp in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			portalApp: &types.PortalApp{
+				LegacyFields: types.LegacyFields{
+					StickyOptions: types.StickyOptions{
+						ID:            "test_app_47fhs7j4hs7fj24",
+						Duration:      "30s",
+						StickyOrigins: []string{"test1.com", "test2.com"},
+						StickyMax:     2,
+						Stickiness:    true,
+					},
+				},
+			},
+		},
+		{
+			name:            "Should update StickyOptions in PortalApp in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			portalApp: &types.PortalApp{
+				LegacyFields: types.LegacyFields{
+					StickyOptions: types.StickyOptions{
+						ID:            "test_app_47fhs7j4hs7fj24",
+						Duration:      "60s",
+						StickyOrigins: []string{"test3.com", "test4.com"},
+						StickyMax:     3,
+						Stickiness:    false,
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			// Add the PortalApp to the cache
+			cache.upsertPortalApp(*test.portalApp)
+
+			test.portalApp.LegacyFields.StickyOptions.ID = "" // is unset in the cache TODO will be changed soon
+
+			readerMock.listener.MockEvent("", test.sideTableAction, test.portalApp)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			portalApp := cache.GetPortalApp(test.portalApp.ID)
+			c.Equal(test.portalApp.LegacyFields.StickyOptions, portalApp.LegacyFields.StickyOptions)
+		})
+	}
+}
+
+func Test_parseChainNotification(t *testing.T) {
+	tests := []struct {
+		name             string
+		mainTableAction  types.Action
+		sideTablesAction types.Action
+		chain            types.Chain
+	}{
+		{
+			name:             "Should insert Chain to cache when receiving an insert notification",
+			mainTableAction:  types.ActionInsert,
+			sideTablesAction: types.ActionInsert,
+			chain: types.Chain{
+				ID:            "0008",
+				Blockchain:    "boba-mainnet",
+				Description:   "Boba",
+				EnforceResult: "JSON",
+				Ticker:        "BOBA",
+				ChainAliases:  []string{"boba-mainnet"},
+				Altruists: []types.Altruist{
+					{
+						URL:      "https://test-rpc.boba-1.io:1234",
+						AuthType: types.ChainAuthTypeBasicAuth,
+						Auth:     "test_pocket:auth123456",
+					},
+				},
+				Redirects: []types.GigastakeRedirect{
+					{
+						AccountID: 6, Alias: "boba-mainnet", Domain: "boba-rpc.gateway.pokt.network",
+					},
+				},
+				Checks: map[types.ChainCheckType]types.Check{
+					types.ChainCheckTypeSync: {
+						Type:      types.ChainCheckTypeSync,
+						Payload:   `{"id":1,"jsonrpc":"2.0","method":"getSync"}`,
+						ResultKey: "sync",
+						Allowance: 2,
+					},
+				},
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+		},
+		{
+			name:             "Should update Chain in cache when receiving an update notification",
+			mainTableAction:  types.ActionUpdate,
+			sideTablesAction: types.ActionUpdate,
+			chain: types.Chain{
+				ID:             "0064",
+				Blockchain:     "sui-testnet",
+				Description:    "Sui Testnet",
+				EnforceResult:  "JSON",
+				Ticker:         "SUI-TESTNET-123",
+				ChainAliases:   []string{"sui-testnet"},
+				LogLimitBlocks: 100000,
+				RequestTimeout: 60000,
+				Active:         false,
+				Altruists: []types.Altruist{
+					{
+						URL:      "https://altruist-0064.com:1234",
+						AuthType: types.ChainAuthTypeBasicAuth,
+						Auth:     "test_pocket:auth123456",
+					},
+					{
+						URL:      "https://altruist-0064-2.com:1234",
+						AuthType: types.ChainAuthTypeBasicAuth,
+						Auth:     "test_pocket:auth123456",
+					},
+				},
+				Redirects: []types.GigastakeRedirect{},
+				Checks: map[types.ChainCheckType]types.Check{
+					types.ChainCheckTypeSync: {
+						Type:      types.ChainCheckTypeSync,
+						Payload:   `{"id":1,"jsonrpc":"2.0","method":"sui_blockNumber","params":[]}`,
+						ResultKey: "result",
+						Allowance: 7,
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, &test.chain)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			chain := cache.GetChain(test.chain.ID)
+			c.Equal(test.chain, chain)
+		})
+	}
+}
+
+func Test_parseChainAltruistNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		chainID         types.ChainID
+		chain           types.Chain
+	}{
+		{
+			name:            "Should add Altruist to Chain in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			chainID:         "0017",
+			chain: types.Chain{
+				ID: "0017",
+				Altruists: []types.Altruist{
+					{
+						ChainID:  "0017",
+						URL:      "https://test-rpc.neptune.io:1234",
+						Auth:     "auth_token",
+						AuthType: types.ChainAuthTypeBasicAuth,
+					},
+				},
+			},
+		},
+		{
+			name:            "Should update Altruist in Chain in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			chainID:         "0017",
+			chain: types.Chain{
+				ID: "0017",
+				Altruists: []types.Altruist{
+					{
+						ChainID:  "0017",
+						URL:      "https://test-rpc.neptune.io:1234",
+						Auth:     "new_auth_token",
+						AuthType: types.ChainAuthTypeBearerToken,
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			cache.upsertChain(test.chain)
+
+			readerMock.listener.MockEvent("", test.sideTableAction, &test.chain)
+
+			test.chain.Altruists[0].ChainID = "" // is unset in the cache TODO will be changed soon
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			chain := cache.GetChain(test.chainID)
+			c.Equal(test.chain.Altruists, chain.Altruists)
+		})
+	}
+}
+
+func Test_parseGigastakeRedirectNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		chainID         types.ChainID
+		chain           types.Chain
+	}{
+		{
+			name:            "Should add GigastakeRedirect to Chain in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			chainID:         "9826",
+			chain: types.Chain{
+				ID: "9826",
+				Redirects: []types.GigastakeRedirect{
+					{
+						ChainID:   "9826",
+						AccountID: 3,
+						Domain:    "sol-rpc.gateway.pokt.network",
+						Alias:     "solana-mainnet",
+					},
+				},
+			},
+		},
+		{
+			name:            "Should update GigastakeRedirect in Chain in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			chainID:         "9826",
+			chain: types.Chain{
+				ID: "9826",
+				Redirects: []types.GigastakeRedirect{
+					{
+						ChainID:   "9826",
+						AccountID: 3,
+						Domain:    "sol-rpc.gateway.pokt.network",
+						Alias:     "updated-solana-mainnet",
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			cache.upsertChain(test.chain)
+
+			test.chain.Redirects[0].ChainID = "" // is unset in the cache TODO will be changed soon
+
+			readerMock.listener.MockEvent("", test.sideTableAction, &test.chain)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			chain := cache.GetChain(test.chainID)
+			c.Equal(test.chain.Redirects, chain.Redirects)
+		})
+	}
+}
+
+func Test_parseChainCheckNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		sideTableAction types.Action
+		chainID         types.ChainID
+		checkType       types.ChainCheckType
+		chain           types.Chain
+	}{
+		{
+			name:            "Should add Check to Chain in cache when receiving an insert notification",
+			sideTableAction: types.ActionInsert,
+			chainID:         "7811",
+			checkType:       types.ChainCheckTypeChain,
+			chain: types.Chain{
+				ID: "7811",
+				Checks: map[types.ChainCheckType]types.Check{
+					types.ChainCheckTypeChain: {
+						ChainID:   "7811",
+						Type:      types.ChainCheckTypeChain,
+						ResultKey: "response",
+						Allowance: 1_234,
+					},
+				},
+			},
+		},
+		{
+			name:            "Should update Check in Chain in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			chainID:         "7811",
+			checkType:       types.ChainCheckTypeChain,
+			chain: types.Chain{
+				ID: "7811",
+				Checks: map[types.ChainCheckType]types.Check{
+					types.ChainCheckTypeChain: {
+						ChainID:   "7811",
+						Type:      types.ChainCheckTypeChain,
+						ResultKey: "good_response",
+						Allowance: 5_678,
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			cache.upsertChain(test.chain)
+
+			testCheck := test.chain.Checks[test.checkType]
+			testCheck.ChainID = "" // is unset in the cache TODO will be changed soon
+
+			readerMock.listener.MockEvent("", test.sideTableAction, &test.chain)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			chain := cache.GetChain(test.chainID)
+			c.Equal(chain.Checks, chain.Checks)
+		})
+	}
 }
