@@ -883,16 +883,30 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 				UserID: "test_user_1dbffbdfeeb225",
 				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 					"test_lb_15a3f7accb30783": {
-						RoleName:    types.RoleOwner,
-						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+						RoleName: types.RoleOwner,
+						Permissions: []types.PermissionsEnum{
+							"read:endpoint",
+							"write:endpoint",
+						},
 					},
 					"test_lb_34987u329rfn23f": {
-						RoleName:    types.RoleMember,
-						Permissions: []types.PermissionsEnum{types.ReadEndpoint},
+						RoleName: types.RoleMember,
+						Permissions: []types.PermissionsEnum{
+							"read:endpoint",
+						},
 					},
 					"test_lb_3890ru23jfi32fj": {
-						RoleName:    types.RoleAdmin,
-						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
+						RoleName: types.RoleAdmin,
+						Permissions: []types.PermissionsEnum{
+							"read:endpoint",
+							"write:endpoint",
+						},
+					},
+					"test_lb_3890ru23jfi32fj2": {
+						RoleName: types.RoleMember,
+						Permissions: []types.PermissionsEnum{
+							"read:endpoint",
+						},
 					},
 				},
 			},
@@ -1054,7 +1068,7 @@ func TestRouter_GetLoadBalancers(t *testing.T) {
 	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
 	c.NoError(err)
 
-	c.Len(marshaledBody, 3)
+	c.Len(marshaledBody, 4)
 	c.Equal("test_lb_15a3f7accb30783", marshaledBody[0].ID)
 	c.Equal("test_lb_34987u329rfn23f", marshaledBody[1].ID)
 	c.Equal("test_lb_3890ru23jfi32fj", marshaledBody[2].ID)
