@@ -208,8 +208,10 @@ func (c *Cache) setLoadBalancers() error {
 
 		for _, user := range loadBalancer.Users {
 			// user ID map stores all load balancers that user is a team member on
-			// if the user has not accepted their invite they do not have a user ID and won't be added to this map
-			loadBalancersMapByUserID[user.UserID] = append(loadBalancersMapByUserID[user.UserID], loadBalancer)
+			// if the user has not accepted their invite and they don't have a pokt account they do not have a user ID and won't be added to this map
+			if user.Accepted {
+				loadBalancersMapByUserID[user.UserID] = append(loadBalancersMapByUserID[user.UserID], loadBalancer)
+			}
 			// if not yet accepted, add to pending LBs map
 			if !user.Accepted {
 				pendingLoadBalancersMapByEmail[user.Email] = append(pendingLoadBalancersMapByEmail[user.Email], loadBalancer)
