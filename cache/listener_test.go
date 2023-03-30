@@ -577,7 +577,7 @@ func Test_parseChainNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chain.ID)
+			chain := cache.GetChain(test.chain.ID, Options{})
 			c.Equal(test.chain, chain)
 		})
 	}
@@ -639,7 +639,7 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chainID)
+			chain := cache.GetChain(test.chainID, Options{})
 			c.Equal(test.chain.Altruists, chain.Altruists)
 		})
 	}
@@ -701,7 +701,7 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chainID)
+			chain := cache.GetChain(test.chainID, Options{})
 			c.Equal(test.chain.Redirects, chain.Redirects)
 		})
 	}
@@ -767,7 +767,7 @@ func Test_parseChainCheckNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chainID)
+			chain := cache.GetChain(test.chainID, Options{})
 			c.Equal(chain.Checks, chain.Checks)
 		})
 	}

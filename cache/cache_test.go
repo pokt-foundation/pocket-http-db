@@ -85,13 +85,23 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return chain by ID",
-			actual:   cache.GetChain("0001"),
+			actual:   cache.GetChain("0001", Options{}),
 			expected: *testdata.Chains["0001"],
 		},
 		{
 			name:     "Should return all chains",
 			actual:   chainsToMap(cache.GetChains(Options{})),
 			expected: testdata.Chains,
+		},
+		{
+			name:     "Should return chain by ID with GigastakeRedirectAccount set",
+			actual:   cache.GetChain("0001", Options{SetGigastakeRedirectAccount: true}),
+			expected: setGigastakeRedirectAccounts(*testdata.Chains["0001"], cache),
+		},
+		{
+			name:     "Should return all chains with GigastakeRedirectAccount set",
+			actual:   chainsToMap(cache.GetChains(Options{SetGigastakeRedirectAccount: true})),
+			expected: setGigastakeRedirectAccountsForChains(testdata.Chains, cache),
 		},
 		{
 			name:     "Should return plan by type",
@@ -1075,7 +1085,7 @@ func Test_upsertChain(t *testing.T) {
 			cache := NewTestCache(t)
 
 			if test.update || test.delete {
-				storedChain := cache.GetChain(chain.ID)
+				storedChain := cache.GetChain(chain.ID, Options{})
 				c.Equal(chain, storedChain, "Chain should be present in cache before update")
 			}
 			if test.delete {
@@ -1112,7 +1122,7 @@ func Test_upsertChain(t *testing.T) {
 				c.True(chainFound, "Chain should be found in chains map")
 
 				// Check Chain in cache
-				storedChain := cache.GetChain(chain.ID)
+				storedChain := cache.GetChain(chain.ID, Options{})
 				c.Equal(expectedChain, storedChain, "Chain should be added to cache")
 			}
 
@@ -1161,7 +1171,7 @@ func Test_addAltruist(t *testing.T) {
 			cache.addAltruist(test.altruist)
 
 			if test.existingChain {
-				storedChain := cache.GetChain(test.chainID)
+				storedChain := cache.GetChain(test.chainID, Options{})
 				found := false
 				for _, storedAltruist := range storedChain.Altruists {
 					if storedAltruist.URL == test.altruist.URL {
@@ -1228,7 +1238,7 @@ func Test_addGigastakeRedirect(t *testing.T) {
 			cache.addGigastakeRedirect(test.redirect)
 
 			if test.existingChain {
-				storedChain := cache.GetChain(test.chainID)
+				storedChain := cache.GetChain(test.chainID, Options{})
 				found := false
 				for _, storedRedirect := range storedChain.Redirects {
 					if storedRedirect.Domain == test.redirect.Domain {
@@ -1295,7 +1305,7 @@ func Test_addCheck(t *testing.T) {
 			cache.addCheck(test.check)
 
 			if test.existingChain {
-				storedChain := cache.GetChain(test.chainID)
+				storedChain := cache.GetChain(test.chainID, Options{})
 				storedCheck, ok := storedChain.Checks[test.check.Type]
 				c.True(ok, "Check should be added to the Chain in cache")
 				c.Equal(test.check.Type, storedCheck.Type, "Check Type should match the stored Check Type")
@@ -1383,4 +1393,22 @@ func findChainInChains(chains []types.Chain, chainID types.RelayChainID) bool {
 		}
 	}
 	return false
+}
+
+func setGigastakeRedirectAccounts(chain types.Chain, cache *Cache) types.Chain {
+	for i := range chain.Redirects {
+		if account, ok := cache.accounts[chain.Redirects[i].AccountID]; ok {
+			chain.Redirects[i].GigastakeAccount = account
+		}
+	}
+	return chain
+}
+
+func setGigastakeRedirectAccountsForChains(chains map[types.RelayChainID]*types.Chain, cache *Cache) map[types.RelayChainID]*types.Chain {
+	updatedChains := make(map[types.RelayChainID]*types.Chain)
+	for id, chain := range chains {
+		updatedChain := setGigastakeRedirectAccounts(*chain, cache)
+		updatedChains[id] = &updatedChain
+	}
+	return updatedChains
 }

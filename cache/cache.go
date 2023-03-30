@@ -59,7 +59,8 @@ type (
 	}
 
 	Options struct {
-		IncludeDeleted bool
+		IncludeDeleted              bool
+		SetGigastakeRedirectAccount bool
 	}
 )
 
@@ -579,13 +580,17 @@ func (c *Cache) deleteWhitelist(whitelist types.Whitelist) {
 /* ---------- Chains ---------- */
 
 // GetChain returns Chain from cache by chainID
-func (c *Cache) GetChain(chainID types.RelayChainID) types.Chain {
+func (c *Cache) GetChain(chainID types.RelayChainID, options Options) types.Chain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	chain, ok := c.chains[chainID]
 	if !ok {
 		return types.Chain{}
+	}
+
+	if options.SetGigastakeRedirectAccount {
+		c.setGigastakeRedirectAccount(chain)
 	}
 
 	return *chain
@@ -599,12 +604,26 @@ func (c *Cache) GetChains(options Options) []types.Chain {
 	var chainsToReturn []types.Chain
 
 	for _, chain := range c.chains {
+		if options.SetGigastakeRedirectAccount {
+			c.setGigastakeRedirectAccount(chain)
+		}
 		if options.IncludeDeleted || !chain.Deleted {
 			chainsToReturn = append(chainsToReturn, *chain)
 		}
 	}
 
 	return chainsToReturn
+}
+
+// setGigastakeRedirectAccount sets the GigastakeAccount for each Redirect in a Chain if options.SetGigastakeRedirectAccount is true
+func (c *Cache) setGigastakeRedirectAccount(chain *types.Chain) {
+	for i := range chain.Redirects {
+		if account, ok := c.accounts[chain.Redirects[i].AccountID]; ok {
+			chain.Redirects[i].GigastakeAccount = account
+		} else {
+			c.log.Warn(fmt.Sprintf("error setting gigastake account for chain ID %s: account ID %d does not exist in cache", chain.ID, account.ID))
+		}
+	}
 }
 
 // upsertChain adds, updates or deletes Chain saved in cache
