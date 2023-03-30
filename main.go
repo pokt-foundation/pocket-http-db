@@ -9,7 +9,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/pocket-http-db/router"
-	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
+	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
 	"github.com/pokt-foundation/utils-go/environment"
 	"github.com/sirupsen/logrus"
 )

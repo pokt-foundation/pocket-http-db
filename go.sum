@@ -10,7 +10,6 @@ github.com/gojek/valkyrie v0.0.0-20180215180059-6aee720afcdf h1:5xRGbUdOmZKoDXkG
 github.com/gojek/valkyrie v0.0.0-20180215180059-6aee720afcdf/go.mod h1:QzhUKaYKJmcbTnCYCAVQrroCOY7vOOI8cSQ4NbuhYf0=
 github.com/gojektech/heimdall v5.0.2+incompatible h1:mfGLnHNTKN7b1OMTO4ZvL3oT2P13kqTTV7owK7BZDck=
 github.com/gojektech/heimdall v5.0.2+incompatible/go.mod h1:8hRIZ3+Kz0r3GAFI9QrUuvZht8ypg5Rs8schCXioLOo=
-github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
 github.com/gorilla/mux v1.8.0/go.mod h1:DVbg23sWSpFRCP0SfiEN6jmj59UnW/n46BH5rLB71So=
@@ -27,10 +26,6 @@ github.com/pokt-foundation/db-client v1.7.1 h1:qoI/O8Sb9/FGs5lso05WU1Uw2DfViHq+T
 github.com/pokt-foundation/db-client v1.7.1/go.mod h1:uVeNTvMuPC8ZMkStbdRYC+p+ffPNnbQeEEnFBSfYIqw=
 github.com/pokt-foundation/portal-db v1.8.4 h1:Tl/eBrvcppqG+NBS5/CSyhAWSBChJL1zd2PzSvqTIBA=
 github.com/pokt-foundation/portal-db v1.8.4/go.mod h1:u6xOhAbNQL0xQIPbK/jKeXMKOkRT789TYWt/uldZawM=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.16 h1:Px1OzH3H/93cVBIuGvO4bfT6k7CnDtxQXC13427Z08I=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.16/go.mod h1:d6Ehr2DBUkx9/Y+U/XSjzuRe8t3jk5Lt7ZeeF3IlFls=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.25 h1:QS89ApZXfy84PlaWOu/DmYXUiz9+rOWcQSbQzypL0aY=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.25/go.mod h1:d6Ehr2DBUkx9/Y+U/XSjzuRe8t3jk5Lt7ZeeF3IlFls=
 github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.26 h1:kyJIlBAH+RVO0bp+4oh9qF7OGVe0Z3ce7vHAsaUdutQ=
 github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.26/go.mod h1:d6Ehr2DBUkx9/Y+U/XSjzuRe8t3jk5Lt7ZeeF3IlFls=
 github.com/pokt-foundation/utils-go v0.2.5 h1:zHmqBOBm7JO5oIOJlMEjp/LhMmS+C5FUbWpZPOWOr34=

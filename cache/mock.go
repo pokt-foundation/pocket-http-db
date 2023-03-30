@@ -3,9 +3,9 @@ package cache
 import (
 	"testing"
 
-	"github.com/pokt-foundation/portal-db/driver"
-	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
-	"github.com/pokt-foundation/portal-db/types"
+	"github.com/pokt-foundation/portal-db/v2/driver"
+	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
+	"github.com/pokt-foundation/portal-db/v2/types"
 )
 
 type ReaderMock struct {

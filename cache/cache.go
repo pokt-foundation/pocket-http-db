@@ -27,6 +27,7 @@ type (
 
 		// Cached Data
 		userPermissions map[types.UserID]*types.UserPermissions
+		userIDs         map[types.ProviderUserID]types.UserID
 
 		accounts                 map[types.AccountID]*types.Account
 		accountsByUserID         map[types.UserID]AccountsForUser
@@ -39,10 +40,10 @@ type (
 		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
 		pendingStickyOptions    map[types.PortalAppID]types.StickyOptions
 
-		chains                    map[types.ChainID]*types.Chain
-		pendingAltruists          map[types.ChainID][]types.Altruist
-		pendingGigastakeRedirects map[types.ChainID][]types.GigastakeRedirect
-		pendingChecks             map[types.ChainID][]types.Check
+		chains                    map[types.RelayChainID]*types.Chain
+		pendingAltruists          map[types.RelayChainID][]types.Altruist
+		pendingGigastakeRedirects map[types.RelayChainID][]types.GigastakeRedirect
+		pendingChecks             map[types.RelayChainID][]types.Check
 
 		plans map[types.PayPlanType]*types.Plan
 
@@ -73,9 +74,9 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingSettings:           make(map[types.PortalAppID]types.Settings),
 		pendingAppNotifications:   make(map[types.PortalAppID]types.AppNotification),
 		pendingStickyOptions:      make(map[types.PortalAppID]types.StickyOptions),
-		pendingAltruists:          make(map[types.ChainID][]types.Altruist),
-		pendingGigastakeRedirects: make(map[types.ChainID][]types.GigastakeRedirect),
-		pendingChecks:             make(map[types.ChainID][]types.Check),
+		pendingAltruists:          make(map[types.RelayChainID][]types.Altruist),
+		pendingGigastakeRedirects: make(map[types.RelayChainID][]types.GigastakeRedirect),
+		pendingChecks:             make(map[types.RelayChainID][]types.Check),
 	}
 
 	err := cache.setCache(ctx)
@@ -102,9 +103,9 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	err := c.setUserPermissions(ctx)
+	err := c.setUserData(ctx)
 	if err != nil {
-		return fmt.Errorf("setUserPermissions - %w", err)
+		return fmt.Errorf("setUserData - %w", err)
 	}
 
 	err = c.setPlansAccountsAndPortalApps(ctx)
@@ -121,13 +122,19 @@ func (c *Cache) setCache(ctx context.Context) error {
 }
 
 // setUserPermissions reads UserPermissions from the database and sets them in the cache.
-func (c *Cache) setUserPermissions(ctx context.Context) error {
+func (c *Cache) setUserData(ctx context.Context) error {
 	userPermissions, err := c.reader.ReadUserPermissions(ctx)
 	if err != nil {
 		return fmt.Errorf("ReadUserPermissions - %w", err)
 	}
 
 	c.userPermissions = userPermissions
+
+	userIDs, err := c.reader.ReadUserIDsMap(ctx)
+	if err != nil {
+		return fmt.Errorf("ReadUserIDsMap - %w", err)
+	}
+	c.userIDs = userIDs
 
 	return nil
 }
@@ -214,7 +221,7 @@ func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes tim
 	}
 }
 
-/* ---------- UserPermissions ---------- */
+/* ---------- User Data ---------- */
 
 // GetUserPermissionsByUserID returns all load balancer UserPermissions for a given UserID
 func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermissions {
@@ -227,6 +234,19 @@ func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermis
 	}
 
 	return *permission
+}
+
+// GetUserIDFromProviderUserID returns the Portal UserID for a given provider UserID
+func (c *Cache) GetUserIDFromProviderUserID(providerUserID types.ProviderUserID) types.UserID {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	userID, ok := c.userIDs[providerUserID]
+	if !ok {
+		return types.UserID(0)
+	}
+
+	return userID
 }
 
 /* ---------- Accounts ---------- */
@@ -559,7 +579,7 @@ func (c *Cache) deleteWhitelist(whitelist types.Whitelist) {
 /* ---------- Chains ---------- */
 
 // GetChain returns Chain from cache by chainID
-func (c *Cache) GetChain(chainID types.ChainID) types.Chain {
+func (c *Cache) GetChain(chainID types.RelayChainID) types.Chain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -715,8 +735,8 @@ func (c *Cache) GetPlan(planType types.PayPlanType) types.Plan {
 	return *plan
 }
 
-// GetPayPlans returns all PayPlans in cache
-func (c *Cache) GetPayPlans() []types.Plan {
+// GetPlans returns all PayPlans in cache
+func (c *Cache) GetPlans() []types.Plan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
