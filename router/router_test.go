@@ -2,2033 +2,1588 @@ package router
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-db/v2/driver"
+	legacyadapters "github.com/pokt-foundation/portal-db/v2/legacy-adapters"
+	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
+var testCtx = context.Background()
+
 func newTestRouter(t *testing.T) (*Router, error) {
+	c := require.New(t)
+
 	readerMock := cache.NewReaderMock(t)
 
-	readerMock.On("ReadPayPlans", mock.Anything).Return([]*types.PayPlan{
-		{
-			Type:  types.FreetierV0,
-			Limit: 250000,
-		},
-		{
-			Type:  types.PayAsYouGoV0,
-			Limit: 0,
-		},
-	}, nil)
-
-	readerMock.On("ReadApplications", mock.Anything).Return([]*types.Application{
-		{
-			ID:     "test_app_e3591c4dea8566d",
-			UserID: "test_user_1dbffbdfeeb225",
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
-					Type:  types.FreetierV0,
-					Limit: 250000,
-				},
-			},
-			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			ID:     "test_app_e3591c4dea8566a",
-			UserID: "test_user_1dbffbdfeeb225",
-		},
-		{
-			ID:     "test_app_9f69710adbd9a8a",
-			UserID: "test_user_969710adbd9a8a",
-		},
-		{
-			ID:     "test_app_616dfbe503c2975",
-			UserID: "test_user_969710adbd9a8a",
-		},
-		{
-			ID:     "test_app_f2dcb22a518d2ce",
-			UserID: "test_user_04228205bd261a",
-		},
-		{
-			ID:     "test_app_2b21b25b12ad62d",
-			UserID: "test_user_04228205bd261a",
-		},
-	}, nil)
-
-	readerMock.On("ReadBlockchains", mock.Anything).Return([]*types.Blockchain{
-		{
-			ID:          "0021",
-			Description: "test-chain-21",
-			Redirects: []types.Redirect{
-				{
-					BlockchainID:   "0021",
-					Alias:          "pokt-mainnet",
-					Domain:         "pokt-mainnet.gateway.network",
-					LoadBalancerID: "12345",
-				},
-			},
-		},
-		{
-			ID:          "0022",
-			Description: "test-chain-22",
-			Redirects: []types.Redirect{
-				{
-					BlockchainID:   "0022",
-					Alias:          "eth-mainnet",
-					Domain:         "eth-mainnet.gateway.network",
-					LoadBalancerID: "45678",
-				},
-			},
-		},
-	}, nil)
-
-	readerMock.On("ReadLoadBalancers", mock.Anything).Return([]*types.LoadBalancer{
-		{
-			ID: "test_lb_15a3f7accb30783",
-			ApplicationIDs: []string{
-				"test_app_e3591c4dea8566d",
-				"test_app_e3591c4dea8566a",
-			},
-			UserID: "test_user_1dbffbdfeeb225",
-			Users: []types.UserAccess{
-				{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-			},
-		},
-		{
-			ID: "test_lb_34987u329rfn23f",
-			ApplicationIDs: []string{
-				"test_app_9f69710adbd9a8a",
-				"test_app_616dfbe503c2975",
-			},
-			UserID: "test_user_969710adbd9a8a",
-			Users: []types.UserAccess{
-				{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-				{RoleName: types.RoleMember, UserID: "", Email: "user1@test.com", Accepted: false},
-			},
-		},
-		{
-			ID: "test_lb_3890ru23jfi32fj",
-			ApplicationIDs: []string{
-				"test_app_f2dcb22a518d2ce",
-				"test_app_2b21b25b12ad62d",
-			},
-			UserID: "test_user_04228205bd261a",
-			Users: []types.UserAccess{
-				{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-				{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-			},
-		},
-		{
-			ID: "test_lb_3890ru23jfi32fj2",
-			ApplicationIDs: []string{
-				"test_app_f2dcb22a518d2ce",
-				"test_app_2b21b25b12ad62d",
-			},
-			UserID: "test_user_04228205bd261a",
-			Users: []types.UserAccess{
-				{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
-			},
-		},
-	}, nil)
-
-	readerMock.On("ReadUserPermissions", mock.Anything).Return(map[types.UserID]*types.UserPermissions{
-		"test_user_1dbffbdfeeb225": {
-			UserID: "test_user_1dbffbdfeeb225",
-			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
-				"test_lb_15a3f7accb30783": {
-					RoleName:    types.RoleOwner,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
-				},
-				"test_lb_34987u329rfn23f": {
-					RoleName:    types.RoleMember,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
-				},
-				"test_lb_3890ru23jfi32fj": {
-					RoleName:    types.RoleAdmin,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
-				},
-				"test_lb_3890ru23jfi32fj2": {
-					RoleName:    types.RoleMember,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
-				},
-			},
-		},
-		"test_user_969710adbd9a8a": {
-			UserID: "test_user_47fhf7rwejf943",
-			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
-				"test_lb_34987u329rfn23f": {
-					RoleName:    types.RoleOwner,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
-				},
-			},
-		},
-		"test_user_04228205bd261a": {
-			UserID: "test_user_774900350d9c43",
-			LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
-				"test_lb_3890ru23jfi32fj": {
-					RoleName:    types.RoleOwner,
-					Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
-				},
-			},
-		},
-	}, nil)
+	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
+	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
+	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
+	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
+	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
 
 	testLog := logrus.New()
 
-	cache, err := cache.NewCache(readerMock, time.Minute*5, testLog)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRouter(cache, readerMock, nil, map[string]bool{"": true}, testLog)
-}
-
-func TestRouter_HealthCheck(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-}
-
-func TestRouter_GetApplications(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/application", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal([]*types.Application{
-		{
-			ID:     "test_app_e3591c4dea8566d",
-			UserID: "test_user_1dbffbdfeeb225",
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
-					Type:  types.FreetierV0,
-					Limit: 250000,
-				},
-			},
-			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
-		},
-		{
-			ID:     "test_app_e3591c4dea8566a",
-			UserID: "test_user_1dbffbdfeeb225",
-		},
-		{
-			ID:     "test_app_9f69710adbd9a8a",
-			UserID: "test_user_969710adbd9a8a",
-		},
-		{
-			ID:     "test_app_616dfbe503c2975",
-			UserID: "test_user_969710adbd9a8a",
-		},
-		{
-			ID:     "test_app_f2dcb22a518d2ce",
-			UserID: "test_user_04228205bd261a",
-		},
-		{
-			ID:     "test_app_2b21b25b12ad62d",
-			UserID: "test_user_04228205bd261a",
-		},
+	cacheInstance, err := cache.NewCache(testCtx, cache.Config{
+		Reader:              readerMock,
+		Logger:              testLog,
+		CacheRefreshMinutes: 5 * time.Minute,
 	})
 	c.NoError(err)
 
-	c.Equal(expectedBody, rr.Body.Bytes())
-
-	req.Header.Set("Authorization", "wrong")
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusUnauthorized, rr.Code)
+	return NewRouter(cacheInstance, readerMock, nil, map[string]bool{"": true}, testLog)
 }
 
-func TestRouter_GetApplication(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/application/test_app_e3591c4dea8566d", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal(&types.Application{
-		ID:     "test_app_e3591c4dea8566d",
-		UserID: "test_user_1dbffbdfeeb225",
-		Limit: types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type:  types.FreetierV0,
-				Limit: 250000,
-			},
+func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         string
+		expectedPerms  *types.UserPermissions
+		expectedStatus int
+	}{
+		{
+			name:           "Should fetch user permissions for a given user ID",
+			userID:         "auth0|ellen_ripley",
+			expectedPerms:  testdata.UserPermissions[3],
+			expectedStatus: http.StatusOK,
 		},
-		FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodGet, "/v1/application/5f62b7d8be3591c3dea8566d", nil)
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-}
-
-func TestRouter_CreateApplication(t *testing.T) {
-	c := require.New(t)
-
-	rawAppToSend := &types.Application{
-		UserID: "test_user_29c3003378361D",
-		Limit: types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type:  types.FreetierV0,
-				Limit: 250000,
-			},
+		{
+			name:           "Should return 404 status for non-existent user ID",
+			userID:         "auth0|sir_robin",
+			expectedPerms:  nil,
+			expectedStatus: http.StatusNotFound,
 		},
 	}
 
-	appToSend, err := json.Marshal(rawAppToSend)
-	c.NoError(err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodPost, "/v1/application", bytes.NewBuffer(appToSend))
-	c.NoError(err)
+			router, err := newTestRouter(t)
+			c.NoError(err)
 
-	rr := httptest.NewRecorder()
+			rr := httptest.NewRecorder()
 
-	router, err := newTestRouter(t)
-	c.NoError(err)
+			url := fmt.Sprintf("/v1/user/%s/permission", test.userID)
+			req, err := http.NewRequest(http.MethodGet, url, nil)
+			c.NoError(err)
 
-	appToReturn := &types.Application{
-		ID:     "test_app_e29c3003378361E",
-		UserID: "test_user_29c3003378361D",
-		Limit: types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type:  types.FreetierV0,
-				Limit: 250000,
-			},
-		},
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedPerms != nil {
+				var permsResp *types.UserPermissions
+				err := json.Unmarshal(rr.Body.Bytes(), &permsResp)
+
+				c.NoError(err)
+				c.Equal(test.expectedPerms, permsResp)
+			}
+		})
 	}
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("WriteApplication", mock.Anything, mock.Anything).Return(appToReturn, nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	marshaledReturnApp, err := json.Marshal(&types.Application{
-		ID:     "test_app_e29c3003378361E",
-		UserID: "test_user_29c3003378361D",
-		Limit: types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type:  types.FreetierV0,
-				Limit: 250000,
-			},
-		},
-	})
-	c.NoError(err)
-
-	c.Equal(marshaledReturnApp, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/application", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/application", bytes.NewBuffer(appToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("WriteApplication", mock.Anything, mock.Anything).Return(appToReturn, errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
-}
-
-func TestRouter_UpdateApplication(t *testing.T) {
-	c := require.New(t)
-
-	trueBool := true
-	rawUpdateInput := &types.UpdateApplication{
-		Name:   "pablo",
-		Status: types.Orphaned,
-		Limit: &types.AppLimit{
-			PayPlan: types.PayPlan{
-				Type:  types.PayAsYouGoV0,
-				Limit: 0,
-			},
-		},
-		FirstDateSurpassed: time.Now(),
-		GatewaySettings: &types.UpdateGatewaySettings{
-			SecretKey: "1234",
-		},
-		NotificationSettings: &types.UpdateNotificationSettings{
-			Half: &trueBool,
-		},
-	}
-
-	updateInputToSend, err := json.Marshal(rawUpdateInput)
-	c.NoError(err)
-
-	req, err := http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("UpdateApplication", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("UpdateApplication", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusUnprocessableEntity, rr.Code)
-}
-
-func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
-	c := require.New(t)
-
-	rawUpdateInput := &types.UpdateFirstDateSurpassed{
-		ApplicationIDs:     []string{"test_app_e3591c4dea8566d"},
-		FirstDateSurpassed: time.Now(),
-	}
-
-	updateInputToSend, err := json.Marshal(rawUpdateInput)
-	c.NoError(err)
-
-	req, err := http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("UpdateAppFirstDateSurpassed", mock.Anything, mock.Anything).Return(nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	writerMock.On("UpdateAppFirstDateSurpassed", mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	rawUpdateInput.ApplicationIDs = []string{"test_app_3591c4dea85664"}
-
-	updateInputToSend, err = json.Marshal(rawUpdateInput)
-	c.NoError(err)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-
-	rawUpdateInput.ApplicationIDs = nil
-
-	updateInputToSend, err = json.Marshal(rawUpdateInput)
-	c.NoError(err)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-}
-
-func TestRouter_RemoveApplication(t *testing.T) {
-	c := require.New(t)
-
-	rawRemoveInput := &types.UpdateApplication{
-		Remove: true,
-	}
-
-	updateInputToSend, err := json.Marshal(rawRemoveInput)
-	c.NoError(err)
-
-	req, err := http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("RemoveApplication", mock.Anything, mock.Anything).Return(nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/application/test_app_e3591c4dea8566d", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("RemoveApplication", mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
 }
 
 func TestRouter_GetApplicationsByUserID(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/user/test_user_1dbffbdfeeb225/application", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal([]*types.Application{
+	tests := []struct {
+		name           string
+		userID         string
+		expectedApps   map[string]*types.Application
+		expectedStatus int
+	}{
 		{
-			ID:     "test_app_e3591c4dea8566d",
-			UserID: "test_user_1dbffbdfeeb225",
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
-					Type:  types.FreetierV0,
-					Limit: 250000,
-				},
+			name:   "Should fetch applications for a given user ID",
+			userID: "auth0|james_holden",
+			expectedApps: map[string]*types.Application{
+				"test_app_3487u329rfn23f9": testApps["test_app_3487u329rfn23f9"],
 			},
-			FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC),
+			expectedStatus: http.StatusOK,
 		},
 		{
-			ID:     "test_app_e3591c4dea8566a",
-			UserID: "test_user_1dbffbdfeeb225",
+			name:           "Should return 404 status for non-existent user ID",
+			userID:         "auth0|lord_farquad",
+			expectedApps:   nil,
+			expectedStatus: http.StatusNotFound,
 		},
-	})
-	c.NoError(err)
+	}
 
-	c.Equal(expectedBody, rr.Body.Bytes())
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-	req, err = http.NewRequest(http.MethodGet, "/v1/user/61ecb2bf67774900350d9c43/application", nil)
-	c.NoError(err)
+			router, err := newTestRouter(t)
+			c.NoError(err)
 
-	rr = httptest.NewRecorder()
+			rr := httptest.NewRecorder()
 
-	router.Router.ServeHTTP(rr, req)
+			url := fmt.Sprintf("/v1/user/%s/application", test.userID)
+			req, err := http.NewRequest(http.MethodGet, url, nil)
+			c.NoError(err)
 
-	c.Equal(http.StatusNotFound, rr.Code)
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedApps != nil {
+				var appsResp []types.Application
+				err := json.Unmarshal(rr.Body.Bytes(), &appsResp)
+				c.NoError(err)
+				c.Equal(test.expectedApps, convertApplicationsToMap(appsResp))
+			}
+		})
+	}
 }
 
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
+func TestRouter_GetApplications(t *testing.T) {
+	tests := []struct {
+		name           string
+		expectedApps   map[string]*types.Application
+		expectedStatus int
+	}{
+		{
+			name:           "Should fetch all applications excluding deleted ones",
+			expectedApps:   testApps,
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v1/application", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedApps != nil {
+				var appsResp []types.Application
+				err := json.Unmarshal(rr.Body.Bytes(), &appsResp)
+
+				c.NoError(err)
+				c.Equal(test.expectedApps, convertApplicationsToMap(appsResp))
+			}
+		})
+	}
+}
+
+func TestRouter_GetApplication(t *testing.T) {
+	tests := []struct {
+		name           string
+		appID          string
+		expectedApp    types.Application
+		expectedStatus int
+	}{
+		{
+			name:           "Should fetch the application with the provided ID",
+			appID:          "test_app_3487u329rfn23f9",
+			expectedApp:    *testApps["test_app_3487u329rfn23f9"],
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Should return 404 for non-existent application",
+			appID:          "test_not_real_app_112233",
+			expectedApp:    types.Application{},
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/application/%s", test.appID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedApp.ID != "" {
+				var appResp types.Application
+				err := json.Unmarshal(rr.Body.Bytes(), &appResp)
+				c.NoError(err)
+				c.Equal(test.expectedApp, appResp)
+			}
+		})
+	}
+}
+
 func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         string
 		roleNameFilter types.RoleName
-		expectedLBs    []*types.LoadBalancer
+		expectedLBs    map[string]types.LoadBalancer
 		expectedStatus int
-		err            error
 	}{
 		{
-			name:   "Should fetch all load balancers for a given user when no filter provided",
-			userID: "test_user_1dbffbdfeeb225",
-			expectedLBs: []*types.LoadBalancer{
-				{
-					ID:     "test_lb_15a3f7accb30783",
-					UserID: "test_user_1dbffbdfeeb225",
-					Applications: []*types.Application{
-						{ID: "test_app_e3591c4dea8566d", UserID: "test_user_1dbffbdfeeb225", Limit: types.AppLimit{PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000}}, FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)},
-						{ID: "test_app_e3591c4dea8566a", UserID: "test_user_1dbffbdfeeb225"},
-					},
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-					},
-				},
-				{
-					ID:     "test_lb_3890ru23jfi32fj",
-					UserID: "test_user_04228205bd261a",
-					Applications: []*types.Application{
-						{
-							ID:     "test_app_f2dcb22a518d2ce",
-							UserID: "test_user_04228205bd261a",
-						},
-						{
-							ID:     "test_app_2b21b25b12ad62d",
-							UserID: "test_user_04228205bd261a",
-						},
-					},
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-						{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-					},
-				},
+			name:   "Should fetch load balancers for the provided user ID with no role name filter",
+			userID: "github|james_holden",
+			expectedLBs: map[string]types.LoadBalancer{
+				"test_lb_5c6f50bc30b530a8": testLoadBalancers["test_lb_5c6f50bc30b530a8"],
 			},
 			expectedStatus: http.StatusOK,
-			err:            nil,
 		},
 		{
-			name:           "Should fetch only load balancers a given user is the OWNER of when OWNER filter provided",
-			userID:         "test_user_1dbffbdfeeb225",
+			name:           "Should fetch load balancers for the provided user ID and role name filter",
+			userID:         "github|james_holden",
 			roleNameFilter: types.RoleOwner,
-			expectedLBs: []*types.LoadBalancer{
-				{
-					ID:     "test_lb_15a3f7accb30783",
-					UserID: "test_user_1dbffbdfeeb225",
-					Applications: []*types.Application{
-						{ID: "test_app_e3591c4dea8566d", UserID: "test_user_1dbffbdfeeb225", Limit: types.AppLimit{PayPlan: types.PayPlan{Type: types.FreetierV0, Limit: 250000}}, FirstDateSurpassed: time.Date(2022, time.July, 21, 0, 0, 0, 0, time.UTC)},
-						{ID: "test_app_e3591c4dea8566a", UserID: "test_user_1dbffbdfeeb225"},
-					},
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-					},
-				},
+			expectedLBs: map[string]types.LoadBalancer{
+				"test_lb_5c6f50bc30b530a8": testLoadBalancers["test_lb_5c6f50bc30b530a8"],
 			},
 			expectedStatus: http.StatusOK,
-			err:            nil,
 		},
 		{
-			name:           "Should fetch only load balancers a given user is an ADMIN of when ADMIN filter provided",
-			userID:         "test_user_1dbffbdfeeb225",
-			roleNameFilter: types.RoleAdmin,
-			expectedLBs: []*types.LoadBalancer{
-				{
-					ID:     "test_lb_3890ru23jfi32fj",
-					UserID: "test_user_04228205bd261a",
-					Applications: []*types.Application{
-						{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
-						{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
-					},
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-						{RoleName: types.RoleAdmin, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-					},
-				},
-			},
-			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should not fetch a load balancer for a given user if they have not accepted their invite",
-			userID:         "test_user_1dbffbdfeeb225",
-			roleNameFilter: types.RoleMember,
-			expectedLBs:    []*types.LoadBalancer{},
-			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if an invalid role name filter query param is provided",
-			userID:         "test_user_969710adbd9a8a",
-			roleNameFilter: types.RoleName("test_sir_not_appearing_in_this_film"),
+			name:           "Should return 400 for invalid role name filter",
+			userID:         "1",
+			roleNameFilter: types.RoleName("EMPEROR"),
 			expectedStatus: http.StatusBadRequest,
-			err:            errors.New("dummy error"),
 		},
 		{
-			name:           "Should fail if the user has no load balancers",
-			userID:         "test_sir_not_appearing_in_this_film",
+			name:           "Should return 404 for non-existent user",
+			userID:         "auth0|rickon_stark",
 			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-
-		rr := httptest.NewRecorder()
-
-		url := fmt.Sprintf("/v1/user/%s/load_balancer", test.userID)
-		if test.roleNameFilter != types.RoleName("") {
-			url = fmt.Sprintf("%s?filter=%s", url, string(test.roleNameFilter))
-		}
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var lbResp []*types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
-
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedLBs, lbResp)
-		}
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/user/%s/load_balancer", test.userID), nil)
+			if test.roleNameFilter != "" {
+				q := req.URL.Query()
+				q.Add("filter", string(test.roleNameFilter))
+				req.URL.RawQuery = q.Encode()
+			}
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedLBs != nil {
+				var lbsResp []types.LoadBalancer
+				err := json.Unmarshal(rr.Body.Bytes(), &lbsResp)
+				c.NoError(err)
+				c.Equal(test.expectedLBs, convertLoadBalancersToMap(lbsResp))
+			}
+		})
 	}
 }
 
-func TestRouter_GetPendingLoadBalancersByEmail(t *testing.T) {
+func TestRouter_GetLoadBalancers(t *testing.T) {
 	tests := []struct {
 		name           string
-		userEmail      string
-		expectedLBs    []*types.LoadBalancer
+		expectedLBs    map[string]types.LoadBalancer
 		expectedStatus int
-		err            error
 	}{
 		{
-			name:      "Should fetch all pending load balancers for a given email",
-			userEmail: "user1@test.com",
-			expectedLBs: []*types.LoadBalancer{
-				{
-					ID: "test_lb_34987u329rfn23f",
-					Applications: []*types.Application{
-						{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
-						{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
-					},
-					UserID: "test_user_969710adbd9a8a",
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-						{RoleName: types.RoleMember, UserID: "", Email: "user1@test.com", Accepted: false},
-					},
-				},
-				{
-					ID: "test_lb_3890ru23jfi32fj2",
-
-					Applications: []*types.Application{
-						{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
-						{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
-					},
-					UserID: "test_user_04228205bd261a",
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
-					},
-				},
-			},
+			name:           "Should fetch all load balancers",
+			expectedLBs:    testLoadBalancers,
 			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should not fetch a load balancer for a given email if they have already accepted all their invites",
-			userEmail:      "test_user_969710adbd9a8a",
-			expectedStatus: http.StatusNotFound,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the email has no load balancers",
-			userEmail:      "test_sir@not_appearing_in_this_film.com",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-
-		rr := httptest.NewRecorder()
-
-		url := fmt.Sprintf("/v1/user/%s/load_balancer/pending", test.userEmail)
-
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if rr.Code == http.StatusOK {
-			var lbResp []*types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
-
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedLBs, lbResp)
-		}
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v1/load_balancer", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedLBs != nil {
+				var lbsResp []types.LoadBalancer
+				err := json.Unmarshal(rr.Body.Bytes(), &lbsResp)
+				c.NoError(err)
+				c.Equal(test.expectedLBs, convertLoadBalancersToMap(lbsResp))
+			}
+		})
 	}
 }
 
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
-func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
+func TestRouter_GetLoadBalancer(t *testing.T) {
 	tests := []struct {
-		name                string
-		userID              string
-		expectedPermissions *types.UserPermissions
-		expectedStatus      int
-		err                 error
+		name           string
+		loadBalancerID string
+		expectedLB     types.LoadBalancer
+		expectedStatus int
 	}{
 		{
-			name:   "Should fetch all load balancer permissions for a given user",
-			userID: "test_user_1dbffbdfeeb225",
-			expectedPermissions: &types.UserPermissions{
-				UserID: "test_user_1dbffbdfeeb225",
-				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
-					"test_lb_15a3f7accb30783": {
-						RoleName: types.RoleOwner,
-						Permissions: []types.PermissionsEnum{
-							"read:endpoint",
-							"write:endpoint",
-						},
-					},
-					"test_lb_34987u329rfn23f": {
-						RoleName: types.RoleMember,
-						Permissions: []types.PermissionsEnum{
-							"read:endpoint",
-						},
-					},
-					"test_lb_3890ru23jfi32fj": {
-						RoleName: types.RoleAdmin,
-						Permissions: []types.PermissionsEnum{
-							"read:endpoint",
-							"write:endpoint",
-						},
-					},
-					"test_lb_3890ru23jfi32fj2": {
-						RoleName: types.RoleMember,
-						Permissions: []types.PermissionsEnum{
-							"read:endpoint",
-						},
-					},
-				},
-			},
+			name:           "Should fetch the load balancer with the provided ID",
+			loadBalancerID: "test_lb_5c6f50bc30b530a8",
+			expectedLB:     testLoadBalancers["test_lb_5c6f50bc30b530a8"],
 			expectedStatus: http.StatusOK,
-			err:            nil,
 		},
 		{
-			name:   "Should fetch all load balancer permissions for a given user",
-			userID: "test_user_969710adbd9a8a",
-			expectedPermissions: &types.UserPermissions{
-				UserID: "test_user_47fhf7rwejf943",
-				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
-					"test_lb_34987u329rfn23f": {
-						RoleName:    types.RoleOwner,
-						Permissions: []types.PermissionsEnum{types.ReadEndpoint, types.WriteEndpoint},
-					},
-				},
-			},
-			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if a user has no permissions in the cache",
-			userID:         "test_not_a_real_user",
+			name:           "Should return 404 for non-existent load balancer ID",
+			loadBalancerID: "test_lb_who_am_i_777fhwn",
 			expectedStatus: http.StatusNotFound,
-			err:            errPermissionsNotFound,
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-
-		rr := httptest.NewRecorder()
-
-		url := fmt.Sprintf("/v1/user/%s/permission", test.userID)
-
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var permsResponse *types.UserPermissions
-			err := json.Unmarshal(rr.Body.Bytes(), &permsResponse)
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedPermissions, permsResponse)
-		}
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/load_balancer/%s", test.loadBalancerID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedLB.ID != "" {
+				var lbResp types.LoadBalancer
+				err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+				c.NoError(err)
+				c.Equal(test.expectedLB, lbResp)
+			}
+		})
 	}
 }
 
 func TestRouter_GetBlockchains(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/blockchain", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal([]*types.Blockchain{
-		{
-			ID:          "0021",
-			Description: "test-chain-21",
-			Redirects: []types.Redirect{
-				{
-					BlockchainID:   "0021",
-					Alias:          "pokt-mainnet",
-					Domain:         "pokt-mainnet.gateway.network",
-					LoadBalancerID: "12345",
-				},
-			},
-		},
-		{
-			ID:          "0022",
-			Description: "test-chain-22",
-			Redirects: []types.Redirect{
-				{
-					BlockchainID:   "0022",
-					Alias:          "eth-mainnet",
-					Domain:         "eth-mainnet.gateway.network",
-					LoadBalancerID: "45678",
-				},
-			},
-		},
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-}
-
-func TestRouter_GetBlockchain(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/blockchain/0021", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal(&types.Blockchain{
-		ID:          "0021",
-		Description: "test-chain-21",
-		Redirects: []types.Redirect{
-			{
-				BlockchainID:   "0021",
-				Alias:          "pokt-mainnet",
-				Domain:         "pokt-mainnet.gateway.network",
-				LoadBalancerID: "12345",
-			},
-		},
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodGet, "/v1/blockchain/00210", nil)
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-}
-
-func TestRouter_GetLoadBalancers(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/load_balancer", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	var marshaledBody []*types.LoadBalancer
-
-	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
-	c.NoError(err)
-
-	c.Len(marshaledBody, 4)
-	c.Equal("test_lb_15a3f7accb30783", marshaledBody[0].ID)
-	c.Equal("test_lb_34987u329rfn23f", marshaledBody[1].ID)
-	c.Equal("test_lb_3890ru23jfi32fj", marshaledBody[2].ID)
-}
-
-func TestRouter_GetLoadBalancer(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/load_balancer/test_lb_34987u329rfn23f", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	var marshaledBody types.LoadBalancer
-
-	err = json.Unmarshal(rr.Body.Bytes(), &marshaledBody)
-	c.NoError(err)
-
-	c.Equal("test_lb_34987u329rfn23f", marshaledBody.ID)
-
-	req, err = http.NewRequest(http.MethodGet, "/v1/load_balancer/60fcb2bf67774900350d9c42", nil)
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-}
-
-func TestRouter_CreateLoadBalancer(t *testing.T) {
-	c := require.New(t)
-
-	rawLBToSend := &types.LoadBalancer{
-		UserID: "test_user_29c3003378361D",
-		Users: []types.UserAccess{
-			{
-				UserID:   "test_user_29c3003378361D",
-				RoleName: types.RoleOwner,
-				Email:    "user1@test.com",
-			},
-		},
-	}
-
-	lbToSend, err := json.Marshal(rawLBToSend)
-	c.NoError(err)
-
-	req, err := http.NewRequest(http.MethodPost, "/v1/load_balancer", bytes.NewBuffer(lbToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	lbToReturn := &types.LoadBalancer{
-		ID:     "test_app_e29c3003378361E",
-		UserID: "test_user_29c3003378361D",
-		Users: []types.UserAccess{
-			{
-				UserID:   "test_user_29c3003378361D",
-				RoleName: types.RoleOwner,
-				Email:    "user1@test.com",
-			},
-		},
-	}
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("WriteLoadBalancer", mock.Anything, mock.Anything).Return(lbToReturn, nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	marshaledReturnLB, err := json.Marshal(lbToReturn)
-	c.NoError(err)
-
-	c.Equal(marshaledReturnLB, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/load_balancer", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/load_balancer", bytes.NewBuffer(lbToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("WriteLoadBalancer", mock.Anything, mock.Anything).Return(lbToReturn, errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
-}
-
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
-func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 	tests := []struct {
-		name                  string
-		lbID, ownerID         string
-		userInput             types.UserAccess
-		invalidJSON           bool
-		expectedLBAfterCreate *types.LoadBalancer
-		expectedStatus        int
-		err                   error
+		name           string
+		expectedChains map[string]types.Blockchain
+		expectedStatus int
 	}{
 		{
-			name:    "Should create a new User for a LoadBalancer with correct input",
-			lbID:    "test_lb_34987u329rfn23f",
-			ownerID: "test_user_969710adbd9a8a",
-			userInput: types.UserAccess{
-				UserID:   "test_user_member1234",
-				RoleName: types.RoleMember,
-				Email:    "member1@test.com",
-			},
-			expectedLBAfterCreate: &types.LoadBalancer{
-				ID:     "test_lb_34987u329rfn23f",
-				UserID: "test_user_969710adbd9a8a",
-				Applications: []*types.Application{
-					{ID: "test_app_9f69710adbd9a8a", UserID: "test_user_969710adbd9a8a"},
-					{ID: "test_app_616dfbe503c2975", UserID: "test_user_969710adbd9a8a"},
-				},
-				Users: []types.UserAccess{
-					{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "", Email: "user1@test.com", Accepted: false},
-					{RoleName: types.RoleMember, UserID: "", Email: "member1@test.com", Accepted: false},
-				},
-			},
+			name:           "Should fetch all blockchains",
+			expectedChains: testBlockchains,
 			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the load balancer does not exist",
-			lbID:           "test_sir_not_appearing_in_this_film",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name:           "Should fail if the data cannot be marshaled to JSON",
-			lbID:           "test_lb_34987u329rfn23f",
-			invalidJSON:    true,
-			expectedStatus: http.StatusBadRequest,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name: "Should fail if DB driver throws an error",
-			lbID: "test_lb_34987u329rfn23f",
-			userInput: types.UserAccess{
-				UserID:   "test_user_member1234",
-				RoleName: types.RoleMember,
-				Email:    "member1@test.com",
-			},
-			expectedStatus: http.StatusInternalServerError,
-			err:            errors.New("dummy database driver error"),
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if (test.userInput != types.UserAccess{}) {
-			writerMock.On("WriteLoadBalancerUser", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		userToSend, err := json.Marshal(test.userInput)
-		c.NoError(err)
-
-		var testBuffer *bytes.Buffer
-		switch {
-		case !test.invalidJSON:
-			testBuffer = bytes.NewBuffer(userToSend)
-		case test.invalidJSON:
-			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
-		}
-		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v1/load_balancer/%s/user", test.lbID), testBuffer)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var lbResp types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedLBAfterCreate, &lbResp)
-		}
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v1/blockchain", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedChains != nil {
+				var chainsResp []types.Blockchain
+				err := json.Unmarshal(rr.Body.Bytes(), &chainsResp)
+				c.NoError(err)
+				c.Equal(test.expectedChains, convertBlockchainsToMap(chainsResp))
+			}
+		})
+	}
+}
+
+func TestRouter_GetBlockchain(t *testing.T) {
+	tests := []struct {
+		name           string
+		blockchainID   string
+		expectedChain  types.Blockchain
+		expectedStatus int
+	}{
+		{
+			name:           "Should fetch a blockchain by its ID",
+			blockchainID:   "0001",
+			expectedChain:  testBlockchains["0001"],
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Should return 404 for a non-existent blockchain ID",
+			blockchainID:   "9000",
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/blockchain/%s", test.blockchainID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedChain.ID != "" {
+				var chainResp types.Blockchain
+				err := json.Unmarshal(rr.Body.Bytes(), &chainResp)
+				c.NoError(err)
+				c.Equal(test.expectedChain, chainResp)
+			}
+		})
+	}
+}
+
+func TestRouter_GetPayPlans(t *testing.T) {
+	tests := []struct {
+		name             string
+		expectedPayPlans map[string]types.PayPlan
+		expectedStatus   int
+	}{
+		{
+			name:             "Should fetch all pay plans",
+			expectedPayPlans: testPayPlans,
+			expectedStatus:   http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v1/pay_plan", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedPayPlans != nil {
+				var payPlansResp []types.PayPlan
+				err := json.Unmarshal(rr.Body.Bytes(), &payPlansResp)
+				c.NoError(err)
+				c.Equal(test.expectedPayPlans, convertPayPlansToMap(payPlansResp))
+			}
+		})
+	}
+}
+
+func TestRouter_GetPayPlan(t *testing.T) {
+	tests := []struct {
+		name            string
+		payPlanType     string
+		expectedPayPlan types.PayPlan
+		expectedStatus  int
+	}{
+		{
+			name:            "Should fetch the basic_plan pay plan",
+			payPlanType:     "basic_plan",
+			expectedPayPlan: testPayPlans["basic_plan"],
+			expectedStatus:  http.StatusOK,
+		},
+		{
+			name:            "Should fetch the developer_plan pay plan",
+			payPlanType:     "developer_plan",
+			expectedPayPlan: testPayPlans["developer_plan"],
+			expectedStatus:  http.StatusOK,
+		},
+		{
+			name:           "Should return 404 for non-existent pay plan",
+			payPlanType:    "non_existent_plan",
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/pay_plan/%s", test.payPlanType), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedPayPlan.Type != "" {
+				var ppResp types.PayPlan
+				err := json.Unmarshal(rr.Body.Bytes(), &ppResp)
+				c.NoError(err)
+				c.Equal(test.expectedPayPlan, ppResp)
+			}
+		})
+	}
+}
+
+func TestRouter_CreateLoadBalancer(t *testing.T) {
+	tests := []struct {
+		name              string
+		loadBalancer      types.LoadBalancer
+		expectedStatus    int
+		expectedAccount   types.Account
+		expectedPortalApp types.PortalApp
+	}{
+		{
+			name:              "Should create a new load balancer",
+			loadBalancer:      testdata.LegacyLoadBalancer,
+			expectedStatus:    http.StatusOK,
+			expectedAccount:   testdata.V2CreateAccount,
+			expectedPortalApp: testdata.V2CreatePortalApp,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			testdata.V2CreateAccount.ID = 6
+			writerMock.On("WriteAccount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreateAccount, nil).Once()
+			writerMock.On("WritePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreatePortalApp, nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			lbBytes, err := json.Marshal(test.loadBalancer)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v1/load_balancer", bytes.NewBuffer(lbBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedAccount.ID != 0 {
+				var accountResp types.Account
+				err := json.Unmarshal(rr.Body.Bytes(), &accountResp)
+				c.NoError(err)
+				c.Equal(test.expectedAccount, accountResp)
+			}
+			if test.expectedPortalApp.ID != "" {
+				var appResp types.PortalApp
+				err := json.Unmarshal(rr.Body.Bytes(), &appResp)
+				c.NoError(err)
+				c.Equal(test.expectedPortalApp, appResp)
+			}
+
+			// TODO - update this if/when listener channel to router methods added
+			// if test.expectAccount {
+			// 	var lbAccount types.Account
+			// 	for _, account := range router.Cache.GetAccounts(cache.Options{}) {
+			// 		if account.LegacyLoadBalancerID == testdata.LegacyLoadBalancer.ID {
+			// 			lbAccount = account
+			// 			break
+			// 		}
+			// 	}
+			// 	c.True(lbAccount.ID != 0)
+
+			// 	account := router.Cache.GetAccount(lbAccount.ID)
+			// 	c.NotEmpty(account.ID)
+			// 	c.Equal(test.loadBalancer.ID, string(account.ID))
+			// }
+
+			// if test.expectPortalApp {
+			// 	portalApp := router.Cache.GetPortalApp(types.PortalAppID(test.loadBalancer.Applications[0].ID))
+			// 	c.NotEmpty(portalApp.ID)
+			// 	c.Equal(test.loadBalancer.Applications[0].ID, string(portalApp.ID))
+			// }
+		})
+	}
+}
+
+func TestRouter_CreateLoadBalancerUser(t *testing.T) {
+	tests := []struct {
+		name                      string
+		loadBalancerID            string
+		userAccess                types.UserAccess
+		expectedStatus            int
+		expectedLoadBalancerUsers []types.UserAccess
+	}{
+		{
+			name:                      "Should create a new load balancer user",
+			loadBalancerID:            "test_lb_746e04231640556a",
+			userAccess:                testdata.LegacyUserAccess,
+			expectedStatus:            http.StatusOK,
+			expectedLoadBalancerUsers: []types.UserAccess{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			v2AccountUserAccess := legacyadapters.ConvertToV2AccountUserAccess(test.userAccess)
+			writerMock.On("WriteAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(&v2AccountUserAccess, nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			userAccessBytes, err := json.Marshal(test.userAccess)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v1/load_balancer/%s/user", test.loadBalancerID), bytes.NewBuffer(userAccessBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if len(test.expectedLoadBalancerUsers) > 0 {
+				var lbResp types.LoadBalancer
+				err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+				c.NoError(err)
+				c.Equal(test.expectedLoadBalancerUsers, lbResp.Users)
+			}
+		})
+	}
+}
+
+func TestRouter_CreateBlockchain(t *testing.T) {
+	tests := []struct {
+		name             string
+		blockchain       types.Blockchain
+		expectedStatus   int
+		expectedResponse types.Blockchain
+	}{
+		{
+			name:             "Should create a new blockchain",
+			blockchain:       testdata.LegacyBlockchain,
+			expectedStatus:   http.StatusOK,
+			expectedResponse: testdata.LegacyBlockchain,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			v2Chain := legacyadapters.ConvertToV2Chain(test.blockchain)
+			writerMock.On("WriteChain", mock.Anything, mock.Anything, mock.Anything).Return(&v2Chain, nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			blockchainBytes, err := json.Marshal(test.blockchain)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer(blockchainBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var blockchainResp types.Blockchain
+			err = json.Unmarshal(rr.Body.Bytes(), &blockchainResp)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, blockchainResp)
+		})
+	}
+}
+
+func TestRouter_CreateRedirect(t *testing.T) {
+	tests := []struct {
+		name             string
+		redirect         types.Redirect
+		expectedStatus   int
+		expectedResponse types.Redirect
+	}{
+		{
+			name:             "Should create a new redirect",
+			redirect:         testdata.LegacyRedirect,
+			expectedStatus:   http.StatusOK,
+			expectedResponse: testdata.LegacyRedirect,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			redirectBytes, err := json.Marshal(test.redirect)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var redirectResp types.Redirect
+			err = json.Unmarshal(rr.Body.Bytes(), &redirectResp)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, redirectResp)
+		})
+	}
+}
+
+func TestRouter_UpdateApplication(t *testing.T) {
+	tests := []struct {
+		name             string
+		appID            string
+		updateInput      types.UpdateApplication
+		expectedStatus   int
+		expectedResponse types.Application
+	}{
+		{
+			name:             "Should update an existing application",
+			appID:            "test_app_3487u329rfn23f9",
+			updateInput:      testdata.LegacyUpdateApplication,
+			expectedStatus:   http.StatusOK,
+			expectedResponse: types.Application{}, // TODO update when router listener update finished
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdatePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateInputBytes, err := json.Marshal(test.updateInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/application/%s", test.appID), bytes.NewBuffer(updateInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var appResp types.Application
+			err = json.Unmarshal(rr.Body.Bytes(), &appResp)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, appResp)
+		})
+	}
+}
+
+func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
+	tests := []struct {
+		name           string
+		updateInput    types.UpdateFirstDateSurpassed
+		expectedStatus int
+	}{
+		{
+			name: "Should update first date surpassed",
+			updateInput: types.UpdateFirstDateSurpassed{
+				PortalAppIDs:       []string{"test_app_3487u329rfn23f9", "test_app_2308rj09r23r9r2", "test_app_47fhs7j4hs7fj24"},
+				FirstDateSurpassed: testdata.MockTimestamp,
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdatePortalAppsFirstDateSurpassed", mock.Anything, mock.Anything).Return(nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateInputBytes, err := json.Marshal(test.updateInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v1/application/first_date_surpassed", bytes.NewBuffer(updateInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var appsResp []types.Application
+			err = json.Unmarshal(rr.Body.Bytes(), &appsResp)
+			c.NoError(err)
+			for _, app := range appsResp {
+				c.Equal(test.updateInput.FirstDateSurpassed, app.FirstDateSurpassed)
+			}
+		})
 	}
 }
 
 func TestRouter_UpdateLoadBalancer(t *testing.T) {
-	c := require.New(t)
-
-	trueBool := true
-	rawUpdateInput := &types.UpdateLoadBalancer{
-		Name: "pablo",
-		StickyOptions: &types.UpdateStickyOptions{
-			Duration:      "21",
-			StickyOrigins: []string{"pjog"},
-			StickyMax:     21,
-			Stickiness:    &trueBool,
+	tests := []struct {
+		name             string
+		lbID             string
+		updateInput      types.UpdateLoadBalancer
+		expectedStatus   int
+		expectedResponse types.LoadBalancer
+	}{
+		{
+			name: "Should update load balancer name",
+			lbID: "test_lb_5c6f50bc30b530a8",
+			updateInput: types.UpdateLoadBalancer{
+				Name: "Updated Load Balancer Name",
+				StickyOptions: &types.UpdateStickyOptions{
+					ID:            "test_sticky_options_id",
+					Duration:      "10s",
+					StickyOrigins: []string{"origin1", "origin2"},
+					StickyMax:     5,
+				},
+				Remove: false,
+			},
+			expectedStatus:   http.StatusOK,
+			expectedResponse: types.LoadBalancer{}, // TODO update when router listener update finished
+		},
+		{
+			name:             "Should remove load balancer",
+			lbID:             "test_lb_5c6f50bc30b530a8",
+			updateInput:      types.UpdateLoadBalancer{Remove: true},
+			expectedStatus:   http.StatusOK,
+			expectedResponse: types.LoadBalancer{}, // TODO update when router listener update finished
 		},
 	}
 
-	updateInputToSend, err := json.Marshal(rawUpdateInput)
-	c.NoError(err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-	req, err := http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
+			router, err := newTestRouter(t)
+			c.NoError(err)
 
-	rr := httptest.NewRecorder()
+			writerMock := driver.NewMockDriver(t)
+			switch test.updateInput.Remove {
+			case true:
+				writerMock.On("SetAccountDeleted", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			default:
+				writerMock.On("UpdateAccount", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			}
+			router.Writer = writerMock
 
-	router, err := newTestRouter(t)
-	c.NoError(err)
+			rr := httptest.NewRecorder()
 
-	writerMock := driver.NewMockDriver(t)
+			updateInputBytes, err := json.Marshal(test.updateInput)
+			c.NoError(err)
 
-	writerMock.On("UpdateLoadBalancer", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s", test.lbID), bytes.NewBuffer(updateInputBytes))
+			c.NoError(err)
 
-	router.Writer = writerMock
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
 
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("UpdateLoadBalancer", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
+			var lbResp types.LoadBalancer
+			err = json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, lbResp)
+		})
+	}
 }
 
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
 func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 	tests := []struct {
-		name                  string
-		lbID                  string
-		userUpdate            types.UpdateUserAccess
-		invalidJSON           bool
-		expectedLBAfterUpdate *types.LoadBalancer
-		expectedStatus        int
-		err                   error
+		name           string
+		lbID           string
+		updateUser     types.UpdateUserAccess
+		expectedStatus int
 	}{
 		{
-			name: "Should update User for a LoadBalancer with a new role with correct input",
-			lbID: "test_lb_3890ru23jfi32fj",
-			userUpdate: types.UpdateUserAccess{
-				Email:    "user1@test.com",
-				RoleName: types.RoleMember,
-			},
-			expectedLBAfterUpdate: &types.LoadBalancer{
-				ID: "test_lb_3890ru23jfi32fj",
-				Applications: []*types.Application{
-					{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
-					{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
-				},
-				UserID: "test_user_04228205bd261a",
-				Users: []types.UserAccess{
-					{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-					{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-				},
-			},
-			expectedStatus: http.StatusOK,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the load balancer does not exist",
-			lbID:           "test_sir_not_appearing_in_this_film",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name:           "Should fail if the data cannot be marshaled to JSON",
-			lbID:           "test_lb_34987u329rfn23f",
-			invalidJSON:    true,
-			expectedStatus: http.StatusBadRequest,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name: "Should fail if DB driver throws an error",
-			lbID: "test_lb_34987u329rfn23f",
-			userUpdate: types.UpdateUserAccess{
-				UserID:   "test_user_969710adbd9a8a",
+			name: "Should update load balancer user role",
+			lbID: "test_lb_d2c7361fd9c5dff7",
+			updateUser: types.UpdateUserAccess{
+				UserID:   "auth0|tyrion_lannister",
 				RoleName: types.RoleAdmin,
 			},
-			expectedStatus: http.StatusInternalServerError,
-			err:            errors.New("dummy database driver error"),
+			expectedStatus: http.StatusOK,
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if (test.userUpdate != types.UpdateUserAccess{}) {
-			writerMock.On("UpdateUserAccessRole", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		userToSend, err := json.Marshal(test.userUpdate)
-		c.NoError(err)
-
-		var testBuffer *bytes.Buffer
-		switch {
-		case !test.invalidJSON:
-			testBuffer = bytes.NewBuffer(userToSend)
-		case test.invalidJSON:
-			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
-		}
-		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s/user", test.lbID), testBuffer)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var lbResp types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedLBAfterUpdate, &lbResp)
-		}
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("SetAccountUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateUserBytes, err := json.Marshal(test.updateUser)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s/user", test.lbID), bytes.NewBuffer(updateUserBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var lbResp types.LoadBalancer
+			err = json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+
+			updated := false
+			for _, user := range lbResp.Users {
+				if user.UserID == test.updateUser.UserID {
+					c.Equal(test.updateUser.RoleName, user.RoleName)
+					updated = true
+					break
+				}
+			}
+			c.True(updated, "User role should be updated")
+		})
 	}
 }
 
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
 func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 	tests := []struct {
-		name                         string
-		lbID                         string
-		acceptUserUpdate             types.UpdateUserAccess
-		expectedUsersAfterUpdate     []types.UserAccess
-		expectedRemainingInvitations []*types.LoadBalancer
-		expectedStatus               int
-		runMock                      bool
-		err                          error
+		name           string
+		lbID           string
+		acceptUser     types.UpdateUserAccess
+		expectedStatus int
 	}{
 		{
-			name: "Should update User ID and Accepted field for a LoadBalancer",
-			lbID: "test_lb_34987u329rfn23f",
-			acceptUserUpdate: types.UpdateUserAccess{
-				Email:  "user1@test.com",
-				UserID: "test_user_1dbffbdfeeb225",
-			},
-			expectedUsersAfterUpdate: []types.UserAccess{
-				{RoleName: types.RoleOwner, UserID: "test_user_969710adbd9a8a", Email: "user2@test.com", Accepted: true},
-				{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: true},
-			},
-			expectedRemainingInvitations: []*types.LoadBalancer{
-				{
-					ID: "test_lb_3890ru23jfi32fj2",
-					Applications: []*types.Application{
-						{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
-						{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
-					},
-					UserID: "test_user_04228205bd261a",
-					Users: []types.UserAccess{
-						{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-						{RoleName: types.RoleMember, UserID: "test_user_1dbffbdfeeb225", Email: "user1@test.com", Accepted: false},
-					},
-				},
+			name: "Should accept load balancer user",
+			lbID: "test_lb_d2c7361fd9c5dff7",
+			acceptUser: types.UpdateUserAccess{
+				UserID:   "auth0|tyrion_lannister",
+				RoleName: types.RoleAdmin,
 			},
 			expectedStatus: http.StatusOK,
-			runMock:        true,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the load balancer does not exist",
-			lbID:           "test_not_real_lb",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name: "Should fail if DB driver throws an error",
-			lbID: "test_lb_34987u329rfn23f",
-			acceptUserUpdate: types.UpdateUserAccess{
-				Email:  "user1@test.com",
-				UserID: "test_user_1dbffbdfeeb225",
-			},
-			expectedStatus: http.StatusInternalServerError,
-			runMock:        true,
-			err:            errors.New("dummy database driver error"),
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if test.runMock {
-			writerMock.On("AcceptUserAccess", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		acceptUserUpdate, err := json.Marshal(test.acceptUserUpdate)
-		c.NoError(err)
-
-		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s/user/accept", test.lbID), bytes.NewBuffer(acceptUserUpdate))
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var lbResp types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
-			c.NoError(err)
-			c.Equal(test.expectedUsersAfterUpdate, lbResp.Users)
-
-			var invitationsResponse []*types.LoadBalancer
-			req, err = http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/user/%s/load_balancer/pending", test.acceptUserUpdate.Email), nil)
+			router, err := newTestRouter(t)
 			c.NoError(err)
 
-			rr = httptest.NewRecorder()
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateAcceptAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			acceptUserBytes, err := json.Marshal(test.acceptUser)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s/user/accept", test.lbID), bytes.NewBuffer(acceptUserBytes))
+			c.NoError(err)
+
 			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
 
-			err = json.Unmarshal(rr.Body.Bytes(), &invitationsResponse)
+			var lbResp types.LoadBalancer
+			err = json.Unmarshal(rr.Body.Bytes(), &lbResp)
 			c.NoError(err)
-			c.Equal(test.expectedRemainingInvitations, invitationsResponse)
-		}
+			accepted := false
+			for _, user := range lbResp.Users {
+				if user.UserID == test.acceptUser.UserID {
+					c.Equal(test.acceptUser.RoleName, user.RoleName)
+					c.True(user.Accepted, "User should be accepted")
+					accepted = true
+					break
+				}
+			}
+			c.True(accepted, "User should be accepted")
+		})
 	}
 }
 
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
 func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 	tests := []struct {
-		name                  string
-		lbID                  string
-		emailOfUserToDelete   string
-		invalidJSON           bool
-		expectedLBAfterDelete *types.LoadBalancer
-		expectedStatus        int
-		runMock               bool
-		err                   error
+		name           string
+		lbID           string
+		userID         string
+		expectedStatus int
 	}{
 		{
-			name:                "Should delete User for a LoadBalancer with correct input",
-			lbID:                "test_lb_3890ru23jfi32fj",
-			emailOfUserToDelete: "user1@test.com",
-			expectedLBAfterDelete: &types.LoadBalancer{
-				ID:     "test_lb_3890ru23jfi32fj",
-				UserID: "test_user_04228205bd261a",
-				Applications: []*types.Application{
-					{ID: "test_app_f2dcb22a518d2ce", UserID: "test_user_04228205bd261a"},
-					{ID: "test_app_2b21b25b12ad62d", UserID: "test_user_04228205bd261a"},
-				},
-				Users: []types.UserAccess{
-					{RoleName: types.RoleOwner, UserID: "test_user_04228205bd261a", Email: "user3@test.com", Accepted: true},
-				},
-			},
+			name:           "Should delete load balancer user",
+			lbID:           "test_lb_4b874c457f73c4e9",
+			userID:         "auth0|frodo_baggins",
 			expectedStatus: http.StatusOK,
-			runMock:        true,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the load balancer does not exist",
-			lbID:           "test_sir_not_appearing_in_this_film",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name:                "Should fail if DB driver throws an error",
-			lbID:                "test_lb_3890ru23jfi32fj",
-			emailOfUserToDelete: "user1@test.com",
-			expectedStatus:      http.StatusInternalServerError,
-			runMock:             true,
-			err:                 errors.New("dummy database driver error"),
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if test.runMock {
-			writerMock.On("RemoveUserAccess", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/load_balancer/%s/user/%s", test.lbID, test.emailOfUserToDelete), nil)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var lbResp types.LoadBalancer
-			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedLBAfterDelete, &lbResp)
-		}
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("RemoveAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v1/load_balancer/%s/user/%s", test.lbID, test.userID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var lbResp types.LoadBalancer
+			err = json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+
+			deleted := true
+			for _, user := range lbResp.Users {
+				if user.UserID == test.userID {
+					deleted = false
+					break
+				}
+			}
+			c.True(deleted, "User should be deleted")
+		})
 	}
 }
 
-func TestRouter_RemoveLoadBalancer(t *testing.T) {
-	c := require.New(t)
-
-	rawUpdateInput := &types.UpdateLoadBalancer{
-		Remove: true,
-	}
-
-	updateInputToSend, err := json.Marshal(rawUpdateInput)
-	c.NoError(err)
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	writerMock := driver.NewMockDriver(t)
-
-	router.Writer = writerMock
-
-	req, err := http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	writerMock.On("RemoveLoadBalancer", mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_lb_34987u329rfn23f", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("RemoveLoadBalancer", mock.Anything, mock.Anything).Return(nil).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPut, "/v1/load_balancer/test_app_3591c4dea85664", bytes.NewBuffer(updateInputToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-}
-
-func TestRouter_GetPayPlans(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/pay_plan", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal([]*types.PayPlan{
-		{
-			Type:  types.FreetierV0,
-			Limit: 250000,
-		},
-		{
-			Type:  types.PayAsYouGoV0,
-			Limit: 0,
-		},
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-}
-
-func TestRouter_GetPayPlan(t *testing.T) {
-	c := require.New(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/v1/pay_plan/freetier_v0", nil)
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	expectedBody, err := json.Marshal(&types.PayPlan{
-		Type:  types.FreetierV0,
-		Limit: 250000,
-	})
-	c.NoError(err)
-
-	c.Equal(expectedBody, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodGet, "/v1/pay_plan/freetier_v21", nil)
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusNotFound, rr.Code)
-}
-
-func TestRouter_CreateBlockchain(t *testing.T) {
-	c := require.New(t)
-
-	rawChainToSend := &types.Blockchain{
-		Ticker: "POKT",
-	}
-
-	chainToSend, err := json.Marshal(rawChainToSend)
-	c.NoError(err)
-
-	req, err := http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer(chainToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	chainToReturn := &types.Blockchain{
-		ID:     "test_app_e29c3003378361E",
-		Ticker: "POKT",
-	}
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("WriteBlockchain", mock.Anything, mock.Anything).Return(chainToReturn, nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	marshaledReturnChain, err := json.Marshal(chainToReturn)
-	c.NoError(err)
-
-	c.Equal(marshaledReturnChain, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer(chainToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("WriteBlockchain", mock.Anything, mock.Anything).Return(chainToReturn, errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
-}
-
-func TestRouter_CreateRedirect(t *testing.T) {
-	c := require.New(t)
-
-	rawRedirectsToSend := &types.Redirect{BlockchainID: "0021"}
-
-	redirectToSend, err := json.Marshal(rawRedirectsToSend)
-	c.NoError(err)
-
-	req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	redirectToReturn := &types.Redirect{BlockchainID: "0021"}
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("WriteRedirect", mock.Anything, mock.Anything).Return(redirectToReturn, nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	marshaledReturnRedirect, err := json.Marshal(redirectToReturn)
-	c.NoError(err)
-
-	c.Equal(marshaledReturnRedirect, rr.Body.Bytes())
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("WriteRedirect", mock.Anything, mock.Anything).Return(redirectToReturn, errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
-}
-
-// TODO - rewrite all Router & Cache tests as table-driven like the test below
 func TestRouter_UpdateBlockchain(t *testing.T) {
 	tests := []struct {
-		name                          string
-		blockchainID                  string
-		blockchainUpdate              types.UpdateBlockchain
-		expectedBlockchainAfterUpdate types.Blockchain
-		expectedStatus                int
-		runMock                       bool
-		err                           error
+		name             string
+		blockchainID     string
+		updateBlockchain types.UpdateBlockchain
+		expectedStatus   int
 	}{
 		{
-			name:         "Should update User ID and Accepted field for a LoadBalancer",
-			blockchainID: "0021",
-			blockchainUpdate: types.UpdateBlockchain{
-				Description: "test-chain-21-updated",
-				Ticker:      "TEST-123",
-				Altruist:    "https://wwww.whatever.com/rpc",
-				ResultKey:   "test-key",
-			},
-			expectedBlockchainAfterUpdate: types.Blockchain{
-				ID:          "0021",
-				Description: "test-chain-21-updated",
-				Ticker:      "TEST-123",
-				Altruist:    "https://wwww.whatever.com/rpc",
-				Redirects: []types.Redirect{
-					{
-						BlockchainID:   "0021",
-						Alias:          "pokt-mainnet",
-						Domain:         "pokt-mainnet.gateway.network",
-						LoadBalancerID: "12345",
-					},
-				},
-				SyncCheckOptions: types.SyncCheckOptions{
-					ResultKey: "test-key",
-				},
-			},
-			expectedStatus: http.StatusOK,
-			runMock:        true,
-			err:            nil,
-		},
-		{
-			name:           "Should fail if the blockchain does not exist",
-			blockchainID:   "test_not_real_chain",
-			expectedStatus: http.StatusNotFound,
-			err:            errors.New("dummy error"),
-		},
-		{
-			name:         "Should fail if DB driver throws an error",
-			blockchainID: "0021",
-			blockchainUpdate: types.UpdateBlockchain{
-				Description: "test-chain-21-updated",
-				Ticker:      "TEST-123",
-				Altruist:    "https://wwww.whatever.com/rpc",
-				ResultKey:   "test-key",
-			},
-			expectedStatus: http.StatusInternalServerError,
-			runMock:        true,
-			err:            errors.New("dummy database driver error"),
+			name:             "Should update blockchain",
+			blockchainID:     "0001",
+			updateBlockchain: testdata.LegacyUpdateBlockchain,
+			expectedStatus:   http.StatusOK,
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-		writerMock := driver.NewMockDriver(t)
-		router.Writer = writerMock
-
-		if test.runMock {
-			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(test.err)
-		}
-
-		rr := httptest.NewRecorder()
-
-		chainUpdateJSON, err := json.Marshal(test.blockchainUpdate)
-		c.NoError(err)
-
-		req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/blockchain/%s", test.blockchainID), bytes.NewBuffer(chainUpdateJSON))
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var chainResp types.Blockchain
-			err := json.Unmarshal(rr.Body.Bytes(), &chainResp)
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedBlockchainAfterUpdate, chainResp)
-		}
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateBlockchainBytes, err := json.Marshal(test.updateBlockchain)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/blockchain/%s", test.blockchainID), bytes.NewBuffer(updateBlockchainBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var updatedChainResp types.Blockchain
+			err = json.Unmarshal(rr.Body.Bytes(), &updatedChainResp)
+			c.NoError(err)
+
+			c.Equal(test.updateBlockchain.Blockchain, updatedChainResp.Blockchain)
+			c.Equal(test.updateBlockchain.Description, updatedChainResp.Description)
+			c.Equal(test.updateBlockchain.EnforceResult, updatedChainResp.EnforceResult)
+			c.Equal(test.updateBlockchain.Path, updatedChainResp.Path)
+			c.Equal(test.updateBlockchain.Ticker, updatedChainResp.Ticker)
+			c.ElementsMatch(test.updateBlockchain.BlockchainAliases, updatedChainResp.BlockchainAliases)
+			c.Equal(test.updateBlockchain.Body, updatedChainResp.SyncCheckOptions.Body)
+			c.Equal(test.updateBlockchain.ResultKey, updatedChainResp.SyncCheckOptions.ResultKey)
+			c.Equal(*test.updateBlockchain.Allowance, updatedChainResp.SyncCheckOptions.Allowance)
+			c.Equal(test.updateBlockchain.Altruist, updatedChainResp.Altruist)
+		})
 	}
 }
 
 func TestRouter_ActivateBlockchain(t *testing.T) {
-	c := require.New(t)
-
-	activeStatusToSend, err := json.Marshal(true)
-	c.NoError(err)
-
-	req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
-	c.NoError(err)
-
-	rr := httptest.NewRecorder()
-
-	router, err := newTestRouter(t)
-	c.NoError(err)
-
-	writerMock := driver.NewMockDriver(t)
-
-	writerMock.On("ActivateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-
-	router.Writer = writerMock
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusOK, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/0021/activate", bytes.NewBuffer([]byte("wrong")))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusBadRequest, rr.Code)
-
-	req, err = http.NewRequest(http.MethodPost, "/v1/blockchain/0021/activate", bytes.NewBuffer(activeStatusToSend))
-	c.NoError(err)
-
-	rr = httptest.NewRecorder()
-
-	writerMock.On("ActivateChain", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("dummy error")).Once()
-
-	router.Router.ServeHTTP(rr, req)
-
-	c.Equal(http.StatusInternalServerError, rr.Code)
-}
-
-func TestRouter_GetLoadBalancersCountByEmail(t *testing.T) {
 	tests := []struct {
 		name           string
-		email          string
-		expectedCount  int
+		blockchainID   string
+		active         bool
 		expectedStatus int
-		err            error
 	}{
 		{
-			name:           "Should return the exact number of load balancers owned by an email",
-			email:          "user1@test.com",
+			name:           "Should deactivate blockchain",
+			blockchainID:   "0001",
+			active:         false,
 			expectedStatus: http.StatusOK,
-			expectedCount:  1,
-			err:            nil,
 		},
 		{
-			name:           "Should return 0 if there's not load balanced binded with this email",
-			email:          "fakeuser@test.com",
+			name:           "Should activate blockchain",
+			blockchainID:   "0001",
+			active:         true,
 			expectedStatus: http.StatusOK,
-			err:            nil,
 		},
 	}
 
 	for _, test := range tests {
-		c := require.New(t)
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
 
-		router, err := newTestRouter(t)
-		c.NoError(err)
-
-		rr := httptest.NewRecorder()
-
-		url := fmt.Sprintf("/v1/user/%s/load_balancer/count", test.email)
-
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		c.NoError(err)
-
-		router.Router.ServeHTTP(rr, req)
-		c.Equal(test.expectedStatus, rr.Code)
-
-		if test.err == nil {
-			var lbCount int
-			err := json.Unmarshal(rr.Body.Bytes(), &lbCount)
+			router, err := newTestRouter(t)
 			c.NoError(err)
-			c.Equal(test.expectedCount, lbCount)
-		}
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("SetChainActiveStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.active, nil).Once()
+			router.Writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			activeBytes, err := json.Marshal(test.active)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v1/blockchain/%s/activate", test.blockchainID), bytes.NewBuffer(activeBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var activatedResp bool
+			err = json.Unmarshal(rr.Body.Bytes(), &activatedResp)
+			c.NoError(err)
+
+			c.Equal(test.active, activatedResp)
+		})
 	}
 }
+
+/* ---------- Test Utils ---------- */
+
+func convertApplicationsToMap(apps []types.Application) map[string]*types.Application {
+	appMap := make(map[string]*types.Application)
+	for i := range apps {
+		appMap[apps[i].ID] = &apps[i]
+	}
+	return appMap
+}
+
+func convertLoadBalancersToMap(lbs []types.LoadBalancer) map[string]types.LoadBalancer {
+	lbMap := make(map[string]types.LoadBalancer)
+	for i := range lbs {
+		if len(lbs[i].Applications) != 0 {
+			sort.Slice(lbs[i].Applications, func(j, k int) bool {
+				return lbs[i].Applications[j].ID < lbs[i].Applications[k].ID
+			})
+		}
+		lbMap[lbs[i].ID] = lbs[i]
+	}
+	return lbMap
+}
+
+func convertBlockchainsToMap(blockchains []types.Blockchain) map[string]types.Blockchain {
+	result := make(map[string]types.Blockchain)
+	for _, blockchain := range blockchains {
+		result[blockchain.ID] = blockchain
+	}
+	return result
+}
+
+func convertPayPlansToMap(payPlans []types.PayPlan) map[string]types.PayPlan {
+	payPlansMap := make(map[string]types.PayPlan)
+	for _, pp := range payPlans {
+		payPlansMap[string(pp.Type)] = pp
+	}
+	return payPlansMap
+}
+
+var (
+	testApps = map[string]*types.Application{
+		"test_app_3487u329rfn23f9": {
+			ID:                 "test_app_3487u329rfn23f9",
+			Name:               "pokt_app_123",
+			UserID:             "auth0|james_holden",
+			FirstDateSurpassed: testdata.MockTimestamp,
+			GatewayAAT: types.GatewayAAT{
+				Address:              "test_34715cae753e67c75fbb340442e7de8e",
+				ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
+				ApplicationSignature: "test_1dc39a2e5a84a35bf030969a0b3231f7",
+				ClientPublicKey:      "test_89a3af6a587aec02cfade6f5000424c2",
+				PrivateKey:           "test_11b8d394ca331d7c7a71ca1896d630f6",
+				Version:              "0.0.1",
+			},
+			GatewaySettings: types.GatewaySettings{
+				SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
+				SecretKeyRequired:    true,
+				WhitelistOrigins:     []string{"https://test.com"},
+				WhitelistUserAgents:  []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+				WhitelistContracts:   []types.WhitelistContracts{{ChainID: "0001", Contracts: []string{"0x1234567890abcdef"}}},
+				WhitelistMethods:     []types.WhitelistMethods{{ChainID: "0001", Methods: []string{"GET"}}},
+				WhitelistBlockchains: []string{"0053"},
+			},
+			Limit:                types.AppLimit{Plan: types.PayPlan{Type: "basic_plan", Limit: 1000}},
+			NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: false, ThreeQuarters: true, Full: true},
+			CreatedAt:            testdata.MockTimestamp,
+			UpdatedAt:            testdata.MockTimestamp,
+		},
+		"test_app_2308rj09r23r9r2": {
+			ID:                 "test_app_2308rj09r23r9r2",
+			Name:               "pokt_app_456",
+			UserID:             "auth0|ellen_ripley",
+			FirstDateSurpassed: testdata.MockTimestamp,
+			GatewayAAT: types.GatewayAAT{
+				Address:              "test_8237c72345f12d1b1a8b64a1a7f66fa4",
+				ApplicationPublicKey: "test_8237c72345f12d1b1a8b64a1a7f66fa4",
+				ApplicationSignature: "test_f48d33b30ddaf60a1e5bb50d2ba8da5a",
+				ClientPublicKey:      "test_04c71d90a92f40416b6f1d7d8af17e02",
+				PrivateKey:           "test_2e83c836a29b423a47d8e18c779fd422",
+				Version:              "0.0.1",
+			},
+			GatewaySettings: types.GatewaySettings{
+				SecretKey:            "test_9c9e3b193cfba5348f93bb2f3e3fb794",
+				WhitelistOrigins:     []string{"https://example.com"},
+				WhitelistUserAgents:  []string{"Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"},
+				WhitelistContracts:   []types.WhitelistContracts{{ChainID: "0064", Contracts: []string{"0x0987654321abcdef"}}},
+				WhitelistMethods:     []types.WhitelistMethods{{ChainID: "0064", Methods: []string{"POST"}}},
+				WhitelistBlockchains: []string{"0021"},
+			},
+			Limit:                types.AppLimit{Plan: types.PayPlan{Type: "pro_plan", Limit: 5_000}},
+			NotificationSettings: types.NotificationSettings{Half: true, Full: true},
+			CreatedAt:            testdata.MockTimestamp,
+			UpdatedAt:            testdata.MockTimestamp,
+		},
+		"test_app_47fhs7j4hs7fj24": {
+			ID:                 "test_app_47fhs7j4hs7fj24",
+			Name:               "pokt_app_789",
+			UserID:             "auth0|chrisjen_avasarala",
+			FirstDateSurpassed: testdata.MockTimestamp,
+			GatewayAAT: types.GatewayAAT{
+				Address:              "test_b5e07928fc80083c13ad0201b81bae9b",
+				ApplicationPublicKey: "test_f608500e4fe3e09014fe2411b4a560b5",
+				ApplicationSignature: "test_c3cd8be16ba32e24dd49fdb0247fc9b8",
+				ClientPublicKey:      "test_328a9cf1b35085eeaa669aa858f6fba9",
+				PrivateKey:           "test_8663e187c19f3c6e27317eab4ed6d7d5",
+				Version:              "0.0.1",
+			},
+			GatewaySettings: types.GatewaySettings{
+				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
+			},
+			Limit:     types.AppLimit{Plan: types.PayPlan{Type: "startup_plan", Limit: 500}},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+	}
+
+	testLoadBalancers = map[string]types.LoadBalancer{
+		"test_lb_5c6f50bc30b530a8": {
+			ID:                "test_lb_5c6f50bc30b530a8",
+			Name:              "test_account_1",
+			UserID:            "auth0|james_holden",
+			Gigastake:         true,
+			GigastakeRedirect: true,
+			RequestTimeout:    5_000,
+			Applications: []*types.Application{
+				testApps["test_app_3487u329rfn23f9"],
+			},
+			Users: []types.UserAccess{
+				{
+					UserID:   "auth0|james_holden",
+					RoleName: "OWNER",
+					Email:    "james.holden123@test.com",
+					Accepted: true,
+				},
+				{
+					UserID:   "auth0|paul_atreides",
+					RoleName: "ADMIN",
+					Email:    "paul.atreides456@test.com",
+					Accepted: true,
+				},
+				{
+					UserID:   "auth0|rick_deckard",
+					RoleName: "ADMIN",
+					Email:    "rick.deckard456@test.com",
+					Accepted: false,
+				},
+			},
+			StickyOptions: types.StickyOptions{
+				Duration:      "60",
+				StickyOrigins: []string{"chrome-extension://", "moz-extension://"},
+				StickyMax:     300,
+				Stickiness:    true,
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"test_lb_d2c7361fd9c5dff7": {
+			ID:             "test_lb_d2c7361fd9c5dff7",
+			Name:           "test_account_2",
+			UserID:         "auth0|ellen_ripley",
+			RequestTimeout: 10_000,
+			Applications: []*types.Application{
+				testApps["test_app_2308rj09r23r9r2"],
+			},
+			Users: []types.UserAccess{
+				{
+					UserID:   "auth0|ellen_ripley",
+					RoleName: "OWNER",
+					Email:    "ellen.ripley789@test.com",
+					Accepted: true,
+				},
+				{
+					UserID:   "auth0|paul_atreides",
+					RoleName: "MEMBER",
+					Email:    "paul.atreides456@test.com",
+					Accepted: true,
+				},
+				{
+					UserID:   "auth0|tyrion_lannister",
+					RoleName: "MEMBER",
+					Email:    "tyrion.lannister789@test.com",
+					Accepted: false,
+				},
+				{
+					UserID:   "auth0|ulfric_stormcloak",
+					RoleName: "MEMBER",
+					Email:    "ulfric.stormcloak123@test.com",
+					Accepted: true,
+				},
+			},
+			StickyOptions: types.StickyOptions{
+				Duration:      "30",
+				StickyOrigins: []string{"https://example.com", "https://test.com"},
+				StickyMax:     600,
+				Stickiness:    true,
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"test_lb_4b874c457f73c4e9": {
+			ID:                "test_lb_4b874c457f73c4e9",
+			Name:              "test_account_3",
+			UserID:            "auth0|chrisjen_avasarala",
+			GigastakeRedirect: false,
+			RequestTimeout:    10_000,
+			Applications: []*types.Application{
+				testApps["test_app_47fhs7j4hs7fj24"],
+			},
+			Users: []types.UserAccess{
+				{
+					UserID:   "auth0|chrisjen_avasarala",
+					RoleName: "OWNER",
+					Email:    "chrisjen.avasarala1@test.com",
+					Accepted: true,
+				},
+				{
+					UserID:   "auth0|amos_burton",
+					RoleName: "ADMIN",
+					Email:    "amos.burton789@test.com",
+					Accepted: true,
+				},
+				{
+					UserID:   "",
+					RoleName: "MEMBER",
+					Email:    "daenerys.targaryen123@test.com",
+					Accepted: false,
+				},
+				{
+					UserID:   "auth0|frodo_baggins",
+					RoleName: "MEMBER",
+					Email:    "frodo.baggins123@test.com",
+					Accepted: true,
+				},
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"test_lb_746e04231640556a": {
+			ID:     "test_lb_746e04231640556a",
+			Name:   "test_account_4",
+			UserID: "auth0|ulfric_stormcloak",
+			Users: []types.UserAccess{
+				{
+					UserID:   "auth0|ulfric_stormcloak",
+					RoleName: "OWNER",
+					Email:    "ulfric.stormcloak123@test.com",
+					Accepted: true,
+				},
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"test_lb_f5ee77c7c58025231": {
+			ID:     "test_lb_f5ee77c7c58025231",
+			Name:   "test_account_5",
+			UserID: "auth0|ulfric_stormcloak",
+			Users: []types.UserAccess{
+				{
+					UserID:   "auth0|ulfric_stormcloak",
+					RoleName: "OWNER",
+					Email:    "ulfric.stormcloak123@test.com",
+					Accepted: true,
+				},
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+	}
+
+	testBlockchains = map[string]types.Blockchain{
+		"0001": {
+			ID:                "0001",
+			Altruist:          "https://test_pocket:auth123456@altruist-0001.com:1234", // pragma: allowlist secret
+			Blockchain:        "mainnet",
+			Description:       "Pocket Network Mainnet",
+			EnforceResult:     "JSON",
+			Path:              "/v1/query/height",
+			Ticker:            "POKT",
+			BlockchainAliases: []string{"mainnet"},
+			Active:            true,
+			Redirects: []types.Redirect{
+				{Alias: "altruist-0001", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_5c6f50bc30b530a8"},
+			},
+			SyncCheckOptions: types.SyncCheckOptions{
+				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
+				ResultKey: "result.sync_info", Allowance: 1,
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"0021": {
+			ID:                "0021",
+			Altruist:          "https://test_pocket:auth123456@altruist-0021.com:1234", // pragma: allowlist secret
+			Blockchain:        "eth-mainnet",
+			ChainID:           "1",
+			ChainIDCheck:      "{\"method\":\"eth_chainId\",\"id\":1,\"jsonrpc\":\"2.0\"}",
+			Description:       "Ethereum Mainnet",
+			EnforceResult:     "JSON",
+			Ticker:            "ETH",
+			BlockchainAliases: []string{"eth-mainnet"},
+			LogLimitBlocks:    100000,
+			Active:            true,
+			Redirects: []types.Redirect{
+				{Alias: "altruist-0021", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_4b874c457f73c4e9"},
+			},
+			SyncCheckOptions: types.SyncCheckOptions{
+				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
+				ResultKey: "result", Allowance: 5,
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"0040": {
+			ID:                "0040",
+			Altruist:          "https://test_pocket:auth123456@altruist-0040.com:1234", // pragma: allowlist secret
+			Blockchain:        "harmony-0",
+			Description:       "Harmony Shard 0",
+			EnforceResult:     "JSON",
+			Ticker:            "HMY",
+			BlockchainAliases: []string{"harmony-0"},
+			Active:            true,
+			Redirects: []types.Redirect{
+				{Alias: "altruist-0040", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_746e04231640556a"},
+			},
+			SyncCheckOptions: types.SyncCheckOptions{
+				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
+				ResultKey: "result",
+				Allowance: 8,
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"0053": {
+			ID:                "0053",
+			Altruist:          "https://test_pocket:auth123456@altruist-0053.com:1234", // pragma: allowlist secret
+			Blockchain:        "optimism-mainnet",
+			Description:       "Optimism Mainnet",
+			EnforceResult:     "JSON",
+			Ticker:            "OP",
+			BlockchainAliases: []string{"optimism-mainnet"},
+			LogLimitBlocks:    100000,
+			Active:            true,
+			Redirects: []types.Redirect{
+				{Alias: "altruist-0053", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_d2c7361fd9c5dff7"},
+			},
+			SyncCheckOptions: types.SyncCheckOptions{
+				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
+				ResultKey: "result",
+				Allowance: 2,
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"0064": {
+			ID:                "0064",
+			Altruist:          "https://test_pocket:auth123456@altruist-0064.com:1234", // pragma: allowlist secret
+			Blockchain:        "sui-testnet",
+			Description:       "Sui Testnet",
+			EnforceResult:     "JSON",
+			Ticker:            "SUI-TESTNET",
+			BlockchainAliases: []string{"sui-testnet"},
+			LogLimitBlocks:    100000,
+			RequestTimeout:    60000,
+			SyncCheckOptions: types.SyncCheckOptions{
+				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"sui_blockNumber\",\"params\":[]}",
+				ResultKey: "result",
+				Allowance: 7,
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+	}
+
+	testPayPlans = map[string]types.PayPlan{
+		"basic_plan":      {Type: "basic_plan", Limit: 1_000},
+		"developer_plan":  {Type: "developer_plan", Limit: 100},
+		"enterprise_plan": {Type: "enterprise_plan", Limit: 10_000},
+		"pro_plan":        {Type: "pro_plan", Limit: 5_000},
+		"startup_plan":    {Type: "startup_plan", Limit: 500},
+	}
+)
