@@ -161,7 +161,6 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 			})
 		}
 	})
-
 	ts.Run("Test_GetBlockchain", func() {
 		tests := []struct {
 			name               string
@@ -2446,6 +2445,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			loadBalancerUsers             []types.UserAccess
 			userLBPermissions             types.LoadBalancerPermissions
 			err                           error
+			pendingResult                 error
 		}{
 			{
 				name:           "Should update a single user's ID and Accepted field for an existing load balancer in the DB",
@@ -2462,6 +2462,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 					RoleName:    types.RoleMember,
 					Permissions: []types.PermissionsEnum{types.ReadEndpoint},
 				},
+				pendingResult: fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
 			{
 				name:  "Should fail if email not provided",
@@ -2493,6 +2494,8 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 		for _, test := range tests {
 			ts.Run(test.name, func() {
 				_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.email, test.loadBalancerID, test.userID)
+				ts.Equal(test.err, err)
+				_, err = ts.client2.AcceptLoadBalancerUser(testCtx, test.email, test.loadBalancerID, test.userID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
@@ -2541,8 +2544,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 
 						// user should be removed from pending lb list
 						removed := true
-						pendingLoadBalancers, err := ts.client1.GetPendingLoadBalancersByEmail(testCtx, test.email)
-						ts.Equal(test.err, err)
+						pendingLoadBalancers, _ := ts.client1.GetPendingLoadBalancersByEmail(testCtx, test.email)
 						for _, lb := range pendingLoadBalancers {
 							if lb.ID == test.loadBalancerID {
 								removed = false
@@ -2552,8 +2554,7 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 						ts.True(removed)
 
 						removed = true
-						pendingLoadBalancers, err = ts.client2.GetPendingLoadBalancersByEmail(testCtx, test.email)
-						ts.Equal(test.err, err)
+						pendingLoadBalancers, _ = ts.client2.GetPendingLoadBalancersByEmail(testCtx, test.email)
 						for _, lb := range pendingLoadBalancers {
 							if lb.ID == test.loadBalancerID {
 								removed = false

@@ -47,17 +47,6 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	return NewRouter(cacheInstance, readerMock, nil, map[string]bool{"": true}, testLog)
 }
 
-func PrettyString(label string, thing interface{}) {
-	jsonThing, _ := json.Marshal(thing)
-	str := string(jsonThing)
-
-	var prettyJSON bytes.Buffer
-	_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-	output := prettyJSON.String()
-
-	fmt.Println(label, output)
-}
-
 func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 	tests := []struct {
 		name           string

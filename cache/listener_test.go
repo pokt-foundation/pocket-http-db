@@ -14,6 +14,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	c := require.New(t)
 
 	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
+	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
@@ -54,7 +55,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			account: &types.Account{
 				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
-				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 				PartnerThroughputLimit: 1_000,
 				PartnerAppLimit:        2,
 			},
@@ -67,7 +68,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			account: &types.Account{
 				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
-				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 				PartnerThroughputLimit: 1_000,
 				PartnerAppLimit:        2,
 				Deleted:                true,
@@ -369,7 +370,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chain           types.ChainID
+		chain           types.RelayChainID
 		portalApp       *types.PortalApp
 	}{
 		{
@@ -379,7 +380,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 			portalApp: &types.PortalApp{
 				ID: "test_app_2308rj09r23r9r2",
 				Whitelists: types.Whitelists{
-					Blockchains: map[types.ChainID]struct{}{"0082": {}},
+					Blockchains: map[types.RelayChainID]struct{}{"0082": {}},
 				},
 			},
 		},
@@ -390,7 +391,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 			portalApp: &types.PortalApp{
 				ID: "test_app_2308rj09r23r9r2",
 				Whitelists: types.Whitelists{
-					Blockchains: map[types.ChainID]struct{}{"0021": {}},
+					Blockchains: map[types.RelayChainID]struct{}{"0021": {}},
 				},
 			},
 		},
@@ -586,7 +587,7 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chainID         types.ChainID
+		chainID         types.RelayChainID
 		chain           types.Chain
 	}{
 		{
@@ -648,7 +649,7 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chainID         types.ChainID
+		chainID         types.RelayChainID
 		chain           types.Chain
 	}{
 		{
@@ -710,7 +711,7 @@ func Test_parseChainCheckNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chainID         types.ChainID
+		chainID         types.RelayChainID
 		checkType       types.ChainCheckType
 		chain           types.Chain
 	}{
