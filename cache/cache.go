@@ -992,6 +992,8 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 		if err != nil {
 			fmt.Printf("error upserting user permissions: %v\n", err)
 		}
+
+		c.pendingLoadBalancersMapByEmail[inUser.Email] = removeLoadBalancerByID(c.pendingLoadBalancersMapByEmail[inUser.Email], lbID)
 	}
 
 	if lb, ok := c.loadBalancersMap[lbID]; ok {
@@ -1027,7 +1029,6 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 					c.loadBalancersOwnedByEmail[inUser.Email] = append(c.loadBalancersOwnedByEmail[inUser.Email], lb)
 				}
 			}
-
 		}
 	}
 }
