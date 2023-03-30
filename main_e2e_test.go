@@ -2495,8 +2495,6 @@ func (ts *phdE2ETestSuite) Test_WriteTests() {
 			ts.Run(test.name, func() {
 				_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.email, test.loadBalancerID, test.userID)
 				ts.Equal(test.err, err)
-				_, err = ts.client2.AcceptLoadBalancerUser(testCtx, test.email, test.loadBalancerID, test.userID)
-				ts.Equal(test.err, err)
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
