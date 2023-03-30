@@ -76,8 +76,8 @@ func NewTestCache(t *testing.T) *Cache {
 				"test_app_e3591c4dea8566a",
 			},
 			Users: []types.UserAccess{
-				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner, Email: "687463gh2h72gs@test.com"},
-				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin, Email: "47fhf7rwejf943@test.com"},
+				{UserID: "test_user_687463gh2h72gs", RoleName: types.RoleOwner, Email: "687463gh2h72gs@test.com", Accepted: true},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleAdmin, Email: "47fhf7rwejf943@test.com", Accepted: true},
 			},
 		},
 		{
@@ -87,8 +87,8 @@ func NewTestCache(t *testing.T) *Cache {
 				"test_app_e3591c4dea8566f",
 			},
 			Users: []types.UserAccess{
-				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner, Email: "774900350d9c43@test.com"},
-				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleMember, Email: "47fhf7rwejf943@test.com"},
+				{UserID: "test_user_774900350d9c43", RoleName: types.RoleOwner, Email: "774900350d9c43@test.com", Accepted: true},
+				{UserID: "test_user_47fhf7rwejf943", RoleName: types.RoleMember, Email: "47fhf7rwejf943@test.com", Accepted: true},
 			},
 		},
 	}, nil)
