@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
-	"github.com/pokt-foundation/portal-db/driver"
-	"github.com/pokt-foundation/portal-db/types"
+	"github.com/pokt-foundation/portal-db/v2/driver"
+	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

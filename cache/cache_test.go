@@ -21,6 +21,7 @@ func NewTestCache(t *testing.T) *Cache {
 	readerMock := NewReaderMock(t)
 
 	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
+	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
@@ -49,6 +50,11 @@ func Test_SetCache(t *testing.T) {
 			name:     "Should return user permissions by user ID",
 			actual:   cache.GetUserPermissionsByUserID(1),
 			expected: *testdata.UserPermissions[1],
+		},
+		{
+			name:     "Should return a user ID for a given provider user ID",
+			actual:   cache.GetUserIDFromProviderUserID("auth0|chrisjen_avasarala"),
+			expected: types.UserID(5),
 		},
 		{
 			name:     "Should return all accounts",
@@ -94,7 +100,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all pay plans",
-			actual:   payPlansToMap(cache.GetPayPlans()),
+			actual:   payPlansToMap(cache.GetPlans()),
 			expected: testdata.PayPlans,
 		},
 	}
@@ -119,6 +125,11 @@ func TestCache_SetCache_Failure(t *testing.T) {
 			name:         "should fail if ReadUserPermissions fails",
 			failedMethod: "ReadUserPermissions",
 			err:          errors.New("error on user permissions"),
+		},
+		{
+			name:         "should fail if ReadUserIDsMap fails",
+			failedMethod: "ReadUserIDsMap",
+			err:          errors.New("error on user IDs"),
 		},
 		{
 			name:         "should fail if ReadPlans fails",
@@ -151,23 +162,31 @@ func TestCache_SetCache_Failure(t *testing.T) {
 			case "ReadUserPermissions":
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
+			case "ReadUserIDsMap":
+				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
+
 			case "ReadPlans":
 				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
 			case "ReadAccounts":
 				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
 
 			case "ReadPortalApps":
 				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
 
 			case "ReadChains":
 				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
@@ -209,7 +228,7 @@ func Test_upsertAccount(t *testing.T) {
 					2: testdata.AccountUserAccess[2],
 					8: testdata.AccountUserAccess[8],
 				},
-				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}, "0053": {}},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
 				PartnerAppLimit:        1,
 				CreatedAt:              testdata.MockTimestamp,
@@ -227,7 +246,7 @@ func Test_upsertAccount(t *testing.T) {
 					2: testdata.AccountUserAccess[2],
 					8: testdata.AccountUserAccess[8],
 				},
-				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}, "0053": {}},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
 				PartnerAppLimit:        1,
 				CreatedAt:              testdata.MockTimestamp,
@@ -924,9 +943,9 @@ func Test_upsertChain(t *testing.T) {
 	tests := []struct {
 		name                      string
 		chain                     types.Chain
-		pendingAltruists          map[types.ChainID][]types.Altruist
-		pendingGigastakeRedirects map[types.ChainID][]types.GigastakeRedirect
-		pendingChecks             map[types.ChainID][]types.Check
+		pendingAltruists          map[types.RelayChainID][]types.Altruist
+		pendingGigastakeRedirects map[types.RelayChainID][]types.GigastakeRedirect
+		pendingChecks             map[types.RelayChainID][]types.Check
 		update, delete            bool
 	}{
 		{
@@ -944,7 +963,7 @@ func Test_upsertChain(t *testing.T) {
 				Blockchain:  "greg-mainnet",
 				Description: "Greg Chain",
 			},
-			pendingAltruists: map[types.ChainID][]types.Altruist{
+			pendingAltruists: map[types.RelayChainID][]types.Altruist{
 				"0016": {
 					{
 						ChainID:  "0016",
@@ -968,7 +987,7 @@ func Test_upsertChain(t *testing.T) {
 				Blockchain:  "neptune-mainnet",
 				Description: "Neptune Chain",
 			},
-			pendingGigastakeRedirects: map[types.ChainID][]types.GigastakeRedirect{
+			pendingGigastakeRedirects: map[types.RelayChainID][]types.GigastakeRedirect{
 				"0017": {
 					{
 						ChainID:   "0017",
@@ -986,7 +1005,7 @@ func Test_upsertChain(t *testing.T) {
 				Blockchain:  "mercury-mainnet",
 				Description: "Mercury Chain",
 			},
-			pendingChecks: map[types.ChainID][]types.Check{
+			pendingChecks: map[types.RelayChainID][]types.Check{
 				"0018": {
 					{
 						ChainID:   "0018",
@@ -1002,7 +1021,7 @@ func Test_upsertChain(t *testing.T) {
 		{
 			name:  "Should update an existing Chain in cache with all side tables",
 			chain: *testdata.Chains["0021"],
-			pendingAltruists: map[types.ChainID][]types.Altruist{
+			pendingAltruists: map[types.RelayChainID][]types.Altruist{
 				"0021": {
 					{
 						ChainID:  "0021",
@@ -1012,7 +1031,7 @@ func Test_upsertChain(t *testing.T) {
 					},
 				},
 			},
-			pendingGigastakeRedirects: map[types.ChainID][]types.GigastakeRedirect{
+			pendingGigastakeRedirects: map[types.RelayChainID][]types.GigastakeRedirect{
 				"0021": {
 					{
 						ChainID:   "0021",
@@ -1022,7 +1041,7 @@ func Test_upsertChain(t *testing.T) {
 					},
 				},
 			},
-			pendingChecks: map[types.ChainID][]types.Check{
+			pendingChecks: map[types.RelayChainID][]types.Check{
 				"0021": {
 					{
 						ChainID:   "0021",
@@ -1111,7 +1130,7 @@ func Test_addAltruist(t *testing.T) {
 	tests := []struct {
 		name          string
 		altruist      types.Altruist
-		chainID       types.ChainID
+		chainID       types.RelayChainID
 		existingChain bool
 	}{
 		{
@@ -1172,7 +1191,7 @@ func Test_addGigastakeRedirect(t *testing.T) {
 	tests := []struct {
 		name          string
 		redirect      types.GigastakeRedirect
-		chainID       types.ChainID
+		chainID       types.RelayChainID
 		existingChain bool
 	}{
 		{
@@ -1239,7 +1258,7 @@ func Test_addCheck(t *testing.T) {
 	tests := []struct {
 		name          string
 		check         types.Check
-		chainID       types.ChainID
+		chainID       types.RelayChainID
 		existingChain bool
 	}{
 		{
@@ -1314,8 +1333,8 @@ func portalAppsToMap(portalApps []types.PortalApp) map[types.PortalAppID]*types.
 	return portalAppsMap
 }
 
-func chainsToMap(chains []types.Chain) map[types.ChainID]*types.Chain {
-	chainsMap := make(map[types.ChainID]*types.Chain)
+func chainsToMap(chains []types.Chain) map[types.RelayChainID]*types.Chain {
+	chainsMap := make(map[types.RelayChainID]*types.Chain)
 	for i := range chains {
 		chainsMap[chains[i].ID] = &chains[i]
 	}
@@ -1357,7 +1376,7 @@ func findPortalAppInPortalApps(portalApps []types.PortalApp, portalAppID types.P
 	return false
 }
 
-func findChainInChains(chains []types.Chain, chainID types.ChainID) bool {
+func findChainInChains(chains []types.Chain, chainID types.RelayChainID) bool {
 	for _, chain := range chains {
 		if chain.ID == chainID {
 			return true

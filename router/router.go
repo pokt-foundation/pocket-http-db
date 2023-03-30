@@ -9,8 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
-	"github.com/pokt-foundation/portal-db/driver"
-	"github.com/pokt-foundation/portal-db/types"
+	"github.com/pokt-foundation/portal-db/v2/driver"
+	"github.com/pokt-foundation/portal-db/v2/types"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
 	"github.com/sirupsen/logrus"
 )
