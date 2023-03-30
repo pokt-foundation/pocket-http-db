@@ -54,7 +54,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			account: &types.Account{
 				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
-				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 				PartnerThroughputLimit: 1_000,
 				PartnerAppLimit:        2,
 			},
@@ -67,7 +67,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			account: &types.Account{
 				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
-				PartnerChainIDs:        map[types.ChainID]struct{}{"0001": {}},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 				PartnerThroughputLimit: 1_000,
 				PartnerAppLimit:        2,
 				Deleted:                true,
@@ -369,7 +369,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chain           types.ChainID
+		chain           types.RelayChainID
 		portalApp       *types.PortalApp
 	}{
 		{
@@ -379,7 +379,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 			portalApp: &types.PortalApp{
 				ID: "test_app_2308rj09r23r9r2",
 				Whitelists: types.Whitelists{
-					Blockchains: map[types.ChainID]struct{}{"0082": {}},
+					Blockchains: map[types.RelayChainID]struct{}{"0082": {}},
 				},
 			},
 		},
@@ -390,7 +390,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 			portalApp: &types.PortalApp{
 				ID: "test_app_2308rj09r23r9r2",
 				Whitelists: types.Whitelists{
-					Blockchains: map[types.ChainID]struct{}{"0021": {}},
+					Blockchains: map[types.RelayChainID]struct{}{"0021": {}},
 				},
 			},
 		},
@@ -576,7 +576,7 @@ func Test_parseChainNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chain.ID)
+			chain := cache.GetChain(test.chain.ID, Options{})
 			c.Equal(test.chain, chain)
 		})
 	}
@@ -586,7 +586,7 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chainID         types.ChainID
+		chainID         types.RelayChainID
 		chain           types.Chain
 	}{
 		{
@@ -638,7 +638,7 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chainID)
+			chain := cache.GetChain(test.chainID, Options{})
 			c.Equal(test.chain.Altruists, chain.Altruists)
 		})
 	}
@@ -648,7 +648,7 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chainID         types.ChainID
+		chainID         types.RelayChainID
 		chain           types.Chain
 	}{
 		{
@@ -700,7 +700,7 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chainID)
+			chain := cache.GetChain(test.chainID, Options{})
 			c.Equal(test.chain.Redirects, chain.Redirects)
 		})
 	}
@@ -710,7 +710,7 @@ func Test_parseChainCheckNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
-		chainID         types.ChainID
+		chainID         types.RelayChainID
 		checkType       types.ChainCheckType
 		chain           types.Chain
 	}{
@@ -766,7 +766,7 @@ func Test_parseChainCheckNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			chain := cache.GetChain(test.chainID)
+			chain := cache.GetChain(test.chainID, Options{})
 			c.Equal(chain.Checks, chain.Checks)
 		})
 	}
