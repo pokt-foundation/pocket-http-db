@@ -28,6 +28,8 @@ github.com/pokt-foundation/portal-db v1.9.0 h1:Xse8yFHzks0L8Ko7wEtb2+3BG5OqJP1RJ
 github.com/pokt-foundation/portal-db v1.9.0/go.mod h1:u6xOhAbNQL0xQIPbK/jKeXMKOkRT789TYWt/uldZawM=
 github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.30 h1:5YrXT9mnkNzW8YZR/0uoxrvRWeq6sp09j+ZtuJVuoAI=
 github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.30/go.mod h1:B80N0OBB+6RTBv/K//MozVJQRZwtvWD0UpT+LSOBKfw=
+github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.31 h1:oL1u66ygo/bokrGsec7+GNYBUNJvbl+Z2tYJSALQ+4g=
+github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.31/go.mod h1:B80N0OBB+6RTBv/K//MozVJQRZwtvWD0UpT+LSOBKfw=
 github.com/pokt-foundation/utils-go v0.3.0 h1:BBGud2Z4n6P5DkzH9sTV5q94yjonIIpTsDL/a6/jB+A=
 github.com/pokt-foundation/utils-go v0.3.0/go.mod h1:c92FV9S9qY4PEyeOv4fGkI9FTZSv8oh1MiARGC+BC2E=
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
