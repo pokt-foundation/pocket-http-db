@@ -85,7 +85,7 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 	loadBalancers := []types.LoadBalancer{}
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(userID))
-	if portalUserID == 0 {
+	if portalUserID == "" {
 		return nil, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
@@ -127,7 +127,7 @@ func (c *Cache) GetLegacyLoadBalancer(ctx context.Context, lbID string) (types.L
 			break
 		}
 	}
-	if lbAccount.ID == 0 {
+	if lbAccount.ID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFoundForLB.Error(), lbID)
 	}
 
@@ -156,7 +156,7 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 	applications := []types.Application{}
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(userID))
-	if portalUserID == 0 {
+	if portalUserID == "" {
 		return nil, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
@@ -203,7 +203,7 @@ func (c *Cache) GetLegacyBlockchain(ctx context.Context, chainID string) types.B
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	chain := c.GetChain(types.RelayChainID(chainID))
+	chain := c.GetChain(types.RelayChainID(chainID), Options{})
 	if chain.ID == "" {
 		return types.Blockchain{}
 	}
@@ -217,7 +217,7 @@ func (c *Cache) GetLegacyUserPermissionsByUserID(ctx context.Context, userID str
 	defer c.rwMutex.RUnlock()
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(userID))
-	if portalUserID == 0 {
+	if portalUserID == "" {
 		return types.UserPermissions{}, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
@@ -267,7 +267,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	account, portalApp := legacyadapters.ConvertToV2AccountAndPortalApp(lb, lb.UserID)
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(lb.UserID))
-	if portalUserID == 0 {
+	if portalUserID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errUserNotFound.Error(), lb.UserID)
 	}
 
@@ -312,7 +312,7 @@ func (c *Cache) CreateLegacyLoadBalancerUser(ctx context.Context, writer driver.
 			break
 		}
 	}
-	if lbAccount.ID == 0 {
+	if lbAccount.ID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), lbID)
 	}
 
@@ -435,7 +435,7 @@ func (c *Cache) UpdateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 			break
 		}
 	}
-	if lbAccount.ID == 0 {
+	if lbAccount.ID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFoundForLB.Error(), lbID)
 	}
 
@@ -467,7 +467,7 @@ func (c *Cache) UpdateLegacyUserRole(ctx context.Context, writer driver.Writer, 
 	defer c.rwMutex.RUnlock()
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(updateUser.UserID))
-	if portalUserID == 0 {
+	if portalUserID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errUserNotFound.Error(), updateUser.UserID)
 	}
 
@@ -478,13 +478,13 @@ func (c *Cache) UpdateLegacyUserRole(ctx context.Context, writer driver.Writer, 
 			break
 		}
 	}
-	if lbAccount.ID == 0 {
+	if lbAccount.ID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFoundForLB.Error(), lbID)
 	}
 
 	updatedAt := time.Now()
 
-	updateAccountUser := legacyadapters.ConvertToV2UpdateAccountUserAccess(updateUser, lbID, int32(portalUserID))
+	updateAccountUser := legacyadapters.ConvertToV2UpdateAccountUserAccess(updateUser, lbID, string(portalUserID))
 
 	err := writer.SetAccountUserRole(ctx, updateAccountUser, updatedAt)
 	if err != nil {
@@ -511,7 +511,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 	defer c.rwMutex.RUnlock()
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(updateUser.UserID))
-	if portalUserID == 0 {
+	if portalUserID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errUserNotFound.Error(), updateUser.UserID)
 	}
 
@@ -522,7 +522,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 			break
 		}
 	}
-	if lbAccount.ID == 0 {
+	if lbAccount.ID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFoundForLB.Error(), lbID)
 	}
 
@@ -558,7 +558,7 @@ func (c *Cache) UpdateLegacyBlockchain(ctx context.Context, writer driver.Writer
 	chainID := types.RelayChainID(blockchainID)
 	updatedAt := time.Now()
 
-	chain := c.GetChain(chainID)
+	chain := c.GetChain(chainID, Options{})
 	if chain.ID == "" {
 		return types.Blockchain{}, fmt.Errorf(errBlockchainNotFound.Error(), chainID)
 	}
@@ -583,7 +583,7 @@ func (c *Cache) CreateLegacyRedirect(ctx context.Context, writer driver.Writer, 
 	chainID := types.RelayChainID(redirect.ChainID)
 	updatedAt := time.Now()
 
-	chain := c.GetChain(chainID)
+	chain := c.GetChain(chainID, Options{})
 	if chain.ID == "" {
 		return redirect, fmt.Errorf(errBlockchainNotFound.Error(), chainID)
 	}
@@ -609,7 +609,7 @@ func (c *Cache) ActivateLegacyBlockchain(ctx context.Context, writer driver.Writ
 	chainID := types.RelayChainID(blockchainID)
 	updatedAt := time.Now()
 
-	chain := c.GetChain(chainID)
+	chain := c.GetChain(chainID, Options{})
 	if chain.ID == "" {
 		return false, fmt.Errorf(errBlockchainNotFound.Error(), chainID)
 	}
@@ -628,7 +628,7 @@ func (c *Cache) RemoveLegacyAccountUser(ctx context.Context, writer driver.Write
 	defer c.rwMutex.RUnlock()
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(userID))
-	if portalUserID == 0 {
+	if portalUserID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
@@ -639,7 +639,7 @@ func (c *Cache) RemoveLegacyAccountUser(ctx context.Context, writer driver.Write
 			break
 		}
 	}
-	if lbAccount.ID == 0 {
+	if lbAccount.ID == "" {
 		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFoundForLB.Error(), lbID)
 	}
 

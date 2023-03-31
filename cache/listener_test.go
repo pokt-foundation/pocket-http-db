@@ -44,14 +44,14 @@ func Test_parseAccountNotification(t *testing.T) {
 			name:             "Should insert Account in cache when receiving an insert notification",
 			mainTableAction:  types.ActionInsert,
 			sideTablesAction: types.ActionInsert,
-			accountID:        6,
+			accountID:        "account_6",
 			account:          testdata.TestCreateAccount,
 		},
 		{
 			name:             "Should update Account in cache when receiving an update notification",
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
-			accountID:        1,
+			accountID:        "account_1",
 			account: &types.Account{
 				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
@@ -64,7 +64,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			name:             "Should delete Account in cache when receiving an update notification with Account.Deleted = true",
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
-			accountID:        1,
+			accountID:        "account_1",
 			account: &types.Account{
 				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
@@ -111,23 +111,23 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		{
 			name:            "Should upsert AccountUserAccess in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
-			userID:          3,
-			accountID:       1,
+			userID:          "user_3",
+			accountID:       "account_1",
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUserAccess{
-					3: testdata.AccountUserAccess[3],
+					"user_3": testdata.AccountUserAccess[3],
 				},
 			},
 		},
 		{
 			name:            "Should upsert AccountUserAccess in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
-			userID:          2,
-			accountID:       1,
+			userID:          "user_2",
+			accountID:       "account_1",
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUserAccess{
-					3: {
-						UserID:   2,
+					"user_3": {
+						UserID:   "user_2",
 						Email:    "paul.atreides456@test.com",
 						RoleName: types.RoleMember,
 						Accepted: true,
@@ -142,11 +142,11 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		{
 			name:            "Should delete AccountUserAccess from cache when receiving a delete notification",
 			sideTableAction: types.ActionDelete,
-			userID:          8,
-			accountID:       1,
+			userID:          "user_8",
+			accountID:       "account_1",
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUserAccess{
-					8: testdata.AccountUserAccess[8],
+					"user_8": testdata.AccountUserAccess[8],
 				},
 			},
 		},
@@ -190,7 +190,7 @@ func Test_parsePortalAppNotification(t *testing.T) {
 			portalAppID:      "test_app_create_e2887s4",
 			portalApp: types.PortalApp{
 				ID:        "test_app_create_e2887s4",
-				AccountID: 1,
+				AccountID: "account_1",
 				Name:      "create_pokt_app_2",
 				Gigastake: true,
 				Staked:    false,
@@ -223,7 +223,7 @@ func Test_parsePortalAppNotification(t *testing.T) {
 			portalAppID:      "test_app_update_b03ca84c",
 			portalApp: types.PortalApp{
 				ID:        "test_app_create_e2887s4",
-				AccountID: 1,
+				AccountID: "account_1",
 				Name:      "create_pokt_app_2",
 				Deleted:   true,
 			},
@@ -265,7 +265,7 @@ func Test_parseAATNotification(t *testing.T) {
 			sideTableAction: types.ActionInsert,
 			portalApp: &types.PortalApp{
 				AAT: types.AAT{
-					AppID:           "test_app_47fhs7j4hs7fj24",
+					AppID:           "test_app_3",
 					Address:         "test_162789bdf3fec1da21e3b28a757bb648",
 					PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
 					ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
@@ -280,7 +280,7 @@ func Test_parseAATNotification(t *testing.T) {
 			sideTableAction: types.ActionUpdate,
 			portalApp: &types.PortalApp{
 				AAT: types.AAT{
-					AppID:           "test_app_47fhs7j4hs7fj24",
+					AppID:           "test_app_3",
 					Address:         "test_80bd695bd00e788aefb90931beeb4354",
 					PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
 					ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",
@@ -325,7 +325,7 @@ func Test_parseSettingsNotification(t *testing.T) {
 			sideTableAction: types.ActionInsert,
 			portalApp: &types.PortalApp{
 				Settings: types.Settings{
-					AppID:             "test_app_47fhs7j4hs7fj24",
+					AppID:             "test_app_3",
 					SecretKey:         "test_3eb65b62717d9e062610d92abfe98873",
 					MonthlyRelayLimit: 50_000_000,
 				},
@@ -336,7 +336,7 @@ func Test_parseSettingsNotification(t *testing.T) {
 			sideTableAction: types.ActionUpdate,
 			portalApp: &types.PortalApp{
 				Settings: types.Settings{
-					AppID:             "test_app_47fhs7j4hs7fj24",
+					AppID:             "test_app_3",
 					SecretKey:         "test_6faf7a9f573e9f7a1ee44f85faae1ffd",
 					MonthlyRelayLimit: 120_000_000,
 				},
@@ -378,7 +378,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 			sideTableAction: types.ActionInsert,
 			chain:           "0082",
 			portalApp: &types.PortalApp{
-				ID: "test_app_2308rj09r23r9r2",
+				ID: "test_app_2",
 				Whitelists: types.Whitelists{
 					Blockchains: map[types.RelayChainID]struct{}{"0082": {}},
 				},
@@ -389,7 +389,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 			sideTableAction: types.ActionDelete,
 			chain:           "0021",
 			portalApp: &types.PortalApp{
-				ID: "test_app_2308rj09r23r9r2",
+				ID: "test_app_2",
 				Whitelists: types.Whitelists{
 					Blockchains: map[types.RelayChainID]struct{}{"0021": {}},
 				},
@@ -437,7 +437,7 @@ func Test_parseStickinessOptionsNotification(t *testing.T) {
 			portalApp: &types.PortalApp{
 				LegacyFields: types.LegacyFields{
 					StickyOptions: types.StickyOptions{
-						ID:            "test_app_47fhs7j4hs7fj24",
+						ID:            "test_app_3",
 						Duration:      "30s",
 						StickyOrigins: []string{"test1.com", "test2.com"},
 						StickyMax:     2,
@@ -452,7 +452,7 @@ func Test_parseStickinessOptionsNotification(t *testing.T) {
 			portalApp: &types.PortalApp{
 				LegacyFields: types.LegacyFields{
 					StickyOptions: types.StickyOptions{
-						ID:            "test_app_47fhs7j4hs7fj24",
+						ID:            "test_app_3",
 						Duration:      "60s",
 						StickyOrigins: []string{"test3.com", "test4.com"},
 						StickyMax:     3,
@@ -512,7 +512,7 @@ func Test_parseChainNotification(t *testing.T) {
 				},
 				Redirects: []types.GigastakeRedirect{
 					{
-						AccountID: 6, Alias: "boba-mainnet", Domain: "boba-rpc.gateway.pokt.network",
+						AccountID: "account_6", Alias: "boba-mainnet", Domain: "boba-rpc.gateway.pokt.network",
 					},
 				},
 				Checks: map[types.ChainCheckType]types.Check{
@@ -661,7 +661,7 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 				Redirects: []types.GigastakeRedirect{
 					{
 						ChainID:   "9826",
-						AccountID: 3,
+						AccountID: "account_3",
 						Domain:    "sol-rpc.gateway.pokt.network",
 						Alias:     "solana-mainnet",
 					},
@@ -677,7 +677,7 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 				Redirects: []types.GigastakeRedirect{
 					{
 						ChainID:   "9826",
-						AccountID: 3,
+						AccountID: "account_3",
 						Domain:    "sol-rpc.gateway.pokt.network",
 						Alias:     "updated-solana-mainnet",
 					},

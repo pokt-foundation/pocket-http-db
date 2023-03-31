@@ -57,7 +57,7 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 		{
 			name:           "Should fetch user permissions for a given user ID",
 			userID:         "auth0|ellen_ripley",
-			expectedPerms:  testdata.UserPermissions[3],
+			expectedPerms:  testdata.UserPermissions["user_3"],
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -106,7 +106,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 			name:   "Should fetch applications for a given user ID",
 			userID: "auth0|james_holden",
 			expectedApps: map[string]*types.Application{
-				"test_app_3487u329rfn23f9": testApps["test_app_3487u329rfn23f9"],
+				"test_app_1": testApps["test_app_1"],
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -192,8 +192,8 @@ func TestRouter_GetApplication(t *testing.T) {
 	}{
 		{
 			name:           "Should fetch the application with the provided ID",
-			appID:          "test_app_3487u329rfn23f9",
-			expectedApp:    *testApps["test_app_3487u329rfn23f9"],
+			appID:          "test_app_1",
+			expectedApp:    *testApps["test_app_1"],
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -577,7 +577,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 			c.NoError(err)
 
 			writerMock := driver.NewMockDriver(t)
-			testdata.V2CreateAccount.ID = 6
+			testdata.V2CreateAccount.ID = ""
 			writerMock.On("WriteAccount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreateAccount, nil).Once()
 			writerMock.On("WritePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreatePortalApp, nil).Once()
 			router.Writer = writerMock
@@ -593,7 +593,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
-			if test.expectedAccount.ID != 0 {
+			if test.expectedAccount.ID != "" {
 				var accountResp types.Account
 				err := json.Unmarshal(rr.Body.Bytes(), &accountResp)
 				c.NoError(err)
@@ -782,7 +782,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 	}{
 		{
 			name:             "Should update an existing application",
-			appID:            "test_app_3487u329rfn23f9",
+			appID:            "test_app_1",
 			updateInput:      testdata.LegacyUpdateApplication,
 			expectedStatus:   http.StatusOK,
 			expectedResponse: types.Application{}, // TODO update when router listener update finished
@@ -828,7 +828,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 		{
 			name: "Should update first date surpassed",
 			updateInput: types.UpdateFirstDateSurpassed{
-				PortalAppIDs:       []string{"test_app_3487u329rfn23f9", "test_app_2308rj09r23r9r2", "test_app_47fhs7j4hs7fj24"},
+				PortalAppIDs:       []string{"test_app_1", "test_app_2", "test_app_3"},
 				FirstDateSurpassed: testdata.MockTimestamp,
 			},
 			expectedStatus: http.StatusOK,
@@ -1247,8 +1247,8 @@ func convertPayPlansToMap(payPlans []types.PayPlan) map[string]types.PayPlan {
 
 var (
 	testApps = map[string]*types.Application{
-		"test_app_3487u329rfn23f9": {
-			ID:                 "test_app_3487u329rfn23f9",
+		"test_app_1": {
+			ID:                 "test_app_1",
 			Name:               "pokt_app_123",
 			UserID:             "auth0|james_holden",
 			FirstDateSurpassed: testdata.MockTimestamp,
@@ -1274,8 +1274,8 @@ var (
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
 		},
-		"test_app_2308rj09r23r9r2": {
-			ID:                 "test_app_2308rj09r23r9r2",
+		"test_app_2": {
+			ID:                 "test_app_2",
 			Name:               "pokt_app_456",
 			UserID:             "auth0|ellen_ripley",
 			FirstDateSurpassed: testdata.MockTimestamp,
@@ -1300,8 +1300,8 @@ var (
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
 		},
-		"test_app_47fhs7j4hs7fj24": {
-			ID:                 "test_app_47fhs7j4hs7fj24",
+		"test_app_3": {
+			ID:                 "test_app_3",
 			Name:               "pokt_app_789",
 			UserID:             "auth0|chrisjen_avasarala",
 			FirstDateSurpassed: testdata.MockTimestamp,
@@ -1331,7 +1331,7 @@ var (
 			GigastakeRedirect: true,
 			RequestTimeout:    5_000,
 			Applications: []*types.Application{
-				testApps["test_app_3487u329rfn23f9"],
+				testApps["test_app_1"],
 			},
 			Users: []types.UserAccess{
 				{
@@ -1368,7 +1368,7 @@ var (
 			UserID:         "auth0|ellen_ripley",
 			RequestTimeout: 10_000,
 			Applications: []*types.Application{
-				testApps["test_app_2308rj09r23r9r2"],
+				testApps["test_app_2"],
 			},
 			Users: []types.UserAccess{
 				{
@@ -1412,7 +1412,7 @@ var (
 			GigastakeRedirect: false,
 			RequestTimeout:    10_000,
 			Applications: []*types.Application{
-				testApps["test_app_47fhs7j4hs7fj24"],
+				testApps["test_app_3"],
 			},
 			Users: []types.UserAccess{
 				{

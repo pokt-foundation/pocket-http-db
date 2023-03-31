@@ -162,7 +162,7 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return fmt.Errorf("error setting account plan for account ID %d: plan type %s does not exist in cache", account.ID, account.PlanType)
+			return fmt.Errorf("error setting account plan for account ID %s: plan type %s does not exist in cache", account.ID, account.PlanType)
 		}
 	}
 
@@ -174,7 +174,7 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 			}
 			account.PortalApps[portalAppID] = portalApp
 		} else {
-			return fmt.Errorf("error setting portal app %s to account: account ID %d does not exist in cache", portalAppID, account.ID)
+			return fmt.Errorf("error setting portal app %s to account: account ID %s does not exist in cache", portalAppID, account.ID)
 		}
 	}
 
@@ -244,7 +244,7 @@ func (c *Cache) GetUserIDFromProviderUserID(providerUserID types.ProviderUserID)
 
 	userID, ok := c.userIDs[providerUserID]
 	if !ok {
-		return types.UserID(0)
+		return types.UserID("")
 	}
 
 	return userID
@@ -333,7 +333,7 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 	defer c.rwMutex.Unlock()
 
 	accountID := accountUser.AccountID
-	accountUser.AccountID = 0 // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	// Add user to permissions map if they have accepted their invitation
 	if accountUser.Accepted {
@@ -377,7 +377,7 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 
 	accountID := accountUser.AccountID
 	userID := accountUser.UserID
-	accountUser.AccountID = 0 // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	if userPermissions, ok := c.userPermissions[userID]; ok {
 		delete(userPermissions.Accounts, accountID)
@@ -621,7 +621,7 @@ func (c *Cache) setGigastakeRedirectAccount(chain *types.Chain) {
 		if account, ok := c.accounts[chain.Redirects[i].AccountID]; ok {
 			chain.Redirects[i].GigastakeAccount = account
 		} else {
-			c.log.Warn(fmt.Sprintf("error setting gigastake account for chain ID %s: account ID %d does not exist in cache", chain.ID, account.ID))
+			c.log.Warn(fmt.Sprintf("error setting gigastake account for chain ID %s: account ID %s does not exist in cache", chain.ID, account.ID))
 		}
 	}
 }
