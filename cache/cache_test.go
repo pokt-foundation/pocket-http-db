@@ -48,13 +48,13 @@ func Test_SetCache(t *testing.T) {
 	}{
 		{
 			name:     "Should return user permissions by user ID",
-			actual:   cache.GetUserPermissionsByUserID(1),
-			expected: *testdata.UserPermissions[1],
+			actual:   cache.GetUserPermissionsByUserID("user_1"),
+			expected: *testdata.UserPermissions["user_1"],
 		},
 		{
 			name:     "Should return a user ID for a given provider user ID",
 			actual:   cache.GetUserIDFromProviderUserID("auth0|chrisjen_avasarala"),
-			expected: types.UserID(5),
+			expected: types.UserID("user_5"),
 		},
 		{
 			name:     "Should return all accounts",
@@ -63,20 +63,22 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return account by ID",
-			actual:   cache.GetAccount(1),
-			expected: *testdata.Accounts[1],
+			actual:   cache.GetAccount("account_1"),
+			expected: *testdata.Accounts["account_1"],
 		},
 		{
 			name:   "Should return accounts by user ID",
-			actual: accountsToMap(cache.GetAccountsByUserID(4)),
+			actual: accountsToMap(cache.GetAccountsByUserID("user_4")),
 			expected: map[types.AccountID]*types.Account{
-				2: testdata.Accounts[2], 4: testdata.Accounts[4], 5: testdata.Accounts[5],
+				"account_2": testdata.Accounts["account_2"],
+				"account_4": testdata.Accounts["account_4"],
+				"account_5": testdata.Accounts["account_5"],
 			},
 		},
 		{
 			name:     "Should return portal app by ID",
-			actual:   cache.GetPortalApp("test_app_3487u329rfn23f9"),
-			expected: *testdata.PortalApps["test_app_3487u329rfn23f9"],
+			actual:   cache.GetPortalApp("test_app_1"),
+			expected: *testdata.PortalApps["test_app_1"],
 		},
 		{
 			name:     "Should return all portal apps",
@@ -230,13 +232,13 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name: "Should update an existing account",
 			account: types.Account{
-				ID:       1,
+				ID:       "account_1",
 				Name:     "test_update_account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
 				Users: map[types.UserID]types.AccountUserAccess{
-					1: testdata.AccountUserAccess[1],
-					2: testdata.AccountUserAccess[2],
-					8: testdata.AccountUserAccess[8],
+					"user_1": testdata.AccountUserAccess[1],
+					"user_2": testdata.AccountUserAccess[2],
+					"user_8": testdata.AccountUserAccess[8],
 				},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
@@ -248,13 +250,13 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name: "Should update an existing account when pending users found in cache",
 			account: types.Account{
-				ID:       1,
+				ID:       "account_1",
 				Name:     "test_update_account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
 				Users: map[types.UserID]types.AccountUserAccess{
-					1: testdata.AccountUserAccess[1],
-					2: testdata.AccountUserAccess[2],
-					8: testdata.AccountUserAccess[8],
+					"user_1": testdata.AccountUserAccess[1],
+					"user_2": testdata.AccountUserAccess[2],
+					"user_8": testdata.AccountUserAccess[8],
 				},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
@@ -263,20 +265,20 @@ func Test_upsertAccount(t *testing.T) {
 				UpdatedAt:              testdata.MockTimestamp,
 			},
 			pendingUsers: map[types.AccountID][]types.AccountUserAccess{
-				1: {testdata.AccountUserAccess[7], testdata.AccountUserAccess[3]},
+				"account_1": {testdata.AccountUserAccess[7], testdata.AccountUserAccess[3]},
 			},
 		},
 		{
 			name: "Should update deleted account and remove from user ID accounts map",
 			account: types.Account{
-				ID:       2,
+				ID:       "account_2",
 				Name:     "test_delete_account_2",
 				PlanType: types.PayPlanType("pro_plan"),
 				Users: map[types.UserID]types.AccountUserAccess{
-					3: testdata.AccountUserAccess[3],
-					4: testdata.AccountUserAccess[4],
-					9: testdata.AccountUserAccess[9],
-					2: testdata.AccountUserAccess[10],
+					"user_3": testdata.AccountUserAccess[3],
+					"user_4": testdata.AccountUserAccess[4],
+					"user_9": testdata.AccountUserAccess[9],
+					"user_2": testdata.AccountUserAccess[10],
 				},
 				Deleted: true,
 			},
@@ -337,17 +339,17 @@ func Test_upsertAccountUser(t *testing.T) {
 	}{
 		{
 			name:        "Should add a new Accepted user to account and user permissions",
-			accountID:   2,
+			accountID:   "account_2",
 			accountUser: testdata.AccountUserAccess[1],
 		},
 		{
 			name:        "Should add a new not-Accepted user to account",
-			accountID:   4,
+			accountID:   "account_4",
 			accountUser: testdata.AccountUserAccess[12],
 		},
 		{
 			name:        "Should update an existing account User's role",
-			accountID:   1,
+			accountID:   "account_1",
 			accountUser: testdata.AccountUserAccess[2],
 			updateRole:  types.RoleMember,
 		},
@@ -369,7 +371,7 @@ func Test_upsertAccountUser(t *testing.T) {
 			cache.upsertAccountUser(test.accountUser)
 
 			account := cache.GetAccount(test.accountUser.AccountID)
-			test.accountUser.AccountID = 0 // is unset in the cache TODO will be changed soon
+			test.accountUser.AccountID = "" // is unset in the cache TODO will be changed soon
 			accountUser, ok := account.Users[test.accountUser.UserID]
 
 			c.True(ok, "AccountUserAccess should be present in account Users map")
@@ -398,13 +400,13 @@ func Test_deleteAccountUser(t *testing.T) {
 	}{
 		{
 			name:            "Should delete an existing user access and update permissions",
-			accountID:       1,
+			accountID:       "account_1",
 			accountUser:     testdata.AccountUserAccess[2],
 			existingAccount: true,
 		},
 		{
 			name:        "Should not fail when deleting a non-existing user access",
-			accountID:   5,
+			accountID:   "account_5",
 			accountUser: testdata.AccountUserAccess[12],
 		},
 	}
@@ -433,7 +435,7 @@ func Test_deleteAccountUser(t *testing.T) {
 			cache.deleteAccountUser(test.accountUser)
 
 			account := cache.GetAccount(test.accountID)
-			test.accountUser.AccountID = 0 // is unset in the cache TODO will be changed soon
+			test.accountUser.AccountID = "" // is unset in the cache TODO will be changed soon
 
 			_, ok := account.Users[test.accountUser.UserID]
 			c.False(ok, "AccountUserAccess should be deleted from account Users map")
@@ -521,13 +523,13 @@ func Test_upsertPortalApp(t *testing.T) {
 		},
 		{
 			name:       "Should update an existing PortalApp in cache with all side tables",
-			portalApp:  *testdata.PortalApps["test_app_3487u329rfn23f9"],
+			portalApp:  *testdata.PortalApps["test_app_1"],
 			pendingAAT: nil, // AAT is never updated
 			pendingSettings: map[types.PortalAppID]types.Settings{
-				"test_app_3487u329rfn23f9": testApp.Settings,
+				"test_app_1": testApp.Settings,
 			},
 			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
-				"test_app_3487u329rfn23f9": {
+				"test_app_1": {
 					Type:        types.NotificationTypeEmail,
 					Active:      true,
 					Destination: "user@example.network",
@@ -536,7 +538,7 @@ func Test_upsertPortalApp(t *testing.T) {
 				},
 			},
 			pendingWhitelists: map[types.PortalAppID][]types.Whitelist{
-				"test_app_3487u329rfn23f9": {
+				"test_app_1": {
 					{
 						AppID: testBaseApp.ID,
 						Type:  types.WhitelistTypeOrigins,
@@ -553,7 +555,7 @@ func Test_upsertPortalApp(t *testing.T) {
 		},
 		{
 			name:      "Should delete an existing PortalApp in cache",
-			portalApp: *testdata.PortalApps["test_app_47fhs7j4hs7fj24"],
+			portalApp: *testdata.PortalApps["test_app_3"],
 			delete:    true,
 		},
 	}
@@ -645,7 +647,7 @@ func Test_addPortalAppAAT(t *testing.T) {
 			portalAppID: "test_app_new_3450he46fhs7",
 			portalApp: &types.PortalApp{
 				ID:        "test_app_new_3450he46fhs7",
-				AccountID: 3,
+				AccountID: "account_3",
 				Name:      "new_pokt_app_1",
 				Gigastake: true,
 				Staked:    false,
@@ -709,7 +711,7 @@ func Test_addPortalAppSettings(t *testing.T) {
 			portalAppID: "test_app_new_3450he46fhs7",
 			portalApp: &types.PortalApp{
 				ID:        "test_app_new_3450he46fhs7",
-				AccountID: 3,
+				AccountID: "account_3",
 				Name:      "new_pokt_app_1",
 				Gigastake: true,
 				Staked:    false,
@@ -779,7 +781,7 @@ func Test_addAppNotification(t *testing.T) {
 				Name:          "new_pokt_app_1",
 				Gigastake:     true,
 				Staked:        false,
-				AccountID:     3,
+				AccountID:     "account_3",
 				Notifications: make(map[types.NotificationType]types.AppNotification),
 			},
 		},
@@ -848,7 +850,7 @@ func Test_addWhitelist(t *testing.T) {
 				Name:       "new_pokt_app_1",
 				Gigastake:  true,
 				Staked:     false,
-				AccountID:  3,
+				AccountID:  "account_3",
 				Whitelists: types.Whitelists{},
 			},
 		},
@@ -912,7 +914,7 @@ func Test_deleteWhitelist(t *testing.T) {
 				Name:       "new_pokt_app_1",
 				Gigastake:  true,
 				Staked:     false,
-				AccountID:  3,
+				AccountID:  "account_3",
 				Whitelists: types.Whitelists{},
 			},
 		},
@@ -1001,7 +1003,7 @@ func Test_upsertChain(t *testing.T) {
 				"0017": {
 					{
 						ChainID:   "0017",
-						AccountID: 1,
+						AccountID: "account_1",
 						Domain:    "nep-rpc.gateway.pokt.network",
 						Alias:     "neptune-mainnet",
 					},
@@ -1045,7 +1047,7 @@ func Test_upsertChain(t *testing.T) {
 				"0021": {
 					{
 						ChainID:   "0021",
-						AccountID: 3,
+						AccountID: "account_3",
 						Domain:    "new-eth-rpc.gateway.pokt.network",
 						Alias:     "eth-wow",
 					},
@@ -1208,7 +1210,7 @@ func Test_addGigastakeRedirect(t *testing.T) {
 			name: "Should add GigastakeRedirect to an existing Chain in cache",
 			redirect: types.GigastakeRedirect{
 				ChainID:              "0053",
-				AccountID:            2,
+				AccountID:            "account_2",
 				Alias:                "altruist-0053",
 				Domain:               "op-rpc-2.gateway.pokt.network",
 				LegacyLoadBalancerID: "test_lb_57dhd7ejr7fhw35d",
@@ -1220,7 +1222,7 @@ func Test_addGigastakeRedirect(t *testing.T) {
 			name: "Should store GigastakeRedirect in pendingGigastakeRedirects map if Chain not in cache",
 			redirect: types.GigastakeRedirect{
 				ChainID:              "0981",
-				AccountID:            2,
+				AccountID:            "account_2",
 				Alias:                "altruist-0981",
 				Domain:               "nope-rpc.gateway.pokt.network",
 				LegacyLoadBalancerID: "test_lb_8j877dhwyd8gjt3",
