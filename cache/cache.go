@@ -119,6 +119,11 @@ func (c *Cache) setCache(ctx context.Context) error {
 		return fmt.Errorf("setChains - %w", err)
 	}
 
+	err = c.setBlockedContracts(ctx)
+	if err != nil {
+		return fmt.Errorf("setBlockedContracts - %w", err)
+	}
+
 	return nil
 }
 
@@ -210,6 +215,18 @@ func (c *Cache) setChains(ctx context.Context) error {
 	return nil
 }
 
+// setBlockedContracts reads BlockedContracts from the database and sets them in the cache.
+func (c *Cache) setBlockedContracts(ctx context.Context) error {
+	blockedContracts, err := c.reader.ReadBlockedContracts(ctx)
+	if err != nil {
+		return fmt.Errorf("ReadBlockedContracts - %w", err)
+	}
+
+	c.blockedContracts = blockedContracts
+
+	return nil
+}
+
 // cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes)
 func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes time.Duration) {
 	for {
@@ -248,6 +265,16 @@ func (c *Cache) GetUserIDFromProviderUserID(providerUserID types.ProviderUserID)
 	}
 
 	return userID
+}
+
+/* ---------- Blocked Contracts ---------- */
+
+// GetBlockedContracts returns all global blocked contracts
+func (c *Cache) GetBlockedContracts() types.GlobalBlockedContracts {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return c.blockedContracts
 }
 
 /* ---------- Accounts ---------- */

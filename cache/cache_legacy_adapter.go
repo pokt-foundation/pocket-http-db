@@ -212,16 +212,31 @@ func (c *Cache) GetLegacyBlockchain(ctx context.Context, chainID string) types.B
 }
 
 // GetLegacyBlockchains returns all V1 Applicatons for a User ID
-func (c *Cache) GetLegacyUserPermissionsByUserID(ctx context.Context, userID string) (types.UserPermissions, error) {
+func (c *Cache) GetLegacyUserPermissionsByUserID(ctx context.Context, userID string) (types.LegacyUserPermissions, error) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	portalUserID := c.GetUserIDFromProviderUserID(types.ProviderUserID(userID))
 	if portalUserID == "" {
-		return types.UserPermissions{}, fmt.Errorf(errUserNotFound.Error(), userID)
+		return types.LegacyUserPermissions{}, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
-	return c.GetUserPermissionsByUserID(portalUserID), nil
+	userPermissions := c.GetUserPermissionsByUserID(portalUserID)
+
+	legacyUserPermissions := types.LegacyUserPermissions{
+		UserID:        types.UserID(userID),
+		LoadBalancers: make(map[types.LoadBalancerID]types.LoadBalancerPermissions),
+	}
+
+	for accountID, accountPermissions := range userPermissions.Accounts {
+		account, ok := c.accounts[accountID]
+		if ok {
+			lbID := types.LoadBalancerID(account.LegacyLoadBalancerID)
+			legacyUserPermissions.LoadBalancers[lbID] = types.LoadBalancerPermissions(accountPermissions)
+		}
+	}
+
+	return legacyUserPermissions, nil
 }
 
 // GetLegacyPayPlas returns all V1 Applicatons for a User ID
@@ -272,7 +287,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	}
 
 	// Get the account plan based on the input plan type
-	inputPlan := lb.Applications[0].Limit.Plan.Type
+	inputPlan := lb.Applications[0].Limit.PayPlan.Type
 	accountPlan := c.GetPlan(inputPlan)
 
 	// Write the account to the data store

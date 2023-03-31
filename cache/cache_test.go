@@ -26,6 +26,7 @@ func NewTestCache(t *testing.T) *Cache {
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
+	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
@@ -115,6 +116,11 @@ func Test_SetCache(t *testing.T) {
 			actual:   payPlansToMap(cache.GetPlans()),
 			expected: testdata.PayPlans,
 		},
+		{
+			name:     "Should return all global blocked contracts",
+			actual:   cache.GetBlockedContracts(),
+			expected: testdata.GlobalBlockedContracts,
+		},
 	}
 
 	for _, test := range tests {
@@ -163,6 +169,11 @@ func TestCache_SetCache_Failure(t *testing.T) {
 			failedMethod: "ReadChains",
 			err:          errors.New("error on Chains"),
 		},
+		{
+			name:         "should fail if ReadBlockedContracts fails",
+			failedMethod: "ReadBlockedContracts",
+			err:          errors.New("error on blocked contracts"),
+		},
 	}
 
 	for _, test := range tests {
@@ -203,6 +214,15 @@ func TestCache_SetCache_Failure(t *testing.T) {
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
+
+			case "ReadBlockedContracts":
+				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, nil)
+				readerMock.On(test.failedMethod, testCtx).Return(types.GlobalBlockedContracts{}, test.err)
 
 			}
 

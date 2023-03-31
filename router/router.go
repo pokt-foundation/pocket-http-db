@@ -20,14 +20,22 @@ var (
 	errPermissionsNotFound   error = errors.New("no permissions found for given user ID")
 )
 
-// Router struct handler for router requests
-type Router struct {
-	Cache   *cache.Cache
-	Router  *mux.Router
-	Writer  driver.Writer
-	APIKeys map[string]bool
-	log     *logrus.Logger
-}
+// router struct handler for router requests
+type (
+	Router struct {
+		Router  *mux.Router
+		writer  driver.Writer
+		cache   *cache.Cache
+		apiKeys map[string]bool
+		log     *logrus.Logger
+	}
+	Config struct {
+		Cache   *cache.Cache
+		Writer  driver.Writer
+		APIKeys map[string]bool
+		Log     *logrus.Logger
+	}
+)
 
 func (rt *Router) logError(err error) {
 	fields := logrus.Fields{
@@ -38,13 +46,13 @@ func (rt *Router) logError(err error) {
 }
 
 // NewRouter returns router instance
-func NewRouter(cache *cache.Cache, reader driver.Reader, writer driver.Writer, apiKeys map[string]bool, logger *logrus.Logger) (*Router, error) {
+func NewRouter(config Config) (*Router, error) {
 	rt := &Router{
-		Cache:   cache,
-		Writer:  writer,
 		Router:  mux.NewRouter(),
-		APIKeys: apiKeys,
-		log:     logger,
+		writer:  config.Writer,
+		cache:   config.Cache,
+		apiKeys: config.APIKeys,
+		log:     config.Log,
 	}
 
 	rt.Router.HandleFunc("/", rt.HealthCheck).Methods(http.MethodGet)
@@ -91,7 +99,7 @@ func (rt *Router) AuthorizationHandler(h http.Handler) http.Handler {
 			return
 		}
 
-		if !rt.APIKeys[r.Header.Get("Authorization")] {
+		if !rt.apiKeys[r.Header.Get("Authorization")] {
 			w.WriteHeader(http.StatusUnauthorized)
 			_, err := w.Write([]byte("Unauthorized"))
 			if err != nil {
@@ -119,13 +127,13 @@ func (rt *Router) GetUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
-	permissions, err := rt.Cache.GetLegacyUserPermissionsByUserID(r.Context(), userID)
+	permissions, err := rt.cache.GetLegacyUserPermissionsByUserID(r.Context(), userID)
 	if err != nil {
 		rt.logError(fmt.Errorf("GetUserPermissionsByUserID failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
-	if permissions.IsEmpty() {
+	if permissions.UserID == "" {
 		rt.logError(fmt.Errorf("GetUserPermissionsByUserID failed: %w", errPermissionsNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errPermissionsNotFound.Error())
 		return
@@ -137,7 +145,7 @@ func (rt *Router) GetUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 func (rt *Router) GetApplicationsByUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	apps, err := rt.Cache.GetLegacyApplicationsByUserID(r.Context(), vars["id"])
+	apps, err := rt.cache.GetLegacyApplicationsByUserID(r.Context(), vars["id"])
 	if err != nil {
 		rt.logError(fmt.Errorf("GetApplicationsByUserID failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
@@ -148,7 +156,7 @@ func (rt *Router) GetApplicationsByUserID(w http.ResponseWriter, r *http.Request
 }
 
 func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
-	applications := rt.Cache.GetLegacyApplications(cache.Options{
+	applications := rt.cache.GetLegacyApplications(cache.Options{
 		IncludeDeleted: false,
 	})
 
@@ -160,7 +168,7 @@ func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
 
 	appID := vars["id"]
 
-	application, err := rt.Cache.GetLegacyApplication(appID)
+	application, err := rt.cache.GetLegacyApplication(appID)
 	if err != nil {
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
@@ -179,7 +187,7 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	lbs, err := rt.Cache.GetLegacyLoadBalancersByUserID(r.Context(), userID, roleNameFilter)
+	lbs, err := rt.cache.GetLegacyLoadBalancersByUserID(r.Context(), userID, roleNameFilter)
 	if err != nil {
 		rt.logError(fmt.Errorf("GetLoadBalancersByUserID failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
@@ -190,13 +198,13 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) GetLoadBalancers(w http.ResponseWriter, r *http.Request) {
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetLegacyLoadBalancers(r.Context()))
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyLoadBalancers(r.Context()))
 }
 
 func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	lb, err := rt.Cache.GetLegacyLoadBalancer(r.Context(), vars["id"])
+	lb, err := rt.cache.GetLegacyLoadBalancer(r.Context(), vars["id"])
 	if err != nil {
 		rt.logError(fmt.Errorf("GetLoadBalancer failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
@@ -207,13 +215,13 @@ func (rt *Router) GetLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetBlockchains(w http.ResponseWriter, r *http.Request) {
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetLegacyBlockchains(r.Context()))
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyBlockchains(r.Context()))
 }
 
 func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	blockchain := rt.Cache.GetLegacyBlockchain(r.Context(), vars["id"])
+	blockchain := rt.cache.GetLegacyBlockchain(r.Context(), vars["id"])
 	if blockchain.ID == "" {
 		rt.logError(fmt.Errorf("GetBlockchain failed: %w", errBlockchainNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
@@ -224,13 +232,13 @@ func (rt *Router) GetBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) GetPayPlans(w http.ResponseWriter, r *http.Request) {
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.Cache.GetLegacyPayPlans(r.Context()))
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyPayPlans(r.Context()))
 }
 
 func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	plan, err := rt.Cache.GetLegacyPayPlan(r.Context(), vars["type"])
+	plan, err := rt.cache.GetLegacyPayPlan(r.Context(), vars["type"])
 	if err != nil {
 		rt.logError(fmt.Errorf("GetLegacyPayPlan inGetPayPlan failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
@@ -253,7 +261,7 @@ func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	createdLB, err := rt.Cache.CreateLegacyLoadBalancer(r.Context(), rt.Writer, lb)
+	createdLB, err := rt.cache.CreateLegacyLoadBalancer(r.Context(), rt.writer, lb)
 	if err != nil {
 		rt.logError(fmt.Errorf("CreateLoadBalancer Decode failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -278,7 +286,7 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	}
 	defer r.Body.Close()
 
-	updatedLB, err := rt.Cache.CreateLegacyLoadBalancerUser(r.Context(), rt.Writer, lbID, user)
+	updatedLB, err := rt.cache.CreateLegacyLoadBalancerUser(r.Context(), rt.writer, lbID, user)
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -299,7 +307,7 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	fullBlockchain, err := rt.Cache.CreateLegacyBlockchain(r.Context(), rt.Writer, blockchain)
+	fullBlockchain, err := rt.cache.CreateLegacyBlockchain(r.Context(), rt.writer, blockchain)
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteBlockchain in CreateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -321,7 +329,7 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	fullRedirect, err := rt.Cache.CreateLegacyRedirect(r.Context(), rt.Writer, redirect)
+	fullRedirect, err := rt.cache.CreateLegacyRedirect(r.Context(), rt.writer, redirect)
 	if err != nil {
 		rt.logError(fmt.Errorf("CreateLegacyRedirect in CreateRedirect failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -348,7 +356,7 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	app, err := rt.Cache.UpdateLegacyApplication(r.Context(), rt.Writer, appID, updateInput)
+	app, err := rt.cache.UpdateLegacyApplication(r.Context(), rt.writer, appID, updateInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyApplication in UpdateApplication failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -376,7 +384,7 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 		"firstDateSurpassed": updateInput.FirstDateSurpassed,
 	}).Info("Received UpdateFirstDateSurpassed request")
 
-	appsToUpdate, err := rt.Cache.UpdateLegacyApplicationsFirstDateSurpassed(r.Context(), rt.Writer, updateInput)
+	appsToUpdate, err := rt.cache.UpdateLegacyApplicationsFirstDateSurpassed(r.Context(), rt.writer, updateInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyApplicationsFirstDateSurpassed in UpdateFirstDateSurpassed failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
@@ -398,7 +406,7 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	updatedLB, err := rt.Cache.UpdateLegacyLoadBalancer(r.Context(), rt.Writer, vars["id"], updateInput)
+	updatedLB, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, vars["id"], updateInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyLoadBalancer in UpdateLoadBalancer failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -423,7 +431,7 @@ func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 
 	defer r.Body.Close()
 
-	updatedLB, err := rt.Cache.UpdateLegacyUserRole(r.Context(), rt.Writer, lbID, updateUser)
+	updatedLB, err := rt.cache.UpdateLegacyUserRole(r.Context(), rt.writer, lbID, updateUser)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyUserRole for team member in UpdateLoadBalancerUser failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -447,7 +455,7 @@ func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	}
 	defer r.Body.Close()
 
-	updatedLB, err := rt.Cache.AcceptLegacyUser(r.Context(), rt.Writer, lbID, acceptUserUpdate)
+	updatedLB, err := rt.cache.AcceptLegacyUser(r.Context(), rt.writer, lbID, acceptUserUpdate)
 	if err != nil {
 		rt.logError(fmt.Errorf("AcceptLegacyUser in AcceptLoadBalancerUser failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -460,7 +468,7 @@ func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	lb, err := rt.Cache.RemoveLegacyAccountUser(r.Context(), rt.Writer, vars["userID"], vars["id"])
+	lb, err := rt.cache.RemoveLegacyAccountUser(r.Context(), rt.writer, vars["userID"], vars["id"])
 	if err != nil {
 		rt.logError(fmt.Errorf("RemoveLegacyAccountUser in DeleteLoadBalancerUser failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -484,7 +492,7 @@ func (rt *Router) UpdateBlockchain(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	updatedChain, err := rt.Cache.UpdateLegacyBlockchain(r.Context(), rt.Writer, blockchainID, update)
+	updatedChain, err := rt.cache.UpdateLegacyBlockchain(r.Context(), rt.writer, blockchainID, update)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyBlockchain in UpdateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -508,7 +516,7 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	activated, err := rt.Cache.ActivateLegacyBlockchain(r.Context(), rt.Writer, blockchainID, active)
+	activated, err := rt.cache.ActivateLegacyBlockchain(r.Context(), rt.writer, blockchainID, active)
 	if err != nil {
 		rt.logError(fmt.Errorf("ActivateLegacyBlockchain in ActivateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())

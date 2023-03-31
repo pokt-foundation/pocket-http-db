@@ -34,6 +34,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
+	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 
 	testLog := logrus.New()
 
@@ -44,7 +45,12 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	})
 	c.NoError(err)
 
-	return NewRouter(cacheInstance, readerMock, nil, map[string]bool{"": true}, testLog)
+	return NewRouter(Config{
+		Cache:   cacheInstance,
+		Writer:  nil, // mock set in tests
+		APIKeys: map[string]bool{"": true},
+		Log:     testLog,
+	})
 }
 
 func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
@@ -55,9 +61,17 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 		expectedStatus int
 	}{
 		{
-			name:           "Should fetch user permissions for a given user ID",
-			userID:         "auth0|ellen_ripley",
-			expectedPerms:  testdata.UserPermissions["user_3"],
+			name:   "Should fetch user permissions for a given user ID",
+			userID: "auth0|ellen_ripley",
+			expectedPerms: &types.UserPermissions{
+				UserID: "auth0|ellen_ripley",
+				Accounts: map[types.AccountID]types.AccountPermissions{
+					"test_lb_d2c7361fd9c5dff7": {
+						RoleName:    "OWNER",
+						Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"},
+					},
+				},
+			},
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -580,7 +594,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 			testdata.V2CreateAccount.ID = ""
 			writerMock.On("WriteAccount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreateAccount, nil).Once()
 			writerMock.On("WritePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreatePortalApp, nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -658,7 +672,7 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 			writerMock := driver.NewMockDriver(t)
 			v2AccountUserAccess := legacyadapters.ConvertToV2AccountUserAccess(test.userAccess)
 			writerMock.On("WriteAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(&v2AccountUserAccess, nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -706,7 +720,7 @@ func TestRouter_CreateBlockchain(t *testing.T) {
 			writerMock := driver.NewMockDriver(t)
 			v2Chain := legacyadapters.ConvertToV2Chain(test.blockchain)
 			writerMock.On("WriteChain", mock.Anything, mock.Anything, mock.Anything).Return(&v2Chain, nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -751,7 +765,7 @@ func TestRouter_CreateRedirect(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -798,7 +812,7 @@ func TestRouter_UpdateApplication(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("UpdatePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -844,7 +858,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("UpdatePortalAppsFirstDateSurpassed", mock.Anything, mock.Anything).Return(nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -914,7 +928,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 			default:
 				writerMock.On("UpdateAccount", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			}
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -962,7 +976,7 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("SetAccountUserRole", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -1019,7 +1033,7 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("UpdateAcceptAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -1073,7 +1087,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("RemoveAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -1123,7 +1137,7 @@ func TestRouter_UpdateBlockchain(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -1184,7 +1198,7 @@ func TestRouter_ActivateBlockchain(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("SetChainActiveStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.active, nil).Once()
-			router.Writer = writerMock
+			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
 
@@ -1265,11 +1279,11 @@ var (
 				SecretKeyRequired:    true,
 				WhitelistOrigins:     []string{"https://test.com"},
 				WhitelistUserAgents:  []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-				WhitelistContracts:   []types.WhitelistContracts{{ChainID: "0001", Contracts: []string{"0x1234567890abcdef"}}},
-				WhitelistMethods:     []types.WhitelistMethods{{ChainID: "0001", Methods: []string{"GET"}}},
+				WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "0001", Contracts: []string{"0x1234567890abcdef"}}},
+				WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "0001", Methods: []string{"GET"}}},
 				WhitelistBlockchains: []string{"0053"},
 			},
-			Limit:                types.AppLimit{Plan: types.PayPlan{Type: "basic_plan", Limit: 1000}},
+			Limit:                types.AppLimit{PayPlan: types.PayPlan{Type: "basic_plan", Limit: 1000}},
 			NotificationSettings: types.NotificationSettings{SignedUp: false, Quarter: true, Half: false, ThreeQuarters: true, Full: true},
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
@@ -1291,11 +1305,11 @@ var (
 				SecretKey:            "test_9c9e3b193cfba5348f93bb2f3e3fb794",
 				WhitelistOrigins:     []string{"https://example.com"},
 				WhitelistUserAgents:  []string{"Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"},
-				WhitelistContracts:   []types.WhitelistContracts{{ChainID: "0064", Contracts: []string{"0x0987654321abcdef"}}},
-				WhitelistMethods:     []types.WhitelistMethods{{ChainID: "0064", Methods: []string{"POST"}}},
+				WhitelistContracts:   []types.WhitelistContracts{{BlockchainID: "0064", Contracts: []string{"0x0987654321abcdef"}}},
+				WhitelistMethods:     []types.WhitelistMethods{{BlockchainID: "0064", Methods: []string{"POST"}}},
 				WhitelistBlockchains: []string{"0021"},
 			},
-			Limit:                types.AppLimit{Plan: types.PayPlan{Type: "pro_plan", Limit: 5_000}},
+			Limit:                types.AppLimit{PayPlan: types.PayPlan{Type: "pro_plan", Limit: 5_000}},
 			NotificationSettings: types.NotificationSettings{Half: true, Full: true},
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
@@ -1316,7 +1330,7 @@ var (
 			GatewaySettings: types.GatewaySettings{
 				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
 			},
-			Limit:     types.AppLimit{Plan: types.PayPlan{Type: "startup_plan", Limit: 500}},
+			Limit:     types.AppLimit{PayPlan: types.PayPlan{Type: "startup_plan", Limit: 500}},
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
