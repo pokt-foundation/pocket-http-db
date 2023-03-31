@@ -11,7 +11,7 @@ import (
 	"time"
 
 	dbclient "github.com/pokt-foundation/db-client/client"
-	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-db/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -161,6 +161,7 @@ func (ts *phdE2ETestSuite) Test_ReadTests() {
 			})
 		}
 	})
+
 	ts.Run("Test_GetBlockchain", func() {
 		tests := []struct {
 			name               string

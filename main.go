@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sync"
@@ -52,6 +53,8 @@ func main() {
 
 	options := gatherOptions()
 
+	ctx := context.Background()
+
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
 			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
@@ -65,12 +68,21 @@ func main() {
 		panic(err)
 	}
 
-	cache, err := cache.NewCache(driver, options.cacheRefreshMinutes, logger)
+	cache, err := cache.NewCache(ctx, cache.Config{
+		Reader:              driver,
+		Logger:              logger,
+		CacheRefreshMinutes: options.cacheRefreshMinutes,
+	})
 	if err != nil {
 		panic(err)
 	}
 
-	router, err := router.NewRouter(cache, driver, driver, options.apiKeys, logger)
+	router, err := router.NewRouter(router.Config{
+		Cache:   cache,
+		Writer:  driver,
+		APIKeys: options.apiKeys,
+		Log:     logger,
+	})
 	if err != nil {
 		panic(err)
 	}
