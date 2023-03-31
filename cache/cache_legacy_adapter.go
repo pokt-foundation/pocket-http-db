@@ -13,8 +13,8 @@ import (
 
 var (
 	errAccountNotFound           = errors.New("account not found for ID %s")
-	errAccountNotFoundForLB      = errors.New("account not found for LB ID %s")
-	errPortalAppNotFound         = errors.New("portal app not found")
+	errAccountNotFoundForLB      = errors.New("load balancer not found for LB ID %s")
+	errAppNotFound               = errors.New("application not found")
 	errUserNotFound              = errors.New("user not found for provider user ID %s")
 	errPlanNotFound              = errors.New("plan not found for type %s")
 	errPortalAppsNotFoundForUser = errors.New("portal app not found for user ID %s")
@@ -64,7 +64,7 @@ func (c *Cache) GetLegacyApplication(portalAppID string) (types.Application, err
 	portalApp := c.GetPortalApp(types.PortalAppID(portalAppID))
 
 	if portalApp.ID == "" {
-		return types.Application{}, errPortalAppNotFound
+		return types.Application{}, errAppNotFound
 	}
 
 	userID, account, err := c.getUserIDAndAccount(portalApp.AccountID)
@@ -268,6 +268,56 @@ func (c *Cache) GetLegacyPayPlans(ctx context.Context) []types.PayPlan {
 	return payPlans
 }
 
+// GetLegacyPendingLoadBalancers returns all pending load balancers for a given portal user ID.
+func (c *Cache) GetLegacyPendingLoadBalancers(ctx context.Context, portalUserID string) ([]types.LoadBalancer, error) {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	loadBalancers := []types.LoadBalancer{}
+
+	userID := types.UserID(portalUserID)
+
+	accounts := c.GetAccountsByUserID(userID)
+
+	pendingAccounts := []types.Account{}
+	for _, account := range accounts {
+		for _, user := range account.Users {
+			if user.UserID == userID && !user.Accepted {
+				pendingAccounts = append(pendingAccounts, account)
+			}
+		}
+	}
+
+	for _, account := range pendingAccounts {
+		legacyLB := legacyadapters.ConvertToLegacyLoadBalancer(account)
+
+		loadBalancers = append(loadBalancers, legacyLB)
+	}
+
+	return loadBalancers, nil
+}
+
+// GetLegacyLoadBalancersCount returns all pending load balancers for a given portal user ID.
+func (c *Cache) GetLegacyLoadBalancersCount(ctx context.Context, portalUserID string) int {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	count := 0
+
+	userID := types.UserID(portalUserID)
+
+	accounts := c.GetAccountsByUserID(types.UserID(portalUserID))
+	for _, account := range accounts {
+		for _, user := range account.Users {
+			if user.UserID == userID && user.RoleName == types.RoleOwner {
+				count++
+			}
+		}
+	}
+
+	return count
+}
+
 /* ---------- Create Methods ---------- */
 
 // CreateLegacyLoadBalancer returns one V2 PortalApp in the cache converted to a V1 Application
@@ -378,7 +428,7 @@ func (c *Cache) UpdateLegacyApplication(ctx context.Context, writer driver.Write
 
 	app := c.GetPortalApp(portalAppID)
 	if app.ID == "" {
-		return types.Application{}, errPortalAppNotFound
+		return types.Application{}, errAppNotFound
 	}
 
 	updatePortalApp := legacyadapters.ConvertToV2UpdatePortalApp(update, appID)
