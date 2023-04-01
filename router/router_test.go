@@ -1280,6 +1280,97 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 	}
 }
 
+func TestRouter_CreateLoadBalancerIntegration(t *testing.T) {
+	tests := []struct {
+		name                       string
+		lbID                       string
+		integrationsInput          types.AccountIntegrations
+		invalidJSON                bool
+		expectedLBAfterIntegration *types.LoadBalancer
+		expectedStatus             int
+		err                        error
+	}{
+		{
+			name: "Should create a new Integration for a LoadBalancer with correct input",
+			lbID: "test_lb_34987u329rfn23f",
+			integrationsInput: types.AccountIntegrations{
+				CovalentAPIKeyFree: "free_api_key",
+				CovalentAPIKeyPaid: "paid_api_key",
+			},
+			expectedLBAfterIntegration: &types.LoadBalancer{
+				ID: "test_lb_34987u329rfn23f",
+				Integrations: types.AccountIntegrations{
+					CovalentAPIKeyFree: "free_api_key",
+					CovalentAPIKeyPaid: "paid_api_key",
+				},
+			},
+			expectedStatus: http.StatusOK,
+			err:            nil,
+		},
+		{
+			name:           "Should fail if the load balancer does not exist",
+			lbID:           "test_sir_not_appearing_in_this_film",
+			expectedStatus: http.StatusNotFound,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name:           "Should fail if the data cannot be marshaled to JSON",
+			lbID:           "test_lb_34987u329rfn23f",
+			invalidJSON:    true,
+			expectedStatus: http.StatusBadRequest,
+			err:            errors.New("dummy error"),
+		},
+		{
+			name: "Should fail if DB driver throws an error",
+			lbID: "test_lb_34987u329rfn23f",
+			integrationsInput: types.AccountIntegrations{
+				CovalentAPIKeyFree: "free_api_key",
+				CovalentAPIKeyPaid: "paid_api_key",
+			},
+			expectedStatus: http.StatusInternalServerError,
+			err:            errors.New("dummy database driver error"),
+		},
+	}
+
+	for _, test := range tests {
+		c := require.New(t)
+
+		router, err := newTestRouter(t)
+		c.NoError(err)
+		writerMock := driver.NewMockDriver(t)
+		router.Writer = writerMock
+
+		if (test.integrationsInput != types.AccountIntegrations{}) {
+			writerMock.On("UpsertLoadBalancerIntegrations", mock.Anything, mock.Anything).Return(&test.integrationsInput, test.err)
+		}
+
+		rr := httptest.NewRecorder()
+
+		integrationsToSend, err := json.Marshal(test.integrationsInput)
+		c.NoError(err)
+
+		var testBuffer *bytes.Buffer
+		switch {
+		case !test.invalidJSON:
+			testBuffer = bytes.NewBuffer(integrationsToSend)
+		case test.invalidJSON:
+			testBuffer = bytes.NewBuffer([]byte("invalid JSON"))
+		}
+		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v1/load_balancer/%s/integration", test.lbID), testBuffer)
+		c.NoError(err)
+
+		router.Router.ServeHTTP(rr, req)
+		c.Equal(test.expectedStatus, rr.Code)
+
+		if test.err == nil {
+			var lbResp types.LoadBalancer
+			err := json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+			c.Equal(test.expectedLBAfterIntegration.Integrations, lbResp.Integrations)
+		}
+	}
+}
+
 func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	c := require.New(t)
 
