@@ -1033,6 +1033,20 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 	}
 }
 
+// upsertAccountIntegrations updates the LBs integrations saved in cache
+func (c *Cache) upsertAccountIntegrations(accountIntegrations *types.AccountIntegrations) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	accountID := accountIntegrations.AccountID
+	for i := range c.loadBalancersMap {
+		if c.loadBalancersMap[i].AccountID == accountID {
+			c.loadBalancersMap[i].Integrations = *accountIntegrations
+			return
+		}
+	}
+}
+
 // deleteUserAccess deletes load balancer user saved in cache and updates permissions
 func (c *Cache) deleteUserAccess(delUser types.UserAccess) {
 	c.rwMutex.Lock()
