@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	errParseLoadBalancerFailed           = errors.New("parse load balancer failed")
-	errParseStickinessOptionsFailed      = errors.New("parse stickiness options failed")
-	errParseUserAccessFailed             = errors.New("parse user access failed")
-	parseAccountIntegrationsNotification = errors.New("parse account integrations failed")
+	errParseLoadBalancerFailed      = errors.New("parse load balancer failed")
+	errParseStickinessOptionsFailed = errors.New("parse stickiness options failed")
+	errParseUserAccessFailed        = errors.New("parse user access failed")
+	errParseIntegrationFailed       = errors.New("parse account integrations failed")
 
 	errParseLBAppsFailed = errors.New("parse lb app failed")
 
@@ -103,7 +103,6 @@ func (c *Cache) parseGatewaySettingsNotification(n types.Notification) {
 }
 
 func (c *Cache) parseWhitelistContractsNotification(n types.Notification) {
-
 	contract, ok := n.Data.(*types.WhitelistContract)
 	if !ok {
 		c.logError(fmt.Errorf("parseWhitelistContractsNotification failed: %w", errParseWhitelistContractsFailed))
@@ -205,7 +204,7 @@ func (c *Cache) parseUserAccessNotification(n types.Notification) {
 func (c *Cache) parseAccountIntegrationsNotification(n types.Notification) {
 	accountIntegrations, ok := n.Data.(*types.AccountIntegrations)
 	if !ok {
-		c.logError(fmt.Errorf("parseAccountIntegrationsNotification failed: %w", parseAccountIntegrationsNotification))
+		c.logError(fmt.Errorf("parseAccountIntegrationsNotification failed: %w", errParseIntegrationFailed))
 		return
 	}
 

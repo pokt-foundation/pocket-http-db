@@ -871,6 +871,11 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 	// Add or update user's LBs
 	lb := c.loadBalancersMap[lbID]
 	if lb != nil {
+		if userAccess.RoleName == types.RoleOwner {
+			lb.AccountID = userAccess.AccountID
+			userAccess.AccountID = ""
+		}
+
 		emailExists := false
 		for _, user := range lb.Users {
 			if user.Email == userAccess.Email {
