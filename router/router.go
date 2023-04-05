@@ -72,6 +72,7 @@ func NewRouter(cache *cache.Cache, reader driver.Reader, writer driver.Writer, a
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/integration", rt.CreateLoadBalancerIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{email}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
@@ -597,6 +598,41 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	fullLB.Users = append(fullLB.Users, user)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullLB)
+}
+
+func (rt *Router) CreateLoadBalancerIntegration(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lb := rt.Cache.GetLoadBalancer(vars["id"])
+	if lb.ID == "" {
+		rt.logError(fmt.Errorf("GetLoadBalancer in CreateLoadBalancerUser failed: %w", errLoadBalancerNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errLoadBalancerNotFound.Error())
+		return
+	}
+
+	var integrationsInput types.AccountIntegrations
+
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&integrationsInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreateLoadBalancerUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	integrations, err := rt.Writer.UpsertLoadBalancerIntegrations(r.Context(), integrationsInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	lb.Integrations = *integrations
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
 
 func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
