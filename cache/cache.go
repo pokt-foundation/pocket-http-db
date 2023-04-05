@@ -197,6 +197,11 @@ func (c *Cache) setLoadBalancers() error {
 	loadBalancersMapByEmail := make(map[string][]*types.LoadBalancer)
 
 	for i, loadBalancer := range loadBalancers {
+		// if the lb has no userID then the lb is deleted and SHOULD NOT be counted
+		if loadBalancer.UserID == "" {
+			continue
+		}
+
 		for _, appID := range loadBalancer.ApplicationIDs {
 			loadBalancer.Applications = append(loadBalancer.Applications, c.applicationsMap[appID])
 		}
