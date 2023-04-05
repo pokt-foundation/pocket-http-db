@@ -72,7 +72,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/load_balancer", rt.GetLoadBalancers).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/load_balancer", rt.CreateLoadBalancer).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
+	// rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut) // TODO remove from client and only use Update Application
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
@@ -356,7 +356,8 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	app, err := rt.cache.UpdateLegacyApplication(r.Context(), rt.writer, appID, updateInput)
+	// Note: It is intended to use UpdateLegacyLoadBalancer here
+	app, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, appID, updateInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyApplication in UpdateApplication failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -392,28 +393,6 @@ func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, appsToUpdate)
-}
-
-func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	var updateInput types.UpdateLoadBalancer
-
-	err := json.NewDecoder(r.Body).Decode(&updateInput)
-	if err != nil {
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	defer r.Body.Close()
-
-	updatedLB, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, vars["id"], updateInput)
-	if err != nil {
-		rt.logError(fmt.Errorf("UpdateLegacyLoadBalancer in UpdateLoadBalancer failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedLB)
 }
 
 func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Request) {
