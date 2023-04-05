@@ -284,6 +284,55 @@ func (c *Cache) GetLegacyPayPlans(ctx context.Context) []types.PayPlan {
 	return payPlans
 }
 
+// GetLegacyPendingLoadBalancers returns all pending load balancers for a given portal user ID.
+func (c *Cache) GetLegacyPendingLoadBalancers(ctx context.Context, portalUserID string) ([]types.LoadBalancer, error) {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	loadBalancers := []types.LoadBalancer{}
+
+	userID := types.UserID(portalUserID)
+
+	accounts := c.GetAccountsByUserID(userID)
+
+	pendingAccounts := []types.Account{}
+	for _, account := range accounts {
+		for _, user := range account.Users {
+			if user.UserID == userID && !user.Accepted {
+				pendingAccounts = append(pendingAccounts, account)
+			}
+		}
+	}
+
+	for _, account := range pendingAccounts {
+		for _, portalApp := range account.PortalApps {
+			loadBalancers = append(loadBalancers, legacyadapters.ConvertToLegacyLoadBalancer(*portalApp, account))
+		}
+	}
+	return loadBalancers, nil
+}
+
+// GetLegacyLoadBalancersCount returns all pending load balancers for a given portal user ID.
+func (c *Cache) GetLegacyLoadBalancersCount(ctx context.Context, portalUserID string) int {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	count := 0
+
+	userID := types.UserID(portalUserID)
+
+	accounts := c.GetAccountsByUserID(types.UserID(portalUserID))
+	for _, account := range accounts {
+		for _, user := range account.Users {
+			if user.UserID == userID && user.RoleName == types.RoleOwner {
+				count++
+			}
+		}
+	}
+
+	return count
+}
+
 /* ---------- Create Methods ---------- */
 
 // CreateLegacyLoadBalancer returns one V2 PortalApp in the cache converted to a V1 Application

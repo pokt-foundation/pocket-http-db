@@ -8,7 +8,7 @@ test_env_down:
 	docker-compose -f ./testdata/docker-compose.test.yml down --remove-orphans -v
 
 run_e2e_tests:
-	-go test -run E2E -count=1 -v
+	-go test -run E2E -count=1
 run_all_tests:
 	-go test ./... -count=1
 test_unit:

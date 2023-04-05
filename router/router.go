@@ -82,6 +82,9 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
 
+	rt.Router.HandleFunc("/v1/user/{portalID}/load_balancer/pending", rt.GetPendingLoadBalancersByPortalID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/user/{portalID}/load_balancer/count", rt.GetLoadBalancersCountByPortalID).Methods(http.MethodGet)
+
 	rt.Router.HandleFunc("/v1/pay_plan", rt.GetPayPlans).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/pay_plan/{type}", rt.GetPayPlan).Methods(http.MethodGet)
 
@@ -246,6 +249,31 @@ func (rt *Router) GetPayPlan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, plan)
+}
+
+/* Returns all pending load balancers for a given portal user ID. */
+func (rt *Router) GetPendingLoadBalancersByPortalID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userPortalID := vars["portalID"]
+
+	lbs, err := rt.cache.GetLegacyPendingLoadBalancers(r.Context(), userPortalID)
+	if err != nil {
+		rt.logError(fmt.Errorf("GetLegacyPendingLoadBalancers in GetPendingLoadBalancersByEmail failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
+}
+
+/* Returns the number of load balancers a given user owns, by portal ID */
+func (rt *Router) GetLoadBalancersCountByPortalID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userPortalID := vars["portalID"]
+
+	lbsCount := rt.cache.GetLegacyLoadBalancersCount(r.Context(), userPortalID)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lbsCount)
 }
 
 /* ---------- Create Methods ---------- */

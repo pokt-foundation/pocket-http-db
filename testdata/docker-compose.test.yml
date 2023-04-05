@@ -31,7 +31,7 @@ services:
         condition: service_healthy
 
   portal-db:
-    image: pocketfoundation/test-portal-postgres:1.8.4
+    image: pocketfoundation/test-portal-postgres:latest
     container_name: portal-db
     restart: always
     ports:
