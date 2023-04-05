@@ -34,6 +34,7 @@ type (
 		pendingAccountUserAccess map[types.AccountID][]types.AccountUserAccess
 
 		portalApps              map[types.PortalAppID]*types.PortalApp
+		portalAppsByProtocolID  map[types.ProtocolAppID]*types.PortalApp
 		pendingAAT              map[types.PortalAppID]types.AAT
 		pendingSettings         map[types.PortalAppID]types.Settings
 		pendingAppNotifications map[types.PortalAppID]types.AppNotification
@@ -59,8 +60,8 @@ type (
 	}
 
 	Options struct {
-		IncludeDeleted              bool
-		SetGigastakeRedirectAccount bool
+		IncludeDeleted          bool
+		SetGigastakeRedirectApp bool
 	}
 )
 
@@ -171,7 +172,9 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		}
 	}
 
-	// Set pointers to Account PortalApps
+	// Set pointers to Account PortalApps and PortalApps by ProtocolID (applications.application_id in V1)
+	portalAppsByProtocolID := make(map[types.ProtocolAppID]*types.PortalApp)
+
 	for portalAppID, portalApp := range portalApps {
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			if account.PortalApps == nil {
@@ -180,6 +183,10 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 			account.PortalApps[portalAppID] = portalApp
 		} else {
 			return fmt.Errorf("error setting portal app %s to account: account ID %s does not exist in cache", portalAppID, account.ID)
+		}
+
+		for protocolAppID := range portalApp.AATs {
+			portalAppsByProtocolID[protocolAppID] = portalApp
 		}
 	}
 
@@ -199,6 +206,7 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 	c.accounts = accounts
 	c.accountsByUserID = accountsByUserID
 	c.portalApps = portalApps
+	c.portalAppsByProtocolID = portalAppsByProtocolID
 
 	return nil
 }
@@ -436,6 +444,28 @@ func (c *Cache) GetPortalApp(portalAppID types.PortalAppID) types.PortalApp {
 	return *portalApp
 }
 
+// GetPortalApp returns PortalApp from cache by portalAppID
+func (c *Cache) GetPortalAppByProtocolID(protocolAppID types.ProtocolAppID) types.PortalApp {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	portalApp, ok := c.portalAppsByProtocolID[protocolAppID]
+	if !ok {
+		return types.PortalApp{}
+	}
+
+	portalAppDeref := *portalApp
+
+	// Ensure only the requested protocol app AAT is returned
+	for aatProtocalAppID := range portalAppDeref.AATs {
+		if aatProtocalAppID != protocolAppID {
+			delete(portalAppDeref.AATs, aatProtocalAppID)
+		}
+	}
+
+	return portalAppDeref
+}
+
 // GetPortalApps returns all PortalApps in cache
 func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	c.rwMutex.RLock()
@@ -459,7 +489,10 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	pendingAAT, ok := c.pendingAAT[portalApp.ID]
 	if ok {
-		portalApp.AAT = pendingAAT
+		if portalApp.AATs == nil {
+			portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
+		}
+		portalApp.AATs[pendingAAT.ID] = pendingAAT
 		delete(c.pendingAAT, portalApp.ID)
 	}
 
@@ -510,7 +543,10 @@ func (c *Cache) addPortalAppAAT(aat types.AAT) {
 		return
 	}
 
-	portalApp.AAT = aat
+	if portalApp.AATs == nil {
+		portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
+	}
+	portalApp.AATs[aat.ID] = aat
 }
 
 // addPortalAppSettings adds or updates the Settings for a PortalApp in cache
@@ -616,8 +652,8 @@ func (c *Cache) GetChain(chainID types.RelayChainID, options Options) types.Chai
 		return types.Chain{}
 	}
 
-	if options.SetGigastakeRedirectAccount {
-		c.setGigastakeRedirectAccount(chain)
+	if options.SetGigastakeRedirectApp {
+		c.setGigastakeRedirectApp(chain)
 	}
 
 	return *chain
@@ -631,8 +667,8 @@ func (c *Cache) GetChains(options Options) []types.Chain {
 	var chainsToReturn []types.Chain
 
 	for _, chain := range c.chains {
-		if options.SetGigastakeRedirectAccount {
-			c.setGigastakeRedirectAccount(chain)
+		if options.SetGigastakeRedirectApp {
+			c.setGigastakeRedirectApp(chain)
 		}
 		if options.IncludeDeleted || !chain.Deleted {
 			chainsToReturn = append(chainsToReturn, *chain)
@@ -642,13 +678,14 @@ func (c *Cache) GetChains(options Options) []types.Chain {
 	return chainsToReturn
 }
 
-// setGigastakeRedirectAccount sets the GigastakeAccount for each Redirect in a Chain if options.SetGigastakeRedirectAccount is true
-func (c *Cache) setGigastakeRedirectAccount(chain *types.Chain) {
+// setGigastakeRedirectApp sets the GigastakeAccount for each Redirect in a Chain if options.SetGigastakeRedirectApp is true
+func (c *Cache) setGigastakeRedirectApp(chain *types.Chain) {
 	for i := range chain.Redirects {
-		if account, ok := c.accounts[chain.Redirects[i].AccountID]; ok {
-			chain.Redirects[i].GigastakeAccount = account
+		portalAppID := chain.Redirects[i].PortalApplicationID
+		if portalApp, ok := c.portalApps[portalAppID]; ok {
+			chain.Redirects[i].GigastakePortalApp = portalApp
 		} else {
-			c.log.Warn(fmt.Sprintf("error setting gigastake account for chain ID %s: account ID %s does not exist in cache", chain.ID, account.ID))
+			c.log.Warn(fmt.Sprintf("error setting gigastake portal app for chain ID %s: portal app ID %s does not exist in cache", chain.ID, portalAppID))
 		}
 	}
 }
@@ -730,7 +767,7 @@ func (c *Cache) addGigastakeRedirect(redirect types.GigastakeRedirect) {
 
 	redirectExists := func(redirects []types.GigastakeRedirect) bool {
 		for i, existingRedirect := range redirects {
-			if existingRedirect.AccountID == redirect.AccountID && existingRedirect.Domain == redirect.Domain {
+			if existingRedirect.PortalApplicationID == redirect.PortalApplicationID && existingRedirect.Domain == redirect.Domain {
 				redirects[i] = redirect
 				return true
 			}

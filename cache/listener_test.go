@@ -54,7 +54,6 @@ func Test_parseAccountNotification(t *testing.T) {
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
 			account: &types.Account{
-				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 				PartnerThroughputLimit: 1_000,
@@ -67,7 +66,6 @@ func Test_parseAccountNotification(t *testing.T) {
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
 			account: &types.Account{
-				Name:                   "test_update_account_1",
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 				PartnerThroughputLimit: 1_000,
@@ -195,13 +193,16 @@ func Test_parsePortalAppNotification(t *testing.T) {
 				Name:      "create_pokt_app_2",
 				Gigastake: true,
 				Staked:    false,
-				AAT: types.AAT{
-					Address:         "test_162789bdf3fec1da21e3b28a757bb648",
-					PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
-					ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
-					PrivateKey:      "test_dceabfd53f9b9c90552ba1eef2c49c78",
-					Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
-					Version:         "0.0.1",
+				AATs: map[types.ProtocolAppID]types.AAT{
+					"test_protocol_app_1": {
+						ID:              "test_protocol_app_1",
+						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
+						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
+						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
+						PrivateKey:      "test_dceabfd53f9b9c90552ba1eef2c49c78",
+						Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
+						Version:         "0.0.1",
+					},
 				},
 				Settings: types.Settings{
 					Environment:       types.EnvironmentProduction,
@@ -241,7 +242,7 @@ func Test_parsePortalAppNotification(t *testing.T) {
 			test.portalApp.ID = test.portalAppID
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, &test.portalApp)
 
-			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+			time.Sleep(200 * time.Millisecond) // need time for cache refresh
 
 			c.Equal(test.portalApp, cache.GetPortalApp(test.portalAppID))
 
@@ -265,14 +266,17 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should add AAT to PortalApp in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			portalApp: &types.PortalApp{
-				AAT: types.AAT{
-					AppID:           "test_app_3",
-					Address:         "test_162789bdf3fec1da21e3b28a757bb648",
-					PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
-					ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
-					PrivateKey:      "test_dceabfd53f9b9c90552ba1eef2c49c78",
-					Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
-					Version:         "0.0.1",
+				AATs: map[types.ProtocolAppID]types.AAT{
+					"test_protocol_app_3": {
+						ID:              "test_protocol_app_3",
+						AppID:           "test_app_3",
+						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
+						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
+						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
+						PrivateKey:      "test_dceabfd53f9b9c90552ba1eef2c49c78",
+						Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
+						Version:         "0.0.1",
+					},
 				},
 			},
 		},
@@ -280,14 +284,17 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should update AAT in PortalApp in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			portalApp: &types.PortalApp{
-				AAT: types.AAT{
-					AppID:           "test_app_3",
-					Address:         "test_80bd695bd00e788aefb90931beeb4354",
-					PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
-					ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",
-					PrivateKey:      "test_fd8b15e5d309e2837bc563b82ef71a9c",
-					Signature:       "test_bef7b8a4562c500d9a16802364d4eb57",
-					Version:         "0.0.1",
+				AATs: map[types.ProtocolAppID]types.AAT{
+					"test_protocol_app_3": {
+						ID:              "test_protocol_app_3",
+						AppID:           "test_app_3",
+						Address:         "test_80bd695bd00e788aefb90931beeb4354",
+						PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
+						ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",
+						PrivateKey:      "test_fd8b15e5d309e2837bc563b82ef71a9c",
+						Signature:       "test_bef7b8a4562c500d9a16802364d4eb57",
+						Version:         "0.0.1",
+					},
 				},
 			},
 		},
@@ -303,14 +310,14 @@ func Test_parseAATNotification(t *testing.T) {
 			// Add the PortalApp to the cache
 			cache.upsertPortalApp(*test.portalApp)
 
-			test.portalApp.AAT.AppID = "" // is unset in the cache TODO will be changed soon
+			// test.portalApp.AATs.AppID = "" // is unset in the cache TODO will be changed soon
 
 			readerMock.listener.MockEvent("", test.sideTableAction, test.portalApp)
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
 			portalApp := cache.GetPortalApp(test.portalApp.ID)
-			c.Equal(test.portalApp.AAT, portalApp.AAT)
+			c.Equal(test.portalApp.AATs, portalApp.AATs)
 		})
 	}
 }
@@ -512,9 +519,7 @@ func Test_parseChainNotification(t *testing.T) {
 					},
 				},
 				Redirects: []types.GigastakeRedirect{
-					{
-						AccountID: "account_6", Alias: "boba-mainnet", Domain: "boba-rpc.gateway.pokt.network",
-					},
+					{PortalApplicationID: "test_app_6", Alias: "boba-mainnet", Domain: "boba-rpc.gateway.pokt.network"},
 				},
 				Checks: map[types.ChainCheckType]types.Check{
 					types.ChainCheckTypeSync: {
@@ -661,10 +666,10 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 				ID: "9826",
 				Redirects: []types.GigastakeRedirect{
 					{
-						ChainID:   "9826",
-						AccountID: "account_3",
-						Domain:    "sol-rpc.gateway.pokt.network",
-						Alias:     "solana-mainnet",
+						ChainID:             "9826",
+						PortalApplicationID: "test_app_3",
+						Domain:              "sol-rpc.gateway.pokt.network",
+						Alias:               "solana-mainnet",
 					},
 				},
 			},
@@ -677,10 +682,10 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 				ID: "9826",
 				Redirects: []types.GigastakeRedirect{
 					{
-						ChainID:   "9826",
-						AccountID: "account_3",
-						Domain:    "sol-rpc.gateway.pokt.network",
-						Alias:     "updated-solana-mainnet",
+						ChainID:             "9826",
+						PortalApplicationID: "test_app_3",
+						Domain:              "sol-rpc.gateway.pokt.network",
+						Alias:               "updated-solana-mainnet",
 					},
 				},
 			},

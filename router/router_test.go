@@ -57,16 +57,16 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         string
-		expectedPerms  *types.UserPermissions
+		expectedPerms  *types.LegacyUserPermissions
 		expectedStatus int
 	}{
 		{
 			name:   "Should fetch user permissions for a given user ID",
 			userID: "auth0|ellen_ripley",
-			expectedPerms: &types.UserPermissions{
+			expectedPerms: &types.LegacyUserPermissions{
 				UserID: "auth0|ellen_ripley",
-				Accounts: map[types.AccountID]types.AccountPermissions{
-					"test_lb_d2c7361fd9c5dff7": {
+				LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+					"test_app_2": {
 						RoleName:    "OWNER",
 						Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"},
 					},
@@ -99,7 +99,7 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 			c.Equal(test.expectedStatus, rr.Code)
 
 			if test.expectedPerms != nil {
-				var permsResp *types.UserPermissions
+				var permsResp *types.LegacyUserPermissions
 				err := json.Unmarshal(rr.Body.Bytes(), &permsResp)
 
 				c.NoError(err)
@@ -120,7 +120,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 			name:   "Should fetch applications for a given user ID",
 			userID: "auth0|james_holden",
 			expectedApps: map[string]*types.Application{
-				"test_app_1": testApps["test_app_1"],
+				"test_protocol_app_1": testApps["test_protocol_app_1"],
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -206,8 +206,8 @@ func TestRouter_GetApplication(t *testing.T) {
 	}{
 		{
 			name:           "Should fetch the application with the provided ID",
-			appID:          "test_app_1",
-			expectedApp:    *testApps["test_app_1"],
+			appID:          "test_protocol_app_1",
+			expectedApp:    *testApps["test_protocol_app_1"],
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -255,7 +255,7 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 			name:   "Should fetch load balancers for the provided user ID with no role name filter",
 			userID: "github|james_holden",
 			expectedLBs: map[string]types.LoadBalancer{
-				"test_lb_5c6f50bc30b530a8": testLoadBalancers["test_lb_5c6f50bc30b530a8"],
+				"test_app_1": testLoadBalancers["test_app_1"],
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -264,7 +264,7 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 			userID:         "github|james_holden",
 			roleNameFilter: types.RoleOwner,
 			expectedLBs: map[string]types.LoadBalancer{
-				"test_lb_5c6f50bc30b530a8": testLoadBalancers["test_lb_5c6f50bc30b530a8"],
+				"test_app_1": testLoadBalancers["test_app_1"],
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -358,8 +358,8 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	}{
 		{
 			name:           "Should fetch the load balancer with the provided ID",
-			loadBalancerID: "test_lb_5c6f50bc30b530a8",
-			expectedLB:     testLoadBalancers["test_lb_5c6f50bc30b530a8"],
+			loadBalancerID: "test_app_1",
+			expectedLB:     testLoadBalancers["test_app_1"],
 			expectedStatus: http.StatusOK,
 		},
 		{
@@ -571,14 +571,12 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 		name              string
 		loadBalancer      types.LoadBalancer
 		expectedStatus    int
-		expectedAccount   types.Account
 		expectedPortalApp types.PortalApp
 	}{
 		{
 			name:              "Should create a new load balancer",
 			loadBalancer:      testdata.LegacyLoadBalancer,
 			expectedStatus:    http.StatusOK,
-			expectedAccount:   testdata.V2CreateAccount,
 			expectedPortalApp: testdata.V2CreatePortalApp,
 		},
 	}
@@ -592,8 +590,9 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			testdata.V2CreateAccount.ID = ""
-			writerMock.On("WriteAccount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreateAccount, nil).Once()
-			writerMock.On("WritePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(&testdata.V2CreatePortalApp, nil).Once()
+			writerMock.On("WritePortalApp", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(
+				&testdata.V2CreatePortalApp, nil,
+			).Once()
 			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
@@ -607,12 +606,6 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
-			if test.expectedAccount.ID != "" {
-				var accountResp types.Account
-				err := json.Unmarshal(rr.Body.Bytes(), &accountResp)
-				c.NoError(err)
-				c.Equal(test.expectedAccount, accountResp)
-			}
 			if test.expectedPortalApp.ID != "" {
 				var appResp types.PortalApp
 				err := json.Unmarshal(rr.Body.Bytes(), &appResp)
@@ -655,7 +648,7 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 	}{
 		{
 			name:                      "Should create a new load balancer user",
-			loadBalancerID:            "test_lb_746e04231640556a",
+			loadBalancerID:            "test_app_3",
 			userAccess:                testdata.LegacyUserAccess,
 			expectedStatus:            http.StatusOK,
 			expectedLoadBalancerUsers: []types.UserAccess{},
@@ -795,11 +788,17 @@ func TestRouter_UpdateApplication(t *testing.T) {
 		expectedResponse types.Application
 	}{
 		{
-			name:             "Should update an existing application",
-			appID:            "test_app_1",
-			updateInput:      testdata.LegacyUpdateApplication,
-			expectedStatus:   http.StatusOK,
-			expectedResponse: types.Application{}, // TODO update when router listener update finished
+			name:           "Should update an existing application",
+			appID:          "test_app_1",
+			updateInput:    testdata.LegacyUpdateApplication,
+			expectedStatus: http.StatusOK,
+			expectedResponse: types.Application{
+				ID:        "test_app_1",
+				UserID:    "auth0|james_holden",
+				Name:      "pokt_app_123",
+				CreatedAt: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
+				UpdatedAt: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
+			}, // TODO update when router listener update finished
 		},
 	}
 
@@ -881,86 +880,19 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	}
 }
 
-func TestRouter_UpdateLoadBalancer(t *testing.T) {
-	tests := []struct {
-		name             string
-		lbID             string
-		updateInput      types.UpdateLoadBalancer
-		expectedStatus   int
-		expectedResponse types.LoadBalancer
-	}{
-		{
-			name: "Should update load balancer name",
-			lbID: "test_lb_5c6f50bc30b530a8",
-			updateInput: types.UpdateLoadBalancer{
-				Name: "Updated Load Balancer Name",
-				StickyOptions: &types.UpdateStickyOptions{
-					ID:            "test_sticky_options_id",
-					Duration:      "10s",
-					StickyOrigins: []string{"origin1", "origin2"},
-					StickyMax:     5,
-				},
-				Remove: false,
-			},
-			expectedStatus:   http.StatusOK,
-			expectedResponse: types.LoadBalancer{}, // TODO update when router listener update finished
-		},
-		{
-			name:             "Should remove load balancer",
-			lbID:             "test_lb_5c6f50bc30b530a8",
-			updateInput:      types.UpdateLoadBalancer{Remove: true},
-			expectedStatus:   http.StatusOK,
-			expectedResponse: types.LoadBalancer{}, // TODO update when router listener update finished
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			router, err := newTestRouter(t)
-			c.NoError(err)
-
-			writerMock := driver.NewMockDriver(t)
-			switch test.updateInput.Remove {
-			case true:
-				writerMock.On("SetAccountDeleted", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			default:
-				writerMock.On("UpdateAccount", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			}
-			router.writer = writerMock
-
-			rr := httptest.NewRecorder()
-
-			updateInputBytes, err := json.Marshal(test.updateInput)
-			c.NoError(err)
-
-			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s", test.lbID), bytes.NewBuffer(updateInputBytes))
-			c.NoError(err)
-
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
-
-			var lbResp types.LoadBalancer
-			err = json.Unmarshal(rr.Body.Bytes(), &lbResp)
-			c.NoError(err)
-			c.Equal(test.expectedResponse, lbResp)
-		})
-	}
-}
-
 func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 	tests := []struct {
 		name           string
 		lbID           string
+		userID         string
 		updateUser     types.UpdateUserAccess
 		expectedStatus int
 	}{
 		{
 			name: "Should update load balancer user role",
-			lbID: "test_lb_d2c7361fd9c5dff7",
+			lbID: "test_app_2",
 			updateUser: types.UpdateUserAccess{
-				UserID:   "auth0|tyrion_lannister",
+				UserID:   "user_9",
 				RoleName: types.RoleAdmin,
 			},
 			expectedStatus: http.StatusOK,
@@ -1015,9 +947,9 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 	}{
 		{
 			name: "Should accept load balancer user",
-			lbID: "test_lb_d2c7361fd9c5dff7",
+			lbID: "test_app_2",
 			acceptUser: types.UpdateUserAccess{
-				UserID:   "auth0|tyrion_lannister",
+				UserID:   "user_9",
 				RoleName: types.RoleAdmin,
 			},
 			expectedStatus: http.StatusOK,
@@ -1072,8 +1004,8 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 	}{
 		{
 			name:           "Should delete load balancer user",
-			lbID:           "test_lb_4b874c457f73c4e9",
-			userID:         "auth0|frodo_baggins",
+			lbID:           "test_app_3",
+			userID:         "user_7",
 			expectedStatus: http.StatusOK,
 		},
 	}
@@ -1261,8 +1193,8 @@ func convertPayPlansToMap(payPlans []types.PayPlan) map[string]types.PayPlan {
 
 var (
 	testApps = map[string]*types.Application{
-		"test_app_1": {
-			ID:                 "test_app_1",
+		"test_protocol_app_1": {
+			ID:                 "test_protocol_app_1",
 			Name:               "pokt_app_123",
 			UserID:             "auth0|james_holden",
 			FirstDateSurpassed: testdata.MockTimestamp,
@@ -1288,8 +1220,8 @@ var (
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
 		},
-		"test_app_2": {
-			ID:                 "test_app_2",
+		"test_protocol_app_2": {
+			ID:                 "test_protocol_app_2",
 			Name:               "pokt_app_456",
 			UserID:             "auth0|ellen_ripley",
 			FirstDateSurpassed: testdata.MockTimestamp,
@@ -1314,8 +1246,8 @@ var (
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
 		},
-		"test_app_3": {
-			ID:                 "test_app_3",
+		"test_protocol_app_3": {
+			ID:                 "test_protocol_app_3",
 			Name:               "pokt_app_789",
 			UserID:             "auth0|chrisjen_avasarala",
 			FirstDateSurpassed: testdata.MockTimestamp,
@@ -1334,34 +1266,54 @@ var (
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
+		"test_protocol_app_4": {
+			ID:                 "test_protocol_app_4",
+			Name:               "pokt_app_789",
+			UserID:             "auth0|chrisjen_avasarala",
+			FirstDateSurpassed: testdata.MockTimestamp,
+			GatewayAAT: types.GatewayAAT{
+				Address:              "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
+				ApplicationPublicKey: "test_f6a5d8690ecb669865bd752b7796a920",
+				ApplicationSignature: "test_cf05cf9bb26111c548e88fb6157af708",
+				ClientPublicKey:      "test_6ee5ea553408f0895923fd1569dc5072",
+				PrivateKey:           "test_838d29d61a65401f7d56d084cb6e4783",
+				Version:              "0.0.1",
+			},
+			GatewaySettings: types.GatewaySettings{
+				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
+			},
+			Limit:     types.AppLimit{PayPlan: types.PayPlan{Type: "startup_plan", Limit: 500}},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
 	}
 
 	testLoadBalancers = map[string]types.LoadBalancer{
-		"test_lb_5c6f50bc30b530a8": {
-			ID:                "test_lb_5c6f50bc30b530a8",
-			Name:              "test_account_1",
+		"test_app_1": {
+			ID:                "test_app_1",
+			Name:              "pokt_app_123",
 			UserID:            "auth0|james_holden",
 			Gigastake:         true,
 			GigastakeRedirect: true,
 			RequestTimeout:    5_000,
 			Applications: []*types.Application{
-				testApps["test_app_1"],
+				testApps["test_protocol_app_1"],
 			},
 			Users: []types.UserAccess{
 				{
-					UserID:   "auth0|james_holden",
+					UserID:   "user_1",
 					RoleName: "OWNER",
 					Email:    "james.holden123@test.com",
 					Accepted: true,
 				},
 				{
-					UserID:   "auth0|paul_atreides",
+					UserID:   "user_2",
 					RoleName: "ADMIN",
 					Email:    "paul.atreides456@test.com",
 					Accepted: true,
 				},
 				{
-					UserID:   "auth0|rick_deckard",
+					UserID:   "user_8",
 					RoleName: "ADMIN",
 					Email:    "rick.deckard456@test.com",
 					Accepted: false,
@@ -1373,41 +1325,44 @@ var (
 				StickyMax:     300,
 				Stickiness:    true,
 			},
+			Integrations: types.AccountIntegrations{
+				CovalentAPIKeyFree: "covalent_api_key_1",
+			},
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
-		"test_lb_d2c7361fd9c5dff7": {
-			ID:             "test_lb_d2c7361fd9c5dff7",
-			Name:           "test_account_2",
+		"test_app_2": {
+			ID:             "test_app_2",
+			Name:           "pokt_app_456",
 			UserID:         "auth0|ellen_ripley",
 			RequestTimeout: 10_000,
 			Applications: []*types.Application{
-				testApps["test_app_2"],
+				testApps["test_protocol_app_2"],
 			},
 			Users: []types.UserAccess{
 				{
-					UserID:   "auth0|ellen_ripley",
+					UserID:   "user_3",
 					RoleName: "OWNER",
 					Email:    "ellen.ripley789@test.com",
 					Accepted: true,
 				},
 				{
-					UserID:   "auth0|paul_atreides",
+					UserID:   "user_2",
 					RoleName: "MEMBER",
 					Email:    "paul.atreides456@test.com",
 					Accepted: true,
 				},
 				{
-					UserID:   "auth0|tyrion_lannister",
-					RoleName: "MEMBER",
-					Email:    "tyrion.lannister789@test.com",
-					Accepted: false,
-				},
-				{
-					UserID:   "auth0|ulfric_stormcloak",
+					UserID:   "user_4",
 					RoleName: "MEMBER",
 					Email:    "ulfric.stormcloak123@test.com",
 					Accepted: true,
+				},
+				{
+					UserID:   "user_9",
+					RoleName: "MEMBER",
+					Email:    "tyrion.lannister789@test.com",
+					Accepted: false,
 				},
 			},
 			StickyOptions: types.StickyOptions{
@@ -1416,77 +1371,84 @@ var (
 				StickyMax:     600,
 				Stickiness:    true,
 			},
+			Integrations: types.AccountIntegrations{
+				CovalentAPIKeyFree: "covalent_api_key_2",
+			},
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
-		"test_lb_4b874c457f73c4e9": {
-			ID:                "test_lb_4b874c457f73c4e9",
-			Name:              "test_account_3",
+		"test_app_3": {
+			ID:                "test_app_3",
+			Name:              "pokt_app_789",
 			UserID:            "auth0|chrisjen_avasarala",
 			GigastakeRedirect: false,
 			RequestTimeout:    10_000,
 			Applications: []*types.Application{
-				testApps["test_app_3"],
+				testApps["test_protocol_app_3"],
+				testApps["test_protocol_app_4"],
 			},
 			Users: []types.UserAccess{
 				{
-					UserID:   "auth0|chrisjen_avasarala",
+					UserID:   "user_5",
 					RoleName: "OWNER",
 					Email:    "chrisjen.avasarala1@test.com",
 					Accepted: true,
 				},
 				{
-					UserID:   "auth0|amos_burton",
+					UserID:   "user_6",
 					RoleName: "ADMIN",
 					Email:    "amos.burton789@test.com",
 					Accepted: true,
 				},
 				{
-					UserID:   "",
+					UserID:   "user_10",
 					RoleName: "MEMBER",
 					Email:    "daenerys.targaryen123@test.com",
 					Accepted: false,
 				},
 				{
-					UserID:   "auth0|frodo_baggins",
+					UserID:   "user_7",
 					RoleName: "MEMBER",
 					Email:    "frodo.baggins123@test.com",
 					Accepted: true,
 				},
 			},
-			CreatedAt: testdata.MockTimestamp,
-			UpdatedAt: testdata.MockTimestamp,
-		},
-		"test_lb_746e04231640556a": {
-			ID:     "test_lb_746e04231640556a",
-			Name:   "test_account_4",
-			UserID: "auth0|ulfric_stormcloak",
-			Users: []types.UserAccess{
-				{
-					UserID:   "auth0|ulfric_stormcloak",
-					RoleName: "OWNER",
-					Email:    "ulfric.stormcloak123@test.com",
-					Accepted: true,
-				},
+			Integrations: types.AccountIntegrations{
+				CovalentAPIKeyFree: "covalent_api_key_3",
 			},
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
-		"test_lb_f5ee77c7c58025231": {
-			ID:     "test_lb_f5ee77c7c58025231",
-			Name:   "test_account_5",
-			UserID: "auth0|ulfric_stormcloak",
-			Users: []types.UserAccess{
-				{
-					UserID:   "auth0|ulfric_stormcloak",
-					RoleName: "OWNER",
-					Email:    "ulfric.stormcloak123@test.com",
-					Accepted: true,
-				},
-			},
-			CreatedAt: testdata.MockTimestamp,
-			UpdatedAt: testdata.MockTimestamp,
-		},
+		// "test_app_4": {
+		// 	ID:     "test_app_4",
+		// 	Name:   "test_account_4",
+		// 	UserID: "auth0|ulfric_stormcloak",
+		// 	Users: []types.UserAccess{
+		// 		{
+		// 			UserID:   "user_4",
+		// 			RoleName: "OWNER",
+		// 			Email:    "ulfric.stormcloak123@test.com",
+		// 			Accepted: true,
+		// 		},
+		// 	},
+		// 	CreatedAt: testdata.MockTimestamp,
+		// 	UpdatedAt: testdata.MockTimestamp,
+		// },
+		// "test_app_5": {
+		// 	ID:     "test_app_5",
+		// 	Name:   "test_account_5",
+		// 	UserID: "auth0|ulfric_stormcloak",
+		// 	Users: []types.UserAccess{
+		// 		{
+		// 			UserID:   "user_4",
+		// 			RoleName: "OWNER",
+		// 			Email:    "ulfric.stormcloak123@test.com",
+		// 			Accepted: true,
+		// 		},
+		// 	},
+		// 	CreatedAt: testdata.MockTimestamp,
+		// 	UpdatedAt: testdata.MockTimestamp,
+		// },
 	}
 
 	testBlockchains = map[string]types.Blockchain{
@@ -1501,7 +1463,7 @@ var (
 			BlockchainAliases: []string{"mainnet"},
 			Active:            true,
 			Redirects: []types.Redirect{
-				{Alias: "altruist-0001", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_5c6f50bc30b530a8"},
+				{Alias: "altruist-0001", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
 			},
 			SyncCheckOptions: types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
@@ -1523,7 +1485,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []types.Redirect{
-				{Alias: "altruist-0021", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_4b874c457f73c4e9"},
+				{Alias: "altruist-0021", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "test_app_3"},
 			},
 			SyncCheckOptions: types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -1542,7 +1504,7 @@ var (
 			BlockchainAliases: []string{"harmony-0"},
 			Active:            true,
 			Redirects: []types.Redirect{
-				{Alias: "altruist-0040", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_746e04231640556a"},
+				{Alias: "altruist-0040", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "test_app_3"},
 			},
 			SyncCheckOptions: types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
@@ -1563,7 +1525,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []types.Redirect{
-				{Alias: "altruist-0053", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "test_lb_d2c7361fd9c5dff7"},
+				{Alias: "altruist-0053", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "test_app_2"},
 			},
 			SyncCheckOptions: types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
