@@ -12,6 +12,7 @@ var (
 	errParseLoadBalancerFailed      = errors.New("parse load balancer failed")
 	errParseStickinessOptionsFailed = errors.New("parse stickiness options failed")
 	errParseUserAccessFailed        = errors.New("parse user access failed")
+	errParseIntegrationFailed       = errors.New("parse account integrations failed")
 
 	errParseLBAppsFailed = errors.New("parse lb app failed")
 
@@ -102,7 +103,6 @@ func (c *Cache) parseGatewaySettingsNotification(n types.Notification) {
 }
 
 func (c *Cache) parseWhitelistContractsNotification(n types.Notification) {
-
 	contract, ok := n.Data.(*types.WhitelistContract)
 	if !ok {
 		c.logError(fmt.Errorf("parseWhitelistContractsNotification failed: %w", errParseWhitelistContractsFailed))
@@ -201,6 +201,18 @@ func (c *Cache) parseUserAccessNotification(n types.Notification) {
 	}
 }
 
+func (c *Cache) parseAccountIntegrationsNotification(n types.Notification) {
+	accountIntegrations, ok := n.Data.(*types.AccountIntegrations)
+	if !ok {
+		c.logError(fmt.Errorf("parseAccountIntegrationsNotification failed: %w", errParseIntegrationFailed))
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertAccountIntegrations(accountIntegrations)
+	}
+}
+
 func (c *Cache) parseSyncOptionsNotification(n types.Notification) {
 	opts, ok := n.Data.(*types.SyncCheckOptions)
 	if !ok {
@@ -233,6 +245,8 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseStickinessOptionsNotification(n)
 	case types.TableUserAccess:
 		c.parseUserAccessNotification(n)
+	case types.TableAccountIntegrations:
+		c.parseAccountIntegrationsNotification(n)
 
 	case types.TableLbApps:
 		c.parseLbApps(n)

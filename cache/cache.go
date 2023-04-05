@@ -197,6 +197,11 @@ func (c *Cache) setLoadBalancers() error {
 	loadBalancersMapByEmail := make(map[string][]*types.LoadBalancer)
 
 	for i, loadBalancer := range loadBalancers {
+		// if the lb has no userID then the lb is deleted and SHOULD NOT be counted
+		if loadBalancer.UserID == "" {
+			continue
+		}
+
 		for _, appID := range loadBalancer.ApplicationIDs {
 			loadBalancer.Applications = append(loadBalancer.Applications, c.applicationsMap[appID])
 		}
@@ -803,7 +808,13 @@ func (c *Cache) addLoadBalancer(lb types.LoadBalancer) {
 
 	users, ok := c.pendingUserAccess[lb.ID]
 	if ok {
-		lb.Users = append(lb.Users, users...)
+		for _, user := range users {
+			if user.RoleName == types.RoleOwner {
+				lb.AccountID = user.AccountID
+				user.AccountID = ""
+			}
+			lb.Users = append(lb.Users, user)
+		}
 		delete(c.pendingUserAccess, lb.ID)
 	}
 
@@ -871,6 +882,11 @@ func (c *Cache) addUserAccess(userAccess types.UserAccess) {
 	// Add or update user's LBs
 	lb := c.loadBalancersMap[lbID]
 	if lb != nil {
+		if userAccess.RoleName == types.RoleOwner {
+			lb.AccountID = userAccess.AccountID
+			userAccess.AccountID = ""
+		}
+
 		emailExists := false
 		for _, user := range lb.Users {
 			if user.Email == userAccess.Email {
@@ -1029,6 +1045,20 @@ func (c *Cache) updateUserAccess(inUser types.UserAccess) {
 					c.loadBalancersOwnedByEmail[inUser.Email] = append(c.loadBalancersOwnedByEmail[inUser.Email], lb)
 				}
 			}
+		}
+	}
+}
+
+// upsertAccountIntegrations updates the LBs integrations saved in cache
+func (c *Cache) upsertAccountIntegrations(accountIntegrations *types.AccountIntegrations) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	accountID := accountIntegrations.AccountID
+	for i := range c.loadBalancersMap {
+		if c.loadBalancersMap[i].AccountID == accountID {
+			c.loadBalancersMap[i].Integrations = *accountIntegrations
+			return
 		}
 	}
 }
