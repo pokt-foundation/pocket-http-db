@@ -803,7 +803,13 @@ func (c *Cache) addLoadBalancer(lb types.LoadBalancer) {
 
 	users, ok := c.pendingUserAccess[lb.ID]
 	if ok {
-		lb.Users = append(lb.Users, users...)
+		for _, user := range users {
+			if user.RoleName == types.RoleOwner {
+				lb.AccountID = user.AccountID
+				user.AccountID = ""
+			}
+			lb.Users = append(lb.Users, user)
+		}
 		delete(c.pendingUserAccess, lb.ID)
 	}
 
