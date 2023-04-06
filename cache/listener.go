@@ -162,18 +162,17 @@ func (c *Cache) parseChainCheckNotification(n types.Notification) {
 
 /* ---------- Users ---------- */
 
-// TODO - implement in cache
-// func (c *Cache) parseUsersNotification(n types.Notification) {
-// 	user, ok := n.Data.(*types.User)
-// 	if !ok {
-// 		c.log.Error("parseUsersNotification failed")
-// 		return
-// 	}
+func (c *Cache) parseUsersNotification(n types.Notification) {
+	user, ok := n.Data.(*types.User)
+	if !ok {
+		c.log.Error("parseUsersNotification failed")
+		return
+	}
 
-// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-// 		c.upsertUser(*user)
-// 	}
-// }
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertUser(*user)
+	}
+}
 
 // TODO - implement in cache
 // func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
@@ -246,9 +245,10 @@ func (c *Cache) parseNotification(n types.Notification) {
 	case types.TableChainChecks:
 		c.parseChainCheckNotification(n)
 
+	case types.TableUsers:
+		c.parseUsersNotification(n)
+
 		// TODO - implement in cache
-		// case types.TableUsers:
-		// 	c.parseUsersNotification(n)
 		// case types.TableUserAuthProviders:
 		// 	c.parseUserAuthProviderNotification(n)
 

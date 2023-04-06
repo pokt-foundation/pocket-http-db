@@ -32,6 +32,7 @@ type (
 		accounts                 map[types.AccountID]*types.Account
 		accountsByUserID         map[types.UserID]AccountsForUser
 		pendingAccountUserAccess map[types.AccountID][]types.AccountUserAccess
+		pendingUsers             map[types.UserID]types.User
 
 		portalApps              map[types.PortalAppID]*types.PortalApp
 		portalAppsByProtocolID  map[types.ProtocolAppID]*types.PortalApp
@@ -72,6 +73,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		log:    config.Logger,
 
 		pendingAccountUserAccess:  make(map[types.AccountID][]types.AccountUserAccess),
+		pendingUsers:              make(map[types.UserID]types.User),
 		pendingAAT:                make(map[types.PortalAppID]types.AAT),
 		pendingSettings:           make(map[types.PortalAppID]types.Settings),
 		pendingAppNotifications:   make(map[types.PortalAppID]types.AppNotification),
@@ -99,6 +101,18 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 }
 
 /* ---------- Cache Set and Refresh ---------- */
+
+// ResetCache manually resets the cache; called in the router when the `/reset_cache` endpoint is hit.
+func (c *Cache) ResetCache(ctx context.Context) error {
+	err := c.setCache(ctx)
+	if err != nil {
+		c.log.Error(fmt.Errorf("error in ResetCache - setCache: %w", err))
+		return err
+	}
+
+	c.log.Info("cache successfully manually reset")
+	return nil
+}
 
 // setCache initializes the cache by setting user permissions, accounts and portal apps, chains, and plans.
 func (c *Cache) setCache(ctx context.Context) error {
@@ -168,7 +182,7 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return fmt.Errorf("error setting account plan for account ID %s: plan type %s does not exist in cache", account.ID, account.PlanType)
+			return fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
 		}
 	}
 
@@ -181,8 +195,6 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 				account.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
 			}
 			account.PortalApps[portalAppID] = portalApp
-		} else {
-			return fmt.Errorf("error setting portal app %s to account: account ID %s does not exist in cache", portalAppID, account.ID)
 		}
 
 		for protocolAppID := range portalApp.AATs {
@@ -392,6 +404,11 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 		if account.Users == nil {
 			account.Users = make(map[types.UserID]types.AccountUserAccess)
 		}
+		if user, ok := c.pendingUsers[accountUser.UserID]; ok {
+			accountUser.Email = user.Email
+			delete(c.pendingUsers, accountUser.UserID)
+		}
+
 		account.Users[accountUser.UserID] = accountUser
 
 		if _, ok := c.accountsByUserID[accountUser.UserID]; !ok {
@@ -487,6 +504,24 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	if existingPortalApp, ok := c.portalApps[portalApp.ID]; ok {
+		portalApp.AATs = existingPortalApp.AATs
+		portalApp.Settings = existingPortalApp.Settings
+		portalApp.Notifications = existingPortalApp.Notifications
+		portalApp.Whitelists = existingPortalApp.Whitelists
+		portalApp.LegacyFields.StickyOptions = existingPortalApp.LegacyFields.StickyOptions
+	}
+
+	if portalApp.Deleted {
+		delete(c.portalApps, portalApp.ID)
+		delete(c.portalAppsByProtocolID, portalApp.ProtocolAppID())
+		if account, ok := c.accounts[portalApp.AccountID]; ok {
+			delete(account.PortalApps, portalApp.ID)
+		}
+
+		return
+	}
+
 	pendingAAT, ok := c.pendingAAT[portalApp.ID]
 	if ok {
 		if portalApp.AATs == nil {
@@ -527,6 +562,17 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
+
+	if protocolAppID := portalApp.ProtocolAppID(); protocolAppID != "" {
+		c.portalAppsByProtocolID[protocolAppID] = &portalApp
+	}
+
+	if account, ok := c.accounts[portalApp.AccountID]; ok {
+		if account.PortalApps == nil {
+			account.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
+		}
+		account.PortalApps[portalApp.ID] = &portalApp
+	}
 }
 
 // addPortalAppAAT adds or updates the AAT for a PortalApp in cache
@@ -537,9 +583,10 @@ func (c *Cache) addPortalAppAAT(aat types.AAT) {
 	appID := aat.AppID
 	aat.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	c.pendingAAT[appID] = aat
+
 	portalApp, ok := c.portalApps[appID]
 	if !ok {
-		c.pendingAAT[appID] = aat
 		return
 	}
 
@@ -557,9 +604,10 @@ func (c *Cache) addPortalAppSettings(settings types.Settings) {
 	appID := settings.AppID
 	settings.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	c.pendingSettings[appID] = settings
+
 	portalApp, ok := c.portalApps[appID]
 	if !ok { // Add to pending map in case Settings notification arrives first
-		c.pendingSettings[appID] = settings
 		return
 	}
 
@@ -574,9 +622,10 @@ func (c *Cache) addAppNotification(notification types.AppNotification) {
 	appID := notification.AppID
 	notification.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	c.pendingAppNotifications[appID] = notification
+
 	portalApp, ok := c.portalApps[appID]
 	if !ok {
-		c.pendingAppNotifications[appID] = notification
 		return
 	}
 
@@ -594,12 +643,13 @@ func (c *Cache) addWhitelist(whitelist types.Whitelist) {
 	appID := whitelist.AppID
 	whitelist.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	if c.pendingWhitelists == nil {
+		c.pendingWhitelists = make(map[types.PortalAppID][]types.Whitelist)
+	}
+	c.pendingWhitelists[appID] = append(c.pendingWhitelists[appID], whitelist)
+
 	portalApp, ok := c.portalApps[appID]
 	if !ok {
-		if c.pendingWhitelists == nil {
-			c.pendingWhitelists = make(map[types.PortalAppID][]types.Whitelist)
-		}
-		c.pendingWhitelists[appID] = append(c.pendingWhitelists[appID], whitelist)
 		return
 	}
 
@@ -796,11 +846,38 @@ func (c *Cache) addCheck(check types.Check) {
 	check.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	if chain, ok := c.chains[chainID]; ok {
+		if chain.Checks == nil {
+			chain.Checks = make(map[types.ChainCheckType]types.Check)
+		}
 		chain.Checks[check.Type] = check
 		return
 	}
 
 	c.pendingChecks[chainID] = append(c.pendingChecks[chainID], check)
+}
+
+/* ---------- Users ---------- */
+
+// upsertUser updates or inserts user
+// TODO update more fields on the account user when users creation logic updated
+func (c *Cache) upsertUser(user types.User) {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	c.pendingUsers[user.ID] = user
+
+	accountsForUser, ok := c.accountsByUserID[user.ID]
+	if !ok {
+		return
+	}
+
+	for accountID, account := range accountsForUser {
+		if accountUser, ok := account.Users[user.ID]; ok {
+			accountUser.Email = user.Email
+			account.Users[user.ID] = accountUser
+			c.accountsByUserID[user.ID][accountID] = account
+		}
+	}
 }
 
 /* ---------- Plans ---------- */
