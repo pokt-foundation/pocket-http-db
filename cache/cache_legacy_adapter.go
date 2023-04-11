@@ -190,7 +190,7 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 	}
 
 	if len(applications) == 0 {
-		return applications, errPortalAppsNotFoundForUser
+		return applications, fmt.Errorf(errPortalAppsNotFoundForUser.Error(), portalUserID)
 	}
 
 	return applications, nil
