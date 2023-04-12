@@ -14,7 +14,7 @@ import (
 var (
 	errAccountNotFound           = errors.New("account not found for ID %s")
 	errAccountNotFoundForUser    = errors.New("account not found for User ID %s")
-	errPortalAppNotFound         = errors.New("portal app not found for load balancer ID %s")
+	ErrPortalAppNotFound         = errors.New("portal app not found for load balancer ID %s")
 	errPortalAppNotFoundForApp   = errors.New("portal app not found for app ID %s")
 	errUserNotFound              = errors.New("user not found for provider user ID %s")
 	errPlanNotFound              = errors.New("plan not found for type %s")
@@ -133,7 +133,7 @@ func (c *Cache) GetLegacyLoadBalancer(ctx context.Context, lbID string) (types.L
 
 	portalApp := c.GetPortalApp(types.PortalAppID(lbID))
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), lbID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), lbID)
 	}
 
 	account := c.GetAccount(portalApp.AccountID)
@@ -399,7 +399,7 @@ func (c *Cache) CreateLegacyLoadBalancerUser(ctx context.Context, writer driver.
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), portalAppID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -497,7 +497,7 @@ func (c *Cache) UpdateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), portalAppID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -534,7 +534,7 @@ func (c *Cache) UpdateLegacyUserRole(ctx context.Context, writer driver.Writer, 
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), portalAppID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -572,7 +572,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), portalAppID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -684,7 +684,7 @@ func (c *Cache) RemoveLegacyAccountUser(ctx context.Context, writer driver.Write
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), portalAppID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {

@@ -406,7 +406,14 @@ func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	loadBalancer, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, appID, updateInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyApplication in UpdateApplication failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		if err.Error() == fmt.Errorf(cache.ErrPortalAppNotFound.Error(), appID).Error() { // prevent a 500 when it should be a 404
+			jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+			return
+		} else {
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, loadBalancer)
