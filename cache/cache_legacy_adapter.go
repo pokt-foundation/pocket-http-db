@@ -367,11 +367,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	portalApp.AccountID = account.ID
 
 	// Get the account plan based on the input plan type
-	expectedApplication, err := c.GetLegacyApplication(lb.ApplicationIDs[0])
-	if err != nil {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), lb.ApplicationIDs[0])
-	}
-	inputPlan := expectedApplication.Limit.PayPlan.Type
+	inputPlan := lb.Applications[0].Limit.PayPlan.Type
 	accountPlan := c.GetPlan(inputPlan)
 
 	// Write the portal app to the data store
