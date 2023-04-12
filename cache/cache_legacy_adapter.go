@@ -542,6 +542,7 @@ func (c *Cache) UpdateLegacyUserRole(ctx context.Context, writer driver.Writer, 
 	}
 
 	updateAccountUser := legacyadapters.ConvertToV2UpdateAccountUserAccess(updateUser, lbID, string(portalUserID))
+	updateAccountUser.AccountID = portalApp.AccountID
 
 	err := writer.SetAccountUserRole(ctx, updateAccountUser, updatedAt)
 	if err != nil {
