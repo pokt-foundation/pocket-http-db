@@ -68,9 +68,9 @@ func (c *Cache) GetLegacyApplication(appID string) (types.Application, error) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	PortalAppID := types.PortalAppID(appID)
+	PortalAppID := types.ProtocolAppID(appID)
 
-	portalApp := c.GetPortalApp(PortalAppID)
+	portalApp := c.GetPortalAppByProtocolID(PortalAppID)
 
 	if portalApp.ID == "" {
 		return types.Application{}, fmt.Errorf(errPortalAppNotFoundForApp.Error(), appID)
@@ -81,7 +81,7 @@ func (c *Cache) GetLegacyApplication(appID string) (types.Application, error) {
 		return types.Application{}, err
 	}
 
-	application := legacyadapters.ConvertToLegacyApplication(portalApp, *account, types.ProtocolAppID(PortalAppID))
+	application := legacyadapters.ConvertToLegacyApplication(portalApp, *account, PortalAppID)
 
 	return application, nil
 }
