@@ -10,7 +10,7 @@ import (
 	"time"
 
 	dbclient "github.com/pokt-foundation/db-client/client"
-	"github.com/pokt-foundation/portal-db/types"
+	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -418,23 +418,23 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                string
 			userID              types.UserID
-			expectedPermissions *types.UserPermissions
+			expectedPermissions *types.LegacyUserPermissions
 			err                 error
 		}{
 			{
 
 				name:   "Should fetch a single users load balancer permissions",
 				userID: "auth0|paul_atreides",
-				expectedPermissions: &types.UserPermissions{
+				expectedPermissions: &types.LegacyUserPermissions{
 					UserID: "auth0|paul_atreides",
 					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 						"test_app_1": {
 							RoleName:    "ADMIN",
-							Permissions: []types.PermissionsEnum{"read:endpoint", "write:endpoint"},
+							Permissions: []types.Permissions{"read:endpoint", "write:endpoint"},
 						},
 						"test_app_2": {
 							RoleName:    "MEMBER",
-							Permissions: []types.PermissionsEnum{"read:endpoint"},
+							Permissions: []types.Permissions{"read:endpoint"},
 						},
 					},
 				},
@@ -442,12 +442,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fetch another single users load balancer permissions",
 				userID: "auth0|ulfric_stormcloak",
-				expectedPermissions: &types.UserPermissions{
+				expectedPermissions: &types.LegacyUserPermissions{
 					UserID: "auth0|ulfric_stormcloak",
 					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
 						"test_app_2": {
 							RoleName: "MEMBER",
-							Permissions: []types.PermissionsEnum{
+							Permissions: []types.Permissions{
 								"read:endpoint",
 							},
 						},
@@ -925,7 +925,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should update the app first date suprassed for the provided slice of app IDs",
 				update: types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{"test_app_1", "test_app_2"},
+					PortalAppIDs:       []string{"test_app_1", "test_app_2"},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
 				protocolAppIDs: []string{"test_protocol_app_1", "test_protocol_app_2"},
@@ -935,7 +935,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should fail if update contains no application IDs cannot be found",
 				update: types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{},
+					PortalAppIDs:       []string{},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
 				err: fmt.Errorf("Response not OK. 400 Bad Request: no application IDs on input"),
@@ -943,7 +943,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should fail if application cannot be found",
 				update: types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{"9000"},
+					PortalAppIDs:       []string{"9000"},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
 				err: fmt.Errorf("Response not OK. 400 Bad Request: UpdateFirstDateSurpassed failed: 9000 not found"),
@@ -1118,7 +1118,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					{UserID: "user_9", RoleName: "MEMBER", Email: "tyrion.lannister789@test.com", Accepted: false},
 				},
 				userLBPermissions: types.LoadBalancerPermissions{
-					RoleName: "MEMBER", Permissions: []types.PermissionsEnum{"read:endpoint"},
+					RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"},
 				},
 			},
 			// {
