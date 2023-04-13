@@ -244,7 +244,9 @@ func Test_parsePortalAppNotification(t *testing.T) {
 
 			time.Sleep(200 * time.Millisecond) // need time for cache refresh
 
-			c.Equal(test.portalApp, cache.GetPortalApp(test.portalAppID))
+			if !test.portalApp.Deleted {
+				c.Equal(test.portalApp, cache.GetPortalApp(test.portalAppID))
+			}
 
 			portalAppFound := findPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalAppID)
 			if test.portalApp.Deleted {
@@ -269,7 +271,6 @@ func Test_parseAATNotification(t *testing.T) {
 				AATs: map[types.ProtocolAppID]types.AAT{
 					"test_protocol_app_3": {
 						ID:              "test_protocol_app_3",
-						AppID:           "test_app_3",
 						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
 						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
 						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
@@ -287,7 +288,6 @@ func Test_parseAATNotification(t *testing.T) {
 				AATs: map[types.ProtocolAppID]types.AAT{
 					"test_protocol_app_3": {
 						ID:              "test_protocol_app_3",
-						AppID:           "test_app_3",
 						Address:         "test_80bd695bd00e788aefb90931beeb4354",
 						PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
 						ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",

@@ -530,6 +530,9 @@ func Test_upsertPortalApp(t *testing.T) {
 			pendingSettings: map[types.PortalAppID]types.Settings{
 				testBaseApp.ID: testApp.Settings,
 			},
+			pendingAAT: map[types.PortalAppID]types.AAT{
+				testBaseApp.ID: testdata.TestCreatePortalAppAAT,
+			},
 		},
 		{
 			name:      "Should add a new PortalApp to cache with pending AppNotifications",
@@ -543,10 +546,19 @@ func Test_upsertPortalApp(t *testing.T) {
 					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
 				},
 			},
+			pendingSettings: map[types.PortalAppID]types.Settings{
+				testBaseApp.ID: testApp.Settings,
+			},
+			pendingAAT: map[types.PortalAppID]types.AAT{
+				testBaseApp.ID: testdata.TestCreatePortalAppAAT,
+			},
 		},
 		{
 			name:      "Should add a new PortalApp to cache with pending Whitelists",
 			portalApp: testBaseApp,
+			pendingSettings: map[types.PortalAppID]types.Settings{
+				testBaseApp.ID: testApp.Settings,
+			},
 			pendingWhitelists: map[types.PortalAppID][]types.Whitelist{
 				testBaseApp.ID: {
 					{
@@ -561,6 +573,18 @@ func Test_upsertPortalApp(t *testing.T) {
 						ChainID: "0064",
 					},
 				},
+			},
+			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
+				testBaseApp.ID: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "email@pokt.network",
+					Trigger:     "trigger456",
+					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
+				},
+			},
+			pendingAAT: map[types.PortalAppID]types.AAT{
+				testBaseApp.ID: testdata.TestCreatePortalAppAAT,
 			},
 		},
 		{
@@ -949,14 +973,14 @@ func Test_deleteWhitelist(t *testing.T) {
 		{
 			name: "Should remove Whitelist from an existing PortalApp in cache",
 			whitelist: types.Whitelist{
-				AppID:   "test_app_new_3450he46fhs7",
+				AppID:   "test_app_1",
 				Type:    types.WhitelistTypeOrigins,
-				Value:   "https://example.com",
+				Value:   "https://test.com",
 				ChainID: "test_chain_id_1",
 			},
 			portalAppID: "test_app_new_3450he46fhs7",
 			portalApp: &types.PortalApp{
-				ID:         "test_app_new_3450he46fhs7",
+				ID:         "test_app_1",
 				Name:       "new_pokt_app_1",
 				Gigastake:  true,
 				Staked:     false,
