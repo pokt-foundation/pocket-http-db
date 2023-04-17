@@ -779,59 +779,6 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	}
 }
 
-func TestRouter_UpdateApplication(t *testing.T) {
-	tests := []struct {
-		name             string
-		appID            string
-		updateInput      types.UpdateApplication
-		expectedStatus   int
-		expectedResponse types.Application
-	}{
-		{
-			name:           "Should update an existing application",
-			appID:          "test_app_1",
-			updateInput:    testdata.LegacyUpdateApplication,
-			expectedStatus: http.StatusOK,
-			expectedResponse: types.Application{
-				ID:        "test_app_1",
-				UserID:    "auth0|james_holden",
-				Name:      "pokt_app_123",
-				CreatedAt: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-				UpdatedAt: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-			}, // TODO update when router listener update finished
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			router, err := newTestRouter(t)
-			c.NoError(err)
-
-			writerMock := driver.NewMockDriver(t)
-			writerMock.On("UpdatePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.writer = writerMock
-
-			rr := httptest.NewRecorder()
-
-			updateInputBytes, err := json.Marshal(test.updateInput)
-			c.NoError(err)
-
-			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/application/%s", test.appID), bytes.NewBuffer(updateInputBytes))
-			c.NoError(err)
-
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
-
-			var appResp types.Application
-			err = json.Unmarshal(rr.Body.Bytes(), &appResp)
-			c.NoError(err)
-			c.Equal(test.expectedResponse, appResp)
-		})
-	}
-}
-
 func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	tests := []struct {
 		name           string

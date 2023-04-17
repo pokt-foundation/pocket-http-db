@@ -3,11 +3,12 @@ module github.com/pokt-foundation/pocket-http-db
 go 1.18
 
 require (
+	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/mux v1.8.0
 	github.com/lib/pq v1.10.7
-	github.com/pokt-foundation/db-client v1.7.1
-	github.com/pokt-foundation/portal-db v1.10.6
-	github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.34
+	github.com/pokt-foundation/db-client v1.8.0
+	github.com/pokt-foundation/portal-db v1.10.8
+	github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.46
 	github.com/pokt-foundation/utils-go v0.3.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
@@ -26,4 +27,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/pokt-foundation/portal-db/v2 => ../portal-db
+// / TODO install published package once DB client tsts are fixed
+replace github.com/pokt-foundation/db-client => ../db-client

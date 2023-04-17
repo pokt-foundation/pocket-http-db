@@ -1,6 +1,7 @@
 package router
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,6 +57,7 @@ func NewRouter(config Config) (*Router, error) {
 	}
 
 	rt.Router.HandleFunc("/", rt.HealthCheck).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/reset_cache", rt.ResetCache).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v1/blockchain", rt.GetBlockchains).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/blockchain", rt.CreateBlockchain).Methods(http.MethodPost)
@@ -66,13 +68,12 @@ func NewRouter(config Config) (*Router, error) {
 
 	rt.Router.HandleFunc("/v1/application", rt.GetApplications).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/application/{id}", rt.GetApplication).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/application/{id}", rt.UpdateApplication).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/application/first_date_surpassed", rt.UpdateFirstDateSurpassed).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v1/load_balancer", rt.GetLoadBalancers).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/load_balancer", rt.CreateLoadBalancer).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
-	// rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut) // TODO remove from client and only use Update Application
+	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
@@ -121,6 +122,23 @@ func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	_, err := w.Write([]byte("Pocket HTTP DB is up and running!"))
 	if err != nil {
 		panic(err)
+	}
+}
+
+func (rt *Router) ResetCache(w http.ResponseWriter, r *http.Request) {
+	err := rt.cache.ResetCache(r.Context())
+	if err != nil {
+		rt.logError(fmt.Errorf("ResetCache failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write([]byte("cache manually reset successfully\n"))
+	if err != nil {
+		rt.logError(fmt.Errorf("ResetCache failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 }
 
@@ -337,7 +355,7 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	fullBlockchain, err := rt.cache.CreateLegacyBlockchain(r.Context(), rt.writer, blockchain)
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteBlockchain in CreateBlockchain failed: %w", err))
+		rt.logError(fmt.Errorf("CreateLegacyBlockchain in CreateBlockchain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -369,7 +387,7 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 
 /* ---------- Update Methods ---------- */
 
-func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
+func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	appID := vars["id"]
@@ -385,13 +403,20 @@ func (rt *Router) UpdateApplication(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// Note: It is intended to use UpdateLegacyLoadBalancer here
-	app, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, appID, updateInput)
+	loadBalancer, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, appID, updateInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyApplication in UpdateApplication failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		if err.Error() == fmt.Errorf(cache.ErrPortalAppNotFound.Error(), appID).Error() { // prevent a 500 when it should be a 404
+			jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+			return
+		} else {
+			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, app)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, loadBalancer)
 }
 
 func (rt *Router) UpdateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
@@ -499,6 +524,8 @@ func (rt *Router) UpdateBlockchain(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	PrettyString("CHAIN ID", blockchainID)
+
 	updatedChain, err := rt.cache.UpdateLegacyBlockchain(r.Context(), rt.writer, blockchainID, update)
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateLegacyBlockchain in UpdateBlockchain failed: %w", err))
@@ -531,4 +558,15 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, activated)
+}
+
+func PrettyString(label string, thing interface{}) {
+	jsonThing, _ := json.Marshal(thing)
+	str := string(jsonThing)
+
+	var prettyJSON bytes.Buffer
+	_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
+	output := prettyJSON.String()
+
+	fmt.Println(label, output)
 }

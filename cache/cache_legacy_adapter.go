@@ -13,9 +13,9 @@ import (
 
 var (
 	errAccountNotFound           = errors.New("account not found for ID %s")
-	errAccountNotFoundForLB      = errors.New("account not found for LB ID %s")
 	errAccountNotFoundForUser    = errors.New("account not found for User ID %s")
-	errPortalAppNotFound         = errors.New("portal app not found for LB ID %s")
+	ErrPortalAppNotFound         = errors.New("portal app not found for load balancer ID %s")
+	errPortalAppNotFoundForApp   = errors.New("portal app not found for app ID %s")
 	errUserNotFound              = errors.New("user not found for provider user ID %s")
 	errPlanNotFound              = errors.New("plan not found for type %s")
 	errPortalAppsNotFoundForUser = errors.New("portal app not found for user ID %s")
@@ -64,16 +64,16 @@ func (c *Cache) GetLegacyApplications(options Options) []types.Application {
 }
 
 // GetLegacyApplication returns one V2 PortalApp in the cache converted to a V1 Application
-func (c *Cache) GetLegacyApplication(portalAppID string) (types.Application, error) {
+func (c *Cache) GetLegacyApplication(appID string) (types.Application, error) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	legacyAppID := types.ProtocolAppID(portalAppID)
+	PortalAppID := types.ProtocolAppID(appID)
 
-	portalApp := c.GetPortalAppByProtocolID(legacyAppID)
+	portalApp := c.GetPortalAppByProtocolID(PortalAppID)
 
 	if portalApp.ID == "" {
-		return types.Application{}, errPortalAppNotFound
+		return types.Application{}, fmt.Errorf(errPortalAppNotFoundForApp.Error(), appID)
 	}
 
 	_, account, err := c.getUserIDAndAccount(portalApp.AccountID)
@@ -81,7 +81,7 @@ func (c *Cache) GetLegacyApplication(portalAppID string) (types.Application, err
 		return types.Application{}, err
 	}
 
-	application := legacyadapters.ConvertToLegacyApplication(portalApp, *account, legacyAppID)
+	application := legacyadapters.ConvertToLegacyApplication(portalApp, *account, PortalAppID)
 
 	return application, nil
 }
@@ -133,12 +133,12 @@ func (c *Cache) GetLegacyLoadBalancer(ctx context.Context, lbID string) (types.L
 
 	portalApp := c.GetPortalApp(types.PortalAppID(lbID))
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), lbID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), lbID)
 	}
 
 	account := c.GetAccount(portalApp.AccountID)
 	if account.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFoundForLB.Error(), portalApp.AccountID)
+		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
 	}
 
 	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account), nil
@@ -190,7 +190,7 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 	}
 
 	if len(applications) == 0 {
-		return applications, errPortalAppsNotFoundForUser
+		return applications, fmt.Errorf(errPortalAppsNotFoundForUser.Error(), portalUserID)
 	}
 
 	return applications, nil
@@ -399,7 +399,7 @@ func (c *Cache) CreateLegacyLoadBalancerUser(ctx context.Context, writer driver.
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, fmt.Errorf(errPortalAppNotFound.Error(), portalAppID)
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -435,10 +435,10 @@ func (c *Cache) CreateLegacyBlockchain(ctx context.Context, writer driver.Writer
 
 	_, err := writer.WriteChain(ctx, chain, createdAt)
 	if err != nil {
-		return types.Blockchain{}, fmt.Errorf("ActivateLegacyBlockchain failed: %w", err)
+		return types.Blockchain{}, fmt.Errorf("CreateLegacyBlockchain failed: %w", err)
 	}
 
-	return blockchain, nil
+	return legacyadapters.ConvertToLegacyBlockchain(chain), nil
 }
 
 /* ---------- Update Methods ---------- */
@@ -497,7 +497,7 @@ func (c *Cache) UpdateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, errPortalAppNotFound
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -534,7 +534,7 @@ func (c *Cache) UpdateLegacyUserRole(ctx context.Context, writer driver.Writer, 
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, errPortalAppNotFound
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -542,6 +542,7 @@ func (c *Cache) UpdateLegacyUserRole(ctx context.Context, writer driver.Writer, 
 	}
 
 	updateAccountUser := legacyadapters.ConvertToV2UpdateAccountUserAccess(updateUser, lbID, string(portalUserID))
+	updateAccountUser.AccountID = portalApp.AccountID
 
 	err := writer.SetAccountUserRole(ctx, updateAccountUser, updatedAt)
 	if err != nil {
@@ -572,7 +573,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, errPortalAppNotFound
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
@@ -612,7 +613,8 @@ func (c *Cache) UpdateLegacyBlockchain(ctx context.Context, writer driver.Writer
 		return types.Blockchain{}, fmt.Errorf(errBlockchainNotFound.Error(), chainID)
 	}
 
-	update := legacyadapters.ConvertToV2UpdateChain(updateBlockchain)
+	update := legacyadapters.ConvertToV2UpdateChain(blockchainID, updateBlockchain)
+
 	err := writer.UpdateChain(ctx, update, updatedAt)
 	if err != nil {
 		return types.Blockchain{}, fmt.Errorf("UpdateChain failed: %w", err)
@@ -629,7 +631,7 @@ func (c *Cache) CreateLegacyRedirect(ctx context.Context, writer driver.Writer, 
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	chainID := types.RelayChainID(redirect.ChainID)
+	chainID := types.RelayChainID(redirect.BlockchainID)
 	updatedAt := time.Now()
 
 	chain := c.GetChain(chainID, Options{})
@@ -637,11 +639,12 @@ func (c *Cache) CreateLegacyRedirect(ctx context.Context, writer driver.Writer, 
 		return redirect, fmt.Errorf(errBlockchainNotFound.Error(), chainID)
 	}
 
-	redirectUpdate := legacyadapters.ConvertToV2Redirect(redirect)
 	chainUpdate := types.Chain{
-		ID:        chainID,
-		Redirects: []types.GigastakeRedirect{redirectUpdate},
+		ID: chainID,
 	}
+	chainUpdate.Redirects = append(chainUpdate.Redirects, chain.Redirects...)
+	chainUpdate.Redirects = append(chainUpdate.Redirects, legacyadapters.ConvertToV2Redirect(redirect))
+
 	err := writer.UpdateChain(ctx, chainUpdate, updatedAt)
 	if err != nil {
 		return redirect, fmt.Errorf("CreateRedirect failed: %w", err)
@@ -682,7 +685,7 @@ func (c *Cache) RemoveLegacyAccountUser(ctx context.Context, writer driver.Write
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		return types.LoadBalancer{}, errPortalAppNotFound
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
 	if portalApp.ID == "" {
