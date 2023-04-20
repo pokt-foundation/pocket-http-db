@@ -629,6 +629,52 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
+	/* ts.Run("Test_CreatePortalUser", func() {
+		tests := []struct {
+			name             string
+			userInput        types.CreateUser
+			expectedStatus   int
+			expectedResponse types.User
+			err              error
+		}{
+			{
+				name: "Should create a single user in the DB",
+				userInput: types.CreateUser{
+					Email:            "test@test.com",
+					AuthProviderType: types.AuthTypeAuth0Github,
+					ProviderUserID:   "auth0_username|test",
+				},
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				createdLB, err := ts.client1.cre(testCtx, *test.loadBalancer)
+				ts.Equal(test.err, err)
+
+				test.loadBalancer.Integrations.CovalentAPIKeyFree = test.expectedCovalentAPIKey
+				test.loadBalancer.ID = createdLB.ID
+				test.loadBalancer.Applications[0].ID = createdLB.Applications[0].ID
+				clearTimeFields(createdLB)
+
+				cmp.Equal(test.loadBalancer, createdLB)
+
+				if test.err == nil {
+					<-time.After(50 * time.Millisecond)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
+					ts.Equal(test.err, err)
+					clearTimeFields(loadBalancer)
+					cmp.Equal(test.loadBalancer, loadBalancer)
+
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
+					ts.Equal(test.err, err)
+					clearTimeFields(loadBalancer)
+					cmp.Equal(test.loadBalancer, loadBalancer)
+				}
+			})
+		}
+	}) */
+
 	ts.Run("Test_CreateLoadBalancer", func() {
 		tests := []struct {
 			name                   string

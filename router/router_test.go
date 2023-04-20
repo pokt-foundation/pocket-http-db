@@ -35,6 +35,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
+	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUsers[types.UserID("usertest")], nil)
 
 	testLog := logrus.New()
 
@@ -779,6 +780,64 @@ func TestRouter_CreateRedirect(t *testing.T) {
 	}
 }
 
+func TestRouter_CreatePortalUser(t *testing.T) {
+	tests := []struct {
+		name             string
+		userInput        types.CreateUser
+		expectedStatus   int
+		expectedResponse types.User
+	}{
+		{
+			name: "Should create a new user",
+			userInput: types.CreateUser{
+				Email:            "test@test.com",
+				AuthProviderType: types.AuthTypeAuth0Github,
+				ProviderUserID:   "auth0_username|test",
+			},
+			expectedStatus: http.StatusOK,
+			expectedResponse: types.User{
+				Email:    "test@test.com",
+				SignedUp: true,
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Github: {ProviderUserID: "auth0_username|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteUserNewSignUp", mock.Anything, mock.Anything, mock.Anything).Return(types.UserID("usertest"), nil).Once()
+			writerMock.On("WriteAccount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&types.Account{ID: types.AccountID("acctest2")}, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			userInputBytes, err := json.Marshal(test.userInput)
+			c.NoError(err)
+
+			req, err := http.NewRequestWithContext(testCtx, http.MethodPost, "/v1/user", bytes.NewBuffer(userInputBytes))
+			c.NoError(err)
+
+			fmt.Println(req.Context())
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var userResp types.User
+			err = json.Unmarshal(rr.Body.Bytes(), &userResp)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, userResp)
+		})
+	}
+}
+
 func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -1508,5 +1567,15 @@ var (
 		"enterprise_plan": {Type: "enterprise_plan", Limit: 10_000},
 		"pro_plan":        {Type: "pro_plan", Limit: 5_000},
 		"startup_plan":    {Type: "startup_plan", Limit: 500},
+	}
+
+	testUsers = map[types.UserID]*types.User{
+		types.UserID("usertest"): {
+			Email:    "test@test.com",
+			SignedUp: true,
+			AuthProviders: map[types.AuthType]types.UserAuthProvider{
+				types.AuthTypeAuth0Github: {ProviderUserID: "auth0_username|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
+			},
+		},
 	}
 )

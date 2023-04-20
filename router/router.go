@@ -79,6 +79,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete) // TODO update to use userID not email
 
+	rt.Router.HandleFunc("/v1/user", rt.CreatePortalUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationsByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
@@ -383,6 +384,27 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
+}
+
+func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
+	var userInput types.CreateUser
+
+	err := json.NewDecoder(r.Body).Decode(&userInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreatePortalUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	user, err := rt.cache.CreateNewPortalUser(r.Context(), rt.writer, userInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreatePortalUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, user)
 }
 
 /* ---------- Update Methods ---------- */

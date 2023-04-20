@@ -446,6 +446,45 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	}
 }
 
+// TODO: Add cache test for CreateNewPortalUser since it's the first writer method in the new cache package
+// CreateNewPortalUser creates a new portal user in the db
+func (c *Cache) CreateNewPortalUser(ctx context.Context, writer driver.Writer, createUserInput types.CreateUser) (types.User, error) {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	newUserID, err := writer.WriteUserNewSignUp(ctx, createUserInput, time.Now())
+	if err != nil {
+		return types.User{}, fmt.Errorf("error WriteUserNewSignUp: %v\n", err)
+	}
+
+	user, err := c.reader.ReadUserByUserID(ctx, newUserID)
+	if err != nil {
+		return types.User{}, fmt.Errorf("error ReadUserByUserID: %v\n", err)
+	}
+
+	newAccountInput := types.Account{PlanType: types.BasicPlan, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+
+	newAccount, err := writer.WriteAccount(ctx, newUserID, newAccountInput, time.Now())
+	if err != nil {
+		// rollback the user if the account failed
+		_, Derr := writer.DeletePortalUser(ctx, user.ID)
+		if Derr != nil {
+			return types.User{}, fmt.Errorf("error deleting new user with failed account: %v\n", Derr)
+		}
+
+		return types.User{}, fmt.Errorf("error WriteAccount: %v\n", err)
+	}
+
+	c.userIDs[createUserInput.ProviderUserID] = user.ID
+
+	if _, ok := c.accountsByUserID[user.ID]; !ok {
+		c.accountsByUserID[user.ID] = make(map[types.AccountID]*types.Account)
+	}
+	c.accountsByUserID[user.ID][newAccount.ID] = newAccount
+
+	return *user, nil
+}
+
 /* ---------- PortalApps ---------- */
 
 // GetPortalApp returns PortalApp from cache by portalAppID
