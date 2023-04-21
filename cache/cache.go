@@ -343,6 +343,23 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	return accountsToReturn
 }
 
+// GetAccounts returns all Accounts for a given user
+func (c *Cache) GetUserFromUserID(userID types.UserID) []types.AccountUserAccess {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	accounts := c.GetAccountsByUserID(userID)
+
+	user := []types.AccountUserAccess{}
+	for _, account := range accounts {
+		userAccess := account.Users[userID]
+		userAccess.AccountID = account.ID
+		user = append(user, userAccess)
+	}
+
+	return user
+}
+
 // upsertAccount adds, updates or deletes Account in cache
 func (c *Cache) upsertAccount(account types.Account) {
 	c.rwMutex.Lock()
@@ -454,12 +471,12 @@ func (c *Cache) CreateNewPortalUser(ctx context.Context, writer driver.Writer, c
 
 	newUserID, err := writer.WriteUserNewSignUp(ctx, createUserInput, time.Now())
 	if err != nil {
-		return types.User{}, fmt.Errorf("error WriteUserNewSignUp: %v\n", err)
+		return types.User{}, fmt.Errorf("error WriteUserNewSignUp: %v", err)
 	}
 
 	user, err := c.reader.ReadUserByUserID(ctx, newUserID)
 	if err != nil {
-		return types.User{}, fmt.Errorf("error ReadUserByUserID: %v\n", err)
+		return types.User{}, fmt.Errorf("error ReadUserByUserID: %v", err)
 	}
 
 	newAccountInput := types.Account{PlanType: types.BasicPlan, CreatedAt: time.Now(), UpdatedAt: time.Now()}
@@ -469,10 +486,10 @@ func (c *Cache) CreateNewPortalUser(ctx context.Context, writer driver.Writer, c
 		// rollback the user if the account failed
 		_, Derr := writer.DeletePortalUser(ctx, user.ID)
 		if Derr != nil {
-			return types.User{}, fmt.Errorf("error deleting new user with failed account: %v\n", Derr)
+			return types.User{}, fmt.Errorf("error deleting new user with failed account: %v", Derr)
 		}
 
-		return types.User{}, fmt.Errorf("error WriteAccount: %v\n", err)
+		return types.User{}, fmt.Errorf("error WriteAccount: %v", err)
 	}
 
 	c.userIDs[createUserInput.ProviderUserID] = user.ID

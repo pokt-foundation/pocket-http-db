@@ -80,6 +80,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete) // TODO update to use userID not email
 
 	rt.Router.HandleFunc("/v1/user", rt.CreatePortalUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v1/user/{id}", rt.GetUserByProviderID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationsByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
@@ -293,6 +294,16 @@ func (rt *Router) GetLoadBalancersCountByPortalID(w http.ResponseWriter, r *http
 	lbsCount := rt.cache.GetLegacyLoadBalancersCount(r.Context(), userPortalID)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lbsCount)
+}
+
+/* Returns the user associated with the providerID*/
+func (rt *Router) GetUserByProviderID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := vars["id"]
+
+	user := rt.cache.GetUserFromUserID(types.UserID(userID))
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, user)
 }
 
 /* ---------- Create Methods ---------- */

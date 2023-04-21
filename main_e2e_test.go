@@ -629,7 +629,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	/* ts.Run("Test_CreatePortalUser", func() {
+	ts.Run("Test_CreatePortalUser", func() {
 		tests := []struct {
 			name             string
 			userInput        types.CreateUser
@@ -644,36 +644,56 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AuthProviderType: types.AuthTypeAuth0Github,
 					ProviderUserID:   "auth0_username|test",
 				},
+				expectedResponse: types.User{
+					Email: "test@test.com",
+					AuthProviders: map[types.AuthType]types.UserAuthProvider{
+						types.AuthTypeAuth0Github: {
+							Type:           types.AuthTypeAuth0Github,
+							ProviderUserID: "auth0_username|test",
+							Provider:       types.AuthProviderAuth0,
+						},
+					},
+				},
+			},
+			{
+				name: "Should fail if there's no email",
+				userInput: types.CreateUser{
+					AuthProviderType: types.AuthTypeAuth0Github,
+					ProviderUserID:   "auth0_username|test",
+				},
+				err: fmt.Errorf("Response not OK. 404 Not Found: error WriteUserNewSignUp: error email input is not a valid email address ''"),
+			},
+			{
+				name: "Should fail if there's no provider type",
+				userInput: types.CreateUser{
+					Email:          "email@tes.com",
+					ProviderUserID: "auth0_username|test",
+				},
+				err: fmt.Errorf("Response not OK. 404 Not Found: error WriteUserNewSignUp: error invalid auth provider type ''"),
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdLB, err := ts.client1.cre(testCtx, *test.loadBalancer)
+				createdUser, err := ts.client1.CreatePortalUser(testCtx, test.userInput)
 				ts.Equal(test.err, err)
-
-				test.loadBalancer.Integrations.CovalentAPIKeyFree = test.expectedCovalentAPIKey
-				test.loadBalancer.ID = createdLB.ID
-				test.loadBalancer.Applications[0].ID = createdLB.Applications[0].ID
-				clearTimeFields(createdLB)
-
-				cmp.Equal(test.loadBalancer, createdLB)
-
 				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
-					ts.Equal(test.err, err)
-					clearTimeFields(loadBalancer)
-					cmp.Equal(test.loadBalancer, loadBalancer)
+					test.expectedResponse.UpdatedAt = createdUser.UpdatedAt
+					test.expectedResponse.CreatedAt = createdUser.CreatedAt
+					cmp.Equal(test.expectedResponse, createdUser)
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
+					<-time.After(50 * time.Millisecond)
+					user, err := ts.client1.GetUsersByUserID(testCtx, v1types.UserID(createdUser.ID))
 					ts.Equal(test.err, err)
-					clearTimeFields(loadBalancer)
-					cmp.Equal(test.loadBalancer, loadBalancer)
+					cmp.Equal(test.expectedResponse, user)
+
+					user, err = ts.client2.GetUsersByUserID(testCtx, v1types.UserID(createdUser.ID))
+					ts.Equal(test.err, err)
+					cmp.Equal(test.expectedResponse, user)
 				}
 			})
 		}
-	}) */
+	})
 
 	ts.Run("Test_CreateLoadBalancer", func() {
 		tests := []struct {
