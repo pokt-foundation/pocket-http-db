@@ -2,10 +2,9 @@ name: Build and Push Docker Image
 
 on:
   push:
-    tags:
-      - '*'
     branches:
-      - beta
+      - master
+      - v2-staging
 
 env:
   PROJECT_ID: portal-gb-prod
@@ -40,10 +39,12 @@ jobs:
         password: ${{ steps.auth.outputs.access_token }}
 
     - name: Get tag
-      id: get-tag
-      run: echo ::set-output name=short_ref::${GITHUB_REF#refs/*/}
+      if: startsWith(github.ref, 'refs/heads/v2-staging')
+      id: get-tag-v2
+      run: echo ::set-output name=short_ref::2.0.0+\${GITHUB_SHA::7}
 
-    - id: docker-push-tagged
+    - id: docker-push-tagged-v2
+      if: startsWith(github.ref, 'refs/heads/v2-staging')
       name: Tag Docker image and push to Google Artifact Registry
       uses: docker/build-push-action@v2
       with:
@@ -51,4 +52,18 @@ jobs:
         push: true
         tags: |
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ steps.get-tag.outputs.short_ref }}
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest
+            
+    - name: Get tag
+      if: startsWith(github.ref, 'refs/heads/master')
+      id: get-tag-v1
+      run: echo ::set-output name=short_ref::1.0.0+\${GITHUB_SHA::7}
+
+    - id: docker-push-tagged-v1
+      if: startsWith(github.ref, 'refs/heads/master')
+      name: Tag Docker image and push to Google Artifact Registry
+      uses: docker/build-push-action@v2
+      with:
+        build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
+        push: true
+        tags: |
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ steps.get-tag.outputs.short_ref }}
