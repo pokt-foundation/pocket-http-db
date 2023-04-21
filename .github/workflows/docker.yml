@@ -39,12 +39,12 @@ jobs:
         password: ${{ steps.auth.outputs.access_token }}
 
     - name: Get tag
-      if: startsWith(github.ref, 'refs/heads/staging-v2')
+      if: startsWith(github.ref, 'refs/heads/v2-staging')
       id: get-tag-v2
       run: echo ::set-output name=short_ref::2.0.0+\${GITHUB_SHA::7}
 
     - id: docker-push-tagged-v2
-      if: startsWith(github.ref, 'refs/heads/staging-v2')
+      if: startsWith(github.ref, 'refs/heads/v2-staging')
       name: Tag Docker image and push to Google Artifact Registry
       uses: docker/build-push-action@v2
       with:
