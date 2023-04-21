@@ -41,7 +41,7 @@ jobs:
     - name: Get tag v2
       if: startsWith(github.ref, 'refs/heads/v2-staging')
       id: get-tag-v2
-      run: echo "dockertag=2.0.0+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      run: echo "dockertag=2.0.0_$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
     - id: docker-push-tagged-v2
       if: startsWith(github.ref, 'refs/heads/v2-staging')
@@ -56,7 +56,7 @@ jobs:
     - name: Get tag
       if: startsWith(github.ref, 'refs/heads/master')
       id: get-tag-v1
-      run: echo "dockertag=1.0.0+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      run: echo "dockertag=1.0.0_$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
     - id: docker-push-tagged-v1
       if: startsWith(github.ref, 'refs/heads/master')
