@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - beta
 
 env:
   PROJECT_ID: portal-gb-prod
