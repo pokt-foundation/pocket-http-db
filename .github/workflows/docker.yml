@@ -38,10 +38,10 @@ jobs:
         username: oauth2accesstoken
         password: ${{ steps.auth.outputs.access_token }}
 
-    - name: Get tag
+    - name: Get tag v2
       if: startsWith(github.ref, 'refs/heads/v2-staging')
       id: get-tag-v2
-      run: echo ::set-output name=short_ref::2.0.0+\${GITHUB_SHA::7}
+      run: echo "dockertag=2.0.0+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
     - id: docker-push-tagged-v2
       if: startsWith(github.ref, 'refs/heads/v2-staging')
@@ -51,12 +51,12 @@ jobs:
         build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
         push: true
         tags: |
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ steps.get-tag.outputs.short_ref }}
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ steps.get-tag-v2.outputs.dockertag }}
             
     - name: Get tag
       if: startsWith(github.ref, 'refs/heads/master')
       id: get-tag-v1
-      run: echo ::set-output name=short_ref::1.0.0+\${GITHUB_SHA::7}
+      run: echo "dockertag=1.0.0+$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
     - id: docker-push-tagged-v1
       if: startsWith(github.ref, 'refs/heads/master')
@@ -66,4 +66,4 @@ jobs:
         build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
         push: true
         tags: |
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ steps.get-tag.outputs.short_ref }}
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ steps.get-tag-v1.outputs.dockertag }}
