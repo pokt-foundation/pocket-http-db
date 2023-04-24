@@ -23,6 +23,7 @@ jobs:
 
   test:
     name: Test
+    needs: lint
     runs-on: ubuntu-22.04
     steps:
       - name: Set up Go
@@ -51,8 +52,8 @@ jobs:
 
   deploy:
     name: Postgres HTTP API Staging
+    needs: [lint, test]
     runs-on: ubuntu-22.04
-
     steps:
       - name: Checkout
         uses: actions/checkout@v3

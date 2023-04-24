@@ -78,7 +78,7 @@ func createTempFile(content string, prefix string) (string, error) {
 	return tmpFile.Name(), nil
 }
 
-// buildConnectionString constructs the PostgreSQL connection string using the given options.
+// buildConnectionString constructs the Postgre connection string using the given options.
 // If the SSL env vars are present, it also creates temporary files for the SSL certificates
 // and returns a cleanup function that removes the temporary files when called.
 func buildConnectionString(options options) (string, func(), error) {
@@ -135,20 +135,20 @@ func httpHandler(router *router.Router, port string, log *logrus.Logger) {
 
 func main() {
 	logger := logrus.New()
-	// log as JSON instead of the default ASCII formatter.
 	logger.SetFormatter(&logrus.JSONFormatter{})
 
 	options := gatherOptions()
+
+	// Connect to Postgres DB
+	connectionString, cleanupTempCertFiles, err := buildConnectionString(options)
+	if err != nil {
+		panic(err)
+	}
 
 	reportProblem := func(ev pq.ListenerEventType, err error) {
 		if err != nil {
 			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
 		}
-	}
-
-	connectionString, cleanupTempCertFiles, err := buildConnectionString(options)
-	if err != nil {
-		panic(err)
 	}
 
 	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
@@ -158,6 +158,10 @@ func main() {
 		panic(err)
 	}
 
+	// Clean up the temporary SSL certificate files created from the .env vars
+	cleanupTempCertFiles()
+
+	// Create the cache and router
 	cache, err := cache.NewCache(driver, options.cacheRefreshMinutes, logger)
 	if err != nil {
 		panic(err)
@@ -167,9 +171,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	// Clean up the temporary SSL certificate files created from the .env vars
-	cleanupTempCertFiles()
 
 	var wg sync.WaitGroup
 
