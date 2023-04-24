@@ -1,11 +1,6 @@
-name: Production deployment us-west-2
+name: AWS ECS -- Production deployment -- us-west-2
 
-on:
-  workflow_run:
-    workflows: ["Build & Test"]
-    branches: [master]
-    types:
-      - completed
+on: workflow_dispatch
 
 jobs:
   deploy:
@@ -38,23 +33,23 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Fill in the new image ID / us-west-2 - API
-        id: task-def-us-west-2-api
-        uses: aws-actions/amazon-ecs-render-task-definition@master
-        with:
-          task-definition: .aws/ecs-task-definition-production.json
-          container-name: postgres-api
-          image: ${{ steps.build-image-api.outputs.image }}
-          environment-variables: |
-            PORT=${{ secrets.PORT }}
-            CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
-            API_KEYS=${{ secrets.PHD_API_KEYS_PRODUCTION }}
-            CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
-
-      - name: Deploy / us-west-2
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
-          service: postgres-api
-          cluster: postgres-api
-          wait-for-service-stability: true
+#      - name: Fill in the new image ID / us-west-2 - API
+#        id: task-def-us-west-2-api
+#        uses: aws-actions/amazon-ecs-render-task-definition@master
+#        with:
+#          task-definition: .aws/ecs-task-definition-production.json
+#          container-name: postgres-api
+#          image: ${{ steps.build-image-api.outputs.image }}
+#          environment-variables: |
+#            PORT=${{ secrets.PORT }}
+#            CONNECTION_STRING=${{ secrets.CONNECTION_STRING }}
+#            API_KEYS=${{ secrets.PHD_API_KEYS_PRODUCTION }}
+#            CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
+#
+#      - name: Deploy / us-west-2
+#        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+#        with:
+#          task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
+#          service: postgres-api
+#          cluster: postgres-api
+#          wait-for-service-stability: true
