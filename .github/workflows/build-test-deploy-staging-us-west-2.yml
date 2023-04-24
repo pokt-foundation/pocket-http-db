@@ -1,9 +1,6 @@
-name: Staging Build, Test & Deployment us-west-2
+name: AWS ECS--Staging Deployment --us-west-2
 
-on:
-  push:
-    branches:
-      - staging
+on: workflow_dispatch
 
 jobs:
   lint:
@@ -79,23 +76,23 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Fill in the new image ID / us-west-2 - API
-        id: task-def-us-west-2-api
-        uses: aws-actions/amazon-ecs-render-task-definition@master
-        with:
-          task-definition: .aws/ecs-task-definition-staging.json
-          container-name: postgres-api-staging
-          image: ${{ steps.build-image-api.outputs.image }}
-          environment-variables: |
-            PORT=${{ secrets.PORT }}
-            CONNECTION_STRING=${{ secrets.CONNECTION_STRING_STAGING }}
-            API_KEYS=${{ secrets.PHD_API_KEYS_STAGING }}
-            CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
+      #- name: Fill in the new image ID / us-west-2 - API
+        #id: task-def-us-west-2-api
+        #uses: aws-actions/amazon-ecs-render-task-definition@master
+        #with:
+          #task-definition: .aws/ecs-task-definition-staging.json
+          #container-name: postgres-api-staging
+          #image: ${{ steps.build-image-api.outputs.image }}
+          #environment-variables: |
+            #PORT=${{ secrets.PORT }}
+            #CONNECTION_STRING=${{ secrets.CONNECTION_STRING_STAGING }}
+            #API_KEYS=${{ secrets.PHD_API_KEYS_STAGING }}
+            #CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
 
-      - name: Deploy / us-west-2
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
-          service: postgres-api-staging
-          cluster: postgres-api
-          wait-for-service-stability: true
+      #- name: Deploy / us-west-2
+        #uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        #with:
+          #task-definition: ${{ steps.task-def-us-west-2-api.outputs.task-definition }}
+          #service: postgres-api-staging
+          #cluster: postgres-api
+          #wait-for-service-stability: true
