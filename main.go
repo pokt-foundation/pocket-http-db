@@ -18,18 +18,17 @@ import (
 )
 
 const (
-	pgHost        = "PG_HOST"
-	pgPort        = "PG_PORT"
-	pgUser        = "PG_USER"
-	pgPassword    = "PG_PASSWORD"
-	pgDatabase    = "PG_DATABASE"
-	pgSSLRootCert = "PG_SSL_ROOT_CERT"
-	pgSSLCert     = "PG_SSL_CERT"
-	pgSSLKey      = "PG_SSL_KEY"
-	apiKeys       = "API_KEYS"
-	cacheRefresh  = "CACHE_REFRESH"
-	port          = "PORT"
-
+	pgHost                     = "PG_HOST"
+	pgPort                     = "PG_PORT"
+	pgUser                     = "PG_USER"
+	pgPassword                 = "PG_PASSWORD"
+	pgDatabase                 = "PG_DATABASE"
+	pgSSLRootCert              = "PG_SSL_ROOT_CERT"
+	pgSSLCert                  = "PG_SSL_CERT"
+	pgSSLKey                   = "PG_SSL_KEY"
+	apiKeys                    = "API_KEYS"
+	cacheRefresh               = "CACHE_REFRESH"
+	port                       = "PORT"
 	defaultCacheRefreshMinutes = 5
 	defaultPort                = "8080"
 )
@@ -45,15 +44,14 @@ type options struct {
 // gatherOptions collects and returns the required environment variables.
 func gatherOptions() options {
 	return options{
-		pgHost:        environment.MustGetString(pgHost),
-		pgPort:        environment.MustGetString(pgPort),
-		pgUser:        environment.MustGetString(pgUser),
-		pgPassword:    environment.MustGetString(pgPassword),
-		pgDatabase:    environment.MustGetString(pgDatabase),
-		pgSSLRootCert: environment.GetString(pgSSLRootCert, ""),
-		pgSSLCert:     environment.GetString(pgSSLCert, ""),
-		pgSSLKey:      environment.GetString(pgSSLKey, ""),
-
+		pgHost:              environment.MustGetString(pgHost),
+		pgPort:              environment.MustGetString(pgPort),
+		pgUser:              environment.MustGetString(pgUser),
+		pgPassword:          environment.MustGetString(pgPassword),
+		pgDatabase:          environment.MustGetString(pgDatabase),
+		pgSSLRootCert:       environment.GetString(pgSSLRootCert, ""),
+		pgSSLCert:           environment.GetString(pgSSLCert, ""),
+		pgSSLKey:            environment.GetString(pgSSLKey, ""),
 		apiKeys:             environment.MustGetStringMap(apiKeys, ","),
 		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
 		port:                environment.GetString(port, defaultPort),
@@ -134,9 +132,11 @@ func httpHandler(router *router.Router, port string, log *logrus.Logger) {
 }
 
 func main() {
+	// Configure logger
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
 
+	// Gather env vars
 	options := gatherOptions()
 
 	// Connect to Postgres DB
@@ -172,11 +172,9 @@ func main() {
 		panic(err)
 	}
 
+	// Start the HTTP server
 	var wg sync.WaitGroup
-
 	wg.Add(1)
-
 	go httpHandler(router, options.port, logger)
-
 	wg.Wait()
 }
