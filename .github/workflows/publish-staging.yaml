@@ -6,6 +6,12 @@ on:
       - staging
       - v2-staging
 
+env:
+  GAR_PROJECT_ID: portal-gb-prod
+  GAR_REPOSITORY: pokt-http-db
+  GAR_IMAGE: pokt-http-db
+  GAR_REGISTRY: us-central1-docker.pkg.dev
+
 jobs:
   lint_staging:
     name: Lint
