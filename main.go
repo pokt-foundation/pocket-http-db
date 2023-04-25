@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -31,6 +30,10 @@ const (
 	port                       = "PORT"
 	defaultCacheRefreshMinutes = 5
 	defaultPort                = "8080"
+
+	sslRootCertFilename = "ssl_root_cert.pem"
+	sslCertFilename     = "ssl_cert.pem"
+	sslKeyFilename      = "ssl_key.pem"
 )
 
 type options struct {
@@ -58,28 +61,39 @@ func gatherOptions() options {
 	}
 }
 
-// createTempFile creates a temporary .pem certificate file for connecting to the database using SSL.
-func createTempFile(content string, prefix string) (string, error) {
-	tmpFile, err := ioutil.TempFile("", prefix+"-*.pem")
+// createCertFile creates a .pem certificate file for connecting to the database using SSL.
+func createCertFile(content string, filename string) (string, error) {
+	// Remove the file if it exists
+	if _, err := os.Stat(filename); !os.IsNotExist(err) {
+		err := os.Remove(filename)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	certFile, err := os.Create(filename)
 	if err != nil {
 		return "", err
 	}
-	defer tmpFile.Close()
+	defer certFile.Close()
+
+	if err := certFile.Chmod(0600); err != nil {
+		return "", err
+	}
 
 	content = strings.ReplaceAll(content, "\\n", "\n")
 
-	_, err = tmpFile.WriteString(content)
+	_, err = certFile.WriteString(content)
 	if err != nil {
 		return "", err
 	}
 
-	return tmpFile.Name(), nil
+	return certFile.Name(), nil
 }
 
 // buildConnectionString constructs the Postgre connection string using the given options.
-// If the SSL env vars are present, it also creates temporary files for the SSL certificates
-// and returns a cleanup function that removes the temporary files when called.
-func buildConnectionString(options options) (string, func(), error) {
+// If the SSL env vars are present, it also creates certificate files for the SSL certificates.
+func buildConnectionString(options options) (string, error) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
 		options.pgHost,
 		options.pgPort,
@@ -88,22 +102,20 @@ func buildConnectionString(options options) (string, func(), error) {
 		options.pgDatabase,
 	)
 
-	cleanup := func() {}
-
 	// Only configure the connection string to use SSL if all the SSL variables are present.
 	// This is to allow E2E testing of PHD using a local Docker Postgres DB without SSL.
 	if options.pgSSLRootCert != "" && options.pgSSLCert != "" && options.pgSSLKey != "" {
-		sslRootCertPath, err := createTempFile(options.pgSSLRootCert, "sslRootCert")
+		sslRootCertPath, err := createCertFile(options.pgSSLRootCert, sslRootCertFilename)
 		if err != nil {
-			return "", nil, err
+			return "", err
 		}
-		sslCertPath, err := createTempFile(options.pgSSLCert, "sslCert")
+		sslCertPath, err := createCertFile(options.pgSSLCert, sslCertFilename)
 		if err != nil {
-			return "", nil, err
+			return "", err
 		}
-		sslKeyPath, err := createTempFile(options.pgSSLKey, "sslKey")
+		sslKeyPath, err := createCertFile(options.pgSSLKey, sslKeyFilename)
 		if err != nil {
-			return "", nil, err
+			return "", err
 		}
 
 		connectionString = fmt.Sprintf("%s sslmode=verify-ca sslrootcert=%s sslcert=%s sslkey=%s",
@@ -112,17 +124,11 @@ func buildConnectionString(options options) (string, func(), error) {
 			sslCertPath,
 			sslKeyPath,
 		)
-
-		cleanup = func() {
-			os.Remove(sslRootCertPath)
-			os.Remove(sslCertPath)
-			os.Remove(sslKeyPath)
-		}
 	} else {
 		connectionString = fmt.Sprintf("%s sslmode=disable", connectionString)
 	}
 
-	return connectionString, cleanup, nil
+	return connectionString, nil
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
@@ -140,7 +146,7 @@ func main() {
 	options := gatherOptions()
 
 	// Connect to Postgres DB
-	connectionString, cleanupTempCertFiles, err := buildConnectionString(options)
+	connectionString, err := buildConnectionString(options)
 	if err != nil {
 		panic(err)
 	}
@@ -157,9 +163,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	// Clean up the temporary SSL certificate files created from the .env vars
-	cleanupTempCertFiles()
 
 	// Create the cache and router
 	cache, err := cache.NewCache(driver, options.cacheRefreshMinutes, logger)
