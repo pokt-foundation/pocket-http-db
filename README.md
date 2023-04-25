@@ -90,4 +90,3 @@ Will detect any potential secrets or sensitive information before allowing a com
 
 - Test variables that may resemble secrets (random hex strings, etc.) should be prefixed with `test_`
 - The inline comment `pragma: allowlist secret` may be added to a line to force acceptance of a false positive
-.
