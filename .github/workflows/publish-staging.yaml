@@ -52,7 +52,7 @@ jobs:
 
   release_staging:
     needs: [lint_staging, test_staging]
-    runs-on: ubuntu-22.0'4
+    runs-on: ubuntu-22.04
     outputs:
       version: ${{ steps.semantic.outputs.release-version }}
 
