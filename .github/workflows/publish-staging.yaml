@@ -139,6 +139,7 @@ jobs:
         with:
           registry: "${{ env.REGISTRY }}"
           username: oauth2accesstoken
+          password: ${{ steps.auth_gcp.outputs.access_token }}
       - name: Tag Docker image and push to Google Artifact Registry
         id: docker-push-tagged-v2
         uses: docker/build-push-action@v2
