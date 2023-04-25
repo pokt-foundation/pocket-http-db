@@ -484,9 +484,10 @@ func (c *Cache) CreateNewPortalUser(ctx context.Context, writer driver.Writer, c
 	newAccount, err := writer.WriteAccount(ctx, newUserID, newAccountInput, time.Now())
 	if err != nil {
 		// rollback the user if the account failed
-		_, Derr := writer.DeletePortalUser(ctx, user.ID)
-		if Derr != nil {
-			return types.User{}, fmt.Errorf("error deleting new user with failed account: %v", Derr)
+		// TODO: Make the rollback in the portal-db query
+		_, derr := writer.DeletePortalUser(ctx, user.ID)
+		if derr != nil {
+			return types.User{}, fmt.Errorf("error deleting new user with failed account: %v", derr)
 		}
 
 		return types.User{}, fmt.Errorf("error WriteAccount: %v", err)
