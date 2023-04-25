@@ -97,7 +97,7 @@ jobs:
   publish_ecr:
     name: Publish Image to AWS ECR
     needs: [lint_staging, test_staging, release_staging]
-    if: jobs.release_staging.outputs.published == 'true'
+    if: ${{ needs.release_staging.outputs.published }} == 'true'
     runs-on: ubuntu-22.04
     outputs:
       ecr-image-name: ${{ steps.build-image-api.outputs.name }}
@@ -130,7 +130,7 @@ jobs:
   publish_gcp:
     name: Publish Image to GCP Artifact Registry
     needs: [lint_staging, test_staging, release_staging]
-    if: jobs.release_staging.outputs.published == 'true'
+    if: ${{ needs.release_staging.outputs.published }} == 'true'
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
