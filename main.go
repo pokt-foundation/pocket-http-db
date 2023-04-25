@@ -158,9 +158,6 @@ func main() {
 		panic(err)
 	}
 
-	// Clean up the temporary SSL certificate files created from the .env vars
-	cleanupTempCertFiles()
-
 	// Create the cache and router
 	cache, err := cache.NewCache(driver, options.cacheRefreshMinutes, logger)
 	if err != nil {
@@ -171,6 +168,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// Clean up the temporary SSL certificate files created from the .env vars
+	cleanupTempCertFiles()
 
 	// Start the HTTP server
 	var wg sync.WaitGroup
