@@ -52,7 +52,7 @@ jobs:
 
   release_staging:
     needs: [lint_staging, test_staging]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.0'4
     outputs:
       version: ${{ steps.semantic.outputs.release-version }}
 
@@ -137,7 +137,7 @@ jobs:
       - name: Login to GAR
         uses: docker/login-action@v2
         with:
-          registry: "${{ env.REGISTRY }}"
+          registry: "${{ env.GAR_REGISTRY }}"
           username: 'oauth2accesstoken'
           password: '${{ steps.auth_gcp.outputs.access_token }}'
       - name: Tag Docker image and push to Google Artifact Registry
@@ -147,4 +147,4 @@ jobs:
           build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
           push: true
           tags: |
-              ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.release_staging.outputs.version }}
+              ${{ env.GAR_REGISTRY }}/${{ env.GAR_PROJECT_ID }}/pocket-http-db/pocket-http-db:${{ needs.release_staging.outputs.version }}
