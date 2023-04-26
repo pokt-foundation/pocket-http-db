@@ -54,7 +54,7 @@ jobs:
             PG_SSL_ROOT_CERT=${{ secrets.PG_SSL_ROOT_CERT }}
             PG_SSL_CERT=${{ secrets.PG_SSL_CERT }}
             PG_SSL_KEY=${{ secrets.PG_SSL_KEY }}
-            API_KEYS=${{ secrets.PHD_API_KEYS_STAGING }}
+            API_KEYS=${{ secrets.PHD_API_KEYS_PRODUCTION }}
             PORT=${{ secrets.PORT }}
             CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}
 
