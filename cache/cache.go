@@ -3,6 +3,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -10,6 +11,10 @@ import (
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	errNoUserFound = errors.New("no user found for given userID %v")
 )
 
 type (
@@ -343,21 +348,25 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	return accountsToReturn
 }
 
-// GetAccounts returns all Accounts for a given user
-func (c *Cache) GetUserFromUserID(userID types.UserID) []types.AccountUserAccess {
+// GetUserFromUserID returns the user's data for a given userID
+func (c *Cache) GetUserFromUserID(userID types.UserID) (types.AccountUserAccess, error) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	accounts := c.GetAccountsByUserID(userID)
 
-	user := []types.AccountUserAccess{}
-	for _, account := range accounts {
-		userAccess := account.Users[userID]
-		userAccess.AccountID = account.ID
-		user = append(user, userAccess)
+	if len(accounts) == 0 {
+		return types.AccountUserAccess{}, fmt.Errorf(errNoUserFound.Error(), userID)
 	}
 
-	return user
+	// Since every user instance have the same data, we can use any user
+	user, ok := accounts[0].Users[userID]
+	if ok {
+		return user, nil
+	}
+
+	return types.AccountUserAccess{}, fmt.Errorf(errNoUserFound.Error(), userID)
+
 }
 
 // upsertAccount adds, updates or deletes Account in cache
@@ -463,13 +472,14 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	}
 }
 
-// TODO: Add cache test for CreateNewPortalUser since it's the first writer method in the new cache package
 // CreateNewPortalUser creates a new portal user in the db
 func (c *Cache) CreateNewPortalUser(ctx context.Context, writer driver.Writer, createUserInput types.CreateUser) (types.User, error) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	newUserID, err := writer.WriteUserNewSignUp(ctx, createUserInput, time.Now())
+	currentTime := time.Now()
+
+	newUserID, err := writer.WriteUserNewSignUp(ctx, createUserInput, currentTime)
 	if err != nil {
 		return types.User{}, fmt.Errorf("error WriteUserNewSignUp: %v", err)
 	}
@@ -479,26 +489,22 @@ func (c *Cache) CreateNewPortalUser(ctx context.Context, writer driver.Writer, c
 		return types.User{}, fmt.Errorf("error ReadUserByUserID: %v", err)
 	}
 
-	newAccountInput := types.Account{PlanType: types.BasicPlan, CreatedAt: time.Now(), UpdatedAt: time.Now()}
-
-	newAccount, err := writer.WriteAccount(ctx, newUserID, newAccountInput, time.Now())
+	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{})
 	if err != nil {
-		// rollback the user if the account failed
-		// TODO: Make the rollback in the portal-db query
-		_, derr := writer.DeletePortalUser(ctx, user.ID)
-		if derr != nil {
-			return types.User{}, fmt.Errorf("error deleting new user with failed account: %v", derr)
-		}
+		return types.User{}, fmt.Errorf("error ReadAccounts: %v", err)
+	}
 
-		return types.User{}, fmt.Errorf("error WriteAccount: %v", err)
+	// Add the new account to the cache
+	for _, account := range accounts {
+		for _, user := range account.Users {
+			if _, ok := c.accountsByUserID[user.UserID]; !ok {
+				c.accountsByUserID[user.UserID] = make(map[types.AccountID]*types.Account)
+			}
+			c.accountsByUserID[user.UserID][account.ID] = account
+		}
 	}
 
 	c.userIDs[createUserInput.ProviderUserID] = user.ID
-
-	if _, ok := c.accountsByUserID[user.ID]; !ok {
-		c.accountsByUserID[user.ID] = make(map[types.AccountID]*types.Account)
-	}
-	c.accountsByUserID[user.ID][newAccount.ID] = newAccount
 
 	return *user, nil
 }

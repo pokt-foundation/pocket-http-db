@@ -301,7 +301,11 @@ func (rt *Router) GetUserByProviderID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
-	user := rt.cache.GetUserFromUserID(types.UserID(userID))
+	user, err := rt.cache.GetUserFromUserID(types.UserID(userID))
+	if err != nil {
+		jsonresponse.RespondWithJSON(w, http.StatusNotFound, err.Error())
+		return
+	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, user)
 }
