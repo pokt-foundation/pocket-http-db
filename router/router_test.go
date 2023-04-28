@@ -32,6 +32,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
+	readerMock.On("ReadAccounts", mock.Anything, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
@@ -814,7 +815,6 @@ func TestRouter_CreatePortalUser(t *testing.T) {
 
 			writerMock := driver.NewMockDriver(t)
 			writerMock.On("WriteUserNewSignUp", mock.Anything, mock.Anything, mock.Anything).Return(types.UserID("usertest"), nil).Once()
-			writerMock.On("WriteAccount", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&types.Account{ID: types.AccountID("acctest2")}, nil).Once()
 			router.writer = writerMock
 
 			rr := httptest.NewRecorder()

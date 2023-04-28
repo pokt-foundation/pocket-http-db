@@ -681,15 +681,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.expectedResponse.UpdatedAt = createdUser.UpdatedAt
 					test.expectedResponse.CreatedAt = createdUser.CreatedAt
 					cmp.Equal(test.expectedResponse, createdUser)
-
-					<-time.After(50 * time.Millisecond)
-					user, err := ts.client1.GetUsersByUserID(testCtx, v1types.UserID(createdUser.ID))
-					ts.Equal(test.err, err)
-					cmp.Equal(test.expectedResponse, user)
-
-					user, err = ts.client2.GetUsersByUserID(testCtx, v1types.UserID(createdUser.ID))
-					ts.Equal(test.err, err)
-					cmp.Equal(test.expectedResponse, user)
 				}
 			})
 		}

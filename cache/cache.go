@@ -3,7 +3,6 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -11,10 +10,6 @@ import (
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
-)
-
-var (
-	errNoUserFound = errors.New("no user found for given userID %v")
 )
 
 type (
@@ -346,27 +341,6 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	}
 
 	return accountsToReturn
-}
-
-// GetUserFromUserID returns the user's data for a given userID
-func (c *Cache) GetUserFromUserID(userID types.UserID) (types.AccountUserAccess, error) {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	accounts := c.GetAccountsByUserID(userID)
-
-	if len(accounts) == 0 {
-		return types.AccountUserAccess{}, fmt.Errorf(errNoUserFound.Error(), userID)
-	}
-
-	// Since every user instance have the same data, we can use any user
-	user, ok := accounts[0].Users[userID]
-	if ok {
-		return user, nil
-	}
-
-	return types.AccountUserAccess{}, fmt.Errorf(errNoUserFound.Error(), userID)
-
 }
 
 // upsertAccount adds, updates or deletes Account in cache
