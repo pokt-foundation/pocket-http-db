@@ -4,7 +4,8 @@ on:
   pull_request:
     branches:
       - master
-        #- staging
+      # TODO - debug and put back
+      # - staging
   push:
     branches:
       - master

@@ -5,7 +5,9 @@ on:
     workflows:
       ["Staging Build, Test publish to AWS ECR and GCP Artifact Registry"]
     branches:
-      - staging
+      # TODO - debug and put back
+      - never
+      # - staging
     workflow_dispatch: {}
 
 jobs:
