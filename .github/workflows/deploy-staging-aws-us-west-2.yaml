@@ -2,7 +2,8 @@ name: Deploy to staging ECS us-west-2
 
 on:
   workflow_run:
-    workflows: ["Staging Build, Test publish to AWS ECR and GCP Artifact Registry"]
+    workflows:
+      ["Staging Build, Test publish to AWS ECR and GCP Artifact Registry"]
     branches:
       - staging
     workflow_dispatch: {}
@@ -21,13 +22,13 @@ jobs:
           image: ${{ needs.publish_ecr.outputs.ecr-image-name }}
           environment-variables: |
             PG_USER=${{ secrets.PG_USER }}
-            PG_PASSWORD=${{ secrets.PG_PASSWORD }}
-            PG_HOST=${{ secrets.PG_HOST }}
+            PG_PASSWORD=${{ secrets.PG_PASSWORD_STAGING }}
+            PG_HOST=${{ secrets.PG_HOST_STAGING }}
             PG_PORT=${{ secrets.PG_PORT }}
             PG_DATABASE=${{ secrets.PG_DATABASE }}
-            PG_SSL_ROOT_CERT=${{ secrets.PG_SSL_ROOT_CERT }}
-            PG_SSL_CERT=${{ secrets.PG_SSL_CERT }}
-            PG_SSL_KEY=${{ secrets.PG_SSL_KEY }}
+            PG_SSL_ROOT_CERT=${{ secrets.PG_SSL_ROOT_CERT_STAGING }}
+            PG_SSL_CERT=${{ secrets.PG_SSL_CERT_STAGING }}
+            PG_SSL_KEY=${{ secrets.PG_SSL_KEY_STAGING }}
             API_KEYS=${{ secrets.PHD_API_KEYS_STAGING }}
             PORT=${{ secrets.PORT }}
             CACHE_REFRESH=${{ secrets.CACHE_REFRESH }}

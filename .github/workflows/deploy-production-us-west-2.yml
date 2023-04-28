@@ -1,50 +1,25 @@
-name: Production deployment us-west-2
+name: Deploy to production ECS us-west-2
 
 on:
   workflow_run:
-    workflows: ["Build & Test"]
-    branches: [master]
-    types:
-      - completed
+    workflows:
+      ["Production Build, Test publish to AWS ECR and GCP Artifact Registry"]
+    branches:
+      - master
+    workflow_dispatch: {}
 
 jobs:
-  deploy:
-    name: Postgres HTTP API
+  deploy_ecr_production:
+    name: Deploy AWS ECR production
     runs-on: ubuntu-22.04
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-west-2
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build, tag, and push image to Amazon ECR (API)
-        id: build-image-api
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: postgres-api
-          IMAGE_TAG: latest
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
       - name: Fill in the new image ID / us-west-2 - API
         id: task-def-us-west-2-api
         uses: aws-actions/amazon-ecs-render-task-definition@master
         with:
           task-definition: .aws/ecs-task-definition-production.json
           container-name: postgres-api
-          image: ${{ steps.build-image-api.outputs.image }}
+          image: ${{ needs.publish_ecr.outputs.ecr-image-name }}
           environment-variables: |
             PG_USER=${{ secrets.PG_USER }}
             PG_PASSWORD=${{ secrets.PG_PASSWORD }}
