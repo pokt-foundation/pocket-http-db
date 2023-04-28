@@ -21,11 +21,11 @@ jobs:
           container-name: postgres-api-staging
           image: ${{ needs.publish_ecr.outputs.ecr-image-name }}
           environment-variables: |
-            PG_USER=${{ secrets.PG_USER_STAGING }}
+            PG_USER=${{ secrets.PG_USER }}
             PG_PASSWORD=${{ secrets.PG_PASSWORD_STAGING }}
             PG_HOST=${{ secrets.PG_HOST_STAGING }}
-            PG_PORT=${{ secrets.PG_PORT_STAGING }}
-            PG_DATABASE=${{ secrets.PG_DATABASE_STAGING }}
+            PG_PORT=${{ secrets.PG_PORT }}
+            PG_DATABASE=${{ secrets.PG_DATABASE }}
             PG_SSL_ROOT_CERT=${{ secrets.PG_SSL_ROOT_CERT_STAGING }}
             PG_SSL_CERT=${{ secrets.PG_SSL_CERT_STAGING }}
             PG_SSL_KEY=${{ secrets.PG_SSL_KEY_STAGING }}
