@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
@@ -37,17 +35,6 @@ func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 
 	suite.Run(t, readSuite)
 	suite.Run(t, writeSuite)
-}
-
-func PrettyString(label string, thing interface{}) {
-	jsonThing, _ := json.Marshal(thing)
-	str := string(jsonThing)
-
-	var prettyJSON bytes.Buffer
-	_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-	output := prettyJSON.String()
-
-	fmt.Println(label, output)
 }
 
 // Runs all the read-only endpoint tests first to compare to test DB seed data only

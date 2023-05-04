@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - staging
+      - v2-staging
   push:
     branches:
       - master
