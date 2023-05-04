@@ -26,8 +26,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pokt-foundation/portal-db v1.10.8 h1:YvTDrVc+P5NXk5NKk1zaoIHsWfsXsG1dWp3X5fa8K/A=
 github.com/pokt-foundation/portal-db v1.10.8/go.mod h1:Pf8IIeoj3mSIk0+eNdzssz3T7GvnWRkFKPwGsFT2D5w=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.47 h1:2Nt/p0ydC5yn0OPKdOyzwiTOr9x4wnNh9VRixt+7Z4I=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.47/go.mod h1:B80N0OBB+6RTBv/K//MozVJQRZwtvWD0UpT+LSOBKfw=
+github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.54 h1:JDvpLRJAWSQjVANQ3OL52RV9F5T5ZSI2QULcOHUKlJc=
+github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.54/go.mod h1:htymE+vj4je428TV0ypMUXtGFB2yOgskDEMe9wfZjWg=
 github.com/pokt-foundation/utils-go v0.3.0 h1:BBGud2Z4n6P5DkzH9sTV5q94yjonIIpTsDL/a6/jB+A=
 github.com/pokt-foundation/utils-go v0.3.0/go.mod h1:c92FV9S9qY4PEyeOv4fGkI9FTZSv8oh1MiARGC+BC2E=
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=

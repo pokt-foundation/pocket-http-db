@@ -97,19 +97,6 @@ func (c *Cache) parseAppNotificationNotification(n types.Notification) {
 	}
 }
 
-// TODO - remove when v2 migration finished
-func (c *Cache) parseStickinessOptionsNotification(n types.Notification) {
-	stickinessOptions, ok := n.Data.(*types.StickyOptions)
-	if !ok {
-		c.log.Error("parseStickinessOptionsNotification failed")
-		return
-	}
-
-	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addStickinessOptions(*stickinessOptions)
-	}
-}
-
 /* ---------- Chains ---------- */
 
 func (c *Cache) parseChainNotification(n types.Notification) {
@@ -157,6 +144,18 @@ func (c *Cache) parseChainCheckNotification(n types.Notification) {
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
 		c.addCheck(*chainCheck)
+	}
+}
+
+func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
+	authProvider, ok := n.Data.(*types.UserAuthProvider)
+	if !ok {
+		c.log.Error("parseUserAuthProviderNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addUserAuthProviders(*authProvider)
 	}
 }
 
@@ -232,10 +231,6 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseWhitelistNotification(n)
 	case types.TableAppNotifications:
 		c.parseAppNotificationNotification(n)
-		// TODO - remove when v2 migration finished
-	case types.TableStickinessOptions:
-		c.parseStickinessOptionsNotification(n)
-
 	case types.TableChains:
 		c.parseChainNotification(n)
 	case types.TableChainAltruists:
@@ -247,11 +242,10 @@ func (c *Cache) parseNotification(n types.Notification) {
 
 	case types.TableUsers:
 		c.parseUsersNotification(n)
+	case types.TableUserAuthProviders:
+		c.parseUserAuthProviderNotification(n)
 
 		// TODO - implement in cache
-		// case types.TableUserAuthProviders:
-		// 	c.parseUserAuthProviderNotification(n)
-
 		// case types.TablePayPlans:
 		// 	c.parsePayPlanNotification(n)
 

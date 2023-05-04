@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
@@ -40,14 +41,13 @@ type (
 		pendingSettings         map[types.PortalAppID]types.Settings
 		pendingAppNotifications map[types.PortalAppID]types.AppNotification
 		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
-		pendingStickyOptions    map[types.PortalAppID]types.StickyOptions
 
 		chains                    map[types.RelayChainID]*types.Chain
 		pendingAltruists          map[types.RelayChainID][]types.Altruist
 		pendingGigastakeRedirects map[types.RelayChainID][]types.GigastakeRedirect
 		pendingChecks             map[types.RelayChainID][]types.Check
 
-		plans map[types.PayPlanType]*types.Plan
+		plans map[v1Types.PayPlanType]*types.Plan
 
 		blockedContracts types.GlobalBlockedContracts
 	}
@@ -77,7 +77,6 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingAAT:                make(map[types.PortalAppID]types.AAT),
 		pendingSettings:           make(map[types.PortalAppID]types.Settings),
 		pendingAppNotifications:   make(map[types.PortalAppID]types.AppNotification),
-		pendingStickyOptions:      make(map[types.PortalAppID]types.StickyOptions),
 		pendingAltruists:          make(map[types.RelayChainID][]types.Altruist),
 		pendingGigastakeRedirects: make(map[types.RelayChainID][]types.GigastakeRedirect),
 		pendingChecks:             make(map[types.RelayChainID][]types.Check),
@@ -177,6 +176,13 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		return fmt.Errorf("ReadPortalApps - %w", err)
 	}
 
+	// Convert old payplan to new payplans
+	// TODO: remover after migration
+	payPlanConverted := map[v1Types.PayPlanType]*types.Plan{}
+	for planType, plan := range plans {
+		payPlanConverted[v1Types.PayPlanType(planType)] = plan
+	}
+
 	// Set pointer to Account Plan
 	for _, account := range accounts {
 		if plan, ok := plans[account.PlanType]; ok {
@@ -214,7 +220,7 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		}
 	}
 
-	c.plans = plans
+	c.plans = payPlanConverted
 	c.accounts = accounts
 	c.accountsByUserID = accountsByUserID
 	c.portalApps = portalApps
@@ -446,43 +452,6 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	}
 }
 
-// CreateNewPortalUser creates a new portal user in the db
-func (c *Cache) CreateNewPortalUser(ctx context.Context, writer driver.Writer, createUserInput types.CreateUser) (types.User, error) {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	currentTime := time.Now()
-
-	newUserID, err := writer.WriteUserNewSignUp(ctx, createUserInput, currentTime)
-	if err != nil {
-		return types.User{}, fmt.Errorf("error WriteUserNewSignUp: %v", err)
-	}
-
-	user, err := c.reader.ReadUserByUserID(ctx, newUserID)
-	if err != nil {
-		return types.User{}, fmt.Errorf("error ReadUserByUserID: %v", err)
-	}
-
-	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{})
-	if err != nil {
-		return types.User{}, fmt.Errorf("error ReadAccounts: %v", err)
-	}
-
-	// Add the new account to the cache
-	for _, account := range accounts {
-		for _, user := range account.Users {
-			if _, ok := c.accountsByUserID[user.UserID]; !ok {
-				c.accountsByUserID[user.UserID] = make(map[types.AccountID]*types.Account)
-			}
-			c.accountsByUserID[user.UserID][account.ID] = account
-		}
-	}
-
-	c.userIDs[createUserInput.ProviderUserID] = user.ID
-
-	return *user, nil
-}
-
 /* ---------- PortalApps ---------- */
 
 // GetPortalApp returns PortalApp from cache by portalAppID
@@ -546,7 +515,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		portalApp.Settings = existingPortalApp.Settings
 		portalApp.Notifications = existingPortalApp.Notifications
 		portalApp.Whitelists = existingPortalApp.Whitelists
-		portalApp.LegacyFields.StickyOptions = existingPortalApp.LegacyFields.StickyOptions
 	}
 
 	if portalApp.Deleted {
@@ -589,13 +557,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 			portalApp.AddWhitelist(whitelist)
 		}
 		delete(c.pendingWhitelists, portalApp.ID)
-	}
-
-	// TODO - remove when v2 migration finished
-	pendingStickyOptions, ok := c.pendingStickyOptions[portalApp.ID]
-	if ok {
-		portalApp.LegacyFields.StickyOptions = pendingStickyOptions
-		delete(c.pendingStickyOptions, portalApp.ID)
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
@@ -691,24 +652,6 @@ func (c *Cache) addWhitelist(whitelist types.Whitelist) {
 	}
 
 	portalApp.AddWhitelist(whitelist)
-}
-
-// addStickinessOptions adds or updates the StickinesSOptions for a PortalApp in cache
-// TODO - remove when v2 migration finished
-func (c *Cache) addStickinessOptions(stickyOptions types.StickyOptions) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	appID := types.PortalAppID(stickyOptions.ID)
-	stickyOptions.ID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
-
-	portalApp, ok := c.portalApps[appID]
-	if !ok {
-		c.pendingStickyOptions[appID] = stickyOptions
-		return
-	}
-
-	portalApp.LegacyFields.StickyOptions = stickyOptions
 }
 
 // Removes a Whitelist from a PortalApp in cache
@@ -917,10 +860,17 @@ func (c *Cache) upsertUser(user types.User) {
 	}
 }
 
+func (c *Cache) addUserAuthProviders(userAuth types.UserAuthProvider) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.userIDs[userAuth.ProviderUserID] = userAuth.UserID
+}
+
 /* ---------- Plans ---------- */
 
 // GetPlan returns Plan from cache by planType
-func (c *Cache) GetPlan(planType types.PayPlanType) types.Plan {
+func (c *Cache) GetPlan(planType v1Types.PayPlanType) types.Plan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
