@@ -103,12 +103,18 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 	filteredAccounts := []types.Account{}
 	switch {
 	case roleNameFilter == types.RoleName(""):
-		filteredAccounts = accounts
+		for _, account := range accounts {
+			for _, user := range account.Users {
+				if user.Accepted {
+					filteredAccounts = accounts
+				}
+			}
+		}
 
 	case roleNameFilter != types.RoleName(""):
 		for _, account := range accounts {
 			for _, user := range account.Users {
-				if user.UserID == portalUserID && user.RoleName == roleNameFilter {
+				if user.Accepted && user.UserID == portalUserID && user.RoleName == roleNameFilter {
 					filteredAccounts = append(filteredAccounts, account)
 				}
 			}
@@ -298,7 +304,7 @@ func (c *Cache) GetLegacyPendingLoadBalancers(ctx context.Context, portalUserID 
 	pendingAccounts := []types.Account{}
 	for _, account := range accounts {
 		for _, user := range account.Users {
-			if user.UserID == userID && !user.Accepted {
+			if !user.Accepted && user.UserID == userID {
 				pendingAccounts = append(pendingAccounts, account)
 			}
 		}
@@ -309,6 +315,7 @@ func (c *Cache) GetLegacyPendingLoadBalancers(ctx context.Context, portalUserID 
 			loadBalancers = append(loadBalancers, legacyadapters.ConvertToLegacyLoadBalancer(*portalApp, account))
 		}
 	}
+
 	return loadBalancers, nil
 }
 
@@ -518,6 +525,35 @@ func (c *Cache) UpdateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 			return types.LoadBalancer{}, err
 		}
 	}
+
+	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account), nil
+}
+
+// UpdateLegacyLoadBalancerPlan updates one V2 PortalApp in the cache from a legacy LoadBalancer
+func (c *Cache) UpdateLegacyLoadBalancerPlan(ctx context.Context, writer driver.Writer, update types.UpdateUserAccess) (types.LoadBalancer, error) {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	portalAppID := types.PortalAppID(update.ID)
+	// updatedAt := time.Now()
+
+	portalApp := c.GetPortalApp(portalAppID)
+	if portalApp.ID == "" {
+		return types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
+	}
+	account := c.GetAccount(portalApp.AccountID)
+	if portalApp.ID == "" {
+		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
+	}
+
+	// updateAccountRole := legacyadapters.ConvertToV2UpdateAccountUserAccess(update, lbID)
+
+	// err := writer.SetAccountUserRole(ctx, updateAccountRole, updatedAt)
+	// if err != nil {
+	// 	return types.LoadBalancer{}, err
+	// }
+
+	// account.P
 
 	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account), nil
 }
