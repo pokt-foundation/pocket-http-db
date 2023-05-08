@@ -535,7 +535,7 @@ func (c *Cache) UpdateLegacyLoadBalancerPlan(ctx context.Context, writer driver.
 	defer c.rwMutex.RUnlock()
 
 	portalAppID := types.PortalAppID(update.ID)
-	// updatedAt := time.Now()
+	updatedAt := time.Now()
 
 	portalApp := c.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
@@ -546,16 +546,17 @@ func (c *Cache) UpdateLegacyLoadBalancerPlan(ctx context.Context, writer driver.
 		return types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
 	}
 
-	// updateAccountRole := legacyadapters.ConvertToV2UpdateAccountUserAccess(update, lbID)
+	updateAccount := types.UpdateAccount{
+		AccountID: account.ID,
+		PlanType:  update.Plan,
+	}
 
-	// err := writer.SetAccountUserRole(ctx, updateAccountRole, updatedAt)
-	// if err != nil {
-	// 	return types.LoadBalancer{}, err
-	// }
+	updatedAccount, err := writer.UpdateAccount(ctx, updateAccount, updatedAt)
+	if err != nil {
+		return types.LoadBalancer{}, err
+	}
 
-	// account.P
-
-	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account), nil
+	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, updatedAccount), nil
 }
 
 // UpdateLegacyUserRole updates the role for a single LB user
