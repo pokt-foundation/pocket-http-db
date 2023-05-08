@@ -40,7 +40,6 @@ type (
 		pendingSettings         map[types.PortalAppID]types.Settings
 		pendingAppNotifications map[types.PortalAppID]types.AppNotification
 		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
-		pendingStickyOptions    map[types.PortalAppID]types.StickyOptions
 
 		chains                    map[types.RelayChainID]*types.Chain
 		pendingAltruists          map[types.RelayChainID][]types.Altruist
@@ -77,7 +76,6 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingAAT:                make(map[types.PortalAppID]types.AAT),
 		pendingSettings:           make(map[types.PortalAppID]types.Settings),
 		pendingAppNotifications:   make(map[types.PortalAppID]types.AppNotification),
-		pendingStickyOptions:      make(map[types.PortalAppID]types.StickyOptions),
 		pendingAltruists:          make(map[types.RelayChainID][]types.Altruist),
 		pendingGigastakeRedirects: make(map[types.RelayChainID][]types.GigastakeRedirect),
 		pendingChecks:             make(map[types.RelayChainID][]types.Check),
@@ -509,7 +507,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		portalApp.Settings = existingPortalApp.Settings
 		portalApp.Notifications = existingPortalApp.Notifications
 		portalApp.Whitelists = existingPortalApp.Whitelists
-		portalApp.LegacyFields.StickyOptions = existingPortalApp.LegacyFields.StickyOptions
 	}
 
 	if portalApp.Deleted {
@@ -552,13 +549,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 			portalApp.AddWhitelist(whitelist)
 		}
 		delete(c.pendingWhitelists, portalApp.ID)
-	}
-
-	// TODO - remove when v2 migration finished
-	pendingStickyOptions, ok := c.pendingStickyOptions[portalApp.ID]
-	if ok {
-		portalApp.LegacyFields.StickyOptions = pendingStickyOptions
-		delete(c.pendingStickyOptions, portalApp.ID)
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
@@ -654,24 +644,6 @@ func (c *Cache) addWhitelist(whitelist types.Whitelist) {
 	}
 
 	portalApp.AddWhitelist(whitelist)
-}
-
-// addStickinessOptions adds or updates the StickinesSOptions for a PortalApp in cache
-// TODO - remove when v2 migration finished
-func (c *Cache) addStickinessOptions(stickyOptions types.StickyOptions) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	appID := types.PortalAppID(stickyOptions.ID)
-	stickyOptions.ID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
-
-	portalApp, ok := c.portalApps[appID]
-	if !ok {
-		c.pendingStickyOptions[appID] = stickyOptions
-		return
-	}
-
-	portalApp.LegacyFields.StickyOptions = stickyOptions
 }
 
 // Removes a Whitelist from a PortalApp in cache
@@ -878,6 +850,13 @@ func (c *Cache) upsertUser(user types.User) {
 			c.accountsByUserID[user.ID][accountID] = account
 		}
 	}
+}
+
+func (c *Cache) addUserAuthProvider(userAuth types.UserAuthProvider) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.userIDs[userAuth.ProviderUserID] = userAuth.UserID
 }
 
 /* ---------- Plans ---------- */

@@ -433,66 +433,6 @@ func Test_parseWhitelistNotification(t *testing.T) {
 	}
 }
 
-func Test_parseStickinessOptionsNotification(t *testing.T) {
-	tests := []struct {
-		name            string
-		sideTableAction types.Action
-		portalApp       *types.PortalApp
-	}{
-		{
-			name:            "Should add StickyOptions to PortalApp in cache when receiving an insert notification",
-			sideTableAction: types.ActionInsert,
-			portalApp: &types.PortalApp{
-				LegacyFields: types.LegacyFields{
-					StickyOptions: types.StickyOptions{
-						ID:            "test_app_3",
-						Duration:      "30s",
-						StickyOrigins: []string{"test1.com", "test2.com"},
-						StickyMax:     2,
-						Stickiness:    true,
-					},
-				},
-			},
-		},
-		{
-			name:            "Should update StickyOptions in PortalApp in cache when receiving an update notification",
-			sideTableAction: types.ActionUpdate,
-			portalApp: &types.PortalApp{
-				LegacyFields: types.LegacyFields{
-					StickyOptions: types.StickyOptions{
-						ID:            "test_app_3",
-						Duration:      "60s",
-						StickyOrigins: []string{"test3.com", "test4.com"},
-						StickyMax:     3,
-						Stickiness:    false,
-					},
-				},
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			readerMock := NewReaderMock(t)
-			cache := newTestListenerCache(t, readerMock)
-
-			// Add the PortalApp to the cache
-			cache.upsertPortalApp(*test.portalApp)
-
-			test.portalApp.LegacyFields.StickyOptions.ID = "" // is unset in the cache TODO will be changed soon
-
-			readerMock.listener.MockEvent("", test.sideTableAction, test.portalApp)
-
-			time.Sleep(100 * time.Millisecond) // need time for cache refresh
-
-			portalApp := cache.GetPortalApp(test.portalApp.ID)
-			c.Equal(test.portalApp.LegacyFields.StickyOptions, portalApp.LegacyFields.StickyOptions)
-		})
-	}
-}
-
 func Test_parseChainNotification(t *testing.T) {
 	tests := []struct {
 		name             string
