@@ -399,7 +399,7 @@ func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	NewUser, accID, err := rt.writer.WriteUserNewSignUp(r.Context(), userInput, time.Now())
+	newUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), userInput, time.Now())
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteUserNewSignUp failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
@@ -407,8 +407,8 @@ func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	createPortalUserResponse := types.CreateUserResponse{
-		User:      *NewUser,
-		AccountID: accID,
+		User:      *newUser,
+		AccountID: accountID,
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, createPortalUserResponse)

@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
@@ -47,7 +46,7 @@ type (
 		pendingGigastakeRedirects map[types.RelayChainID][]types.GigastakeRedirect
 		pendingChecks             map[types.RelayChainID][]types.Check
 
-		plans map[v1Types.PayPlanType]*types.Plan
+		plans map[types.PayPlanType]*types.Plan
 
 		blockedContracts types.GlobalBlockedContracts
 	}
@@ -176,13 +175,6 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		return fmt.Errorf("ReadPortalApps - %w", err)
 	}
 
-	// Convert old payplan to new payplans
-	// TODO: remover after migration
-	payPlanConverted := map[v1Types.PayPlanType]*types.Plan{}
-	for planType, plan := range plans {
-		payPlanConverted[v1Types.PayPlanType(planType)] = plan
-	}
-
 	// Set pointer to Account Plan
 	for _, account := range accounts {
 		if plan, ok := plans[account.PlanType]; ok {
@@ -220,7 +212,7 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		}
 	}
 
-	c.plans = payPlanConverted
+	c.plans = plans
 	c.accounts = accounts
 	c.accountsByUserID = accountsByUserID
 	c.portalApps = portalApps
@@ -860,7 +852,7 @@ func (c *Cache) upsertUser(user types.User) {
 	}
 }
 
-func (c *Cache) addUserAuthProviders(userAuth types.UserAuthProvider) {
+func (c *Cache) addUserAuthProvider(userAuth types.UserAuthProvider) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -870,7 +862,7 @@ func (c *Cache) addUserAuthProviders(userAuth types.UserAuthProvider) {
 /* ---------- Plans ---------- */
 
 // GetPlan returns Plan from cache by planType
-func (c *Cache) GetPlan(planType v1Types.PayPlanType) types.Plan {
+func (c *Cache) GetPlan(planType types.PayPlanType) types.Plan {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 

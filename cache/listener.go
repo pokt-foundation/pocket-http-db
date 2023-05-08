@@ -155,7 +155,7 @@ func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addUserAuthProviders(*authProvider)
+		c.addUserAuthProvider(*authProvider)
 	}
 }
 

@@ -270,7 +270,7 @@ func (c *Cache) GetLegacyPayPlan(ctx context.Context, payPlanType string) (v1Typ
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	plan := c.GetPlan(v1Types.PayPlanType(payPlanType))
+	plan := c.GetPlan(types.PayPlanType(payPlanType))
 	if plan.Type == "" {
 		return v1Types.PayPlan{}, fmt.Errorf(errPlanNotFound.Error(), payPlanType)
 	}
@@ -378,7 +378,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 
 	// Get the account plan based on the input plan type
 	inputPlan := lb.Applications[0].Limit.PayPlan.Type
-	accountPlan := c.GetPlan(inputPlan)
+	accountPlan := c.GetPlan(types.PayPlanType(inputPlan))
 
 	// Write the portal app to the data store
 	createdPortalApp, err := writer.WritePortalApp(ctx, portalApp, aat, createdAt)
