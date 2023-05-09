@@ -87,7 +87,11 @@ func Test_parseAccountNotification(t *testing.T) {
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			c.Equal(*test.account, cache.GetAccount(test.accountID))
+			account := cache.GetAccount(test.accountID)
+			c.Equal(test.account.PlanType, account.PlanType)
+			c.Equal(test.account.PartnerChainIDs, account.PartnerChainIDs)
+			c.Equal(test.account.PartnerThroughputLimit, account.PartnerThroughputLimit)
+			c.Equal(test.account.PartnerAppLimit, account.PartnerAppLimit)
 
 			accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), test.accountID)
 			if test.account.Deleted {

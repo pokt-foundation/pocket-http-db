@@ -346,14 +346,30 @@ func (c *Cache) upsertAccount(account types.Account) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	// Ensure upsert does not overwrite existing Account fields
 	if existingAccount, ok := c.accounts[account.ID]; ok {
 		account.PortalApps = existingAccount.PortalApps
+		account.Users = existingAccount.Users
+	}
+	// Set plan in cache to latest value
+	if plan, ok := c.plans[account.PlanType]; ok {
+		account.Plan = plan
 	}
 
-	pendingUsers, ok := c.pendingAccountUserAccess[account.ID]
-	if ok {
-		for _, user := range pendingUsers {
-			account.Users[user.UserID] = user
+	if pendingAccountUsers, ok := c.pendingAccountUserAccess[account.ID]; ok {
+		for _, accountUser := range pendingAccountUsers {
+			if account.Users == nil {
+				account.Users = make(map[types.UserID]types.AccountUserAccess)
+			}
+			if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
+				accountUser.Email = existingAccountUser.Email
+			}
+			if user, ok := c.pendingUsers[accountUser.UserID]; ok {
+				accountUser.Email = user.Email
+				delete(c.pendingUsers, accountUser.UserID)
+			}
+
+			account.Users[accountUser.UserID] = accountUser
 		}
 		delete(c.pendingAccountUserAccess, account.ID)
 	}
@@ -401,14 +417,19 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 		}
 	}
 
+	if user, ok := c.pendingUsers[accountUser.UserID]; ok {
+		accountUser.Email = user.Email
+		delete(c.pendingUsers, accountUser.UserID)
+	}
+
 	// Add or update user's Accounts
 	if account, ok := c.accounts[accountID]; ok {
 		if account.Users == nil {
 			account.Users = make(map[types.UserID]types.AccountUserAccess)
 		}
-		if user, ok := c.pendingUsers[accountUser.UserID]; ok {
-			accountUser.Email = user.Email
-			delete(c.pendingUsers, accountUser.UserID)
+
+		if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
+			accountUser.Email = existingAccountUser.Email
 		}
 
 		account.Users[accountUser.UserID] = accountUser
@@ -422,6 +443,20 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 	}
 
 	c.pendingAccountUserAccess[accountID] = append(c.pendingAccountUserAccess[accountID], accountUser)
+}
+
+// upsertAccountIntegrations updates the LBs integrations saved in cache
+func (c *Cache) upsertAccountIntegrations(accountIntegrations *types.AccountIntegrations) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	accountID := accountIntegrations.AccountID
+	for i := range c.accounts {
+		if c.accounts[i].ID == accountID {
+			c.accounts[i].Integrations = *accountIntegrations
+			return
+		}
+	}
 }
 
 // deleteAccountUser deletes Account user saved in cache and updates permissions

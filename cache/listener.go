@@ -33,6 +33,18 @@ func (c *Cache) parseAccountUserAccessNotification(n types.Notification) {
 	}
 }
 
+func (c *Cache) parseAccountIntegrationsNotification(n types.Notification) {
+	accountIntegrations, ok := n.Data.(*types.AccountIntegrations)
+	if !ok {
+		c.log.Error("parseAccountIntegrationsNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertAccountIntegrations(accountIntegrations)
+	}
+}
+
 /* ---------- PortalApps ---------- */
 
 func (c *Cache) parsePortalAppNotification(n types.Notification) {
@@ -147,18 +159,6 @@ func (c *Cache) parseChainCheckNotification(n types.Notification) {
 	}
 }
 
-func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
-	authProvider, ok := n.Data.(*types.UserAuthProvider)
-	if !ok {
-		c.log.Error("parseUserAuthProviderNotification failed")
-		return
-	}
-
-	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addUserAuthProvider(*authProvider)
-	}
-}
-
 /* ---------- Users ---------- */
 
 func (c *Cache) parseUsersNotification(n types.Notification) {
@@ -173,18 +173,17 @@ func (c *Cache) parseUsersNotification(n types.Notification) {
 	}
 }
 
-// TODO - implement in cache
-// func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
-// 	userAuthProvider, ok := n.Data.(*types.UserAuthProvider)
-// 	if !ok {
-// 		c.log.Error("parseUserAuthProviderNotification failed")
-// 		return
-// 	}
+func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
+	authProvider, ok := n.Data.(*types.UserAuthProvider)
+	if !ok {
+		c.log.Error("parseUserAuthProviderNotification failed")
+		return
+	}
 
-// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-// 		c.upsertUserAuthProvider(*userAuthProvider)
-// 	}
-// }
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addUserAuthProvider(*authProvider)
+	}
+}
 
 /* ---------- Plans ---------- */
 
@@ -220,6 +219,8 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseAccountNotification(n)
 	case types.TableAccountUserAccess:
 		c.parseAccountUserAccessNotification(n)
+	case types.TableAccountIntegrations:
+		c.parseAccountIntegrationsNotification(n)
 
 	case types.TablePortalApps:
 		c.parsePortalAppNotification(n)

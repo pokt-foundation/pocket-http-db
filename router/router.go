@@ -76,11 +76,13 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.GetLoadBalancer).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.UpdateLoadBalancer).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.CreateLoadBalancerUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/integration", rt.CreateLoadBalancerIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete) // TODO update to use userID not email
 
 	rt.Router.HandleFunc("/v1/user", rt.CreatePortalUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v1/user/{id}/portal_id", rt.GetPortalUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationsByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
@@ -163,6 +165,14 @@ func (rt *Router) GetUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, permissions)
+}
+
+func (rt *Router) GetPortalUserID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	portalUserID := rt.cache.GetUserIDFromProviderUserID(types.ProviderUserID(vars["id"]))
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, portalUserID)
 }
 
 func (rt *Router) GetApplicationsByUserID(w http.ResponseWriter, r *http.Request) {
@@ -335,6 +345,32 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	defer r.Body.Close()
 
 	updatedLB, err := rt.cache.CreateLegacyLoadBalancerUser(r.Context(), rt.writer, lbID, user)
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedLB)
+}
+
+func (rt *Router) CreateLoadBalancerIntegration(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lbID := vars["id"]
+
+	var integrationsInput types.AccountIntegrations
+
+	err := json.NewDecoder(r.Body).Decode(&integrationsInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreateLoadBalancerUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	defer r.Body.Close()
+
+	updatedLB, err := rt.cache.CreateLegacyLoadBalancerIntegration(r.Context(), rt.writer, lbID, integrationsInput)
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())

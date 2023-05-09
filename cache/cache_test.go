@@ -286,6 +286,9 @@ func Test_upsertAccount(t *testing.T) {
 					"user_2": testdata.AccountUserAccess[2],
 					"user_8": testdata.AccountUserAccess[8],
 				},
+				PortalApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_1": testdata.PortalApps["test_app_1"],
+				},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
 				PartnerAppLimit:        1,
@@ -302,6 +305,11 @@ func Test_upsertAccount(t *testing.T) {
 					"user_1": testdata.AccountUserAccess[1],
 					"user_2": testdata.AccountUserAccess[2],
 					"user_8": testdata.AccountUserAccess[8],
+					"user_3": testdata.AccountUserAccess[3],
+					"user_7": testdata.AccountUserAccess[7],
+				},
+				PortalApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_1": testdata.PortalApps["test_app_1"],
 				},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
@@ -323,6 +331,9 @@ func Test_upsertAccount(t *testing.T) {
 					"user_4": testdata.AccountUserAccess[4],
 					"user_9": testdata.AccountUserAccess[9],
 					"user_2": testdata.AccountUserAccess[10],
+				},
+				PortalApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 				Deleted: true,
 			},
@@ -349,6 +360,7 @@ func Test_upsertAccount(t *testing.T) {
 				}
 			}
 
+			test.account.Plan = cache.plans[test.account.PlanType]
 			c.Equal(test.account, cache.GetAccount(test.account.ID))
 
 			accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
