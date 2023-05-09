@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+
 	dbclient "github.com/pokt-foundation/db-client/client"
-	v1types "github.com/pokt-foundation/portal-db/types" // TODO: REPLACE v1types for types once the db-client updates to v2
+	v1Types "github.com/pokt-foundation/portal-db/types" // TODO: REPLACE v1Types for types once the db-client updates to v2
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/stretchr/testify/suite"
 )
@@ -43,7 +44,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetBlockchains", func() {
 		tests := []struct {
 			name                string
-			expectedBlockchains map[string]*v1types.Blockchain
+			expectedBlockchains map[string]*v1Types.Blockchain
 			err                 error
 		}{
 			{
@@ -70,7 +71,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name               string
 			blockchainID       string
-			expectedBlockchain *v1types.Blockchain
+			expectedBlockchain *v1Types.Blockchain
 			err                error
 		}{
 			{
@@ -101,7 +102,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetApplications", func() {
 		tests := []struct {
 			name                 string
-			expectedApplications map[string]*types.Application
+			expectedApplications map[string]*v1Types.Application
 			err                  error
 		}{
 			{
@@ -127,7 +128,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                string
 			applicationID       string
-			expectedApplication *types.Application
+			expectedApplication *v1Types.Application
 			err                 error
 		}{
 			{
@@ -159,13 +160,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                 string
 			userID               string
-			expectedApplications map[string]*types.Application
+			expectedApplications map[string]*v1Types.Application
 			err                  error
 		}{
 			{
 				name:   "Should fetch all applications for a single user ID",
 				userID: "auth0|chrisjen_avasarala",
-				expectedApplications: map[string]*types.Application{
+				expectedApplications: map[string]*v1Types.Application{
 					"test_protocol_app_3": expectedLegacyApplications["test_protocol_app_3"],
 					"test_protocol_app_4": expectedLegacyApplications["test_protocol_app_4"],
 				},
@@ -197,12 +198,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetLoadBalancers", func() {
 		tests := []struct {
 			name                  string
-			expectedLoadBalancers map[string]*types.LoadBalancer
+			expectedLoadBalancers map[string]*v1Types.LoadBalancer
 			err                   error
 		}{
 			{
 				name: "Should fetch all load balancers in the database (for portal apps that have an account)",
-				expectedLoadBalancers: map[string]*types.LoadBalancer{
+				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
 					"test_app_1": expectedLegacyLoadBalancers["test_app_1"],
 					"test_app_2": expectedLegacyLoadBalancers["test_app_2"],
 					"test_app_3": expectedLegacyLoadBalancers["test_app_3"],
@@ -227,7 +228,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                 string
 			loadBalancerID       string
-			expectedLoadBalancer *types.LoadBalancer
+			expectedLoadBalancer *v1Types.LoadBalancer
 			err                  error
 		}{
 			{
@@ -259,34 +260,34 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                  string
 			userID                string
-			expectedLoadBalancers map[string]*types.LoadBalancer
-			roleNameFilter        v1types.RoleName
+			expectedLoadBalancers map[string]*v1Types.LoadBalancer
+			roleNameFilter        v1Types.RoleName
 			err                   error
 		}{
 			{
 				name:   "Should fetch all load balancers for a single user ID when no filter provided",
 				userID: "auth0|ulfric_stormcloak",
-				expectedLoadBalancers: map[string]*types.LoadBalancer{
+				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
 					"test_app_2": expectedLegacyLoadBalancers["test_app_2"],
 				},
 			},
 			{
 				name:           "Should fetch all load balancers for a single user ID and role when a valid filter provided",
 				userID:         "auth0|amos_burton",
-				roleNameFilter: v1types.RoleAdmin,
-				expectedLoadBalancers: map[string]*types.LoadBalancer{
+				roleNameFilter: v1Types.RoleAdmin,
+				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
 					"test_app_3": expectedLegacyLoadBalancers["test_app_3"],
 				},
 			},
 			{
 				name:                  "Should return empty if the user does not have any load balancers",
 				userID:                "auth0|bernard_marx",
-				expectedLoadBalancers: map[string]*types.LoadBalancer{},
+				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{},
 			},
 			{
 				name:           "Should fail if an invalid role name provided as a filter",
 				userID:         "test_user_1dbffbdfeeb225",
-				roleNameFilter: v1types.RoleName("not_real"),
+				roleNameFilter: v1Types.RoleName("not_real"),
 				err:            fmt.Errorf("invalid role name filter"),
 			},
 			{
@@ -321,7 +322,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetPayPlans", func() {
 		tests := []struct {
 			name             string
-			expectedPayPlans map[string]*types.PayPlan
+			expectedPayPlans map[string]*v1Types.PayPlan
 			err              error
 		}{
 			{
@@ -346,8 +347,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetPayPlanByType", func() {
 		tests := []struct {
 			name            string
-			payPlanType     v1types.PayPlanType
-			expectedPayPlan *types.PayPlan
+			payPlanType     v1Types.PayPlanType
+			expectedPayPlan *v1Types.PayPlan
 			err             error
 		}{
 			{
@@ -358,7 +359,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			},
 			{
 				name:        "Should fail if passed a pay plan type that is not in the DB",
-				payPlanType: v1types.PayPlanType("not_a_real_plan"),
+				payPlanType: v1Types.PayPlanType("not_a_real_plan"),
 				err:         fmt.Errorf("Response not OK. 404 Not Found: plan not found for type not_a_real_plan"),
 			},
 		}
@@ -379,24 +380,24 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetUserPermissionsByUserID", func() {
 		tests := []struct {
 			name                string
-			userID              v1types.UserID
-			expectedPermissions *types.LegacyUserPermissions
+			userID              v1Types.UserID
+			expectedPermissions *v1Types.UserPermissions
 			err                 error
 		}{
 			{
 
 				name:   "Should fetch a single users load balancer permissions",
 				userID: "auth0|paul_atreides",
-				expectedPermissions: &types.LegacyUserPermissions{
+				expectedPermissions: &v1Types.UserPermissions{
 					UserID: "auth0|paul_atreides",
-					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+					LoadBalancers: map[v1Types.LoadBalancerID]v1Types.LoadBalancerPermissions{
 						"test_app_1": {
 							RoleName:    "ADMIN",
-							Permissions: []types.Permissions{"read:endpoint", "write:endpoint"},
+							Permissions: []v1Types.PermissionsEnum{"read:endpoint", "write:endpoint"},
 						},
 						"test_app_2": {
 							RoleName:    "MEMBER",
-							Permissions: []types.Permissions{"read:endpoint"},
+							Permissions: []v1Types.PermissionsEnum{"read:endpoint"},
 						},
 					},
 				},
@@ -404,12 +405,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fetch another single users load balancer permissions",
 				userID: "auth0|ulfric_stormcloak",
-				expectedPermissions: &types.LegacyUserPermissions{
+				expectedPermissions: &v1Types.UserPermissions{
 					UserID: "auth0|ulfric_stormcloak",
-					LoadBalancers: map[types.LoadBalancerID]types.LoadBalancerPermissions{
+					LoadBalancers: map[v1Types.LoadBalancerID]v1Types.LoadBalancerPermissions{
 						"test_app_2": {
 							RoleName: "MEMBER",
-							Permissions: []types.Permissions{
+							Permissions: []v1Types.PermissionsEnum{
 								"read:endpoint",
 							},
 						},
@@ -440,20 +441,20 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                  string
 			userPortalID          string
-			expectedLoadBalancers map[string]*types.LoadBalancer
+			expectedLoadBalancers map[string]*v1Types.LoadBalancer
 			err                   error
 		}{
 			{
 				name:         "Should fetch all pending load balancers for a single portal user ID",
 				userPortalID: "user_10",
-				expectedLoadBalancers: map[string]*types.LoadBalancer{
+				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
 					"test_app_3": expectedLegacyLoadBalancers["test_app_3"],
 				},
 			},
 			{
 				name:                  "Should return empty if the portal user ID does not have any pending load balancers in the DB",
 				userPortalID:          "user_1",
-				expectedLoadBalancers: map[string]*types.LoadBalancer{},
+				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{},
 			},
 			{
 				name:         "Should fail if user portal ID not provided",
@@ -529,7 +530,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_CreateBlockchain", func() {
 		tests := []struct {
 			name       string
-			blockchain *v1types.Blockchain
+			blockchain *v1Types.Blockchain
 			err        error
 		}{
 			{
@@ -569,19 +570,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_CreateRedirect", func() {
 		tests := []struct {
 			name          string
-			redirectInput v1types.Redirect
-			redirects     []types.Redirect
+			redirectInput v1Types.Redirect
+			redirects     []v1Types.Redirect
 			err           error
 		}{
 			{
 				name: "Should create a new redirect for an existing blockchain in the DB",
-				redirectInput: v1types.Redirect{
+				redirectInput: v1Types.Redirect{
 					BlockchainID:   "0001",
 					Alias:          "altruist-0002",
 					Domain:         "pokt-rpc-2.gateway.pokt.network",
 					LoadBalancerID: "test_app_2",
 				},
-				redirects: []types.Redirect{
+				redirects: []v1Types.Redirect{
 					{Alias: "altruist-0001", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
 					{Alias: "altruist-0002", Domain: "pokt-rpc-2.gateway.pokt.network", LoadBalancerID: "test_app_2"},
 				},
@@ -616,10 +617,85 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
+	ts.Run("Test_CreatePortalUser", func() {
+		tests := []struct {
+			name             string
+			userInput        types.CreateUser
+			expectedStatus   int
+			expectedResponse *types.CreateUserResponse
+			err              error
+		}{
+			{
+				name: "Should create a single user in the DB",
+				userInput: types.CreateUser{
+					Email:            "test@test.com",
+					AuthProviderType: types.AuthTypeAuth0Github,
+					ProviderUserID:   "auth0_username|test",
+				},
+				expectedResponse: &types.CreateUserResponse{
+					User: types.User{
+						Email: "test@test.com",
+						AuthProviders: map[types.AuthType]types.UserAuthProvider{
+							types.AuthTypeAuth0Github: {
+								Type:           types.AuthTypeAuth0Github,
+								ProviderUserID: "auth0_username|test",
+								Provider:       types.AuthProviderAuth0,
+								Federated:      true,
+							},
+						},
+						SignedUp: true,
+					},
+					AccountID: "",
+				},
+			},
+			{
+				name: "Should fail if there's no email",
+				userInput: types.CreateUser{
+					AuthProviderType: types.AuthTypeAuth0Github,
+					ProviderUserID:   "auth0_username|test",
+				},
+				err: fmt.Errorf("Response not OK. 400 Bad Request: error email input is not a valid email address ''"),
+			},
+			{
+				name: "Should fail if there's no provider type",
+				userInput: types.CreateUser{
+					Email:          "email@tes.com",
+					ProviderUserID: "auth0_username|test",
+				},
+				err: fmt.Errorf("Response not OK. 400 Bad Request: error invalid auth provider type ''"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				createdUser, err := ts.client1.CreatePortalUser(testCtx, test.userInput)
+				ts.Equal(test.err, err)
+				if test.err == nil {
+					test.expectedResponse.User.ID = createdUser.User.ID
+					test.expectedResponse.User.UpdatedAt = createdUser.User.UpdatedAt
+					test.expectedResponse.User.CreatedAt = createdUser.User.CreatedAt
+					test.expectedResponse.AccountID = createdUser.AccountID
+					ts.Equal(test.expectedResponse, createdUser)
+					ts.NotEmpty(createdUser.AccountID, "Should have an accountID")
+
+					// If the user was created, it should have permissions
+					providerID := createdUser.User.AuthProviders[types.AuthTypeAuth0Github].ProviderUserID
+					permission, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerID))
+					ts.NotNil(permission)
+					ts.Nil(err)
+
+					permission, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerID))
+					ts.NotNil(permission)
+					ts.Nil(err)
+				}
+			})
+		}
+	})
+
 	ts.Run("Test_CreateLoadBalancer", func() {
 		tests := []struct {
 			name                   string
-			loadBalancer           *v1types.LoadBalancer
+			loadBalancer           *v1Types.LoadBalancer
 			expectedCovalentAPIKey string
 			err                    error
 		}{
@@ -662,39 +738,39 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		tests := []struct {
 			name              string
 			loadBalancerID    string
-			user              v1types.UserAccess
-			loadBalancerUsers map[string]v1types.UserAccess
+			user              v1Types.UserAccess
+			loadBalancerUsers map[string]v1Types.UserAccess
 			err               error
 		}{
 			{
 				name:           "Should add a single new user to an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
-				user: v1types.UserAccess{
-					RoleName: v1types.RoleMember,
+				user: v1Types.UserAccess{
+					RoleName: v1Types.RoleMember,
 					Email:    "member_new@test.com",
 				},
-				loadBalancerUsers: map[string]v1types.UserAccess{
-					"user_1": {UserID: "user_1", RoleName: v1types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
-					"user_2": {UserID: "user_2", RoleName: v1types.RoleAdmin, Email: "paul.atreides456@test.com", Accepted: true},
-					"user_8": {UserID: "user_8", RoleName: v1types.RoleAdmin, Email: "rick.deckard456@test.com", Accepted: false},
+				loadBalancerUsers: map[string]v1Types.UserAccess{
+					"user_1": {UserID: "user_1", RoleName: v1Types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
+					"user_2": {UserID: "user_2", RoleName: v1Types.RoleAdmin, Email: "paul.atreides456@test.com", Accepted: true},
+					"user_8": {UserID: "user_8", RoleName: v1Types.RoleAdmin, Email: "rick.deckard456@test.com", Accepted: false},
 					// ID dynamically generated on creation
-					"": {UserID: "", RoleName: v1types.RoleMember, Email: "member_new@test.com", Accepted: false},
+					"": {UserID: "", RoleName: v1Types.RoleMember, Email: "member_new@test.com", Accepted: false},
 				},
 			},
 			{
 				name:           "Should add a single existing user to an existing load balancer in the DB",
 				loadBalancerID: "test_app_2",
-				user: v1types.UserAccess{
-					RoleName: v1types.RoleMember,
+				user: v1Types.UserAccess{
+					RoleName: v1Types.RoleMember,
 					Email:    "frodo.baggins123@test.com",
 				},
-				loadBalancerUsers: map[string]v1types.UserAccess{
-					"user_3": {UserID: "user_3", RoleName: v1types.RoleOwner, Email: "ellen.ripley789@test.com", Accepted: true},
-					"user_4": {UserID: "user_4", RoleName: v1types.RoleMember, Email: "ulfric.stormcloak123@test.com", Accepted: true},
-					"user_9": {UserID: "user_9", RoleName: v1types.RoleMember, Email: "tyrion.lannister789@test.com", Accepted: false},
-					"user_2": {UserID: "user_2", RoleName: v1types.RoleMember, Email: "paul.atreides456@test.com", Accepted: true},
+				loadBalancerUsers: map[string]v1Types.UserAccess{
+					"user_3": {UserID: "user_3", RoleName: v1Types.RoleOwner, Email: "ellen.ripley789@test.com", Accepted: true},
+					"user_4": {UserID: "user_4", RoleName: v1Types.RoleMember, Email: "ulfric.stormcloak123@test.com", Accepted: true},
+					"user_9": {UserID: "user_9", RoleName: v1Types.RoleMember, Email: "tyrion.lannister789@test.com", Accepted: false},
+					"user_2": {UserID: "user_2", RoleName: v1Types.RoleMember, Email: "paul.atreides456@test.com", Accepted: true},
 					// ID dynamically generated on creation
-					"": {UserID: "", RoleName: v1types.RoleMember, Email: "frodo.baggins123@test.com", Accepted: false},
+					"": {UserID: "", RoleName: v1Types.RoleMember, Email: "frodo.baggins123@test.com", Accepted: false},
 				},
 			},
 			{
@@ -777,71 +853,71 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		tests := []struct {
 			name                   string
 			loadBalancerID         string
-			applicationUpdate      v1types.UpdateApplication
-			applicationAfterUpdate types.Application
+			applicationUpdate      v1Types.UpdateApplication
+			applicationAfterUpdate v1Types.Application
 			err                    error
 		}{
 			{
 				name:           "Should update a single application in the DB",
 				loadBalancerID: "test_app_1",
-				applicationUpdate: v1types.UpdateApplication{
+				applicationUpdate: v1Types.UpdateApplication{
 					Name: "test_update_portal_app_123",
-					GatewaySettings: &v1types.UpdateGatewaySettings{
+					GatewaySettings: &v1Types.UpdateGatewaySettings{
 						SecretKey:            "test_90210ac4bdd3423e24877d1ff92",
 						SecretKeyRequired:    boolToPointer(false),
 						WhitelistOrigins:     []string{"https://portalgun.io", "https://subdomain.example.com", "https://www.example.com"},
 						WhitelistBlockchains: []string{"0001", "0002", "003E", "0056"},
 						WhitelistUserAgents:  []string{"Brave", "Google Chrome", "Mozilla Firefox", "Netscape Navigator", "Safari"},
-						WhitelistContracts: []v1types.WhitelistContracts{
+						WhitelistContracts: []v1Types.WhitelistContracts{
 							{BlockchainID: "0001", Contracts: []string{"0xtest_2f78db6436527729929aaf6c616361de0f7", "0xtest_5fbfe3e9af3971dd833d26ba9b5c936f0be"}},
 							{BlockchainID: "0002", Contracts: []string{"0xtest_1111117dc0aa78b770fa6a738034120c302", "0xtest_a39b223fe8d0a0e5c4f27ead9083c756cc2"}},
 							{BlockchainID: "003E", Contracts: []string{"0xtest_0a85d5af5bf1d1762f925bdaddc4201f984", "0xtest_f958d2ee523a2206206994597c13d831ec7"}},
 							{BlockchainID: "0056", Contracts: []string{"0xtest_00000f279d81a1d3cc75430faa017fa5a2e", "0xtest_5068778dd592e39a122f4f5a5cf09c90fe2"}},
 						},
-						WhitelistMethods: []v1types.WhitelistMethods{
+						WhitelistMethods: []v1Types.WhitelistMethods{
 							{BlockchainID: "0001", Methods: []string{"GET", "POST", "PUT"}},
 							{BlockchainID: "0002", Methods: []string{"DELETE", "GET", "POST", "PUT"}},
 							{BlockchainID: "003E", Methods: []string{"GET"}},
 							{BlockchainID: "0056", Methods: []string{"GET", "POST"}},
 						},
 					},
-					NotificationSettings: &v1types.UpdateNotificationSettings{SignedUp: boolToPointer(true), Quarter: boolToPointer(true), Half: boolToPointer(false), ThreeQuarters: boolToPointer(true), Full: boolToPointer(false)},
+					NotificationSettings: &v1Types.UpdateNotificationSettings{SignedUp: boolToPointer(true), Quarter: boolToPointer(true), Half: boolToPointer(false), ThreeQuarters: boolToPointer(true), Full: boolToPointer(false)},
 				},
-				applicationAfterUpdate: types.Application{
+				applicationAfterUpdate: v1Types.Application{
 					Name: "test_update_portal_app_123",
-					GatewaySettings: types.GatewaySettings{
+					GatewaySettings: v1Types.GatewaySettings{
 						SecretKey:            "test_90210ac4bdd3423e24877d1ff92",
 						WhitelistOrigins:     []string{"https://portalgun.io", "https://subdomain.example.com", "https://www.example.com"},
 						WhitelistBlockchains: []string{"0001", "0002", "003E", "0056"},
 						WhitelistUserAgents:  []string{"Brave", "Google Chrome", "Mozilla Firefox", "Netscape Navigator", "Safari"},
-						WhitelistContracts: []types.WhitelistContracts{
+						WhitelistContracts: []v1Types.WhitelistContracts{
 							{BlockchainID: "0001", Contracts: []string{"0xtest_2f78db6436527729929aaf6c616361de0f7", "0xtest_5fbfe3e9af3971dd833d26ba9b5c936f0be"}},
 							{BlockchainID: "0002", Contracts: []string{"0xtest_1111117dc0aa78b770fa6a738034120c302", "0xtest_a39b223fe8d0a0e5c4f27ead9083c756cc2"}},
 							{BlockchainID: "003E", Contracts: []string{"0xtest_0a85d5af5bf1d1762f925bdaddc4201f984", "0xtest_f958d2ee523a2206206994597c13d831ec7"}},
 							{BlockchainID: "0056", Contracts: []string{"0xtest_00000f279d81a1d3cc75430faa017fa5a2e", "0xtest_5068778dd592e39a122f4f5a5cf09c90fe2"}},
 						},
-						WhitelistMethods: []types.WhitelistMethods{
+						WhitelistMethods: []v1Types.WhitelistMethods{
 							{BlockchainID: "0001", Methods: []string{"GET", "POST", "PUT"}},
 							{BlockchainID: "0002", Methods: []string{"DELETE", "GET", "POST", "PUT"}},
 							{BlockchainID: "003E", Methods: []string{"GET"}},
 							{BlockchainID: "0056", Methods: []string{"GET", "POST"}},
 						},
 					},
-					NotificationSettings: types.NotificationSettings{SignedUp: true, Quarter: true, Half: false, ThreeQuarters: true, Full: false},
+					NotificationSettings: v1Types.NotificationSettings{SignedUp: true, Quarter: true, Half: false, ThreeQuarters: true, Full: false},
 				},
 			},
 			{
 				name:           "Should remove all of a single application's whitelists",
 				loadBalancerID: "test_app_1",
-				applicationUpdate: v1types.UpdateApplication{
-					GatewaySettings: &v1types.UpdateGatewaySettings{},
+				applicationUpdate: v1Types.UpdateApplication{
+					GatewaySettings: &v1Types.UpdateGatewaySettings{},
 				},
-				applicationAfterUpdate: types.Application{
+				applicationAfterUpdate: v1Types.Application{
 					Name: "test_update_portal_app_123",
-					GatewaySettings: types.GatewaySettings{
+					GatewaySettings: v1Types.GatewaySettings{
 						SecretKey: "test_90210ac4bdd3423e24877d1ff92",
 					},
-					NotificationSettings: types.NotificationSettings{SignedUp: true, Quarter: true, Half: false, ThreeQuarters: true, Full: false},
+					NotificationSettings: v1Types.NotificationSettings{SignedUp: true, Quarter: true, Half: false, ThreeQuarters: true, Full: false},
 				},
 			},
 			{
@@ -879,14 +955,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateAppFirstDateSurpassed", func() {
 		tests := []struct {
 			name           string
-			update         v1types.UpdateFirstDateSurpassed
+			update         v1Types.UpdateFirstDateSurpassed
 			protocolAppIDs []string
 			expectedDate   time.Time
 			err            error
 		}{
 			{
 				name: "Should update the app first date suprassed for the provided slice of app IDs",
-				update: v1types.UpdateFirstDateSurpassed{
+				update: v1Types.UpdateFirstDateSurpassed{
 					ApplicationIDs:     []string{"test_app_1", "test_app_2"},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
@@ -896,7 +972,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if update contains no application IDs cannot be found",
-				update: v1types.UpdateFirstDateSurpassed{
+				update: v1Types.UpdateFirstDateSurpassed{
 					ApplicationIDs:     []string{},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
@@ -904,7 +980,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if application cannot be found",
-				update: v1types.UpdateFirstDateSurpassed{
+				update: v1Types.UpdateFirstDateSurpassed{
 					ApplicationIDs:     []string{"9000"},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
@@ -939,14 +1015,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		tests := []struct {
 			name             string
 			blockchainID     string
-			blockchainUpdate v1types.UpdateBlockchain
-			expectedChain    types.Blockchain
+			blockchainUpdate v1Types.UpdateBlockchain
+			expectedChain    v1Types.Blockchain
 			err              error
 		}{
 			{
 				name:         "Should update a single blockchain in the DB",
 				blockchainID: "0001",
-				blockchainUpdate: v1types.UpdateBlockchain{
+				blockchainUpdate: v1Types.UpdateBlockchain{
 					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
 					Blockchain:        "pokt-mainnet-updated",
 					Description:       "POKT Network Mainnet Updated",
@@ -960,7 +1036,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Body:              `{"new-body": "alliance"}`,
 					Allowance:         &allowanceInt,
 				},
-				expectedChain: types.Blockchain{
+				expectedChain: v1Types.Blockchain{
 					ID:                "0001",
 					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
 					Blockchain:        "pokt-mainnet-updated",
@@ -973,7 +1049,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Active:            true,
 					RequestTimeout:    66_654,
 					// Redirects are handled via their own update process
-					SyncCheckOptions: types.SyncCheckOptions{
+					SyncCheckOptions: v1Types.SyncCheckOptions{
 						Body:      `{"new-body": "alliance"}`,
 						ResultKey: "updated-key",
 						Allowance: 123,
@@ -1022,81 +1098,81 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			loadBalancerID    string
 			providerUserID    string
 			userID            string
-			update            v1types.UpdateUserAccess
-			loadBalancerUsers []v1types.UserAccess
-			userLBPermissions types.LoadBalancerPermissions
+			update            v1Types.UpdateUserAccess
+			loadBalancerUsers []v1Types.UserAccess
+			userLBPermissions v1Types.LoadBalancerPermissions
 			err               error
 		}{
 			{
 				name:           "Should update a single user for an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_8",
-					RoleName: v1types.RoleMember,
+					RoleName: v1Types.RoleMember,
 				},
-				loadBalancerUsers: []v1types.UserAccess{
-					{RoleName: v1types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
 				},
 			},
 			{
 				name:           "Should transfer ownership for an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_2",
 					Email:    "james.holden123@test.com",
-					RoleName: v1types.RoleOwner,
+					RoleName: v1Types.RoleOwner,
 				},
-				loadBalancerUsers: []v1types.UserAccess{
-					{RoleName: v1types.RoleAdmin, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1types.RoleOwner, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleAdmin, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleOwner, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
 				},
 			},
 			{
 				name:           "Should transfer ownership back to original owner for an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_1",
 					Email:    "paul.atreides456@test.com",
-					RoleName: v1types.RoleOwner,
+					RoleName: v1Types.RoleOwner,
 				},
-				loadBalancerUsers: []v1types.UserAccess{
-					{RoleName: v1types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
 				},
 			},
 			{
 				name:           "Should update a single unaccepted user to ADMIN for an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_8",
-					RoleName: v1types.RoleAdmin,
+					RoleName: v1Types.RoleAdmin,
 				},
-				loadBalancerUsers: []v1types.UserAccess{
-					{RoleName: v1types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1types.RoleAdmin, UserID: "user_8", Email: "", Accepted: false},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "", Accepted: false},
 				},
 			},
 			{
 				name:           "Should fail if attempting to transfer ownership and the UpdaterEmail is not provided",
 				loadBalancerID: "test_app_1",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_2",
-					RoleName: v1types.RoleOwner,
+					RoleName: v1Types.RoleOwner,
 				},
 				err: fmt.Errorf("transferring ownership requires providing the updater's email"),
 			},
 			{
 				name:           "Should fail if attempting to transfer ownership and the user has not accepted their invite",
 				loadBalancerID: "test_app_1",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_8",
 					Email:    "paul.atreides456@test.com",
-					RoleName: v1types.RoleOwner,
+					RoleName: v1Types.RoleOwner,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot transfer ownership to user ID 'user_8' for account ID 'account_1' because the user has not accepted their invite"),
 			},
@@ -1108,18 +1184,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:           "Should fail if invalid role name provided",
 				loadBalancerID: "test_app_1",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_8",
-					RoleName: v1types.RoleName("wrong_one"),
+					RoleName: v1Types.RoleName("wrong_one"),
 				},
 				err: fmt.Errorf("invalid role name"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "im_not_here",
-				update: v1types.UpdateUserAccess{
+				update: v1Types.UpdateUserAccess{
 					UserID:   "user_8",
-					RoleName: v1types.RoleMember,
+					RoleName: v1Types.RoleMember,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID im_not_here"),
 			},
@@ -1139,13 +1215,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					if test.providerUserID != "" {
-						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1types.UserID(test.providerUserID))
+						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1types.LoadBalancerID(test.loadBalancerID)])
+						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
-						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1types.UserID(test.providerUserID))
+						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1types.LoadBalancerID(test.loadBalancerID)])
+						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 					}
 				}
 			})
@@ -1156,8 +1232,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		tests := []struct {
 			name                                      string
 			email, loadBalancerID, userID, fullUserID string
-			loadBalancerUsers                         []v1types.UserAccess
-			userLBPermissions                         types.LoadBalancerPermissions
+			loadBalancerUsers                         []v1Types.UserAccess
+			userLBPermissions                         v1Types.LoadBalancerPermissions
 			err                                       error
 			pendingResult                             error
 		}{
@@ -1166,14 +1242,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				loadBalancerID: "test_app_1",
 				userID:         "user_8",
 				fullUserID:     "auth0|rick_deckard",
-				loadBalancerUsers: []v1types.UserAccess{
-					{RoleName: v1types.RoleOwner, UserID: "user_1", Email: "", Accepted: true},
-					{RoleName: v1types.RoleAdmin, UserID: "user_2", Email: "", Accepted: true},
-					{RoleName: v1types.RoleAdmin, UserID: "user_8", Email: "", Accepted: true},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "", Accepted: true},
 				},
-				userLBPermissions: types.LoadBalancerPermissions{
-					RoleName:    types.RoleAdmin,
-					Permissions: []types.Permissions{types.PermReadEndpoint, types.PermWriteEndpoint},
+				userLBPermissions: v1Types.LoadBalancerPermissions{
+					RoleName:    v1Types.RoleAdmin,
+					Permissions: []v1Types.PermissionsEnum{v1Types.ReadEndpoint, v1Types.WriteEndpoint},
 				},
 				pendingResult: fmt.Errorf("Response not OK. 404 Not Found: load balancer not found"),
 			},
@@ -1213,13 +1289,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					if test.userID != "" {
 						// user should have been added to the user permissions in the cache
-						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1types.UserID(test.fullUserID))
+						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.fullUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1types.LoadBalancerID(test.loadBalancerID)])
+						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
-						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1types.UserID(test.fullUserID))
+						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.fullUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1types.LoadBalancerID(test.loadBalancerID)])
+						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						exists := false
 						loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.fullUserID, nil)
@@ -1311,8 +1387,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			name                       string
 			loadBalancerID             string
 			userID, fullUserID         string
-			loadBalancerUsers          []v1types.UserAccess
-			testPendingUsers           []v1types.UserAccess
+			loadBalancerUsers          []v1Types.UserAccess
+			testPendingUsers           []v1Types.UserAccess
 			err, permissionsFetchError error
 		}{
 			{
@@ -1320,9 +1396,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				loadBalancerID: "test_app_1",
 				userID:         "user_8",
 				fullUserID:     "auth0|rick_deckard",
-				loadBalancerUsers: []v1types.UserAccess{
-					{RoleName: v1types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
 				},
 			},
 			{
@@ -1348,7 +1424,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		for _, test := range tests {
 			ts.Run(test.name, func() {
 				if len(test.testPendingUsers) != 0 {
-					var updatedLB *v1types.LoadBalancer
+					var updatedLB *v1Types.LoadBalancer
 					for _, user := range test.testPendingUsers {
 						lb, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, user)
 						ts.NoError(err)
@@ -1370,10 +1446,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					// user should have been removed from the user permissions in the cache
-					_, err = ts.client1.GetUserPermissionsByUserID(testCtx, v1types.UserID(test.userID))
+					_, err = ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
 					cmp.Equal(test.permissionsFetchError, err)
 
-					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1types.UserID(test.userID))
+					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
 					cmp.Equal(test.permissionsFetchError, err)
 
 					// user's LB should have been removed from the user's LBs map in the cache
@@ -1426,26 +1502,27 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			})
 		}
 	})
+
 }
 
-func blockchainsToMap(blockchains []*v1types.Blockchain) map[string]*v1types.Blockchain {
-	expectedMap := make(map[string]*v1types.Blockchain)
+func blockchainsToMap(blockchains []*v1Types.Blockchain) map[string]*v1Types.Blockchain {
+	expectedMap := make(map[string]*v1Types.Blockchain)
 	for _, b := range blockchains {
 		expectedMap[b.ID] = b
 	}
 	return expectedMap
 }
 
-func applicationsToMap(applications []*v1types.Application) map[string]*v1types.Application {
-	expectedMap := make(map[string]*v1types.Application)
+func applicationsToMap(applications []*v1Types.Application) map[string]*v1Types.Application {
+	expectedMap := make(map[string]*v1Types.Application)
 	for _, a := range applications {
 		expectedMap[a.ID] = a
 	}
 	return expectedMap
 }
 
-func loadBalancersToMap(loadBalancers []*v1types.LoadBalancer) map[string]*v1types.LoadBalancer {
-	lbMap := make(map[string]*v1types.LoadBalancer)
+func loadBalancersToMap(loadBalancers []*v1Types.LoadBalancer) map[string]*v1Types.LoadBalancer {
+	lbMap := make(map[string]*v1Types.LoadBalancer)
 	for _, lb := range loadBalancers {
 		sortUsersByRole(lb.Users)
 
@@ -1459,8 +1536,8 @@ func loadBalancersToMap(loadBalancers []*v1types.LoadBalancer) map[string]*v1typ
 	return lbMap
 }
 
-func sortUsersByRole(users []v1types.UserAccess) {
-	roleWeight := map[v1types.RoleName]int{v1types.RoleOwner: 0, v1types.RoleAdmin: 1, v1types.RoleMember: 2}
+func sortUsersByRole(users []v1Types.UserAccess) {
+	roleWeight := map[v1Types.RoleName]int{v1Types.RoleOwner: 0, v1Types.RoleAdmin: 1, v1Types.RoleMember: 2}
 
 	sort.Slice(users, func(i, j int) bool {
 		if roleWeight[users[i].RoleName] != roleWeight[users[j].RoleName] {
@@ -1470,23 +1547,23 @@ func sortUsersByRole(users []v1types.UserAccess) {
 	})
 }
 
-func payPlansToMap(payPlans []*v1types.PayPlan) map[string]*v1types.PayPlan {
-	payPlansMap := make(map[string]*v1types.PayPlan)
+func payPlansToMap(payPlans []*v1Types.PayPlan) map[string]*v1Types.PayPlan {
+	payPlansMap := make(map[string]*v1Types.PayPlan)
 	for _, payPlan := range payPlans {
 		payPlansMap[string(payPlan.Type)] = payPlan
 	}
 	return payPlansMap
 }
 
-func userAccessSliceToMap(users []v1types.UserAccess) map[string]v1types.UserAccess {
-	userMap := make(map[string]v1types.UserAccess)
+func userAccessSliceToMap(users []v1Types.UserAccess) map[string]v1Types.UserAccess {
+	userMap := make(map[string]v1Types.UserAccess)
 	for _, user := range users {
 		userMap[user.UserID] = user
 	}
 	return userMap
 }
 
-func clearTimeFields(lb *v1types.LoadBalancer) {
+func clearTimeFields(lb *v1Types.LoadBalancer) {
 	lb.CreatedAt = time.Time{}
 	lb.UpdatedAt = time.Time{}
 	if len(lb.Applications) > 0 {
@@ -1502,13 +1579,13 @@ func boolToPointer(value bool) *bool {
 var (
 	mockTimestamp = time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC)
 
-	expectedLegacyApplications = map[string]*types.Application{
+	expectedLegacyApplications = map[string]*v1Types.Application{
 		"test_protocol_app_1": {
 			ID:                 "test_protocol_app_1",
 			UserID:             "auth0|james_holden",
 			Name:               "pokt_app_123",
 			FirstDateSurpassed: mockTimestamp,
-			GatewayAAT: types.GatewayAAT{
+			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_34715cae753e67c75fbb340442e7de8e",
 				ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
 				ApplicationSignature: "test_1dc39a2e5a84a35bf030969a0b3231f7",
@@ -1516,27 +1593,27 @@ var (
 				PrivateKey:           "test_11b8d394ca331d7c7a71ca1896d630f6",
 				Version:              "0.0.1",
 			},
-			GatewaySettings: types.GatewaySettings{
+			GatewaySettings: v1Types.GatewaySettings{
 				SecretKey:           "test_40f482d91a5ef2300ebb4e2308c",
 				SecretKeyRequired:   true,
 				WhitelistOrigins:    []string{"https://test.com"},
 				WhitelistUserAgents: []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-				WhitelistContracts: []types.WhitelistContracts{
+				WhitelistContracts: []v1Types.WhitelistContracts{
 					{BlockchainID: "0001", Contracts: []string{"0x1234567890abcdef"}},
 				},
-				WhitelistMethods: []types.WhitelistMethods{
+				WhitelistMethods: []v1Types.WhitelistMethods{
 					{BlockchainID: "0001", Methods: []string{"GET"}},
 				},
 				WhitelistBlockchains: []string{"0053"},
 			},
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
+			Limit: v1Types.AppLimit{
+				PayPlan: v1Types.PayPlan{
 					Type:  "basic_plan",
 					Limit: 1000,
 				},
 				CustomLimit: 0,
 			},
-			NotificationSettings: types.NotificationSettings{
+			NotificationSettings: v1Types.NotificationSettings{
 				Full:          true,
 				Half:          false,
 				Quarter:       true,
@@ -1551,7 +1628,7 @@ var (
 			UserID:             "auth0|ellen_ripley",
 			Name:               "pokt_app_456",
 			FirstDateSurpassed: mockTimestamp,
-			GatewayAAT: types.GatewayAAT{
+			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_8237c72345f12d1b1a8b64a1a7f66fa4",
 				ApplicationPublicKey: "test_8237c72345f12d1b1a8b64a1a7f66fa4",
 				ApplicationSignature: "test_f48d33b30ddaf60a1e5bb50d2ba8da5a",
@@ -1559,27 +1636,27 @@ var (
 				PrivateKey:           "test_2e83c836a29b423a47d8e18c779fd422",
 				Version:              "0.0.1",
 			},
-			GatewaySettings: types.GatewaySettings{
+			GatewaySettings: v1Types.GatewaySettings{
 				SecretKey:           "test_9c9e3b193cfba5348f93bb2f3e3fb794",
 				SecretKeyRequired:   false,
 				WhitelistOrigins:    []string{"https://example.com"},
 				WhitelistUserAgents: []string{"Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"},
-				WhitelistContracts: []types.WhitelistContracts{
+				WhitelistContracts: []v1Types.WhitelistContracts{
 					{BlockchainID: "0064", Contracts: []string{"0x0987654321abcdef"}},
 				},
-				WhitelistMethods: []types.WhitelistMethods{
+				WhitelistMethods: []v1Types.WhitelistMethods{
 					{BlockchainID: "0064", Methods: []string{"POST"}},
 				},
 				WhitelistBlockchains: []string{"0021"},
 			},
-			Limit: types.AppLimit{
-				PayPlan: types.PayPlan{
+			Limit: v1Types.AppLimit{
+				PayPlan: v1Types.PayPlan{
 					Type:  "pro_plan",
 					Limit: 5000,
 				},
 				CustomLimit: 0,
 			},
-			NotificationSettings: types.NotificationSettings{
+			NotificationSettings: v1Types.NotificationSettings{
 				Half: true,
 				Full: true,
 			},
@@ -1591,7 +1668,7 @@ var (
 			UserID:             "auth0|chrisjen_avasarala",
 			Name:               "pokt_app_789",
 			FirstDateSurpassed: mockTimestamp,
-			GatewayAAT: types.GatewayAAT{
+			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_b5e07928fc80083c13ad0201b81bae9b",
 				ApplicationPublicKey: "test_f608500e4fe3e09014fe2411b4a560b5",
 				ApplicationSignature: "test_c3cd8be16ba32e24dd49fdb0247fc9b8",
@@ -1599,9 +1676,9 @@ var (
 				PrivateKey:           "test_8663e187c19f3c6e27317eab4ed6d7d5",
 				Version:              "0.0.1",
 			},
-			GatewaySettings: types.GatewaySettings{SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1"},
-			Limit: types.AppLimit{
-				PayPlan:     types.PayPlan{Type: "startup_plan", Limit: 500},
+			GatewaySettings: v1Types.GatewaySettings{SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1"},
+			Limit: v1Types.AppLimit{
+				PayPlan:     v1Types.PayPlan{Type: "startup_plan", Limit: 500},
 				CustomLimit: 0,
 			},
 			CreatedAt: mockTimestamp,
@@ -1612,7 +1689,7 @@ var (
 			UserID:             "auth0|chrisjen_avasarala",
 			Name:               "pokt_app_789",
 			FirstDateSurpassed: mockTimestamp,
-			GatewayAAT: types.GatewayAAT{
+			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
 				ApplicationPublicKey: "test_f6a5d8690ecb669865bd752b7796a920",
 				ApplicationSignature: "test_cf05cf9bb26111c548e88fb6157af708",
@@ -1620,9 +1697,9 @@ var (
 				PrivateKey:           "test_838d29d61a65401f7d56d084cb6e4783",
 				Version:              "0.0.1",
 			},
-			GatewaySettings: types.GatewaySettings{SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1"},
-			Limit: types.AppLimit{
-				PayPlan:     types.PayPlan{Type: "startup_plan", Limit: 500},
+			GatewaySettings: v1Types.GatewaySettings{SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1"},
+			Limit: v1Types.AppLimit{
+				PayPlan:     v1Types.PayPlan{Type: "startup_plan", Limit: 500},
 				CustomLimit: 0,
 			},
 			CreatedAt: mockTimestamp,
@@ -1630,7 +1707,7 @@ var (
 		},
 	}
 
-	expectedLegacyLoadBalancers = map[string]*types.LoadBalancer{
+	expectedLegacyLoadBalancers = map[string]*v1Types.LoadBalancer{
 		"test_app_1": {
 			ID:                "test_app_1",
 			Name:              "pokt_app_123",
@@ -1638,7 +1715,7 @@ var (
 			RequestTimeout:    5000,
 			Gigastake:         true,
 			GigastakeRedirect: true,
-			StickyOptions: types.StickyOptions{
+			StickyOptions: v1Types.StickyOptions{
 				Duration: "60",
 				StickyOrigins: []string{
 					"chrome-extension://",
@@ -1647,10 +1724,10 @@ var (
 				StickyMax:  300,
 				Stickiness: true,
 			},
-			Applications: []*types.Application{
+			Applications: []*v1Types.Application{
 				expectedLegacyApplications["test_protocol_app_1"],
 			},
-			Users: []types.UserAccess{
+			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_1",
 					RoleName: "OWNER",
@@ -1670,7 +1747,7 @@ var (
 					Accepted: false,
 				},
 			},
-			Integrations: types.AccountIntegrations{
+			Integrations: v1Types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_1",
 			},
 			CreatedAt: mockTimestamp,
@@ -1681,10 +1758,10 @@ var (
 			Name:           "pokt_app_456",
 			UserID:         "auth0|ellen_ripley",
 			RequestTimeout: 10000,
-			Applications: []*types.Application{
+			Applications: []*v1Types.Application{
 				expectedLegacyApplications["test_protocol_app_2"],
 			},
-			StickyOptions: types.StickyOptions{
+			StickyOptions: v1Types.StickyOptions{
 				Duration: "30",
 				StickyOrigins: []string{
 					"https://example.com",
@@ -1693,7 +1770,7 @@ var (
 				StickyMax:  600,
 				Stickiness: true,
 			},
-			Users: []types.UserAccess{
+			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_3",
 					RoleName: "OWNER",
@@ -1719,7 +1796,7 @@ var (
 					Accepted: false,
 				},
 			},
-			Integrations: types.AccountIntegrations{
+			Integrations: v1Types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_2",
 			},
 			CreatedAt: mockTimestamp,
@@ -1730,11 +1807,11 @@ var (
 			Name:           "pokt_app_789",
 			UserID:         "auth0|chrisjen_avasarala",
 			RequestTimeout: 10000,
-			Applications: []*types.Application{
+			Applications: []*v1Types.Application{
 				expectedLegacyApplications["test_protocol_app_3"],
 				expectedLegacyApplications["test_protocol_app_4"],
 			},
-			Users: []types.UserAccess{
+			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_5",
 					RoleName: "OWNER",
@@ -1760,7 +1837,7 @@ var (
 					Accepted: true,
 				},
 			},
-			Integrations: types.AccountIntegrations{
+			Integrations: v1Types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_3",
 			},
 			CreatedAt: mockTimestamp,
@@ -1771,13 +1848,13 @@ var (
 			UserID:            "auth0|ulfric_stormcloak",
 			Name:              "test_account_4",
 			RequestTimeout:    0,
-			Applications:      []*types.Application(nil),
+			Applications:      []*v1Types.Application(nil),
 			Gigastake:         false,
 			GigastakeRedirect: false,
-			StickyOptions: types.StickyOptions{
+			StickyOptions: v1Types.StickyOptions{
 				Stickiness: false,
 			},
-			Users: []types.UserAccess{
+			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_4",
 					RoleName: "OWNER",
@@ -1792,7 +1869,7 @@ var (
 			ID:     "test_app_5",
 			Name:   "test_account_5",
 			UserID: "auth0|ulfric_stormcloak",
-			Users: []types.UserAccess{
+			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_4",
 					RoleName: "OWNER",
@@ -1805,7 +1882,7 @@ var (
 		},
 	}
 
-	expectedLegacyPayPlans = map[string]*types.PayPlan{
+	expectedLegacyPayPlans = map[string]*v1Types.PayPlan{
 		"developer_plan":  {Type: "developer_plan", Limit: 100},
 		"startup_plan":    {Type: "startup_plan", Limit: 500},
 		"basic_plan":      {Type: "basic_plan", Limit: 1000},
@@ -1813,7 +1890,7 @@ var (
 		"enterprise_plan": {Type: "enterprise_plan", Limit: 10000},
 	}
 
-	expectedLegacyBlockchains = map[string]*v1types.Blockchain{
+	expectedLegacyBlockchains = map[string]*v1Types.Blockchain{
 		"0001": {
 			ID:                "0001",
 			Altruist:          "https://test_pocket:auth123456@altruist-0001.com:1234", // pragma: allowlist secret
@@ -1824,7 +1901,7 @@ var (
 			Ticker:            "POKT",
 			BlockchainAliases: []string{"mainnet"},
 			Active:            true,
-			Redirects: []v1types.Redirect{
+			Redirects: []v1Types.Redirect{
 				{
 					Alias:          "altruist-0001",
 					Domain:         "pokt-rpc.gateway.pokt.network",
@@ -1833,7 +1910,7 @@ var (
 					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			SyncCheckOptions: v1types.SyncCheckOptions{
+			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
 				ResultKey: "result.sync_info",
 				Allowance: 1,
@@ -1853,7 +1930,7 @@ var (
 			BlockchainAliases: []string{"eth-mainnet"},
 			LogLimitBlocks:    100000,
 			Active:            true,
-			Redirects: []v1types.Redirect{
+			Redirects: []v1Types.Redirect{
 				{
 					Alias:          "altruist-0021",
 					Domain:         "eth-rpc.gateway.pokt.network",
@@ -1862,7 +1939,7 @@ var (
 					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			SyncCheckOptions: v1types.SyncCheckOptions{
+			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
 				ResultKey: "result",
 				Allowance: 5,
@@ -1879,7 +1956,7 @@ var (
 			Ticker:            "HMY",
 			BlockchainAliases: []string{"harmony-0"},
 			Active:            true,
-			Redirects: []v1types.Redirect{
+			Redirects: []v1Types.Redirect{
 				{
 					Alias:          "altruist-0040",
 					Domain:         "hmy-rpc.gateway.pokt.network",
@@ -1888,7 +1965,7 @@ var (
 					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			SyncCheckOptions: v1types.SyncCheckOptions{
+			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
 				ResultKey: "result",
 				Allowance: 8,
@@ -1906,7 +1983,7 @@ var (
 			BlockchainAliases: []string{"optimism-mainnet"},
 			LogLimitBlocks:    100000,
 			Active:            true,
-			Redirects: []v1types.Redirect{
+			Redirects: []v1Types.Redirect{
 				{
 					Alias:          "altruist-0053",
 					Domain:         "op-rpc.gateway.pokt.network",
@@ -1915,7 +1992,7 @@ var (
 					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
 				},
 			},
-			SyncCheckOptions: v1types.SyncCheckOptions{
+			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
 				ResultKey: "result",
 				Allowance: 2,
@@ -1934,7 +2011,7 @@ var (
 			LogLimitBlocks:    100000,
 			RequestTimeout:    60000,
 			Active:            false,
-			SyncCheckOptions: v1types.SyncCheckOptions{
+			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"sui_blockNumber\",\"params\":[]}",
 				ResultKey: "result",
 				Allowance: 7,
@@ -1944,7 +2021,7 @@ var (
 		},
 	}
 
-	createLegacyBlockchain = &v1types.Blockchain{
+	createLegacyBlockchain = &v1Types.Blockchain{
 		ID:                "0127",
 		Altruist:          "https://test_pocket:auth123456@altruist-0127.com:1234", // pragma: allowlist secret
 		Blockchain:        "bsc-mainnet",
@@ -1953,14 +2030,14 @@ var (
 		Ticker:            "BNB",
 		BlockchainAliases: []string{"bsc-mainnet", "binance-smart-chain-mainnet"},
 		LogLimitBlocks:    200000,
-		Redirects: []v1types.Redirect{
+		Redirects: []v1Types.Redirect{
 			{
 				Alias:          "altruist-0127",
 				Domain:         "bnbrpc.gateway.pokt.network",
 				LoadBalancerID: "test_app_3",
 			},
 		},
-		SyncCheckOptions: v1types.SyncCheckOptions{
+		SyncCheckOptions: v1Types.SyncCheckOptions{
 			Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_syncing\",\"params\":[]}",
 			ResultKey: "result",
 			Allowance: 3,
@@ -1969,19 +2046,19 @@ var (
 		UpdatedAt: mockTimestamp,
 	}
 
-	createLegacyLoadBalancer = &v1types.LoadBalancer{
+	createLegacyLoadBalancer = &v1Types.LoadBalancer{
 		Name:              "new_pokt_app_777",
 		UserID:            "auth0|james_holden",
 		ApplicationIDs:    []string(nil),
 		RequestTimeout:    5000,
 		Gigastake:         true,
 		GigastakeRedirect: true,
-		StickyOptions:     v1types.StickyOptions{Duration: "60", StickyOrigins: []string{"chrome-extension://", "moz-extension://"}, StickyMax: 300, Stickiness: true},
-		Applications: []*v1types.Application{
+		StickyOptions:     v1Types.StickyOptions{Duration: "60", StickyOrigins: []string{"chrome-extension://", "moz-extension://"}, StickyMax: 300, Stickiness: true},
+		Applications: []*v1Types.Application{
 			{
 				UserID: "auth0|james_holden",
 				Name:   "new_pokt_app_777",
-				GatewayAAT: v1types.GatewayAAT{
+				GatewayAAT: v1Types.GatewayAAT{
 					Address:              "test_34715cae753e67c75fbb340442e7de8e",
 					ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
 					ApplicationSignature: "test_1dc39a2e5a84a35bf030969a0b3231f7",
@@ -1989,15 +2066,15 @@ var (
 					PrivateKey:           "test_11b8d394ca331d7c7a71ca1896d630f6",
 					Version:              "0.0.1",
 				},
-				GatewaySettings:      v1types.GatewaySettings{SecretKey: "test_40f482d91a5ef2300ebb4e2308c"},
-				Limit:                v1types.AppLimit{PayPlan: v1types.PayPlan{Type: "basic_plan", Limit: 1_000}, CustomLimit: 0},
-				NotificationSettings: v1types.NotificationSettings{SignedUp: true, Quarter: false, Half: false, ThreeQuarters: true, Full: true},
+				GatewaySettings:      v1Types.GatewaySettings{SecretKey: "test_40f482d91a5ef2300ebb4e2308c"},
+				Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "basic_plan", Limit: 1_000}, CustomLimit: 0},
+				NotificationSettings: v1Types.NotificationSettings{SignedUp: true, Quarter: false, Half: false, ThreeQuarters: true, Full: true},
 			},
 		},
-		Users: []v1types.UserAccess{
-			{UserID: "user_1", RoleName: v1types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
-			{UserID: "user_2", RoleName: v1types.RoleAdmin, Email: "paul.atreides456@test.com", Accepted: true},
-			{UserID: "user_8", RoleName: v1types.RoleAdmin, Email: "rick.deckard456@test.com", Accepted: false},
+		Users: []v1Types.UserAccess{
+			{UserID: "user_1", RoleName: v1Types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
+			{UserID: "user_2", RoleName: v1Types.RoleAdmin, Email: "paul.atreides456@test.com", Accepted: true},
+			{UserID: "user_8", RoleName: v1Types.RoleAdmin, Email: "rick.deckard456@test.com", Accepted: false},
 		},
 	}
 

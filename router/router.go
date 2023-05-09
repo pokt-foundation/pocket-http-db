@@ -1,14 +1,15 @@
 package router
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
+	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
@@ -79,6 +80,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete) // TODO update to use userID not email
 
+	rt.Router.HandleFunc("/v1/user", rt.CreatePortalUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.GetApplicationsByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.GetLoadBalancersByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.GetUserPermissionsByUserID).Methods(http.MethodGet)
@@ -202,8 +204,8 @@ func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
-	roleNameFilter := types.RoleName(r.URL.Query().Get("filter"))
-	if roleNameFilter != types.RoleName("") && !roleNameFilter.IsValid() {
+	roleNameFilter := v1Types.RoleName(r.URL.Query().Get("filter"))
+	if roleNameFilter != v1Types.RoleName("") && !v1Types.ValidRoleNames[roleNameFilter] {
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
 		return
 	}
@@ -297,7 +299,7 @@ func (rt *Router) GetLoadBalancersCountByPortalID(w http.ResponseWriter, r *http
 /* ---------- Create Methods ---------- */
 
 func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	var lb types.LoadBalancer
+	var lb v1Types.LoadBalancer
 
 	err := json.NewDecoder(r.Body).Decode(&lb)
 	if err != nil {
@@ -322,7 +324,7 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 
 	lbID := vars["id"]
 
-	var user types.UserAccess
+	var user v1Types.UserAccess
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
@@ -343,7 +345,7 @@ func (rt *Router) CreateLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
-	var blockchain types.Blockchain
+	var blockchain v1Types.Blockchain
 
 	err := json.NewDecoder(r.Body).Decode(&blockchain)
 	if err != nil {
@@ -364,7 +366,7 @@ func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
-	var redirect types.Redirect
+	var redirect v1Types.Redirect
 
 	err := json.NewDecoder(r.Body).Decode(&redirect)
 	if err != nil {
@@ -385,35 +387,60 @@ func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
 }
 
-/* ---------- Update Methods ---------- */
+func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
+	var userInput types.CreateUser
 
-func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	appID := vars["id"]
-
-	var updateInput types.UpdateApplication
-
-	err := json.NewDecoder(r.Body).Decode(&updateInput)
+	err := json.NewDecoder(r.Body).Decode(&userInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateLegacyApplication decode failed: %w", err))
+		rt.logError(fmt.Errorf("CreatePortalUser Decode failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer r.Body.Close()
 
-	// Note: It is intended to use UpdateLegacyLoadBalancer here
-	loadBalancer, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, appID, updateInput)
+	newUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), userInput, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateLegacyApplication in UpdateApplication failed: %w", err))
-		if err.Error() == fmt.Errorf(cache.ErrPortalAppNotFound.Error(), appID).Error() { // prevent a 500 when it should be a 404
+		rt.logError(fmt.Errorf("WriteUserNewSignUp failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	createPortalUserResponse := types.CreateUserResponse{
+		User:      *newUser,
+		AccountID: accountID,
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, createPortalUserResponse)
+}
+
+/* ---------- Update Methods ---------- */
+
+func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	lbID := vars["id"]
+
+	// Note: It is intended to use UpdateApplication here
+	var updateInput v1Types.UpdateApplication
+
+	err := json.NewDecoder(r.Body).Decode(&updateInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateLoadBalancer decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	loadBalancer, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, lbID, updateInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateLegacyLoadBalancer in UpdateLoadBalancer failed: %w", err))
+		if err.Error() == fmt.Errorf(cache.ErrPortalAppNotFound.Error(), lbID).Error() { // prevent a 500 when it should be a 404
 			jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
-			return
-		} else {
-			jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, loadBalancer)
@@ -452,7 +479,7 @@ func (rt *Router) UpdateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
-	var updateUser types.UpdateUserAccess
+	var updateUser v1Types.UpdateUserAccess
 
 	err := json.NewDecoder(r.Body).Decode(&updateUser)
 	if err != nil {
@@ -477,7 +504,7 @@ func (rt *Router) AcceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
-	var acceptUserUpdate types.UpdateUserAccess
+	var acceptUserUpdate v1Types.UpdateUserAccess
 
 	err := json.NewDecoder(r.Body).Decode(&acceptUserUpdate)
 	if err != nil {
@@ -514,7 +541,7 @@ func (rt *Router) UpdateBlockchain(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	blockchainID := vars["id"]
 
-	var update types.UpdateBlockchain
+	var update v1Types.UpdateBlockchain
 
 	err := json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
@@ -523,8 +550,6 @@ func (rt *Router) UpdateBlockchain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-
-	PrettyString("CHAIN ID", blockchainID)
 
 	updatedChain, err := rt.cache.UpdateLegacyBlockchain(r.Context(), rt.writer, blockchainID, update)
 	if err != nil {
@@ -558,15 +583,4 @@ func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, activated)
-}
-
-func PrettyString(label string, thing interface{}) {
-	jsonThing, _ := json.Marshal(thing)
-	str := string(jsonThing)
-
-	var prettyJSON bytes.Buffer
-	_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-	output := prettyJSON.String()
-
-	fmt.Println(label, output)
 }
