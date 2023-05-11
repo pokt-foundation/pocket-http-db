@@ -1158,15 +1158,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name:           "Should fail if attempting to transfer ownership and the UpdaterEmail is not provided",
-				loadBalancerID: "test_app_1",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_2",
-					RoleName: v1Types.RoleOwner,
-				},
-				err: fmt.Errorf("transferring ownership requires providing the updater's email"),
-			},
-			{
 				name:           "Should fail if attempting to transfer ownership and the user has not accepted their invite",
 				loadBalancerID: "test_app_1",
 				update: v1Types.UpdateUserAccess{
@@ -1230,18 +1221,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 	ts.Run("Test_AcceptLoadBalancerUser", func() {
 		tests := []struct {
-			name                                      string
-			email, loadBalancerID, userID, fullUserID string
-			loadBalancerUsers                         []v1Types.UserAccess
-			userLBPermissions                         v1Types.LoadBalancerPermissions
-			err                                       error
-			pendingResult                             error
+			name                                  string
+			email, loadBalancerID, providerUserID string
+			loadBalancerUsers                     []v1Types.UserAccess
+			userLBPermissions                     v1Types.LoadBalancerPermissions
+			err                                   error
+			pendingResult                         error
 		}{
 			{
 				name:           "Should update a single user's ID and Accepted field for an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
-				userID:         "user_8",
-				fullUserID:     "auth0|rick_deckard",
+				providerUserID: "auth0|rick_deckard",
 				loadBalancerUsers: []v1Types.UserAccess{
 					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "", Accepted: true},
 					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "", Accepted: true},
@@ -1255,27 +1245,26 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name:           "Should fail if load balancer ID not provided",
+				providerUserID: "auth0|rick_deckard",
 				loadBalancerID: "",
-				userID:         "user_8",
 				err:            fmt.Errorf("no load balancer ID"),
 			},
 			{
 				name:           "Should fail if user ID not provided",
 				loadBalancerID: "test_app_1",
-				userID:         "",
 				err:            fmt.Errorf("no user ID"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
+				providerUserID: "auth0|rick_deckard",
 				loadBalancerID: "im_not_here",
-				userID:         "user_8",
 				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID im_not_here"),
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
+				_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.loadBalancerID, test.providerUserID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
@@ -1287,18 +1276,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.Equal(test.err, err)
 					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
-					if test.userID != "" {
+					if test.providerUserID != "" {
 						// user should have been added to the user permissions in the cache
-						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.fullUserID))
+						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
 						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
-						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.fullUserID))
+						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
 						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						exists := false
-						loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.fullUserID, nil)
+						loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
 						ts.Equal(test.err, err)
 						for _, lb := range loadBalancers {
 							if lb.ID == test.loadBalancerID {
@@ -1309,7 +1298,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.True(exists)
 
 						exists = false
-						loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.fullUserID, nil)
+						loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
 						ts.Equal(test.err, err)
 						for _, lb := range loadBalancers {
 							if lb.ID == test.loadBalancerID {
@@ -1321,7 +1310,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 						// user should be removed from pending lb list
 						removed := true
-						pendingLoadBalancers, _ := ts.client1.GetPendingLoadBalancersByUserID(testCtx, test.userID)
+						pendingLoadBalancers, _ := ts.client1.GetPendingLoadBalancersByUserID(testCtx, test.providerUserID)
 						for _, lb := range pendingLoadBalancers {
 							if lb.ID == test.loadBalancerID {
 								removed = false
@@ -1331,7 +1320,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.True(removed)
 
 						removed = true
-						pendingLoadBalancers, _ = ts.client2.GetPendingLoadBalancersByUserID(testCtx, test.userID)
+						pendingLoadBalancers, _ = ts.client2.GetPendingLoadBalancersByUserID(testCtx, test.providerUserID)
 						for _, lb := range pendingLoadBalancers {
 							if lb.ID == test.loadBalancerID {
 								removed = false
@@ -1386,7 +1375,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		tests := []struct {
 			name                       string
 			loadBalancerID             string
-			userID, fullUserID         string
+			userID, providerUserID     string
 			loadBalancerUsers          []v1Types.UserAccess
 			testPendingUsers           []v1Types.UserAccess
 			err, permissionsFetchError error
@@ -1395,7 +1384,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:           "Should remove a single user from an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
 				userID:         "user_8",
-				fullUserID:     "auth0|rick_deckard",
+				providerUserID: "auth0|rick_deckard",
 				loadBalancerUsers: []v1Types.UserAccess{
 					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
 					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
@@ -1453,11 +1442,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					cmp.Equal(test.permissionsFetchError, err)
 
 					// user's LB should have been removed from the user's LBs map in the cache
-					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.fullUserID, nil)
+					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
 					ts.NoError(err)
 					ts.Equal(len(lbs), 0)
 
-					lbs, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.fullUserID, nil)
+					lbs, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
 					ts.NoError(err)
 					ts.Equal(len(lbs), 0)
 				}

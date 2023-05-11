@@ -897,6 +897,104 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	}
 }
 
+func TestRouter_UpdateLoadBalancer(t *testing.T) {
+	tests := []struct {
+		name           string
+		lbID           string
+		updateInput    v1Types.UpdateApplication
+		expectedStatus int
+	}{
+		{
+			name: "Should update load balancer",
+			lbID: "test_app_1",
+			updateInput: v1Types.UpdateApplication{
+				Name: "Updated Test App",
+				GatewaySettings: &v1Types.UpdateGatewaySettings{
+					ID:                "gateway_1",
+					SecretKey:         "new_secret_key",
+					SecretKeyRequired: nil,
+					WhitelistOrigins:  []string{"https://example.com"},
+				},
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Should update load balancer plan to Enterprise",
+			lbID: "test_app_1",
+			updateInput: v1Types.UpdateApplication{
+				Limit: &v1Types.AppLimit{
+					PayPlan: v1Types.PayPlan{
+						Type: v1Types.Enterprise,
+					},
+					CustomLimit: 10_000,
+				},
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Should update load balancer plan to PayAsYouGoV0",
+			lbID: "test_app_1",
+			updateInput: v1Types.UpdateApplication{
+				Limit: &v1Types.AppLimit{
+					PayPlan: v1Types.PayPlan{
+						Type: v1Types.PayAsYouGoV0,
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdatePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+			if test.updateInput.Limit != nil {
+				writerMock.On("UpdateAccount", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+			}
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateInputBytes, err := json.Marshal(test.updateInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/load_balancer/%s", test.lbID), bytes.NewBuffer(updateInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var lbResp v1Types.LoadBalancer
+			err = json.Unmarshal(rr.Body.Bytes(), &lbResp)
+			c.NoError(err)
+
+			if test.updateInput.Name != "" {
+				c.Equal(test.updateInput.Name, lbResp.Name)
+			}
+			if test.updateInput.GatewaySettings != nil && test.updateInput.GatewaySettings.SecretKey != "" {
+				c.Equal(test.updateInput.GatewaySettings.SecretKey, lbResp.Applications[0].GatewaySettings.SecretKey)
+			}
+			if test.updateInput.GatewaySettings != nil && len(test.updateInput.GatewaySettings.WhitelistOrigins) > 0 {
+				c.Equal(test.updateInput.GatewaySettings.WhitelistOrigins, lbResp.Applications[0].GatewaySettings.WhitelistOrigins)
+			}
+			if test.updateInput.Limit != nil && test.updateInput.Limit.PayPlan.Type != "" {
+				switch test.updateInput.Limit.PayPlan.Type {
+				case v1Types.Enterprise:
+					c.Equal(test.updateInput.Limit.CustomLimit, lbResp.Applications[0].DailyLimit())
+				case v1Types.PayAsYouGoV0:
+					c.Equal(5000, lbResp.Applications[0].DailyLimit())
+				}
+			}
+		})
+	}
+}
+
 func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -911,6 +1009,15 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 			updateUser: v1Types.UpdateUserAccess{
 				UserID:   "user_9",
 				RoleName: v1Types.RoleAdmin,
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Should update load balancer user role back",
+			lbID: "test_app_2",
+			updateUser: v1Types.UpdateUserAccess{
+				UserID:   "user_9",
+				RoleName: v1Types.RoleMember,
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -959,15 +1066,17 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 	tests := []struct {
 		name           string
 		lbID           string
+		portalUserID   string
 		acceptUser     v1Types.UpdateUserAccess
 		expectedStatus int
 	}{
 		{
-			name: "Should accept load balancer user",
-			lbID: "test_app_2",
+			name:         "Should accept load balancer user",
+			lbID:         "test_app_2",
+			portalUserID: "user_9",
 			acceptUser: v1Types.UpdateUserAccess{
-				UserID:   "user_9",
-				RoleName: v1Types.RoleAdmin,
+				UserID:   "auth0|tyrion_lannister",
+				RoleName: v1Types.RoleMember,
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -1000,7 +1109,7 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 			c.NoError(err)
 			accepted := false
 			for _, user := range lbResp.Users {
-				if user.UserID == test.acceptUser.UserID {
+				if user.UserID == test.portalUserID {
 					c.Equal(test.acceptUser.RoleName, user.RoleName)
 					c.True(user.Accepted, "User should be accepted")
 					accepted = true
@@ -1308,6 +1417,7 @@ var (
 	testLoadBalancers = map[string]v1Types.LoadBalancer{
 		"test_app_1": {
 			ID:                "test_app_1",
+			AccountID:         "account_1",
 			Name:              "pokt_app_123",
 			UserID:            "auth0|james_holden",
 			Gigastake:         true,
@@ -1344,6 +1454,7 @@ var (
 		},
 		"test_app_2": {
 			ID:             "test_app_2",
+			AccountID:      "account_2",
 			Name:           "pokt_app_456",
 			UserID:         "auth0|ellen_ripley",
 			RequestTimeout: 10_000,
@@ -1384,6 +1495,7 @@ var (
 		},
 		"test_app_3": {
 			ID:                "test_app_3",
+			AccountID:         "account_3",
 			Name:              "pokt_app_789",
 			UserID:            "auth0|chrisjen_avasarala",
 			GigastakeRedirect: false,
@@ -1424,36 +1536,6 @@ var (
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
-		// "test_app_4": {
-		// 	ID:     "test_app_4",
-		// 	Name:   "test_account_4",
-		// 	UserID: "auth0|ulfric_stormcloak",
-		// 	Users: []types.UserAccess{
-		// 		{
-		// 			UserID:   "user_4",
-		// 			RoleName: "OWNER",
-		// 			Email:    "ulfric.stormcloak123@test.com",
-		// 			Accepted: true,
-		// 		},
-		// 	},
-		// 	CreatedAt: testdata.MockTimestamp,
-		// 	UpdatedAt: testdata.MockTimestamp,
-		// },
-		// "test_app_5": {
-		// 	ID:     "test_app_5",
-		// 	Name:   "test_account_5",
-		// 	UserID: "auth0|ulfric_stormcloak",
-		// 	Users: []types.UserAccess{
-		// 		{
-		// 			UserID:   "user_4",
-		// 			RoleName: "OWNER",
-		// 			Email:    "ulfric.stormcloak123@test.com",
-		// 			Accepted: true,
-		// 		},
-		// 	},
-		// 	CreatedAt: testdata.MockTimestamp,
-		// 	UpdatedAt: testdata.MockTimestamp,
-		// },
 	}
 
 	testBlockchains = map[string]v1Types.Blockchain{
