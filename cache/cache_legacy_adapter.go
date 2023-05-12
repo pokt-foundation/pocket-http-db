@@ -45,13 +45,21 @@ func (c *Cache) GetLegacyApplications(options Options) []v1Types.Application {
 	var applications []v1Types.Application
 
 	for _, portalApp := range portalApps {
-		userID, account, err := c.getUserIDAndAccount(portalApp.AccountID)
-		if err != nil {
-			c.log.Warn(fmt.Sprintf("error in GetLegacyApplications: %s", err.Error()))
-			continue
+		var (
+			// If app doesn't have account/user it is a Gigastakes app
+			// so use empty values for user ID, plan type and daily limit
+			appUserID  = ""
+			planType   = v2Types.PayPlanType("")
+			dailyLimit = int32(0)
+		)
+		if userID, account, err := c.getUserIDAndAccount(portalApp.AccountID); err == nil {
+			// If app has Account and user then fill in user ID and plan type
+			appUserID = userID
+			planType = account.PlanType
+			dailyLimit = account.Plan.LegacyDailyLimit
 		}
 
-		legacyApps := legacyadapters.ConvertToLegacyApplications(portalApp, userID, account.PlanType, account.Plan.LegacyDailyLimit)
+		legacyApps := legacyadapters.ConvertToLegacyApplications(portalApp, appUserID, planType, dailyLimit)
 
 		var apps []v1Types.Application
 		for _, app := range legacyApps {
@@ -77,12 +85,18 @@ func (c *Cache) GetLegacyApplication(appID string) (v1Types.Application, error) 
 		return v1Types.Application{}, fmt.Errorf(errPortalAppNotFoundForApp.Error(), appID)
 	}
 
-	_, account, err := c.getUserIDAndAccount(portalApp.AccountID)
-	if err != nil {
-		return v1Types.Application{}, err
+	// If app doesn't have account/user it is a Gigastakes app
+	// so use empty values for user ID, plan type and daily limit
+	appAccount := &v2Types.Account{
+		Plan:  &v2Types.Plan{},
+		Users: map[v2Types.UserID]v2Types.AccountUserAccess{},
+	}
+	if _, account, err := c.getUserIDAndAccount(portalApp.AccountID); err == nil {
+		// If app has Account and user then fill in user ID and plan type
+		appAccount = account
 	}
 
-	application := legacyadapters.ConvertToLegacyApplication(portalApp, *account, portalAppID)
+	application := legacyadapters.ConvertToLegacyApplication(portalApp, *appAccount, portalAppID)
 
 	return application, nil
 }
