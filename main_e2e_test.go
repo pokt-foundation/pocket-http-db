@@ -628,9 +628,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should create a single user in the DB",
 				userInput: types.CreateUser{
-					Email:            "test@test.com",
-					AuthProviderType: types.AuthTypeAuth0Github,
-					ProviderUserID:   "auth0_username|test",
+					Email:          "test@test.com",
+					ProviderUserID: "auth0|test",
 				},
 				expectedResponse: &types.CreateUserResponse{
 					User: types.User{
@@ -638,7 +637,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						AuthProviders: map[types.AuthType]types.UserAuthProvider{
 							types.AuthTypeAuth0Github: {
 								Type:           types.AuthTypeAuth0Github,
-								ProviderUserID: "auth0_username|test",
+								ProviderUserID: "auth0|test",
 								Provider:       types.AuthProviderAuth0,
 								Federated:      true,
 							},
@@ -651,8 +650,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should fail if there's no email",
 				userInput: types.CreateUser{
-					AuthProviderType: types.AuthTypeAuth0Github,
-					ProviderUserID:   "auth0_username|test",
+					ProviderUserID: "auth0|test",
 				},
 				err: fmt.Errorf("Response not OK. 400 Bad Request: error email input is not a valid email address ''"),
 			},
@@ -660,7 +658,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should fail if there's no provider type",
 				userInput: types.CreateUser{
 					Email:          "email@tes.com",
-					ProviderUserID: "auth0_username|test",
+					ProviderUserID: "auth0|test",
 				},
 				err: fmt.Errorf("Response not OK. 400 Bad Request: error invalid auth provider type ''"),
 			},

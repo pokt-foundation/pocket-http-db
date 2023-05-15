@@ -28,8 +28,6 @@ github.com/pokt-foundation/db-client v1.10.3 h1:ISbuhOu4DQERPNOG+mLTla79pP48b/7x
 github.com/pokt-foundation/db-client v1.10.3/go.mod h1:z6cZyCS0sG7GiPpMMYwLkgOCHJm112ARmBiIFoB/6qk=
 github.com/pokt-foundation/portal-db v1.10.8 h1:YvTDrVc+P5NXk5NKk1zaoIHsWfsXsG1dWp3X5fa8K/A=
 github.com/pokt-foundation/portal-db v1.10.8/go.mod h1:Pf8IIeoj3mSIk0+eNdzssz3T7GvnWRkFKPwGsFT2D5w=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.61 h1:7aCPp72J5coFoshc1EtCubC+4Kcv2QNa2V253GnwvXQ=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.61/go.mod h1:htymE+vj4je428TV0ypMUXtGFB2yOgskDEMe9wfZjWg=
 github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.62 h1:VgXSEESRzLAaTrkbe68v4ZIdKhoZyc1TT7CcPy5duxE=
 github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.62/go.mod h1:htymE+vj4je428TV0ypMUXtGFB2yOgskDEMe9wfZjWg=
 github.com/pokt-foundation/utils-go v0.5.0 h1:OKFZTbYBZ+m8Oh+J5Wt3GcPfd9CC0QW8yr5osdQ5zwY=

@@ -793,9 +793,8 @@ func TestRouter_CreatePortalUser(t *testing.T) {
 		{
 			name: "Should create a new user",
 			userInput: types.CreateUser{
-				Email:            "test@test.com",
-				AuthProviderType: types.AuthTypeAuth0Github,
-				ProviderUserID:   "auth0_username|test",
+				Email:          "test@test.com",
+				ProviderUserID: "auth0|test",
 			},
 			expectedStatus: http.StatusOK,
 			expectedResponse: types.CreateUserResponse{
@@ -803,7 +802,7 @@ func TestRouter_CreatePortalUser(t *testing.T) {
 					Email:    "test@test.com",
 					SignedUp: true,
 					AuthProviders: map[types.AuthType]types.UserAuthProvider{
-						types.AuthTypeAuth0Github: {ProviderUserID: "auth0_username|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
+						types.AuthTypeAuth0Github: {ProviderUserID: "auth0|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
 					},
 				},
 				AccountID: types.AccountID("accountTestID"),
@@ -823,7 +822,7 @@ func TestRouter_CreatePortalUser(t *testing.T) {
 				Email:    "test@test.com",
 				SignedUp: true,
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
-					types.AuthTypeAuth0Github: {ProviderUserID: "auth0_username|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
+					types.AuthTypeAuth0Github: {ProviderUserID: "auth0|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
 				},
 			}, types.AccountID("accountTestID"), nil).Once()
 			router.writer = writerMock
@@ -1661,7 +1660,7 @@ var (
 			Email:    "test@test.com",
 			SignedUp: true,
 			AuthProviders: map[types.AuthType]types.UserAuthProvider{
-				types.AuthTypeAuth0Github: {ProviderUserID: "auth0_username|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
+				types.AuthTypeAuth0Github: {ProviderUserID: "auth0|test", Type: types.AuthTypeAuth0Github, Provider: types.AuthProviderAuth0},
 			},
 		},
 	}
