@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
@@ -14,6 +16,19 @@ import (
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/stretchr/testify/suite"
 )
+
+func Plog(args ...interface{}) {
+	for _, arg := range args {
+		var prettyJSON bytes.Buffer
+		jsonArg, _ := json.Marshal(arg)
+		str := string(jsonArg)
+		_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
+		output := prettyJSON.String()
+
+		fmt.Print(output)
+	}
+	fmt.Println()
+}
 
 func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 	if testing.Short() {
@@ -635,11 +650,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					User: types.User{
 						Email: "test@test.com",
 						AuthProviders: map[types.AuthType]types.UserAuthProvider{
-							types.AuthTypeAuth0Github: {
-								Type:           types.AuthTypeAuth0Github,
+							types.AuthTypeAuth0Username: {
+								Type:           types.AuthTypeAuth0Username,
 								ProviderUserID: "auth0|test",
 								Provider:       types.AuthProviderAuth0,
-								Federated:      true,
+								Federated:      false,
 							},
 						},
 						SignedUp: true,
@@ -657,10 +672,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should fail if there's no provider type",
 				userInput: types.CreateUser{
-					Email:          "email@tes.com",
-					ProviderUserID: "auth0|test",
+					Email:          "email@test.com",
+					ProviderUserID: "wtf|test",
 				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: error invalid auth provider type ''"),
+				err: fmt.Errorf("Response not OK. 400 Bad Request: error invalid auth provider type 'wtf'"),
 			},
 		}
 
@@ -668,6 +683,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			ts.Run(test.name, func() {
 				createdUser, err := ts.client1.CreatePortalUser(testCtx, test.userInput)
 				ts.Equal(test.err, err)
+
 				if test.err == nil {
 					test.expectedResponse.User.ID = createdUser.User.ID
 					test.expectedResponse.User.UpdatedAt = createdUser.User.UpdatedAt
@@ -677,7 +693,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NotEmpty(createdUser.AccountID, "Should have an accountID")
 
 					// If the user was created, it should have permissions
-					providerID := createdUser.User.AuthProviders[types.AuthTypeAuth0Github].ProviderUserID
+					providerID := createdUser.User.AuthProviders[types.AuthTypeAuth0Username].ProviderUserID
 					permission, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerID))
 					ts.NotNil(permission)
 					ts.Nil(err)
