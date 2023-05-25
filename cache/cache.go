@@ -36,15 +36,15 @@ type (
 
 		portalApps              map[types.PortalAppID]*types.PortalApp
 		portalAppsByProtocolID  map[types.ProtocolAppID]*types.PortalApp
-		pendingAAT              map[types.PortalAppID]types.AAT
+		pendingPortalAppAATs    map[types.PortalAppID]types.AAT
 		pendingSettings         map[types.PortalAppID]types.Settings
 		pendingAppNotifications map[types.PortalAppID]types.AppNotification
 		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
 
-		chains                    map[types.RelayChainID]*types.Chain
-		pendingAltruists          map[types.RelayChainID][]types.Altruist
-		pendingGigastakeRedirects map[types.RelayChainID][]types.GigastakeRedirect
-		pendingChecks             map[types.RelayChainID][]types.Check
+		chains              map[types.RelayChainID]*types.Chain
+		pendingAltruists    map[types.RelayChainID][]types.Altruist
+		pendingAliasDomains map[types.RelayChainID][]types.AliasDomains
+		pendingChecks       map[types.RelayChainID][]types.Check
 
 		plans map[types.PayPlanType]*types.Plan
 
@@ -60,8 +60,7 @@ type (
 	}
 
 	Options struct {
-		IncludeDeleted          bool
-		SetGigastakeRedirectApp bool
+		IncludeDeleted bool
 	}
 )
 
@@ -71,14 +70,14 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		log:    config.Logger,
 
-		pendingAccountUserAccess:  make(map[types.AccountID][]types.AccountUserAccess),
-		pendingUsers:              make(map[types.UserID]types.User),
-		pendingAAT:                make(map[types.PortalAppID]types.AAT),
-		pendingSettings:           make(map[types.PortalAppID]types.Settings),
-		pendingAppNotifications:   make(map[types.PortalAppID]types.AppNotification),
-		pendingAltruists:          make(map[types.RelayChainID][]types.Altruist),
-		pendingGigastakeRedirects: make(map[types.RelayChainID][]types.GigastakeRedirect),
-		pendingChecks:             make(map[types.RelayChainID][]types.Check),
+		pendingAccountUserAccess: make(map[types.AccountID][]types.AccountUserAccess),
+		pendingUsers:             make(map[types.UserID]types.User),
+		pendingPortalAppAATs:     make(map[types.PortalAppID]types.AAT),
+		pendingSettings:          make(map[types.PortalAppID]types.Settings),
+		pendingAppNotifications:  make(map[types.PortalAppID]types.AppNotification),
+		pendingAltruists:         make(map[types.RelayChainID][]types.Altruist),
+		pendingAliasDomains:      make(map[types.RelayChainID][]types.AliasDomains),
+		pendingChecks:            make(map[types.RelayChainID][]types.Check),
 	}
 
 	err := cache.setCache(ctx)
@@ -397,23 +396,22 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	accountID := accountUser.AccountID
-	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
-
 	// Add user to permissions map if they have accepted their invitation
 	if accountUser.Accepted {
 		userPermissions, ok := c.userPermissions[accountUser.UserID]
 		if !ok {
 			userPermissions = &types.UserPermissions{
-				UserID:   accountUser.UserID,
-				Accounts: map[types.AccountID]types.AccountPermissions{},
+				UserID:     accountUser.UserID,
+				PortalApps: map[types.PortalAppID]types.PortalAppPermissions{},
 			}
 			c.userPermissions[accountUser.UserID] = userPermissions
 		}
 
-		_, err := userPermissions.UpsertPermissions(accountID, accountUser.RoleName)
-		if err != nil {
-			fmt.Printf("error upserting user permissions: %v\n", err)
+		for portalAppID, userRole := range accountUser.PortalAppRoles {
+			_, err := userPermissions.UpsertPermissions(portalAppID, userRole)
+			if err != nil {
+				fmt.Printf("error upserting user permissions: %v\n", err)
+			}
 		}
 	}
 
@@ -422,27 +420,46 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 		delete(c.pendingUsers, accountUser.UserID)
 	}
 
-	// Add or update user's Accounts
-	if account, ok := c.accounts[accountID]; ok {
-		if account.Users == nil {
-			account.Users = make(map[types.UserID]types.AccountUserAccess)
-		}
-
-		if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
-			accountUser.Email = existingAccountUser.Email
-		}
-
-		account.Users[accountUser.UserID] = accountUser
-
-		if _, ok := c.accountsByUserID[accountUser.UserID]; !ok {
-			c.accountsByUserID[accountUser.UserID] = make(map[types.AccountID]*types.Account)
-		}
-		c.accountsByUserID[accountUser.UserID][account.ID] = account
-
-		return
+	// Must get account ID via PortalAppID as account_user_access table only contains portal_application_id
+	var portalAppID types.PortalAppID
+	for appID := range accountUser.PortalAppRoles {
+		portalAppID = appID
+		break
 	}
 
-	c.pendingAccountUserAccess[accountID] = append(c.pendingAccountUserAccess[accountID], accountUser)
+	// Remove from Accounts maps
+	portalApp, ok := c.portalApps[portalAppID]
+	if ok {
+		accountID := portalApp.AccountID
+
+		// Add or update user's Accounts
+		if account, ok := c.accounts[accountID]; ok {
+			if account.Users == nil {
+				account.Users = make(map[types.UserID]types.AccountUserAccess)
+			}
+
+			if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
+				accountUser.Email = existingAccountUser.Email
+				// Merge existing PortalAppRoles with new ones if user already has existing roles for this account
+				for portalAppID, userRole := range existingAccountUser.PortalAppRoles {
+					if _, ok := accountUser.PortalAppRoles[portalAppID]; !ok {
+						accountUser.PortalAppRoles[portalAppID] = userRole
+					}
+				}
+			}
+
+			account.Users[accountUser.UserID] = accountUser
+
+			if _, ok := c.accountsByUserID[accountUser.UserID]; !ok {
+				c.accountsByUserID[accountUser.UserID] = make(map[types.AccountID]*types.Account)
+			}
+			c.accountsByUserID[accountUser.UserID][account.ID] = account
+
+			return
+		}
+
+		c.pendingAccountUserAccess[accountID] = append(c.pendingAccountUserAccess[accountID], accountUser)
+	}
 }
 
 // upsertAccountIntegrations updates the LBs integrations saved in cache
@@ -464,21 +481,34 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	accountID := accountUser.AccountID
 	userID := accountUser.UserID
-	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	// Remove user permissions for each PortalApp in the account
 	if userPermissions, ok := c.userPermissions[userID]; ok {
-		delete(userPermissions.Accounts, accountID)
+		for portalAppID := range accountUser.PortalAppRoles {
+			delete(userPermissions.PortalApps, portalAppID)
+		}
 	}
 
-	// Remove from Accounts map
-	account, ok := c.accounts[accountID]
-	if ok {
-		delete(account.Users, userID)
+	// Must get account ID via PortalAppID as account_user_access table only contains portal_application_id
+	var portalAppID types.PortalAppID
+	for appID := range accountUser.PortalAppRoles {
+		portalAppID = appID
+		break
+	}
 
-		if accountsForUser, ok := c.accountsByUserID[accountUser.UserID]; ok {
-			delete(accountsForUser, accountID)
+	// Remove from Accounts maps
+	portalApp, ok := c.portalApps[portalAppID]
+	if ok {
+		accountID := portalApp.AccountID
+
+		account, ok := c.accounts[accountID]
+		if ok {
+			delete(account.Users, userID)
+
+			if accountsForUser, ok := c.accountsByUserID[accountUser.UserID]; ok {
+				delete(accountsForUser, accountID)
+			}
 		}
 	}
 }
@@ -558,13 +588,13 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		return
 	}
 
-	pendingAAT, ok := c.pendingAAT[portalApp.ID]
+	pendingAAT, ok := c.pendingPortalAppAATs[portalApp.ID]
 	if ok {
 		if portalApp.AATs == nil {
 			portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
 		}
 		portalApp.AATs[pendingAAT.ID] = pendingAAT
-		delete(c.pendingAAT, portalApp.ID)
+		delete(c.pendingPortalAppAATs, portalApp.ID)
 	}
 
 	pendingSettings, ok := c.pendingSettings[portalApp.ID]
@@ -609,10 +639,10 @@ func (c *Cache) addPortalAppAAT(aat types.AAT) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	appID := aat.AppID
-	aat.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+	appID := aat.PortalAppID
+	aat.PortalAppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
-	c.pendingAAT[appID] = aat
+	c.pendingPortalAppAATs[appID] = aat
 
 	portalApp, ok := c.portalApps[appID]
 	if !ok {
@@ -713,10 +743,6 @@ func (c *Cache) GetChain(chainID types.RelayChainID, options Options) types.Chai
 		return types.Chain{}
 	}
 
-	if options.SetGigastakeRedirectApp {
-		c.setGigastakeRedirectApp(chain)
-	}
-
 	return *chain
 }
 
@@ -728,27 +754,12 @@ func (c *Cache) GetChains(options Options) []types.Chain {
 	var chainsToReturn []types.Chain
 
 	for _, chain := range c.chains {
-		if options.SetGigastakeRedirectApp {
-			c.setGigastakeRedirectApp(chain)
-		}
 		if options.IncludeDeleted || !chain.Deleted {
 			chainsToReturn = append(chainsToReturn, *chain)
 		}
 	}
 
 	return chainsToReturn
-}
-
-// setGigastakeRedirectApp sets the GigastakeAccount for each Redirect in a Chain if options.SetGigastakeRedirectApp is true
-func (c *Cache) setGigastakeRedirectApp(chain *types.Chain) {
-	for i := range chain.Redirects {
-		portalAppID := chain.Redirects[i].PortalApplicationID
-		if portalApp, ok := c.portalApps[portalAppID]; ok {
-			chain.Redirects[i].GigastakePortalApp = portalApp
-		} else {
-			c.log.Warn(fmt.Sprintf("error setting gigastake portal app for chain ID %s: portal app ID %s does not exist in cache", chain.ID, portalAppID))
-		}
-	}
 }
 
 // upsertChain adds, updates or deletes Chain saved in cache
@@ -758,7 +769,7 @@ func (c *Cache) upsertChain(chain types.Chain) {
 
 	if existingChain, ok := c.chains[chain.ID]; ok {
 		chain.Altruists = existingChain.Altruists
-		chain.Redirects = existingChain.Redirects
+		chain.AliasDomains = existingChain.AliasDomains
 		chain.Checks = existingChain.Checks
 	}
 
@@ -768,10 +779,15 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		delete(c.pendingAltruists, chain.ID)
 	}
 
-	pendingRedirects, ok := c.pendingGigastakeRedirects[chain.ID]
+	pendingAliasDomains, ok := c.pendingAliasDomains[chain.ID]
 	if ok {
-		chain.Redirects = pendingRedirects
-		delete(c.pendingGigastakeRedirects, chain.ID)
+		if chain.AliasDomains == nil {
+			chain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
+		}
+		for _, aliasDomain := range pendingAliasDomains {
+			chain.AliasDomains[aliasDomain.Alias] = aliasDomain.Domains
+		}
+		delete(c.pendingAliasDomains, chain.ID)
 	}
 
 	pendingChecks, ok := c.pendingChecks[chain.ID]
@@ -786,6 +802,16 @@ func (c *Cache) upsertChain(chain types.Chain) {
 	}
 
 	c.chains[chain.ID] = &chain
+}
+
+// containsDomain is a helper func that checks if a domain is already in a list of domains
+func containsDomain(domains []types.ChainDomain, domain types.ChainDomain) bool {
+	for _, d := range domains {
+		if d == domain {
+			return true
+		}
+	}
+	return false
 }
 
 // addAltruist adds or updates Altruist saved in cache
@@ -818,18 +844,23 @@ func (c *Cache) addAltruist(altruist types.Altruist) {
 	}
 }
 
-// addGigastakeRedirect adds or updates GigastakeRedirect saved in cache
-func (c *Cache) addGigastakeRedirect(redirect types.GigastakeRedirect) {
+// addAliasDomains adds or updates AliasDomains saved in cache
+func (c *Cache) addAliasDomains(aliasDomains types.AliasDomains) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	chainID := redirect.ChainID
-	redirect.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+	chainID := aliasDomains.ChainID
+	aliasDomains.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
-	redirectExists := func(redirects []types.GigastakeRedirect) bool {
-		for i, existingRedirect := range redirects {
-			if existingRedirect.PortalApplicationID == redirect.PortalApplicationID && existingRedirect.Domain == redirect.Domain {
-				redirects[i] = redirect
+	domainExists := func(aliasDomainsMap map[types.ChainAlias][]types.ChainDomain, newAliasDomains types.AliasDomains) bool {
+		existingDomains, ok := aliasDomainsMap[newAliasDomains.Alias]
+		if !ok {
+			return false
+		}
+
+		for _, newDomain := range newAliasDomains.Domains {
+			if !containsDomain(existingDomains, newDomain) {
+				aliasDomainsMap[newAliasDomains.Alias] = append(aliasDomainsMap[newAliasDomains.Alias], newDomain)
 				return true
 			}
 		}
@@ -837,14 +868,28 @@ func (c *Cache) addGigastakeRedirect(redirect types.GigastakeRedirect) {
 	}
 
 	if chain, ok := c.chains[chainID]; ok {
-		if !redirectExists(chain.Redirects) {
-			chain.Redirects = append(chain.Redirects, redirect)
+		if !domainExists(chain.AliasDomains, aliasDomains) {
+			if chain.AliasDomains == nil {
+				chain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
+			}
+			chain.AliasDomains[aliasDomains.Alias] = aliasDomains.Domains
 		}
 		return
 	}
 
-	if !redirectExists(c.pendingGigastakeRedirects[chainID]) {
-		c.pendingGigastakeRedirects[chainID] = append(c.pendingGigastakeRedirects[chainID], redirect)
+	c.pendingAliasDomains[chainID] = append(c.pendingAliasDomains[chainID], aliasDomains)
+}
+
+// deleteAliasDomains removes AliasDomains from cache
+func (c *Cache) deleteAliasDomains(aliasDomains types.AliasDomains) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	chainID := aliasDomains.ChainID
+	aliasDomains.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
+	if chain, ok := c.chains[chainID]; ok {
+		delete(chain.AliasDomains, aliasDomains.Alias)
 	}
 }
 

@@ -124,16 +124,6 @@ func Test_SetCache(t *testing.T) {
 			expected: testdata.Chains,
 		},
 		{
-			name:     "Should return chain by ID with GigastakeRedirectAccount set",
-			actual:   cache.GetChain("0001", Options{SetGigastakeRedirectApp: true}),
-			expected: setGigastakeRedirectAccounts(*testdata.Chains["0001"], cache),
-		},
-		{
-			name:     "Should return all chains with GigastakeRedirectAccount set",
-			actual:   chainsToMap(cache.GetChains(Options{SetGigastakeRedirectApp: true})),
-			expected: setGigastakeRedirectAccountsForChains(testdata.Chains, cache),
-		},
-		{
 			name:     "Should return plan by type",
 			actual:   cache.GetPlan("basic_plan"),
 			expected: *testdata.PayPlans["basic_plan"],
@@ -391,23 +381,39 @@ func Test_upsertAccountUser(t *testing.T) {
 		name        string
 		accountID   types.AccountID
 		accountUser types.AccountUserAccess
-		updateRole  types.RoleName
+		updateRoles map[types.PortalAppID]types.RoleName
 	}{
 		{
-			name:        "Should add a new Accepted user to account and user permissions",
-			accountID:   "account_2",
-			accountUser: testdata.AccountUserAccess[1],
+			name:      "Should add a new Accepted user to account and user permissions",
+			accountID: "account_2",
+			accountUser: types.AccountUserAccess{
+				UserID:   "user_1",
+				Email:    "james.holden123@test.com",
+				Accepted: true,
+				PortalAppRoles: map[types.PortalAppID]types.RoleName{
+					"test_app_2": types.RoleMember,
+				},
+			},
 		},
 		{
-			name:        "Should add a new not-Accepted user to account",
-			accountID:   "account_4",
-			accountUser: testdata.AccountUserAccess[12],
+			name:      "Should add a new not-Accepted user to account",
+			accountID: "account_3",
+			accountUser: types.AccountUserAccess{
+				UserID:   "user_10",
+				Email:    "daenerys.targaryen123@test.com",
+				Accepted: false,
+				PortalAppRoles: map[types.PortalAppID]types.RoleName{
+					"test_app_3": types.RoleMember,
+				},
+			},
 		},
 		{
-			name:        "Should update an existing account User's role",
+			name:        "Should update an existing account User's roles",
 			accountID:   "account_1",
 			accountUser: testdata.AccountUserAccess[2],
-			updateRole:  types.RoleMember,
+			updateRoles: map[types.PortalAppID]types.RoleName{
+				"test_app_1": types.RoleMember,
+			},
 		},
 	}
 
@@ -417,19 +423,17 @@ func Test_upsertAccountUser(t *testing.T) {
 
 			cache := NewTestCache(t)
 
-			if test.updateRole != "" {
-				test.accountUser.RoleName = test.updateRole
+			if test.updateRoles != nil {
+				for portalAppID, roleName := range test.updateRoles {
+					test.accountUser.PortalAppRoles[portalAppID] = roleName
+				}
 			}
-
-			test.accountUser.AccountID = test.accountID // will be set in the notification
 
 			// Upsert account user
 			cache.upsertAccountUser(test.accountUser)
 
-			account := cache.GetAccount(test.accountUser.AccountID)
-			test.accountUser.AccountID = "" // is unset in the cache TODO will be changed soon
+			account := cache.GetAccount(test.accountID)
 			accountUser, ok := account.Users[test.accountUser.UserID]
-
 			c.True(ok, "AccountUserAccess should be present in account Users map")
 			c.Equal(test.accountUser, accountUser, "AccountUserAccess should be added or updated in the cache")
 
@@ -438,10 +442,12 @@ func Test_upsertAccountUser(t *testing.T) {
 
 			if test.accountUser.Accepted {
 				userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
-				accountPermission, ok := userPermissions.Accounts[test.accountID]
+				for portalAppID, roleName := range test.accountUser.PortalAppRoles {
+					portalAppPermission, ok := userPermissions.PortalApps[portalAppID]
 
-				c.True(ok, "AccountPermissions should be present in UserPermissions")
-				c.Equal(test.accountUser.RoleName, accountPermission.RoleName, "AccountUserAccess role should be updated in UserPermissions")
+					c.True(ok, "PortalAppPermissions should be present in UserPermissions")
+					c.Equal(roleName, portalAppPermission.RoleName, "Role should be updated in UserPermissions")
+				}
 			}
 		})
 	}
@@ -481,17 +487,16 @@ func Test_deleteAccountUser(t *testing.T) {
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
 				userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
-				_, ok = userPermissions.Accounts[test.accountID]
-				c.True(ok, "UserPermissions should be found in UserPermissions before deletion")
+				for portalAppID := range test.accountUser.PortalAppRoles {
+					_, ok = userPermissions.PortalApps[portalAppID]
+					c.True(ok, "PortalAppPermissions should be found in UserPermissions for each PortalAppRole before deletion")
+				}
 			}
-
-			test.accountUser.AccountID = test.accountID // will be set in the notification
 
 			// Delete account user
 			cache.deleteAccountUser(test.accountUser)
 
 			account := cache.GetAccount(test.accountID)
-			test.accountUser.AccountID = "" // is unset in the cache TODO will be changed soon
 
 			_, ok := account.Users[test.accountUser.UserID]
 			c.False(ok, "AccountUserAccess should be deleted from account Users map")
@@ -500,8 +505,10 @@ func Test_deleteAccountUser(t *testing.T) {
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
 			userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
-			_, ok = userPermissions.Accounts[test.accountID]
-			c.False(ok, "UserPermissions should be removed from UserPermissions")
+			for portalAppID := range test.accountUser.PortalAppRoles {
+				_, ok = userPermissions.PortalApps[portalAppID]
+				c.False(ok, "PortalAppPermissions should be removed from UserPermissions for each PortalAppRole")
+			}
 		})
 	}
 }
@@ -514,8 +521,6 @@ func Test_upsertPortalApp(t *testing.T) {
 		ID:        testApp.ID,
 		AccountID: testApp.AccountID,
 		Name:      testApp.Name,
-		Gigastake: testApp.Gigastake,
-		Staked:    testApp.Staked,
 	}
 
 	tests := []struct {
@@ -677,7 +682,7 @@ func Test_upsertPortalApp(t *testing.T) {
 			}
 
 			// Add pending data to cache
-			cache.pendingAAT = test.pendingAAT
+			cache.pendingPortalAppAATs = test.pendingAAT
 			cache.pendingSettings = test.pendingSettings
 			cache.pendingAppNotifications = test.pendingAppNotifications
 			cache.pendingWhitelists = test.pendingWhitelists
@@ -696,7 +701,7 @@ func Test_upsertPortalApp(t *testing.T) {
 				c.Equal(expectedPortalApp, storedPortalApp, "PortalApp should be added to cache")
 			}
 
-			_, ok := cache.pendingAAT[test.portalApp.ID]
+			_, ok := cache.pendingPortalAppAATs[test.portalApp.ID]
 			c.False(ok, "Pending AAT should be removed from cache")
 			_, ok = cache.pendingSettings[test.portalApp.ID]
 			c.False(ok, "Pending Settings should be removed from cache")
@@ -719,7 +724,7 @@ func Test_addPortalAppAAT(t *testing.T) {
 			name: "Should add AAT to an existing PortalApp in cache",
 			aat: types.AAT{
 				ID:              "test_protocol_app_new",
-				AppID:           "test_app_new_3450he46fhs7",
+				PortalAppID:     "test_app_new_3450he46fhs7",
 				Address:         "test_6bc837b1b0e526569dda9acbbcbb4f40",
 				PublicKey:       "test_1e8f7cc2e1f812c7531fc020a75f4284",
 				ClientPublicKey: "test_b8f50f694400f9b365ab5a498f5392dc",
@@ -732,15 +737,13 @@ func Test_addPortalAppAAT(t *testing.T) {
 				ID:        "test_app_new_3450he46fhs7",
 				AccountID: "account_3",
 				Name:      "new_pokt_app_1",
-				Gigastake: true,
-				Staked:    false,
 			},
 		},
 		{
 			name: "Should store AAT in pendingAAT map if PortalApp not in cache",
 			aat: types.AAT{
 				ID:              "test_protocol_app_new_2",
-				AppID:           "test_app_nope_345he46fhs7",
+				PortalAppID:     "test_app_nope_345he46fhs7",
 				Address:         "test_8a75937963fee71e048c652a44491a53",
 				PublicKey:       "test_ba65207ac55d99d1d190efb002ff3002",
 				ClientPublicKey: "test_4d14919baae64635462597d587e1be43",
@@ -764,13 +767,13 @@ func Test_addPortalAppAAT(t *testing.T) {
 			}
 
 			cache.addPortalAppAAT(test.aat)
-			test.aat.AppID = "" // is unset in the cache TODO will be changed soon
+			test.aat.PortalAppID = "" // is unset in the cache TODO will be changed soon
 
 			if test.portalApp != nil {
 				storedPortalApp := cache.GetPortalApp(test.portalAppID)
 				c.Equal(test.aat, storedPortalApp.AATs[test.aat.ID], "AAT should be added to the PortalApp in cache")
 			} else {
-				storedAAT, ok := cache.pendingAAT[test.portalAppID]
+				storedAAT, ok := cache.pendingPortalAppAATs[test.portalAppID]
 				c.True(ok, "AAT should be stored in pendingAAT map")
 				c.Equal(test.aat, storedAAT, "AAT should be equal to the pending AAT")
 			}
@@ -797,8 +800,6 @@ func Test_addPortalAppSettings(t *testing.T) {
 				ID:        "test_app_new_3450he46fhs7",
 				AccountID: "account_3",
 				Name:      "new_pokt_app_1",
-				Gigastake: true,
-				Staked:    false,
 			},
 		},
 		{
@@ -863,8 +864,6 @@ func Test_addAppNotification(t *testing.T) {
 			portalApp: &types.PortalApp{
 				ID:            "test_app_new_3450he46fhs7",
 				Name:          "new_pokt_app_1",
-				Gigastake:     true,
-				Staked:        false,
 				AccountID:     "account_3",
 				Notifications: make(map[types.NotificationType]types.AppNotification),
 			},
@@ -932,8 +931,6 @@ func Test_addWhitelist(t *testing.T) {
 			portalApp: &types.PortalApp{
 				ID:         "test_app_new_3450he46fhs7",
 				Name:       "new_pokt_app_1",
-				Gigastake:  true,
-				Staked:     false,
 				AccountID:  "account_3",
 				Whitelists: types.Whitelists{},
 			},
@@ -996,8 +993,6 @@ func Test_deleteWhitelist(t *testing.T) {
 			portalApp: &types.PortalApp{
 				ID:         "test_app_1",
 				Name:       "new_pokt_app_1",
-				Gigastake:  true,
-				Staked:     false,
 				AccountID:  "account_3",
 				Whitelists: types.Whitelists{},
 			},
@@ -1037,12 +1032,12 @@ func Test_deleteWhitelist(t *testing.T) {
 
 func Test_upsertChain(t *testing.T) {
 	tests := []struct {
-		name                      string
-		chain                     types.Chain
-		pendingAltruists          map[types.RelayChainID][]types.Altruist
-		pendingGigastakeRedirects map[types.RelayChainID][]types.GigastakeRedirect
-		pendingChecks             map[types.RelayChainID][]types.Check
-		update, delete            bool
+		name                string
+		chain               types.Chain
+		pendingAltruists    map[types.RelayChainID][]types.Altruist
+		pendingAliasDomains map[types.RelayChainID][]types.AliasDomains
+		pendingChecks       map[types.RelayChainID][]types.Check
+		update, delete      bool
 	}{
 		{
 			name: "Should add a new Chain to cache with no pending side table data",
@@ -1077,19 +1072,18 @@ func Test_upsertChain(t *testing.T) {
 			},
 		},
 		{
-			name: "Should add a new Chain to cache with pending GigastakeRedirects",
+			name: "Should add a new Chain to cache with pending AliasDomains",
 			chain: types.Chain{
 				ID:          "0017",
 				Blockchain:  "neptune-mainnet",
 				Description: "Neptune Chain",
 			},
-			pendingGigastakeRedirects: map[types.RelayChainID][]types.GigastakeRedirect{
+			pendingAliasDomains: map[types.RelayChainID][]types.AliasDomains{
 				"0017": {
 					{
-						ChainID:             "0017",
-						PortalApplicationID: "test_app_1",
-						Domain:              "nep-rpc.gateway.pokt.network",
-						Alias:               "neptune-mainnet",
+						ChainID: "0017",
+						Alias:   "neptune-mainnet",
+						Domains: []types.ChainDomain{"nep-rpc.gateway.pokt.network"},
 					},
 				},
 			},
@@ -1113,7 +1107,6 @@ func Test_upsertChain(t *testing.T) {
 				},
 			},
 		},
-
 		{
 			name:  "Should update an existing Chain in cache with all side tables",
 			chain: *testdata.Chains["0021"],
@@ -1127,13 +1120,12 @@ func Test_upsertChain(t *testing.T) {
 					},
 				},
 			},
-			pendingGigastakeRedirects: map[types.RelayChainID][]types.GigastakeRedirect{
+			pendingAliasDomains: map[types.RelayChainID][]types.AliasDomains{
 				"0021": {
 					{
-						ChainID:             "0021",
-						PortalApplicationID: "test_app_3",
-						Domain:              "new-eth-rpc.gateway.pokt.network",
-						Alias:               "eth-wow",
+						ChainID: "0021",
+						Alias:   "eth-wow",
+						Domains: []types.ChainDomain{"new-eth-rpc.gateway.pokt.network"},
 					},
 				},
 			},
@@ -1183,8 +1175,13 @@ func Test_upsertChain(t *testing.T) {
 			if altruists, ok := test.pendingAltruists[chain.ID]; ok {
 				expectedChain.Altruists = altruists
 			}
-			if gigastakeRedirects, ok := test.pendingGigastakeRedirects[chain.ID]; ok {
-				expectedChain.Redirects = gigastakeRedirects
+			if aliasDomains, ok := test.pendingAliasDomains[chain.ID]; ok {
+				if expectedChain.AliasDomains == nil {
+					expectedChain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
+				}
+				for _, aliasDomain := range aliasDomains {
+					expectedChain.AliasDomains[aliasDomain.Alias] = aliasDomain.Domains
+				}
 			}
 			if checks, ok := test.pendingChecks[chain.ID]; ok {
 				expectedChain.Checks = make(map[types.ChainCheckType]types.Check)
@@ -1195,10 +1192,10 @@ func Test_upsertChain(t *testing.T) {
 
 			// Add pending data to cache
 			cache.pendingAltruists = test.pendingAltruists
-			cache.pendingGigastakeRedirects = test.pendingGigastakeRedirects
+			cache.pendingAliasDomains = test.pendingAliasDomains
 			cache.pendingChecks = test.pendingChecks
 
-			// Add, update or delete Chain
+			// Add or update Chain
 			cache.upsertChain(chain)
 
 			chainFound := findChainInChains(cache.GetChains(Options{IncludeDeleted: false}), chain.ID)
@@ -1214,8 +1211,8 @@ func Test_upsertChain(t *testing.T) {
 
 			_, ok := cache.pendingAltruists[chain.ID]
 			c.False(ok, "Pending Altruists should be removed from cache")
-			_, ok = cache.pendingGigastakeRedirects[chain.ID]
-			c.False(ok, "Pending GigastakeRedirects should be removed from cache")
+			_, ok = cache.pendingAliasDomains[chain.ID]
+			c.False(ok, "Pending AliasDomains should be removed from cache")
 			_, ok = cache.pendingChecks[chain.ID]
 			c.False(ok, "Pending Checks should be removed from cache")
 		})
@@ -1283,34 +1280,44 @@ func Test_addAltruist(t *testing.T) {
 	}
 }
 
-func Test_addGigastakeRedirect(t *testing.T) {
+func Test_addAliasDomains(t *testing.T) {
 	tests := []struct {
 		name          string
-		redirect      types.GigastakeRedirect
+		aliasDomains  types.AliasDomains
 		chainID       types.RelayChainID
 		existingChain bool
 	}{
 		{
-			name: "Should add GigastakeRedirect to an existing Chain in cache",
-			redirect: types.GigastakeRedirect{
-				ChainID:             "0053",
-				PortalApplicationID: "test_app_2",
-				Alias:               "altruist-0053",
-				Domain:              "op-rpc-2.gateway.pokt.network",
+			name: "Should add AliasDomains to an existing Chain in cache",
+			aliasDomains: types.AliasDomains{
+				ChainID: "0053",
+				Alias:   "altruist-0053",
+				Domains: []types.ChainDomain{"op-rpc-2.gateway.pokt.network"},
 			},
 			chainID:       "0053",
 			existingChain: true,
 		},
 		{
-			name: "Should store GigastakeRedirect in pendingGigastakeRedirects map if Chain not in cache",
-			redirect: types.GigastakeRedirect{
-				ChainID:             "0981",
-				PortalApplicationID: "test_app_2",
-				Alias:               "altruist-0981",
-				Domain:              "nope-rpc.gateway.pokt.network",
+			name: "Should store AliasDomains in pendingAliasDomains map if Chain not in cache",
+			aliasDomains: types.AliasDomains{
+				ChainID: "0981",
+				Alias:   "altruist-0981",
+				Domains: []types.ChainDomain{"nope-rpc.gateway.pokt.network"},
 			},
 			chainID: "0981",
 		},
+	}
+
+	domainSliceEqual := func(a, b []types.ChainDomain) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		for i, v := range a {
+			if v != b[i] {
+				return false
+			}
+		}
+		return true
 	}
 
 	for _, test := range tests {
@@ -1319,30 +1326,30 @@ func Test_addGigastakeRedirect(t *testing.T) {
 
 			cache := NewTestCache(t)
 
-			cache.addGigastakeRedirect(test.redirect)
+			cache.addAliasDomains(test.aliasDomains)
 
 			if test.existingChain {
 				storedChain := cache.GetChain(test.chainID, Options{})
 				found := false
-				for _, storedRedirect := range storedChain.Redirects {
-					if storedRedirect.Domain == test.redirect.Domain {
+				for alias, domains := range storedChain.AliasDomains {
+					if alias == test.aliasDomains.Alias && domainSliceEqual(domains, test.aliasDomains.Domains) {
 						found = true
 						break
 					}
 				}
-				c.True(found, "GigastakeRedirect should be added to the Chain in cache")
+				c.True(found, "AliasDomains should be added to the Chain in cache")
 			} else {
-				storedRedirects, ok := cache.pendingGigastakeRedirects[test.chainID]
-				c.True(ok, "GigastakeRedirect should be stored in pendingGigastakeRedirects map")
+				storedAliasDomains, ok := cache.pendingAliasDomains[test.chainID]
+				c.True(ok, "AliasDomains should be stored in pendingAliasDomains map")
 
 				found := false
-				for _, storedRedirect := range storedRedirects {
-					if storedRedirect.Domain == test.redirect.Domain {
+				for _, storedAliasDomain := range storedAliasDomains {
+					if storedAliasDomain.Alias == test.aliasDomains.Alias && domainSliceEqual(storedAliasDomain.Domains, test.aliasDomains.Domains) {
 						found = true
 						break
 					}
 				}
-				c.True(found, "GigastakeRedirect should be added to the pending GigastakeRedirects")
+				c.True(found, "AliasDomains should be added to the pending AliasDomains")
 			}
 		})
 	}
@@ -1477,22 +1484,4 @@ func findChainInChains(chains []types.Chain, chainID types.RelayChainID) bool {
 		}
 	}
 	return false
-}
-
-func setGigastakeRedirectAccounts(chain types.Chain, cache *Cache) types.Chain {
-	for i := range chain.Redirects {
-		if portalApp, ok := cache.portalApps[chain.Redirects[i].PortalApplicationID]; ok {
-			chain.Redirects[i].GigastakePortalApp = portalApp
-		}
-	}
-	return chain
-}
-
-func setGigastakeRedirectAccountsForChains(chains map[types.RelayChainID]*types.Chain, cache *Cache) map[types.RelayChainID]*types.Chain {
-	updatedChains := make(map[types.RelayChainID]*types.Chain)
-	for id, chain := range chains {
-		updatedChain := setGigastakeRedirectAccounts(*chain, cache)
-		updatedChains[id] = &updatedChain
-	}
-	return updatedChains
 }
