@@ -15,7 +15,6 @@ import (
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-db/v2/driver"
-	legacyadapters "github.com/pokt-foundation/portal-db/v2/legacy-adapters"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
@@ -30,13 +29,20 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 	readerMock := cache.NewReaderMock(t)
 
+	chainsData := testdata.Chains
+	for i := range chainsData {
+		chainsData[i].GigastakeApps = []*types.GigastakeApp{
+			{LegacyLBID: "test_app_1"}, // set dummy LB ID for test as if set in PHD cache
+		}
+	}
+
 	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
 	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadAccounts", mock.Anything, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(chainsData, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUsers[types.UserID("usertest")], nil)
 
@@ -574,12 +580,14 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	tests := []struct {
 		name              string
 		loadBalancer      v1Types.LoadBalancer
+		providerUserID    string
 		expectedStatus    int
 		expectedPortalApp types.PortalApp
 	}{
 		{
 			name:              "Should create a new load balancer",
 			loadBalancer:      testdata.LegacyLoadBalancer,
+			providerUserID:    "auth0|james_holden",
 			expectedStatus:    http.StatusOK,
 			expectedPortalApp: testdata.V2CreatePortalApp,
 		},
@@ -601,6 +609,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
+			test.loadBalancer.UserID = test.providerUserID
 			lbBytes, err := json.Marshal(test.loadBalancer)
 			c.NoError(err)
 
@@ -667,8 +676,7 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 			c.NoError(err)
 
 			writerMock := driver.NewMockDriver(t)
-			v2AccountUserAccess := legacyadapters.ConvertToV2AccountUserAccess(test.userAccess)
-			writerMock.On("WriteAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(&v2AccountUserAccess, nil).Once()
+			writerMock.On("WriteAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(types.UserID("dummy_user_id"), nil).Once()
 			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
@@ -692,96 +700,50 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 	}
 }
 
-func TestRouter_CreateBlockchain(t *testing.T) {
-	tests := []struct {
-		name             string
-		blockchain       v1Types.Blockchain
-		expectedStatus   int
-		expectedResponse v1Types.Blockchain
-	}{
-		{
-			name:             "Should create a new blockchain",
-			blockchain:       testdata.LegacyBlockchain,
-			expectedStatus:   http.StatusOK,
-			expectedResponse: testdata.LegacyBlockchain,
-		},
-	}
+// func TestRouter_CreateRedirect(t *testing.T) {
+// 	tests := []struct {
+// 		name             string
+// 		redirect         v1Types.Redirect
+// 		expectedStatus   int
+// 		expectedResponse v1Types.Redirect
+// 	}{
+// 		{
+// 			name:             "Should create a new redirect",
+// 			redirect:         testdata.LegacyRedirect,
+// 			expectedStatus:   http.StatusOK,
+// 			expectedResponse: testdata.LegacyRedirect,
+// 		},
+// 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			c := require.New(t)
 
-			router, err := newTestRouter(t)
-			c.NoError(err)
+// 			router, err := newTestRouter(t)
+// 			c.NoError(err)
 
-			writerMock := driver.NewMockDriver(t)
-			v2Chain := legacyadapters.ConvertToV2Chain(test.blockchain)
-			writerMock.On("WriteChain", mock.Anything, mock.Anything, mock.Anything).Return(&v2Chain, nil).Once()
-			router.writer = writerMock
+// 			writerMock := driver.NewMockDriver(t)
+// 			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+// 			router.writer = writerMock
 
-			rr := httptest.NewRecorder()
+// 			rr := httptest.NewRecorder()
 
-			blockchainBytes, err := json.Marshal(test.blockchain)
-			c.NoError(err)
+// 			redirectBytes, err := json.Marshal(test.redirect)
+// 			c.NoError(err)
 
-			req, err := http.NewRequest(http.MethodPost, "/v1/blockchain", bytes.NewBuffer(blockchainBytes))
-			c.NoError(err)
+// 			req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectBytes))
+// 			c.NoError(err)
 
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
+// 			router.Router.ServeHTTP(rr, req)
+// 			c.Equal(test.expectedStatus, rr.Code)
 
-			var blockchainResp v1Types.Blockchain
-			err = json.Unmarshal(rr.Body.Bytes(), &blockchainResp)
-			c.NoError(err)
-			c.Equal(test.expectedResponse, blockchainResp)
-		})
-	}
-}
-
-func TestRouter_CreateRedirect(t *testing.T) {
-	tests := []struct {
-		name             string
-		redirect         v1Types.Redirect
-		expectedStatus   int
-		expectedResponse v1Types.Redirect
-	}{
-		{
-			name:             "Should create a new redirect",
-			redirect:         testdata.LegacyRedirect,
-			expectedStatus:   http.StatusOK,
-			expectedResponse: testdata.LegacyRedirect,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			router, err := newTestRouter(t)
-			c.NoError(err)
-
-			writerMock := driver.NewMockDriver(t)
-			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.writer = writerMock
-
-			rr := httptest.NewRecorder()
-
-			redirectBytes, err := json.Marshal(test.redirect)
-			c.NoError(err)
-
-			req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectBytes))
-			c.NoError(err)
-
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
-
-			var redirectResp v1Types.Redirect
-			err = json.Unmarshal(rr.Body.Bytes(), &redirectResp)
-			c.NoError(err)
-			c.Equal(test.expectedResponse, redirectResp)
-		})
-	}
-}
+// 			var redirectResp v1Types.Redirect
+// 			err = json.Unmarshal(rr.Body.Bytes(), &redirectResp)
+// 			c.NoError(err)
+// 			c.Equal(test.expectedResponse, redirectResp)
+// 		})
+// 	}
+// }
 
 func TestRouter_CreatePortalUser(t *testing.T) {
 	tests := []struct {
@@ -987,7 +949,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 				case v1Types.Enterprise:
 					c.Equal(test.updateInput.Limit.CustomLimit, lbResp.Applications[0].DailyLimit())
 				case v1Types.PayAsYouGoV0:
-					c.Equal(5000, lbResp.Applications[0].DailyLimit())
+					c.Equal(0, lbResp.Applications[0].DailyLimit())
 				}
 			}
 		})
@@ -1143,7 +1105,7 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 			c.NoError(err)
 
 			writerMock := driver.NewMockDriver(t)
-			writerMock.On("RemoveAccountUser", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			writerMock.On("RemoveAccountUser", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
@@ -1170,112 +1132,112 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 	}
 }
 
-func TestRouter_UpdateBlockchain(t *testing.T) {
-	tests := []struct {
-		name             string
-		blockchainID     string
-		updateBlockchain v1Types.UpdateBlockchain
-		expectedStatus   int
-	}{
-		{
-			name:             "Should update blockchain",
-			blockchainID:     "0001",
-			updateBlockchain: testdata.LegacyUpdateBlockchain,
-			expectedStatus:   http.StatusOK,
-		},
-	}
+// func TestRouter_UpdateBlockchain(t *testing.T) {
+// 	tests := []struct {
+// 		name             string
+// 		blockchainID     string
+// 		updateBlockchain v1Types.UpdateBlockchain
+// 		expectedStatus   int
+// 	}{
+// 		{
+// 			name:             "Should update blockchain",
+// 			blockchainID:     "0001",
+// 			updateBlockchain: testdata.LegacyUpdateBlockchain,
+// 			expectedStatus:   http.StatusOK,
+// 		},
+// 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			c := require.New(t)
 
-			router, err := newTestRouter(t)
-			c.NoError(err)
+// 			router, err := newTestRouter(t)
+// 			c.NoError(err)
 
-			writerMock := driver.NewMockDriver(t)
-			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-			router.writer = writerMock
+// 			writerMock := driver.NewMockDriver(t)
+// 			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+// 			router.writer = writerMock
 
-			rr := httptest.NewRecorder()
+// 			rr := httptest.NewRecorder()
 
-			updateBlockchainBytes, err := json.Marshal(test.updateBlockchain)
-			c.NoError(err)
+// 			updateBlockchainBytes, err := json.Marshal(test.updateBlockchain)
+// 			c.NoError(err)
 
-			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/blockchain/%s", test.blockchainID), bytes.NewBuffer(updateBlockchainBytes))
-			c.NoError(err)
+// 			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/blockchain/%s", test.blockchainID), bytes.NewBuffer(updateBlockchainBytes))
+// 			c.NoError(err)
 
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
+// 			router.Router.ServeHTTP(rr, req)
+// 			c.Equal(test.expectedStatus, rr.Code)
 
-			var updatedChainResp v1Types.Blockchain
-			err = json.Unmarshal(rr.Body.Bytes(), &updatedChainResp)
-			c.NoError(err)
+// 			var updatedChainResp v1Types.Blockchain
+// 			err = json.Unmarshal(rr.Body.Bytes(), &updatedChainResp)
+// 			c.NoError(err)
 
-			c.Equal(test.updateBlockchain.Blockchain, updatedChainResp.Blockchain)
-			c.Equal(test.updateBlockchain.Description, updatedChainResp.Description)
-			c.Equal(test.updateBlockchain.EnforceResult, updatedChainResp.EnforceResult)
-			c.Equal(test.updateBlockchain.Path, updatedChainResp.Path)
-			c.Equal(test.updateBlockchain.Ticker, updatedChainResp.Ticker)
-			c.ElementsMatch(test.updateBlockchain.BlockchainAliases, updatedChainResp.BlockchainAliases)
-			c.Equal(test.updateBlockchain.Body, updatedChainResp.SyncCheckOptions.Body)
-			c.Equal(test.updateBlockchain.ResultKey, updatedChainResp.SyncCheckOptions.ResultKey)
-			c.Equal(*test.updateBlockchain.Allowance, updatedChainResp.SyncCheckOptions.Allowance)
-			c.Equal(test.updateBlockchain.Altruist, updatedChainResp.Altruist)
-		})
-	}
-}
+// 			c.Equal(test.updateBlockchain.Blockchain, updatedChainResp.Blockchain)
+// 			c.Equal(test.updateBlockchain.Description, updatedChainResp.Description)
+// 			c.Equal(test.updateBlockchain.EnforceResult, updatedChainResp.EnforceResult)
+// 			c.Equal(test.updateBlockchain.Path, updatedChainResp.Path)
+// 			c.Equal(test.updateBlockchain.Ticker, updatedChainResp.Ticker)
+// 			c.ElementsMatch(test.updateBlockchain.BlockchainAliases, updatedChainResp.BlockchainAliases)
+// 			c.Equal(test.updateBlockchain.Body, updatedChainResp.SyncCheckOptions.Body)
+// 			c.Equal(test.updateBlockchain.ResultKey, updatedChainResp.SyncCheckOptions.ResultKey)
+// 			c.Equal(*test.updateBlockchain.Allowance, updatedChainResp.SyncCheckOptions.Allowance)
+// 			c.Equal(test.updateBlockchain.Altruist, updatedChainResp.Altruist)
+// 		})
+// 	}
+// }
 
-func TestRouter_ActivateBlockchain(t *testing.T) {
-	tests := []struct {
-		name           string
-		blockchainID   string
-		active         bool
-		expectedStatus int
-	}{
-		{
-			name:           "Should deactivate blockchain",
-			blockchainID:   "0001",
-			active:         false,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "Should activate blockchain",
-			blockchainID:   "0001",
-			active:         true,
-			expectedStatus: http.StatusOK,
-		},
-	}
+// func TestRouter_ActivateBlockchain(t *testing.T) {
+// 	tests := []struct {
+// 		name           string
+// 		blockchainID   string
+// 		active         bool
+// 		expectedStatus int
+// 	}{
+// 		{
+// 			name:           "Should deactivate blockchain",
+// 			blockchainID:   "0001",
+// 			active:         false,
+// 			expectedStatus: http.StatusOK,
+// 		},
+// 		{
+// 			name:           "Should activate blockchain",
+// 			blockchainID:   "0001",
+// 			active:         true,
+// 			expectedStatus: http.StatusOK,
+// 		},
+// 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			c := require.New(t)
 
-			router, err := newTestRouter(t)
-			c.NoError(err)
+// 			router, err := newTestRouter(t)
+// 			c.NoError(err)
 
-			writerMock := driver.NewMockDriver(t)
-			writerMock.On("SetChainActiveStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.active, nil).Once()
-			router.writer = writerMock
+// 			writerMock := driver.NewMockDriver(t)
+// 			writerMock.On("SetChainActiveStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.active, nil).Once()
+// 			router.writer = writerMock
 
-			rr := httptest.NewRecorder()
+// 			rr := httptest.NewRecorder()
 
-			activeBytes, err := json.Marshal(test.active)
-			c.NoError(err)
+// 			activeBytes, err := json.Marshal(test.active)
+// 			c.NoError(err)
 
-			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v1/blockchain/%s/activate", test.blockchainID), bytes.NewBuffer(activeBytes))
-			c.NoError(err)
+// 			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v1/blockchain/%s/activate", test.blockchainID), bytes.NewBuffer(activeBytes))
+// 			c.NoError(err)
 
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
+// 			router.Router.ServeHTTP(rr, req)
+// 			c.Equal(test.expectedStatus, rr.Code)
 
-			var activatedResp bool
-			err = json.Unmarshal(rr.Body.Bytes(), &activatedResp)
-			c.NoError(err)
+// 			var activatedResp bool
+// 			err = json.Unmarshal(rr.Body.Bytes(), &activatedResp)
+// 			c.NoError(err)
 
-			c.Equal(test.active, activatedResp)
-		})
-	}
-}
+// 			c.Equal(test.active, activatedResp)
+// 		})
+// 	}
+// }
 
 /* ---------- Test Utils ---------- */
 
@@ -1321,7 +1283,7 @@ var (
 		"test_protocol_app_1": {
 			ID:                 "test_protocol_app_1",
 			Name:               "pokt_app_123",
-			UserID:             "auth0|james_holden",
+			UserID:             "user_1",
 			FirstDateSurpassed: testdata.MockTimestamp,
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_34715cae753e67c75fbb340442e7de8e",
@@ -1340,7 +1302,7 @@ var (
 				WhitelistMethods:     []v1Types.WhitelistMethods{{BlockchainID: "0001", Methods: []string{"GET"}}},
 				WhitelistBlockchains: []string{"0053"},
 			},
-			Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "basic_plan", Limit: 1000}},
+			Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.FreetierV0), Limit: 250_000}},
 			NotificationSettings: v1Types.NotificationSettings{SignedUp: false, Quarter: true, Half: false, ThreeQuarters: true, Full: true},
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
@@ -1348,7 +1310,7 @@ var (
 		"test_protocol_app_2": {
 			ID:                 "test_protocol_app_2",
 			Name:               "pokt_app_456",
-			UserID:             "auth0|ellen_ripley",
+			UserID:             "user_3",
 			FirstDateSurpassed: testdata.MockTimestamp,
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_8237c72345f12d1b1a8b64a1a7f66fa4",
@@ -1366,7 +1328,7 @@ var (
 				WhitelistMethods:     []v1Types.WhitelistMethods{{BlockchainID: "0064", Methods: []string{"POST"}}},
 				WhitelistBlockchains: []string{"0021"},
 			},
-			Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "pro_plan", Limit: 5_000}},
+			Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.PayAsYouGoV0), Limit: 0}},
 			NotificationSettings: v1Types.NotificationSettings{Half: true, Full: true},
 			CreatedAt:            testdata.MockTimestamp,
 			UpdatedAt:            testdata.MockTimestamp,
@@ -1374,7 +1336,7 @@ var (
 		"test_protocol_app_3": {
 			ID:                 "test_protocol_app_3",
 			Name:               "pokt_app_789",
-			UserID:             "auth0|chrisjen_avasarala",
+			UserID:             "user_5",
 			FirstDateSurpassed: testdata.MockTimestamp,
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_b5e07928fc80083c13ad0201b81bae9b",
@@ -1387,14 +1349,14 @@ var (
 			GatewaySettings: v1Types.GatewaySettings{
 				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
 			},
-			Limit:     v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "startup_plan", Limit: 500}},
+			Limit:     v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.Enterprise)}, CustomLimit: 4_200_000},
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
 		"test_protocol_app_4": {
 			ID:                 "test_protocol_app_4",
 			Name:               "pokt_app_789",
-			UserID:             "auth0|chrisjen_avasarala",
+			UserID:             "user_5",
 			FirstDateSurpassed: testdata.MockTimestamp,
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
@@ -1407,7 +1369,7 @@ var (
 			GatewaySettings: v1Types.GatewaySettings{
 				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
 			},
-			Limit:     v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "startup_plan", Limit: 500}},
+			Limit:     v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.Enterprise)}, CustomLimit: 4_200_000},
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
@@ -1418,8 +1380,8 @@ var (
 			ID:                "test_app_1",
 			AccountID:         "account_1",
 			Name:              "pokt_app_123",
-			UserID:            "auth0|james_holden",
-			Gigastake:         true,
+			UserID:            "user_1",
+			Gigastake:         false,
 			GigastakeRedirect: true,
 			RequestTimeout:    5_000,
 			Applications: []*v1Types.Application{
@@ -1452,11 +1414,13 @@ var (
 			UpdatedAt: testdata.MockTimestamp,
 		},
 		"test_app_2": {
-			ID:             "test_app_2",
-			AccountID:      "account_2",
-			Name:           "pokt_app_456",
-			UserID:         "auth0|ellen_ripley",
-			RequestTimeout: 10_000,
+			ID:                "test_app_2",
+			AccountID:         "account_2",
+			Name:              "pokt_app_456",
+			UserID:            "user_3",
+			Gigastake:         false,
+			GigastakeRedirect: true,
+			RequestTimeout:    10_000,
 			Applications: []*v1Types.Application{
 				testApps["test_protocol_app_2"],
 			},
@@ -1496,8 +1460,9 @@ var (
 			ID:                "test_app_3",
 			AccountID:         "account_3",
 			Name:              "pokt_app_789",
-			UserID:            "auth0|chrisjen_avasarala",
-			GigastakeRedirect: false,
+			UserID:            "user_5",
+			Gigastake:         false,
+			GigastakeRedirect: true,
 			RequestTimeout:    10_000,
 			Applications: []*v1Types.Application{
 				testApps["test_protocol_app_3"],
@@ -1541,15 +1506,15 @@ var (
 		"0001": {
 			ID:                "0001",
 			Altruist:          "https://test_pocket:auth123456@altruist-0001.com:1234", // pragma: allowlist secret
-			Blockchain:        "mainnet",
+			Blockchain:        "pokt-mainnet",
 			Description:       "Pocket Network Mainnet",
 			EnforceResult:     "JSON",
 			Path:              "/v1/query/height",
 			Ticker:            "POKT",
-			BlockchainAliases: []string{"mainnet"},
+			BlockchainAliases: []string{"pokt-mainnet"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "altruist-0001", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
+				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
@@ -1571,7 +1536,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "altruist-0021", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "test_app_3"},
+				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -1590,7 +1555,7 @@ var (
 			BlockchainAliases: []string{"harmony-0"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "altruist-0040", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "test_app_3"},
+				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
@@ -1611,7 +1576,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "altruist-0053", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "test_app_2"},
+				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -1622,15 +1587,14 @@ var (
 			UpdatedAt: testdata.MockTimestamp,
 		},
 		"0064": {
-			ID:                "0064",
-			Altruist:          "https://test_pocket:auth123456@altruist-0064.com:1234", // pragma: allowlist secret
-			Blockchain:        "sui-testnet",
-			Description:       "Sui Testnet",
-			EnforceResult:     "JSON",
-			Ticker:            "SUI-TESTNET",
-			BlockchainAliases: []string{"sui-testnet"},
-			LogLimitBlocks:    100000,
-			RequestTimeout:    60000,
+			ID:             "0064",
+			Altruist:       "https://test_pocket:auth123456@altruist-0064.com:1234", // pragma: allowlist secret
+			Blockchain:     "sui-testnet",
+			Description:    "Sui Testnet",
+			EnforceResult:  "JSON",
+			Ticker:         "SUI-TESTNET",
+			LogLimitBlocks: 100000,
+			RequestTimeout: 60000,
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"sui_blockNumber\",\"params\":[]}",
 				ResultKey: "result",
@@ -1647,12 +1611,12 @@ var (
 		"enterprise_plan":  {Type: "enterprise_plan", Limit: 10_000},
 		"pro_plan":         {Type: "pro_plan", Limit: 5_000},
 		"startup_plan":     {Type: "startup_plan", Limit: 500},
-		"ENTERPRISE":       {Type: "ENTERPRISE", Limit: 5_000},
-		"FREETIER_V0":      {Type: "FREETIER_V0", Limit: 5_000},
-		"PAY_AS_YOU_GO_V0": {Type: "PAY_AS_YOU_GO_V0", Limit: 5_000},
-		"TEST_PLAN_10K":    {Type: "TEST_PLAN_10K", Limit: 5_000},
-		"TEST_PLAN_90K":    {Type: "TEST_PLAN_90K", Limit: 5_000},
-		"TEST_PLAN_V0":     {Type: "TEST_PLAN_V0", Limit: 5_000},
+		"ENTERPRISE":       {Type: "ENTERPRISE", Limit: 0},
+		"FREETIER_V0":      {Type: "FREETIER_V0", Limit: 250_000},
+		"PAY_AS_YOU_GO_V0": {Type: "PAY_AS_YOU_GO_V0", Limit: 0},
+		"TEST_PLAN_10K":    {Type: "TEST_PLAN_10K", Limit: 10_000},
+		"TEST_PLAN_90K":    {Type: "TEST_PLAN_90K", Limit: 90_000},
+		"TEST_PLAN_V0":     {Type: "TEST_PLAN_V0", Limit: 0},
 	}
 
 	testUsers = map[types.UserID]*types.User{

@@ -135,15 +135,18 @@ func (c *Cache) parseChainAltruistNotification(n types.Notification) {
 	}
 }
 
-func (c *Cache) parseGigastakeRedirectNotification(n types.Notification) {
-	redirect, ok := n.Data.(*types.GigastakeRedirect)
+func (c *Cache) parseChainAliasDomainsNotification(n types.Notification) {
+	aliasDomains, ok := n.Data.(*types.AliasDomains)
 	if !ok {
-		c.log.Error("parseGigastakeRedirectNotification failed")
+		c.log.Error("parseChainAliasDomainsNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addGigastakeRedirect(*redirect)
+		c.addAliasDomains(*aliasDomains)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteAliasDomains(*aliasDomains)
 	}
 }
 
@@ -224,7 +227,7 @@ func (c *Cache) parseNotification(n types.Notification) {
 
 	case types.TablePortalApps:
 		c.parsePortalAppNotification(n)
-	case types.TableAppAATs:
+	case types.TableAATs:
 		c.parseAATNotification(n)
 	case types.TableAppSettings:
 		c.parseSettingsNotification(n)
@@ -236,8 +239,8 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseChainNotification(n)
 	case types.TableChainAltruists:
 		c.parseChainAltruistNotification(n)
-	case types.TableChainGigastakeRedirects:
-		c.parseGigastakeRedirectNotification(n)
+	case types.TableChainAliasDomains:
+		c.parseChainAliasDomainsNotification(n)
 	case types.TableChainChecks:
 		c.parseChainCheckNotification(n)
 

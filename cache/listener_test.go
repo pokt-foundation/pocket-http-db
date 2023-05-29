@@ -112,18 +112,25 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		account         *types.Account
 	}{
 		{
-			name:            "Should upsert AccountUserAccess in cache when receiving an insert notification",
+			name:            "Should insert AccountUserAccess in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			userID:          "user_3",
 			accountID:       "account_1",
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUserAccess{
-					"user_3": testdata.AccountUserAccess[3],
+					"user_3": {
+						UserID:   "user_3",
+						Email:    "ellen.ripley789@test.com",
+						Accepted: true,
+						PortalAppRoles: map[types.PortalAppID]types.RoleName{
+							"test_app_1": types.RoleMember,
+						},
+					},
 				},
 			},
 		},
 		{
-			name:            "Should upsert AccountUserAccess in cache when receiving an update notification",
+			name:            "Should update AccountUserAccess in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			userID:          "user_2",
 			accountID:       "account_1",
@@ -132,11 +139,9 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 					"user_3": {
 						UserID:   "user_2",
 						Email:    "paul.atreides456@test.com",
-						RoleName: types.RoleMember,
 						Accepted: true,
-						ProviderUserIDs: map[types.AuthType]string{
-							types.AuthTypeAuth0Username: "auth0|paul_atreides",
-							types.AuthTypeAuth0Github:   "github|paul_atreides",
+						PortalAppRoles: map[types.PortalAppID]types.RoleName{
+							"test_app_1": types.RoleMember,
 						},
 					},
 				},
@@ -172,7 +177,7 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 				c.False(accountFound, "Account should be removed from accountsByUserID map")
 			} else {
 				accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
-				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
+				c.True(accountFound, "Account should be found in accountsByUserID map")
 			}
 		})
 	}
@@ -195,8 +200,6 @@ func Test_parsePortalAppNotification(t *testing.T) {
 				ID:        "test_app_create_e2887s4",
 				AccountID: "account_1",
 				Name:      "create_pokt_app_2",
-				Gigastake: true,
-				Staked:    false,
 				AATs: map[types.ProtocolAppID]types.AAT{
 					"test_protocol_app_1": {
 						ID:              "test_protocol_app_1",
@@ -454,16 +457,12 @@ func Test_parseChainNotification(t *testing.T) {
 				Description:   "Boba",
 				EnforceResult: "JSON",
 				Ticker:        "BOBA",
-				ChainAliases:  []string{"boba-mainnet"},
 				Altruists: []types.Altruist{
 					{
 						URL:      "https://test-rpc.boba-1.io:1234",
 						AuthType: types.ChainAuthTypeBasicAuth,
 						Auth:     "test_pocket:auth123456",
 					},
-				},
-				Redirects: []types.GigastakeRedirect{
-					{PortalApplicationID: "test_app_6", Alias: "boba-mainnet", Domain: "boba-rpc.gateway.pokt.network"},
 				},
 				Checks: map[types.ChainCheckType]types.Check{
 					types.ChainCheckTypeSync: {
@@ -472,6 +471,10 @@ func Test_parseChainNotification(t *testing.T) {
 						ResultKey: "sync",
 						Allowance: 2,
 					},
+				},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"boba-mainnet":   {"boba-rpc.gateway.pokt.network"},
+					"boba-mainnet-2": {"boba-rpc-2.gateway.pokt.network"},
 				},
 				CreatedAt: testdata.MockTimestamp,
 				UpdatedAt: testdata.MockTimestamp,
@@ -487,7 +490,6 @@ func Test_parseChainNotification(t *testing.T) {
 				Description:    "Sui Testnet",
 				EnforceResult:  "JSON",
 				Ticker:         "SUI-TESTNET-123",
-				ChainAliases:   []string{"sui-testnet"},
 				LogLimitBlocks: 100000,
 				RequestTimeout: 60000,
 				Active:         false,
@@ -503,7 +505,6 @@ func Test_parseChainNotification(t *testing.T) {
 						Auth:     "test_pocket:auth123456",
 					},
 				},
-				Redirects: []types.GigastakeRedirect{},
 				Checks: map[types.ChainCheckType]types.Check{
 					types.ChainCheckTypeSync: {
 						Type:      types.ChainCheckTypeSync,
@@ -511,6 +512,10 @@ func Test_parseChainNotification(t *testing.T) {
 						ResultKey: "result",
 						Allowance: 7,
 					},
+				},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"sui-testnet":   {"sui-rpc.gateway.pokt.network"},
+					"sui-testnet-2": {"sui-rpc-2.gateway.pokt.network"},
 				},
 			},
 		},
@@ -595,7 +600,7 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 	}
 }
 
-func Test_parseGigastakeRedirectNotification(t *testing.T) {
+func Test_parseAliasDomainsNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
@@ -603,34 +608,46 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 		chain           types.Chain
 	}{
 		{
-			name:            "Should add GigastakeRedirect to Chain in cache when receiving an insert notification",
+			name:            "Should add AliasDomains to Chain in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				Redirects: []types.GigastakeRedirect{
-					{
-						ChainID:             "9826",
-						PortalApplicationID: "test_app_3",
-						Domain:              "sol-rpc.gateway.pokt.network",
-						Alias:               "solana-mainnet",
-					},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"solana-mainnet": {"sol-rpc.gateway.pokt.network"},
 				},
 			},
 		},
 		{
-			name:            "Should update GigastakeRedirect in Chain in cache when receiving an update notification",
+			name:            "Should update AliasDomains in Chain in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				Redirects: []types.GigastakeRedirect{
-					{
-						ChainID:             "9826",
-						PortalApplicationID: "test_app_3",
-						Domain:              "sol-rpc.gateway.pokt.network",
-						Alias:               "updated-solana-mainnet",
-					},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
+				},
+			},
+		},
+		{
+			name:            "Should update AliasDomains with a longer slice in Chain in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			chainID:         "9826",
+			chain: types.Chain{
+				ID: "9826",
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network", "sol-rpc-123.gateway.pokt.network"},
+				},
+			},
+		},
+		{
+			name:            "Should delete AliasDomains in Chain in cache when receiving a delete notification",
+			sideTableAction: types.ActionDelete,
+			chainID:         "9826",
+			chain: types.Chain{
+				ID: "9826",
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
 				},
 			},
 		},
@@ -645,14 +662,31 @@ func Test_parseGigastakeRedirectNotification(t *testing.T) {
 
 			cache.upsertChain(test.chain)
 
-			test.chain.Redirects[0].ChainID = "" // is unset in the cache TODO will be changed soon
-
 			readerMock.listener.MockEvent("", test.sideTableAction, &test.chain)
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
 			chain := cache.GetChain(test.chainID, Options{})
-			c.Equal(test.chain.Redirects, chain.Redirects)
+
+			if test.sideTableAction != types.ActionDelete {
+				// Merge any additional keys from chain.AliasDomains into test.chain.AliasDomains before checking for equality
+				for key, value := range chain.AliasDomains {
+					if _, exists := test.chain.AliasDomains[key]; !exists {
+						test.chain.AliasDomains[key] = value
+					}
+				}
+				c.Equal(test.chain.AliasDomains, chain.AliasDomains, "Chain alias domains should match expected")
+			} else {
+				// For deletion, just check that the alias does not exist in chain.AliasDomains
+				var aliasKey types.ChainAlias
+				for key := range test.chain.AliasDomains {
+					aliasKey = key
+					break
+				}
+				c.NotEmpty(aliasKey)
+				_, exists := chain.AliasDomains[aliasKey]
+				c.False(exists, "Alias should not exist after delete operation")
+			}
 		})
 	}
 }

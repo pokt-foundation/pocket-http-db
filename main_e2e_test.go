@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"testing"
@@ -16,19 +14,6 @@ import (
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/stretchr/testify/suite"
 )
-
-func Plog(args ...interface{}) {
-	for _, arg := range args {
-		var prettyJSON bytes.Buffer
-		jsonArg, _ := json.Marshal(arg)
-		str := string(jsonArg)
-		_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-		output := prettyJSON.String()
-
-		fmt.Print(output)
-	}
-	fmt.Println()
-}
 
 func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 	if testing.Short() {
@@ -542,95 +527,95 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 // This ensures the write tests do not modify the seed data expected by the read tests
 func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
-	ts.Run("Test_CreateBlockchain", func() {
-		tests := []struct {
-			name       string
-			blockchain *v1Types.Blockchain
-			err        error
-		}{
-			{
-				name:       "Should create a single blockchain in the DB",
-				blockchain: createLegacyBlockchain,
-			},
-			{
-				name:       "Should fail if attempting to create a duplicate record",
-				blockchain: createLegacyBlockchain,
-				err:        fmt.Errorf("Response not OK. 500 Internal Server Error: CreateLegacyBlockchain failed: error chain already exists for chain ID '0127'"),
-			},
-		}
+	// ts.Run("Test_CreateBlockchain", func() {
+	// 	tests := []struct {
+	// 		name       string
+	// 		blockchain *v1Types.Blockchain
+	// 		err        error
+	// 	}{
+	// 		{
+	// 			name:       "Should create a single blockchain in the DB",
+	// 			blockchain: createLegacyBlockchain,
+	// 		},
+	// 		{
+	// 			name:       "Should fail if attempting to create a duplicate record",
+	// 			blockchain: createLegacyBlockchain,
+	// 			err:        fmt.Errorf("Response not OK. 500 Internal Server Error: CreateLegacyBlockchain failed: error chain already exists for chain ID '0127'"),
+	// 		},
+	// 	}
 
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				_, err := ts.client1.CreateBlockchain(testCtx, *test.blockchain)
-				ts.Equal(test.err, err)
+	// 	for _, test := range tests {
+	// 		ts.Run(test.name, func() {
+	// 			_, err := ts.client1.CreateBlockchain(testCtx, *test.blockchain)
+	// 			ts.Equal(test.err, err)
 
-				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-					blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchain.ID)
-					ts.Equal(test.err, err)
-					blockchain.CreatedAt = mockTimestamp
-					blockchain.UpdatedAt = mockTimestamp
-					cmp.Equal(test.blockchain, blockchain)
+	// 			if test.err == nil {
+	// 				<-time.After(50 * time.Millisecond)
+	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchain.ID)
+	// 				ts.Equal(test.err, err)
+	// 				blockchain.CreatedAt = mockTimestamp
+	// 				blockchain.UpdatedAt = mockTimestamp
+	// 				cmp.Equal(test.blockchain, blockchain)
 
-					blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchain.ID)
-					ts.Equal(test.err, err)
-					blockchain.CreatedAt = mockTimestamp
-					blockchain.UpdatedAt = mockTimestamp
-					cmp.Equal(test.blockchain, blockchain)
-				}
-			})
-		}
-	})
+	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchain.ID)
+	// 				ts.Equal(test.err, err)
+	// 				blockchain.CreatedAt = mockTimestamp
+	// 				blockchain.UpdatedAt = mockTimestamp
+	// 				cmp.Equal(test.blockchain, blockchain)
+	// 			}
+	// 		})
+	// 	}
+	// })
 
-	ts.Run("Test_CreateRedirect", func() {
-		tests := []struct {
-			name          string
-			redirectInput v1Types.Redirect
-			redirects     []v1Types.Redirect
-			err           error
-		}{
-			{
-				name: "Should create a new redirect for an existing blockchain in the DB",
-				redirectInput: v1Types.Redirect{
-					BlockchainID:   "0001",
-					Alias:          "altruist-0002",
-					Domain:         "pokt-rpc-2.gateway.pokt.network",
-					LoadBalancerID: "test_app_2",
-				},
-				redirects: []v1Types.Redirect{
-					{Alias: "altruist-0001", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
-					{Alias: "altruist-0002", Domain: "pokt-rpc-2.gateway.pokt.network", LoadBalancerID: "test_app_2"},
-				},
-			},
-		}
+	// ts.Run("Test_CreateRedirect", func() {
+	// 	tests := []struct {
+	// 		name          string
+	// 		redirectInput v1Types.Redirect
+	// 		redirects     []v1Types.Redirect
+	// 		err           error
+	// 	}{
+	// 		{
+	// 			name: "Should create a new redirect for an existing blockchain in the DB",
+	// 			redirectInput: v1Types.Redirect{
+	// 				BlockchainID:   "0001",
+	// 				Alias:          "altruist-0002",
+	// 				Domain:         "pokt-rpc-2.gateway.pokt.network",
+	// 				LoadBalancerID: "test_app_2",
+	// 			},
+	// 			redirects: []v1Types.Redirect{
+	// 				{Alias: "altruist-0001", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
+	// 				{Alias: "altruist-0002", Domain: "pokt-rpc-2.gateway.pokt.network", LoadBalancerID: "test_app_2"},
+	// 			},
+	// 		},
+	// 	}
 
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				_, err := ts.client1.CreateBlockchainRedirect(testCtx, test.redirectInput)
-				ts.Equal(test.err, err)
-				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-					blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
-					ts.Equal(test.err, err)
-					ts.Len(blockchain.Redirects, len(test.redirects))
-					for i, redirect := range blockchain.Redirects {
-						cmp.Equal(test.redirects[i].Alias, redirect.Alias)
-						cmp.Equal(test.redirects[i].Domain, redirect.Domain)
-						cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
-					}
+	// 	for _, test := range tests {
+	// 		ts.Run(test.name, func() {
+	// 			_, err := ts.client1.CreateBlockchainRedirect(testCtx, test.redirectInput)
+	// 			ts.Equal(test.err, err)
+	// 			if test.err == nil {
+	// 				<-time.After(50 * time.Millisecond)
+	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
+	// 				ts.Equal(test.err, err)
+	// 				ts.Len(blockchain.Redirects, len(test.redirects))
+	// 				for i, redirect := range blockchain.Redirects {
+	// 					cmp.Equal(test.redirects[i].Alias, redirect.Alias)
+	// 					cmp.Equal(test.redirects[i].Domain, redirect.Domain)
+	// 					cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
+	// 				}
 
-					blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
-					ts.Equal(test.err, err)
-					ts.Len(blockchain.Redirects, len(test.redirects))
-					for i, redirect := range blockchain.Redirects {
-						cmp.Equal(test.redirects[i].Alias, redirect.Alias)
-						cmp.Equal(test.redirects[i].Domain, redirect.Domain)
-						cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
-					}
-				}
-			})
-		}
-	})
+	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
+	// 				ts.Equal(test.err, err)
+	// 				ts.Len(blockchain.Redirects, len(test.redirects))
+	// 				for i, redirect := range blockchain.Redirects {
+	// 					cmp.Equal(test.redirects[i].Alias, redirect.Alias)
+	// 					cmp.Equal(test.redirects[i].Domain, redirect.Domain)
+	// 					cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
+	// 				}
+	// 			}
+	// 		})
+	// 	}
+	// })
 
 	ts.Run("Test_CreatePortalUser", func() {
 		tests := []struct {
@@ -825,43 +810,43 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	ts.Run("Test_ActivateBlockchain", func() {
-		tests := []struct {
-			name         string
-			blockchainID string
-			active       bool
-			err          error
-		}{
-			{
-				name:         "Should set a blockchain's active field to false",
-				blockchainID: "0001",
-				active:       false,
-			},
-			{
-				name:         "Should set a blockchain's active field to true",
-				blockchainID: "0001",
-				active:       true,
-			},
-			{
-				name:         "Should fail if blockchain cannot be found",
-				blockchainID: "5440",
-				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: blockchain not found for chain ID 5440"),
-			},
-		}
+	// ts.Run("Test_ActivateBlockchain", func() {
+	// 	tests := []struct {
+	// 		name         string
+	// 		blockchainID string
+	// 		active       bool
+	// 		err          error
+	// 	}{
+	// 		{
+	// 			name:         "Should set a blockchain's active field to false",
+	// 			blockchainID: "0001",
+	// 			active:       false,
+	// 		},
+	// 		{
+	// 			name:         "Should set a blockchain's active field to true",
+	// 			blockchainID: "0001",
+	// 			active:       true,
+	// 		},
+	// 		{
+	// 			name:         "Should fail if blockchain cannot be found",
+	// 			blockchainID: "5440",
+	// 			err:          fmt.Errorf("Response not OK. 500 Internal Server Error: blockchain not found for chain ID 5440"),
+	// 		},
+	// 	}
 
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				_, err := ts.client1.ActivateBlockchain(testCtx, test.blockchainID, test.active)
-				ts.Equal(test.err, err)
-				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-					blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
-					ts.Equal(test.err, err)
-					cmp.Equal(test.active, blockchain.Active)
-				}
-			})
-		}
-	})
+	// 	for _, test := range tests {
+	// 		ts.Run(test.name, func() {
+	// 			_, err := ts.client1.ActivateBlockchain(testCtx, test.blockchainID, test.active)
+	// 			ts.Equal(test.err, err)
+	// 			if test.err == nil {
+	// 				<-time.After(50 * time.Millisecond)
+	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
+	// 				ts.Equal(test.err, err)
+	// 				cmp.Equal(test.active, blockchain.Active)
+	// 			}
+	// 		})
+	// 	}
+	// })
 
 	ts.Run("Test_UpdateLoadBalancer", func() {
 		tests := []struct {
@@ -1023,88 +1008,88 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	ts.Run("Test_UpdateBlockchain", func() {
-		allowanceInt := 123
+	// ts.Run("Test_UpdateBlockchain", func() {
+	// 	allowanceInt := 123
 
-		tests := []struct {
-			name             string
-			blockchainID     string
-			blockchainUpdate v1Types.UpdateBlockchain
-			expectedChain    v1Types.Blockchain
-			err              error
-		}{
-			{
-				name:         "Should update a single blockchain in the DB",
-				blockchainID: "0001",
-				blockchainUpdate: v1Types.UpdateBlockchain{
-					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
-					Blockchain:        "pokt-mainnet-updated",
-					Description:       "POKT Network Mainnet Updated",
-					RequestTimeout:    66_654,
-					ResultKey:         "updated-key",
-					LogLimitBlocks:    100_010,
-					Ticker:            "SUCH-WOW",
-					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
-					EnforceResult:     "JSUN",
-					Path:              "new-path",
-					Body:              `{"new-body": "alliance"}`,
-					Allowance:         &allowanceInt,
-				},
-				expectedChain: v1Types.Blockchain{
-					ID:                "0001",
-					Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
-					Blockchain:        "pokt-mainnet-updated",
-					Description:       "POKT Network Mainnet Updated",
-					EnforceResult:     "JSUN",
-					Ticker:            "SUCH-WOW",
-					Path:              "new-path",
-					BlockchainAliases: []string{"pokt-mainnet", "another-one"},
-					LogLimitBlocks:    100_010,
-					Active:            true,
-					RequestTimeout:    66_654,
-					// Redirects are handled via their own update process
-					SyncCheckOptions: v1Types.SyncCheckOptions{
-						Body:      `{"new-body": "alliance"}`,
-						ResultKey: "updated-key",
-						Allowance: 123,
-					},
-				},
-			},
-		}
+	// 	tests := []struct {
+	// 		name             string
+	// 		blockchainID     string
+	// 		blockchainUpdate v1Types.UpdateBlockchain
+	// 		expectedChain    v1Types.Blockchain
+	// 		err              error
+	// 	}{
+	// 		{
+	// 			name:         "Should update a single blockchain in the DB",
+	// 			blockchainID: "0001",
+	// 			blockchainUpdate: v1Types.UpdateBlockchain{
+	// 				Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
+	// 				Blockchain:        "pokt-mainnet-updated",
+	// 				Description:       "POKT Network Mainnet Updated",
+	// 				RequestTimeout:    66_654,
+	// 				ResultKey:         "updated-key",
+	// 				LogLimitBlocks:    100_010,
+	// 				Ticker:            "SUCH-WOW",
+	// 				BlockchainAliases: []string{"pokt-mainnet", "another-one"},
+	// 				EnforceResult:     "JSUN",
+	// 				Path:              "new-path",
+	// 				Body:              `{"new-body": "alliance"}`,
+	// 				Allowance:         &allowanceInt,
+	// 			},
+	// 			expectedChain: v1Types.Blockchain{
+	// 				ID:                "0001",
+	// 				Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
+	// 				Blockchain:        "pokt-mainnet-updated",
+	// 				Description:       "POKT Network Mainnet Updated",
+	// 				EnforceResult:     "JSUN",
+	// 				Ticker:            "SUCH-WOW",
+	// 				Path:              "new-path",
+	// 				BlockchainAliases: []string{"pokt-mainnet", "another-one"},
+	// 				LogLimitBlocks:    100_010,
+	// 				Active:            true,
+	// 				RequestTimeout:    66_654,
+	// 				// Redirects are handled via their own update process
+	// 				SyncCheckOptions: v1Types.SyncCheckOptions{
+	// 					Body:      `{"new-body": "alliance"}`,
+	// 					ResultKey: "updated-key",
+	// 					Allowance: 123,
+	// 				},
+	// 			},
+	// 		},
+	// 	}
 
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				updatedChain, err := ts.client1.UpdateBlockchain(testCtx, test.blockchainID, test.blockchainUpdate)
-				ts.Equal(test.err, err)
-				if err == nil {
-					<-time.After(50 * time.Millisecond)
-					blockchain, err := ts.client1.GetBlockchainByID(testCtx, updatedChain.ID)
-					ts.NoError(err)
-					cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-					cmp.Equal(test.expectedChain.Description, blockchain.Description)
-					cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-					cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-					cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-					cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-					cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-					cmp.Equal(test.expectedChain.Path, blockchain.Path)
-					cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// 	for _, test := range tests {
+	// 		ts.Run(test.name, func() {
+	// 			updatedChain, err := ts.client1.UpdateBlockchain(testCtx, test.blockchainID, test.blockchainUpdate)
+	// 			ts.Equal(test.err, err)
+	// 			if err == nil {
+	// 				<-time.After(50 * time.Millisecond)
+	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, updatedChain.ID)
+	// 				ts.NoError(err)
+	// 				cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// 				cmp.Equal(test.expectedChain.Description, blockchain.Description)
+	// 				cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// 				cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// 				cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// 				cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// 				cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// 				cmp.Equal(test.expectedChain.Path, blockchain.Path)
+	// 				cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 
-					blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
-					ts.NoError(err)
-					cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-					cmp.Equal(test.expectedChain.Description, blockchain.Description)
-					cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-					cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-					cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-					cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-					cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-					cmp.Equal(test.expectedChain.Path, blockchain.Path)
-					cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
-				}
-			})
-		}
-	})
+	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
+	// 				ts.NoError(err)
+	// 				cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// 				cmp.Equal(test.expectedChain.Description, blockchain.Description)
+	// 				cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// 				cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// 				cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// 				cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// 				cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// 				cmp.Equal(test.expectedChain.Path, blockchain.Path)
+	// 				cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// 			}
+	// 		})
+	// 	}
+	// })
 
 	ts.Run("Test_UpdateLoadBalancerUserRole", func() {
 		tests := []struct {
@@ -1458,11 +1443,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					// user's LB should have been removed from the user's LBs map in the cache
 					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
 					ts.NoError(err)
-					ts.Equal(len(lbs), 0)
+					ts.Len(lbs, 0)
 
 					lbs, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
 					ts.NoError(err)
-					ts.Equal(len(lbs), 0)
+					ts.Len(lbs, 0)
 				}
 			})
 		}
@@ -2024,30 +2009,30 @@ var (
 		},
 	}
 
-	createLegacyBlockchain = &v1Types.Blockchain{
-		ID:                "0127",
-		Altruist:          "https://test_pocket:auth123456@altruist-0127.com:1234", // pragma: allowlist secret
-		Blockchain:        "bsc-mainnet",
-		Description:       "Binance Smart Chain Mainnet",
-		EnforceResult:     "JSON",
-		Ticker:            "BNB",
-		BlockchainAliases: []string{"bsc-mainnet", "binance-smart-chain-mainnet"},
-		LogLimitBlocks:    200000,
-		Redirects: []v1Types.Redirect{
-			{
-				Alias:          "altruist-0127",
-				Domain:         "bnbrpc.gateway.pokt.network",
-				LoadBalancerID: "test_app_3",
-			},
-		},
-		SyncCheckOptions: v1Types.SyncCheckOptions{
-			Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_syncing\",\"params\":[]}",
-			ResultKey: "result",
-			Allowance: 3,
-		},
-		CreatedAt: mockTimestamp,
-		UpdatedAt: mockTimestamp,
-	}
+	// createLegacyBlockchain = &v1Types.Blockchain{
+	// 	ID:                "0127",
+	// 	Altruist:          "https://test_pocket:auth123456@altruist-0127.com:1234", // pragma: allowlist secret
+	// 	Blockchain:        "bsc-mainnet",
+	// 	Description:       "Binance Smart Chain Mainnet",
+	// 	EnforceResult:     "JSON",
+	// 	Ticker:            "BNB",
+	// 	BlockchainAliases: []string{"bsc-mainnet", "binance-smart-chain-mainnet"},
+	// 	LogLimitBlocks:    200000,
+	// 	Redirects: []v1Types.Redirect{
+	// 		{
+	// 			Alias:          "altruist-0127",
+	// 			Domain:         "bnbrpc.gateway.pokt.network",
+	// 			LoadBalancerID: "test_app_3",
+	// 		},
+	// 	},
+	// 	SyncCheckOptions: v1Types.SyncCheckOptions{
+	// 		Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_syncing\",\"params\":[]}",
+	// 		ResultKey: "result",
+	// 		Allowance: 3,
+	// 	},
+	// 	CreatedAt: mockTimestamp,
+	// 	UpdatedAt: mockTimestamp,
+	// }
 
 	createLegacyLoadBalancer = &v1Types.LoadBalancer{
 		Name:              "new_pokt_app_777",

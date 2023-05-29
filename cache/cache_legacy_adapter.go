@@ -27,7 +27,7 @@ var (
 func (c *Cache) getUserIDAndAccount(accountID v2Types.AccountID) (string, *v2Types.Account, error) {
 	account, ok := c.accounts[accountID]
 	if ok {
-		return account.LegacyUserID(), account, nil
+		return string(account.OwnerID), account, nil
 	}
 
 	return "", nil, fmt.Errorf(errAccountNotFound.Error(), accountID)
@@ -41,25 +41,18 @@ func (c *Cache) GetLegacyApplications(options Options) []v1Types.Application {
 	defer c.rwMutex.RUnlock()
 
 	portalApps := c.GetPortalApps(options)
-
 	var applications []v1Types.Application
 
 	for _, portalApp := range portalApps {
-		var (
-			// If app doesn't have account/user it is a Gigastakes app
-			// so use empty values for user ID, plan type and daily limit
-			appUserID  = ""
-			planType   = v2Types.PayPlanType("")
-			dailyLimit = int32(0)
-		)
-		if userID, account, err := c.getUserIDAndAccount(portalApp.AccountID); err == nil {
+		// If app doesn't have account/user it is a Gigastakes app
+		// so use empty values for user ID, plan type and daily limit
+		var appUserID = ""
+		if userID, _, err := c.getUserIDAndAccount(portalApp.AccountID); err == nil {
 			// If app has Account and user then fill in user ID and plan type
 			appUserID = userID
-			planType = account.PlanType
-			dailyLimit = account.Plan.LegacyDailyLimit
 		}
 
-		legacyApps := legacyadapters.ConvertToLegacyApplications(portalApp, appUserID, planType, dailyLimit)
+		legacyApps := legacyadapters.ConvertPortalAppToLegacyApplications(portalApp, appUserID)
 
 		var apps []v1Types.Application
 		for _, app := range legacyApps {
@@ -96,7 +89,7 @@ func (c *Cache) GetLegacyApplication(appID string) (v1Types.Application, error) 
 		appAccount = account
 	}
 
-	application := legacyadapters.ConvertToLegacyApplication(portalApp, *appAccount, portalAppID)
+	application := legacyadapters.ConvertPortalAppToLegacyApplication(portalApp, string(appAccount.OwnerID), v2Types.ProtocolAppID(appID))
 
 	return application, nil
 }
@@ -128,9 +121,13 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 
 	case roleNameFilter != v1Types.RoleName(""):
 		for _, account := range accounts {
-			for _, user := range account.Users {
-				if user.Accepted && user.UserID == portalUserID && user.RoleName == v2Types.RoleName(roleNameFilter) {
-					filteredAccounts = append(filteredAccounts, account)
+			if user, ok := account.Users[portalUserID]; ok {
+				if user.Accepted {
+					for _, roleName := range user.PortalAppRoles {
+						if roleName == v2Types.RoleName(roleNameFilter) {
+							filteredAccounts = append(filteredAccounts, account)
+						}
+					}
 				}
 			}
 		}
@@ -138,7 +135,7 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 
 	for _, account := range filteredAccounts {
 		for _, portalApp := range account.PortalApps {
-			legacyLB := legacyadapters.ConvertToLegacyLoadBalancer(*portalApp, account, account.Users)
+			legacyLB := legacyadapters.ConvertPortalAppToLegacyLoadBalancer(*portalApp, account, account.Users)
 
 			loadBalancers = append(loadBalancers, legacyLB)
 		}
@@ -162,7 +159,7 @@ func (c *Cache) GetLegacyLoadBalancer(ctx context.Context, lbID string) (v1Types
 		return v1Types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
 	}
 
-	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account, account.Users), nil
+	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account, account.Users), nil
 }
 
 // GetLegacyLoadBalancers returns all V1 LoadBalancers
@@ -174,7 +171,7 @@ func (c *Cache) GetLegacyLoadBalancers(ctx context.Context) []v1Types.LoadBalanc
 
 	for _, account := range c.accounts {
 		for _, portalApp := range account.PortalApps {
-			lbs = append(lbs, legacyadapters.ConvertToLegacyLoadBalancer(*portalApp, *account, account.Users))
+			lbs = append(lbs, legacyadapters.ConvertPortalAppToLegacyLoadBalancer(*portalApp, *account, account.Users))
 		}
 	}
 
@@ -203,7 +200,7 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 			}
 
 			for protocolAppID := range portalApp.AATs {
-				legacyApp := legacyadapters.ConvertToLegacyApplication(*portalApp, *account, protocolAppID)
+				legacyApp := legacyadapters.ConvertPortalAppToLegacyApplication(*portalApp, string(account.OwnerID), protocolAppID)
 
 				applications = append(applications, legacyApp)
 			}
@@ -263,22 +260,17 @@ func (c *Cache) GetLegacyUserPermissionsByUserID(ctx context.Context, userID str
 		LoadBalancers: make(map[v1Types.LoadBalancerID]v1Types.LoadBalancerPermissions),
 	}
 
-	for accountID, accountPermissions := range userPermissions.Accounts {
-		account, ok := c.accounts[accountID]
-		if ok {
-			for _, portalApp := range account.PortalApps {
-				lbID := v1Types.LoadBalancerID(portalApp.ID)
-				// TODO: remove after v2 migration
-				rolePermissions := []v1Types.PermissionsEnum{}
-				for _, permission := range accountPermissions.Permissions {
-					rolePermissions = append(rolePermissions, v1Types.PermissionsEnum(permission))
-				}
+	for portalAppID, portalAppPermissions := range userPermissions.PortalApps {
+		lbID := v1Types.LoadBalancerID(portalAppID)
 
-				legacyUserPermissions.LoadBalancers[lbID] = v1Types.LoadBalancerPermissions{
-					RoleName:    v1Types.RoleName(accountPermissions.RoleName),
-					Permissions: rolePermissions,
-				}
-			}
+		rolePermissions := []v1Types.PermissionsEnum{}
+		for _, permission := range portalAppPermissions.Permissions {
+			rolePermissions = append(rolePermissions, v1Types.PermissionsEnum(permission))
+		}
+
+		legacyUserPermissions.LoadBalancers[lbID] = v1Types.LoadBalancerPermissions{
+			RoleName:    v1Types.RoleName(portalAppPermissions.RoleName),
+			Permissions: rolePermissions,
 		}
 	}
 
@@ -336,7 +328,7 @@ func (c *Cache) GetLegacyPendingLoadBalancers(ctx context.Context, portalUserID 
 
 	for _, account := range pendingAccounts {
 		for _, portalApp := range account.PortalApps {
-			loadBalancers = append(loadBalancers, legacyadapters.ConvertToLegacyLoadBalancer(*portalApp, account, account.Users))
+			loadBalancers = append(loadBalancers, legacyadapters.ConvertPortalAppToLegacyLoadBalancer(*portalApp, account, account.Users))
 		}
 	}
 
@@ -354,9 +346,13 @@ func (c *Cache) GetLegacyLoadBalancersCount(ctx context.Context, portalUserID st
 
 	accounts := c.GetAccountsByUserID(v2Types.UserID(portalUserID))
 	for _, account := range accounts {
-		for _, user := range account.Users {
-			if user.UserID == v2Types.UserID(userID) && user.RoleName == v2Types.RoleOwner {
-				count++
+		if user, ok := account.Users[v2Types.UserID(userID)]; ok {
+			if user.Accepted {
+				for _, roleName := range user.PortalAppRoles {
+					if roleName == v2Types.RoleOwner {
+						count++
+					}
+				}
 			}
 		}
 	}
@@ -382,19 +378,24 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 		return v1Types.LoadBalancer{}, fmt.Errorf(errUserNotFound.Error(), lb.UserID)
 	}
 
-	var account v2Types.Account
 	// Get the Account of the user creating the load balancer
+	var account v2Types.Account
+
 	accounts := c.GetAccountsByUserID(portalUserID)
 	for _, userAccount := range accounts {
 		// Each user can only own one account
-		if userAccount.Users[portalUserID].RoleName == v2Types.RoleOwner {
-			account = userAccount
+		if user, ok := userAccount.Users[portalUserID]; ok {
+			for _, roleName := range user.PortalAppRoles {
+				if roleName == v2Types.RoleOwner {
+					account = userAccount
 
-			if account.Plan.Type == v2Types.Enterprise {
-				for _, app := range account.PortalApps {
-					if app.LegacyFields.CustomLimit != 0 {
-						portalApp.LegacyFields.CustomLimit = app.LegacyFields.CustomLimit
-						break
+					if account.Plan.Type == v2Types.Enterprise {
+						for _, app := range account.PortalApps {
+							if app.LegacyFields.CustomLimit != 0 {
+								portalApp.LegacyFields.CustomLimit = app.LegacyFields.CustomLimit
+								break
+							}
+						}
 					}
 				}
 			}
@@ -402,6 +403,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 			break
 		}
 	}
+
 	// If user does not have an Account, create a default one for them with FreetierV0 plan
 	if account.ID == "" {
 		createdAccount, err := writer.WriteAccount(ctx, portalUserID, v2Types.Account{PlanType: v2Types.FreetierV0}, createdAt)
@@ -425,7 +427,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 		createdPortalApp.ID: createdPortalApp,
 	}
 
-	return legacyadapters.ConvertToLegacyLoadBalancer(*createdPortalApp, account, account.Users), nil
+	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(*createdPortalApp, account, account.Users), nil
 }
 
 // CreateLegacyLoadBalancerUser creates a single V2 AccountUserAccess row for a given account
@@ -448,21 +450,23 @@ func (c *Cache) CreateLegacyLoadBalancerUser(ctx context.Context, writer driver.
 	}
 
 	// Convert the V2 LoadBalancer object to a V2 account and portal app using the ConvertToV2AccountAndPortalApp function
-	accountUserAccess := legacyadapters.ConvertToV2AccountUserAccess(user)
+	accountUserAccess := legacyadapters.ConvertToV2AccountUserAccess(user, lbID, string(account.ID))
 	createUser := v2Types.CreateAccountUserAccess{
-		AccountID: account.ID,
-		Email:     accountUserAccess.Email,
-		RoleName:  accountUserAccess.RoleName,
+		AccountID:   account.ID,
+		PortalAppID: portalAppID,
+		Email:       accountUserAccess.Email,
+		RoleName:    accountUserAccess.PortalAppRoles[portalAppID],
 	}
 
-	newUser, err := writer.WriteAccountUser(ctx, createUser, createdAt)
+	userID, err := writer.WriteAccountUser(ctx, createUser, createdAt)
 	if err != nil {
 		return v1Types.LoadBalancer{}, err
 	}
 
-	account.Users[newUser.UserID] = *newUser
+	accountUserAccess.UserID = userID
+	account.Users[userID] = accountUserAccess
 
-	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account, account.Users), nil
+	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account, account.Users), nil
 }
 
 // CreateLegacyLoadBalancerIntegration creates a single integration row for a given account
@@ -489,24 +493,7 @@ func (c *Cache) CreateLegacyLoadBalancerIntegration(ctx context.Context, writer 
 
 	account.Integrations = *accountIntegrations
 
-	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account, account.Users), nil
-}
-
-// CreateLegacyBlockchain creates one blockchain
-func (c *Cache) CreateLegacyBlockchain(ctx context.Context, writer driver.Writer, blockchain v1Types.Blockchain) (v1Types.Blockchain, error) {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	createdAt := time.Now()
-
-	chain := legacyadapters.ConvertToV2Chain(blockchain)
-
-	_, err := writer.WriteChain(ctx, chain, createdAt)
-	if err != nil {
-		return v1Types.Blockchain{}, fmt.Errorf("CreateLegacyBlockchain failed: %w", err)
-	}
-
-	return legacyadapters.ConvertToLegacyBlockchain(chain), nil
+	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account, account.Users), nil
 }
 
 /* ---------- Update Methods ---------- */
@@ -540,12 +527,12 @@ func (c *Cache) UpdateLegacyApplicationsFirstDateSurpassed(ctx context.Context, 
 	}
 
 	for _, portalApp := range portalAppsToUpdate {
-		userID, account, err := c.getUserIDAndAccount(portalApp.AccountID)
+		userID, _, err := c.getUserIDAndAccount(portalApp.AccountID)
 		if err != nil {
 			return appsToUpdate, err
 		}
 
-		appsToUpdate = append(appsToUpdate, legacyadapters.ConvertToLegacyApplications(portalApp, userID, account.Plan.Type, account.Plan.AppLimit)...)
+		appsToUpdate = append(appsToUpdate, legacyadapters.ConvertPortalAppToLegacyApplications(portalApp, userID)...)
 	}
 
 	for _, app := range appsToUpdate {
@@ -572,7 +559,7 @@ func (c *Cache) UpdateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 		return v1Types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
 	}
 
-	updatedLB := legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account, account.Users)
+	updatedLB := legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account, account.Users)
 
 	switch update.Remove {
 	case true:
@@ -676,19 +663,20 @@ func (c *Cache) UpdateLegacyUserRole(ctx context.Context, writer driver.Writer, 
 	}
 
 	for i := range account.Users {
-		if updateUser.RoleName == v1Types.RoleOwner && account.Users[i].RoleName == v2Types.RoleOwner {
+		if updateUser.RoleName == v1Types.RoleOwner && account.Users[i].PortalAppRoles[portalAppID] == v2Types.RoleOwner {
 			updatedUser := account.Users[i]
-			updatedUser.RoleName = v2Types.RoleAdmin
+			updatedUser.PortalAppRoles[portalAppID] = v2Types.RoleAdmin
 			account.Users[i] = updatedUser
 		}
+
 		if account.Users[i].UserID == portalUserID {
 			updatedUser := account.Users[i]
-			updatedUser.RoleName = v2Types.RoleName(updateUser.RoleName)
+			updatedUser.PortalAppRoles[portalAppID] = v2Types.RoleName(updateUser.RoleName)
 			account.Users[i] = updatedUser
 		}
 	}
 
-	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account, account.Users), nil
+	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account, account.Users), nil
 }
 
 // AcceptLegacyUser updates the role for a single LB user
@@ -714,7 +702,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 		return v1Types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
 	}
 
-	updateAccountUser := legacyadapters.ConvertToV2UpdateAcceptAccountUserAccess(updateUser, account.ID, portalUserID)
+	updateAccountUser := legacyadapters.ConvertToV2UpdateAcceptAccountUserAccess(updateUser, portalAppID, portalUserID)
 
 	err := writer.UpdateAcceptAccountUser(ctx, updateAccountUser, updatedAt)
 	if err != nil {
@@ -730,60 +718,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 		}
 	}
 
-	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account, account.Users), nil
-}
-
-// UpdateLegacyBlockchain updates one blockchain
-func (c *Cache) UpdateLegacyBlockchain(ctx context.Context, writer driver.Writer, blockchainID string, updateBlockchain v1Types.UpdateBlockchain) (v1Types.Blockchain, error) {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	chainID := v2Types.RelayChainID(blockchainID)
-	updatedAt := time.Now()
-
-	chain := c.GetChain(chainID, Options{})
-	if chain.ID == "" {
-		return v1Types.Blockchain{}, fmt.Errorf(errBlockchainNotFound.Error(), chainID)
-	}
-
-	update := legacyadapters.ConvertToV2UpdateChain(blockchainID, updateBlockchain)
-
-	err := writer.UpdateChain(ctx, update, updatedAt)
-	if err != nil {
-		return v1Types.Blockchain{}, fmt.Errorf("UpdateChain failed: %w", err)
-	}
-
-	chain.UpdateBlockchain(&update)
-	blockchain := legacyadapters.ConvertToLegacyBlockchain(chain)
-
-	return blockchain, nil
-}
-
-// CreateLegacyRedirect creates one Redirect for one blockchain
-func (c *Cache) CreateLegacyRedirect(ctx context.Context, writer driver.Writer, redirect v1Types.Redirect) (v1Types.Redirect, error) {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	chainID := v2Types.RelayChainID(redirect.BlockchainID)
-	updatedAt := time.Now()
-
-	chain := c.GetChain(chainID, Options{})
-	if chain.ID == "" {
-		return redirect, fmt.Errorf(errBlockchainNotFound.Error(), chainID)
-	}
-
-	chainUpdate := v2Types.Chain{
-		ID: chainID,
-	}
-	chainUpdate.Redirects = append(chainUpdate.Redirects, chain.Redirects...)
-	chainUpdate.Redirects = append(chainUpdate.Redirects, legacyadapters.ConvertToV2Redirect(redirect))
-
-	err := writer.UpdateChain(ctx, chainUpdate, updatedAt)
-	if err != nil {
-		return redirect, fmt.Errorf("CreateRedirect failed: %w", err)
-	}
-
-	return redirect, nil
+	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account, account.Users), nil
 }
 
 // ActivateLegacyBlockchain activates one blockchain
@@ -821,11 +756,11 @@ func (c *Cache) RemoveLegacyAccountUser(ctx context.Context, writer driver.Write
 		return v1Types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
 	}
 	account := c.GetAccount(portalApp.AccountID)
-	if portalApp.ID == "" {
+	if account.ID == "" {
 		return v1Types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
 	}
 
-	err := writer.RemoveAccountUser(ctx, portalUserID, account.ID)
+	err := writer.RemoveAccountUser(ctx, portalUserID, portalAppID, account.ID)
 	if err != nil {
 		return v1Types.LoadBalancer{}, fmt.Errorf("RemoveAccountUser failed: %w", err)
 	}
@@ -839,5 +774,5 @@ func (c *Cache) RemoveLegacyAccountUser(ctx context.Context, writer driver.Write
 	}
 	account.Users = filteredUsers
 
-	return legacyadapters.ConvertToLegacyLoadBalancer(portalApp, account, account.Users), nil
+	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account, account.Users), nil
 }
