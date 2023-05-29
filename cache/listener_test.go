@@ -129,35 +129,35 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:            "Should update AccountUserAccess in cache when receiving an update notification",
-		// 	sideTableAction: types.ActionUpdate,
-		// 	userID:          "user_2",
-		// 	accountID:       "account_1",
-		// 	account: &types.Account{
-		// 		Users: map[types.UserID]types.AccountUserAccess{
-		// 			"user_3": {
-		// 				UserID:   "user_2",
-		// 				Email:    "paul.atreides456@test.com",
-		// 				Accepted: true,
-		// 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
-		// 					"test_app_1": types.RoleMember,
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:            "Should delete AccountUserAccess from cache when receiving a delete notification",
-		// 	sideTableAction: types.ActionDelete,
-		// 	userID:          "user_8",
-		// 	accountID:       "account_1",
-		// 	account: &types.Account{
-		// 		Users: map[types.UserID]types.AccountUserAccess{
-		// 			"user_8": testdata.AccountUserAccess[8],
-		// 		},
-		// 	},
-		// },
+		{
+			name:            "Should update AccountUserAccess in cache when receiving an update notification",
+			sideTableAction: types.ActionUpdate,
+			userID:          "user_2",
+			accountID:       "account_1",
+			account: &types.Account{
+				Users: map[types.UserID]types.AccountUserAccess{
+					"user_3": {
+						UserID:   "user_2",
+						Email:    "paul.atreides456@test.com",
+						Accepted: true,
+						PortalAppRoles: map[types.PortalAppID]types.RoleName{
+							"test_app_1": types.RoleMember,
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "Should delete AccountUserAccess from cache when receiving a delete notification",
+			sideTableAction: types.ActionDelete,
+			userID:          "user_8",
+			accountID:       "account_1",
+			account: &types.Account{
+				Users: map[types.UserID]types.AccountUserAccess{
+					"user_8": testdata.AccountUserAccess[8],
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {

@@ -430,7 +430,9 @@ func Test_upsertAccountUser(t *testing.T) {
 			}
 
 			// Upsert account user
-			cache.upsertAccountUser(test.accountUser)
+			testAccountUser := test.accountUser
+			testAccountUser.AccountID = test.accountID
+			cache.upsertAccountUser(testAccountUser)
 
 			account := cache.GetAccount(test.accountID)
 			accountUser, ok := account.Users[test.accountUser.UserID]
@@ -494,7 +496,9 @@ func Test_deleteAccountUser(t *testing.T) {
 			}
 
 			// Delete account user
-			cache.deleteAccountUser(test.accountUser)
+			testAccountUser := test.accountUser
+			testAccountUser.AccountID = test.accountID
+			cache.deleteAccountUser(testAccountUser)
 
 			account := cache.GetAccount(test.accountID)
 

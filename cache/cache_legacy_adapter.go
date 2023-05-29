@@ -450,7 +450,7 @@ func (c *Cache) CreateLegacyLoadBalancerUser(ctx context.Context, writer driver.
 	}
 
 	// Convert the V2 LoadBalancer object to a V2 account and portal app using the ConvertToV2AccountAndPortalApp function
-	accountUserAccess := legacyadapters.ConvertToV2AccountUserAccess(user, lbID)
+	accountUserAccess := legacyadapters.ConvertToV2AccountUserAccess(user, lbID, string(account.ID))
 	createUser := v2Types.CreateAccountUserAccess{
 		AccountID:   account.ID,
 		PortalAppID: portalAppID,

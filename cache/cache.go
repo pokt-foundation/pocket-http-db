@@ -396,6 +396,9 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	accountID := accountUser.AccountID
+	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
 	// Add user to permissions map if they have accepted their invitation
 	if accountUser.Accepted {
 		userPermissions, ok := c.userPermissions[accountUser.UserID]
@@ -420,46 +423,28 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 		delete(c.pendingUsers, accountUser.UserID)
 	}
 
-	// Must get account ID via PortalAppID as account_user_access table only contains portal_application_id
-	var portalAppID types.PortalAppID
-	for appID := range accountUser.PortalAppRoles {
-		portalAppID = appID
-		break
-	}
-
-	// Remove from Accounts maps
-	portalApp, ok := c.portalApps[portalAppID]
-	if ok {
-		accountID := portalApp.AccountID
-
-		// Add or update user's Accounts
-		if account, ok := c.accounts[accountID]; ok {
-			if account.Users == nil {
-				account.Users = make(map[types.UserID]types.AccountUserAccess)
-			}
-
-			if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
-				accountUser.Email = existingAccountUser.Email
-				// Merge existing PortalAppRoles with new ones if user already has existing roles for this account
-				for portalAppID, userRole := range existingAccountUser.PortalAppRoles {
-					if _, ok := accountUser.PortalAppRoles[portalAppID]; !ok {
-						accountUser.PortalAppRoles[portalAppID] = userRole
-					}
-				}
-			}
-
-			account.Users[accountUser.UserID] = accountUser
-
-			if _, ok := c.accountsByUserID[accountUser.UserID]; !ok {
-				c.accountsByUserID[accountUser.UserID] = make(map[types.AccountID]*types.Account)
-			}
-			c.accountsByUserID[accountUser.UserID][account.ID] = account
-
-			return
+	// Add or update user's Accounts
+	if account, ok := c.accounts[accountID]; ok {
+		if account.Users == nil {
+			account.Users = make(map[types.UserID]types.AccountUserAccess)
 		}
 
-		c.pendingAccountUserAccess[accountID] = append(c.pendingAccountUserAccess[accountID], accountUser)
+		if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
+			accountUser.Email = existingAccountUser.Email
+		}
+
+		account.Users[accountUser.UserID] = accountUser
+
+		if _, ok := c.accountsByUserID[accountUser.UserID]; !ok {
+			c.accountsByUserID[accountUser.UserID] = make(map[types.AccountID]*types.Account)
+		}
+
+		c.accountsByUserID[accountUser.UserID][account.ID] = account
+
+		return
 	}
+
+	c.pendingAccountUserAccess[accountID] = append(c.pendingAccountUserAccess[accountID], accountUser)
 }
 
 // upsertAccountIntegrations updates the LBs integrations saved in cache
@@ -481,7 +466,9 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	accountID := accountUser.AccountID
 	userID := accountUser.UserID
+	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	// Remove user permissions for each PortalApp in the account
 	if userPermissions, ok := c.userPermissions[userID]; ok {
@@ -490,25 +477,13 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 		}
 	}
 
-	// Must get account ID via PortalAppID as account_user_access table only contains portal_application_id
-	var portalAppID types.PortalAppID
-	for appID := range accountUser.PortalAppRoles {
-		portalAppID = appID
-		break
-	}
-
-	// Remove from Accounts maps
-	portalApp, ok := c.portalApps[portalAppID]
+	// Remove from Accounts map
+	account, ok := c.accounts[accountID]
 	if ok {
-		accountID := portalApp.AccountID
+		delete(account.Users, userID)
 
-		account, ok := c.accounts[accountID]
-		if ok {
-			delete(account.Users, userID)
-
-			if accountsForUser, ok := c.accountsByUserID[accountUser.UserID]; ok {
-				delete(accountsForUser, accountID)
-			}
+		if accountsForUser, ok := c.accountsByUserID[accountUser.UserID]; ok {
+			delete(accountsForUser, accountID)
 		}
 	}
 }
