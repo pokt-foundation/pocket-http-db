@@ -84,14 +84,19 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingChecks:            make(map[types.RelayChainID][]types.Check),
 	}
 
+	startTime := time.Now()
 	err := cache.setCache(ctx)
+	elapsedTime := time.Since(startTime).Milliseconds()
 	if err != nil {
 		cache.log.Error(fmt.Errorf("error in setCache: %w", err))
 		return nil, err
 	}
 
 	cache.log.WithFields(
-		logrus.Fields{"cache_refresh_minutes": config.CacheRefreshMinutes.Minutes()},
+		logrus.Fields{
+			"cache_refresh_minutes": config.CacheRefreshMinutes.Minutes(),
+			"cache_time_to_set":     fmt.Sprintf("%dms", elapsedTime),
+		},
 	).Info("cache successfully set")
 
 	go cache.cacheRefreshHandler(ctx, config.CacheRefreshMinutes)
@@ -112,6 +117,7 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 	}
 
 	c.log.Info("cache successfully manually reset")
+
 	return nil
 }
 
@@ -125,9 +131,9 @@ func (c *Cache) setCache(ctx context.Context) error {
 		return fmt.Errorf("setUserData - %w", err)
 	}
 
-	err = c.setPlansAccountsAndApps(ctx)
+	err = c.setPlansAccountsAndPortalApps(ctx)
 	if err != nil {
-		return fmt.Errorf("setPlansAccountsAndApps - %w", err)
+		return fmt.Errorf("setPlansAccountsAndPortalApps - %w", err)
 	}
 
 	err = c.setChainsAndGigastakeApps(ctx)
@@ -161,9 +167,9 @@ func (c *Cache) setUserData(ctx context.Context) error {
 	return nil
 }
 
-// setAccountsAndPortalApps reads Plans, Accounts, PortalApps and Gigastake Apps from the database,
+// setAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
-func (c *Cache) setPlansAccountsAndApps(ctx context.Context) error {
+func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
@@ -230,9 +236,12 @@ func (c *Cache) setChainsAndGigastakeApps(ctx context.Context) error {
 	}
 
 	// Set pointers to Chain GigastakeApps
-	for _, gigastakeApp := range gigastakeApps {
+	for aatID, gigastakeApp := range gigastakeApps {
 		if chain, ok := chains[gigastakeApp.ChainID]; ok {
-			chain.GigastakeApps = append(chain.GigastakeApps, gigastakeApp)
+			if _, ok := chain.GigastakeApps[aatID]; !ok {
+				chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
+			}
+			chain.GigastakeApps[aatID] = gigastakeApp
 		}
 	}
 

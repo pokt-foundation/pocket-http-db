@@ -131,7 +131,9 @@ func (rt *Router) HealthCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) ResetCache(w http.ResponseWriter, r *http.Request) {
+	startTime := time.Now()
 	err := rt.cache.ResetCache(r.Context())
+	elapsedTime := time.Since(startTime).Milliseconds()
 	if err != nil {
 		rt.logError(fmt.Errorf("ResetCache failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -139,7 +141,8 @@ func (rt *Router) ResetCache(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_, err = w.Write([]byte("cache manually reset successfully\n"))
+	resp := fmt.Sprintf("cache manually reset successfully in %dms", elapsedTime)
+	_, err = w.Write([]byte(resp))
 	if err != nil {
 		rt.logError(fmt.Errorf("ResetCache failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())

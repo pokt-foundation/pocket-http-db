@@ -29,20 +29,14 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 	readerMock := cache.NewReaderMock(t)
 
-	chainsData := testdata.Chains
-	for i := range chainsData {
-		chainsData[i].GigastakeApps = []*types.GigastakeApp{
-			{LegacyLBID: "test_app_1"}, // set dummy LB ID for test as if set in PHD cache
-		}
-	}
-
 	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
 	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadAccounts", mock.Anything, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(chainsData, nil)
+	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.GigastakeApps, nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUsers[types.UserID("usertest")], nil)
 
@@ -202,52 +196,6 @@ func TestRouter_GetApplications(t *testing.T) {
 
 				c.NoError(err)
 				c.Equal(test.expectedApps, convertApplicationsToMap(appsResp))
-			}
-		})
-	}
-}
-
-func TestRouter_GetApplication(t *testing.T) {
-	tests := []struct {
-		name           string
-		appID          string
-		expectedApp    v1Types.Application
-		expectedStatus int
-	}{
-		{
-			name:           "Should fetch the application with the provided ID",
-			appID:          "test_protocol_app_1",
-			expectedApp:    *testApps["test_protocol_app_1"],
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:           "Should return 404 for non-existent application",
-			appID:          "test_not_real_app_112233",
-			expectedApp:    v1Types.Application{},
-			expectedStatus: http.StatusNotFound,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			router, err := newTestRouter(t)
-			c.NoError(err)
-
-			rr := httptest.NewRecorder()
-
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v1/application/%s", test.appID), nil)
-			c.NoError(err)
-
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
-
-			if test.expectedApp.ID != "" {
-				var appResp v1Types.Application
-				err := json.Unmarshal(rr.Body.Bytes(), &appResp)
-				c.NoError(err)
-				c.Equal(test.expectedApp, appResp)
 			}
 		})
 	}
@@ -1281,10 +1229,9 @@ func convertPayPlansToMap(payPlans []v1Types.PayPlan) map[string]v1Types.PayPlan
 var (
 	testApps = map[string]*v1Types.Application{
 		"test_protocol_app_1": {
-			ID:                 "test_protocol_app_1",
-			Name:               "pokt_app_123",
-			UserID:             "user_1",
-			FirstDateSurpassed: testdata.MockTimestamp,
+			ID:     "test_protocol_app_1",
+			UserID: "user_1",
+			Name:   "pokt_app_123",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_34715cae753e67c75fbb340442e7de8e",
 				ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
@@ -1294,24 +1241,37 @@ var (
 				Version:              "0.0.1",
 			},
 			GatewaySettings: v1Types.GatewaySettings{
-				SecretKey:            "test_40f482d91a5ef2300ebb4e2308c",
-				SecretKeyRequired:    true,
-				WhitelistOrigins:     []string{"https://test.com"},
-				WhitelistUserAgents:  []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-				WhitelistContracts:   []v1Types.WhitelistContracts{{BlockchainID: "0001", Contracts: []string{"0x1234567890abcdef"}}},
-				WhitelistMethods:     []v1Types.WhitelistMethods{{BlockchainID: "0001", Methods: []string{"GET"}}},
+				SecretKey:           "test_40f482d91a5ef2300ebb4e2308c",
+				SecretKeyRequired:   true,
+				WhitelistOrigins:    []string{"https://test.com"},
+				WhitelistUserAgents: []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+				WhitelistContracts: []v1Types.WhitelistContracts{
+					{BlockchainID: "0001", Contracts: []string{"0x1234567890abcdef"}},
+				},
+				WhitelistMethods: []v1Types.WhitelistMethods{
+					{BlockchainID: "0001", Methods: []string{"GET"}},
+				},
 				WhitelistBlockchains: []string{"0053"},
 			},
-			Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.FreetierV0), Limit: 250_000}},
-			NotificationSettings: v1Types.NotificationSettings{SignedUp: false, Quarter: true, Half: false, ThreeQuarters: true, Full: true},
-			CreatedAt:            testdata.MockTimestamp,
-			UpdatedAt:            testdata.MockTimestamp,
+			Limit: v1Types.AppLimit{
+				PayPlan: v1Types.PayPlan{
+					Type:  v1Types.FreetierV0,
+					Limit: 250_000,
+				},
+			},
+			NotificationSettings: v1Types.NotificationSettings{
+				Quarter:       true,
+				ThreeQuarters: true,
+				Full:          true,
+			},
+			FirstDateSurpassed: testdata.MockTimestamp,
+			CreatedAt:          testdata.MockTimestamp,
+			UpdatedAt:          testdata.MockTimestamp,
 		},
 		"test_protocol_app_2": {
-			ID:                 "test_protocol_app_2",
-			Name:               "pokt_app_456",
-			UserID:             "user_3",
-			FirstDateSurpassed: testdata.MockTimestamp,
+			ID:     "test_protocol_app_2",
+			UserID: "user_3",
+			Name:   "pokt_app_456",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_8237c72345f12d1b1a8b64a1a7f66fa4",
 				ApplicationPublicKey: "test_8237c72345f12d1b1a8b64a1a7f66fa4",
@@ -1320,24 +1280,36 @@ var (
 				PrivateKey:           "test_2e83c836a29b423a47d8e18c779fd422",
 				Version:              "0.0.1",
 			},
+			Limit: v1Types.AppLimit{
+				PayPlan: v1Types.PayPlan{
+					Type:  v1Types.PayAsYouGoV0,
+					Limit: 0,
+				},
+			},
 			GatewaySettings: v1Types.GatewaySettings{
-				SecretKey:            "test_9c9e3b193cfba5348f93bb2f3e3fb794",
-				WhitelistOrigins:     []string{"https://example.com"},
-				WhitelistUserAgents:  []string{"Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"},
-				WhitelistContracts:   []v1Types.WhitelistContracts{{BlockchainID: "0064", Contracts: []string{"0x0987654321abcdef"}}},
-				WhitelistMethods:     []v1Types.WhitelistMethods{{BlockchainID: "0064", Methods: []string{"POST"}}},
+				SecretKey:           "test_9c9e3b193cfba5348f93bb2f3e3fb794",
+				WhitelistOrigins:    []string{"https://example.com"},
+				WhitelistUserAgents: []string{"Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"},
+				WhitelistContracts: []v1Types.WhitelistContracts{
+					{BlockchainID: "0064", Contracts: []string{"0x0987654321abcdef"}},
+				},
+				WhitelistMethods: []v1Types.WhitelistMethods{
+					{BlockchainID: "0064", Methods: []string{"POST"}},
+				},
 				WhitelistBlockchains: []string{"0021"},
 			},
-			Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.PayAsYouGoV0), Limit: 0}},
-			NotificationSettings: v1Types.NotificationSettings{Half: true, Full: true},
-			CreatedAt:            testdata.MockTimestamp,
-			UpdatedAt:            testdata.MockTimestamp,
+			NotificationSettings: v1Types.NotificationSettings{
+				Half: true,
+				Full: true,
+			},
+			FirstDateSurpassed: testdata.MockTimestamp,
+			CreatedAt:          testdata.MockTimestamp,
+			UpdatedAt:          testdata.MockTimestamp,
 		},
 		"test_protocol_app_3": {
-			ID:                 "test_protocol_app_3",
-			Name:               "pokt_app_789",
-			UserID:             "user_5",
-			FirstDateSurpassed: testdata.MockTimestamp,
+			ID:     "test_protocol_app_3",
+			UserID: "user_5",
+			Name:   "pokt_app_789",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_b5e07928fc80083c13ad0201b81bae9b",
 				ApplicationPublicKey: "test_f608500e4fe3e09014fe2411b4a560b5",
@@ -1346,18 +1318,24 @@ var (
 				PrivateKey:           "test_8663e187c19f3c6e27317eab4ed6d7d5",
 				Version:              "0.0.1",
 			},
+			Limit: v1Types.AppLimit{
+				PayPlan: v1Types.PayPlan{
+					Type:  v1Types.Enterprise,
+					Limit: 0,
+				},
+				CustomLimit: 4_200_000,
+			},
 			GatewaySettings: v1Types.GatewaySettings{
 				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
 			},
-			Limit:     v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.Enterprise)}, CustomLimit: 4_200_000},
-			CreatedAt: testdata.MockTimestamp,
-			UpdatedAt: testdata.MockTimestamp,
+			FirstDateSurpassed: testdata.MockTimestamp,
+			CreatedAt:          testdata.MockTimestamp,
+			UpdatedAt:          testdata.MockTimestamp,
 		},
 		"test_protocol_app_4": {
-			ID:                 "test_protocol_app_4",
-			Name:               "pokt_app_789",
-			UserID:             "user_5",
-			FirstDateSurpassed: testdata.MockTimestamp,
+			ID:     "test_protocol_app_4",
+			UserID: "user_5",
+			Name:   "pokt_app_789",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
 				ApplicationPublicKey: "test_f6a5d8690ecb669865bd752b7796a920",
@@ -1366,10 +1344,59 @@ var (
 				PrivateKey:           "test_838d29d61a65401f7d56d084cb6e4783",
 				Version:              "0.0.1",
 			},
+			Limit: v1Types.AppLimit{
+				PayPlan: v1Types.PayPlan{
+					Type:  v1Types.Enterprise,
+					Limit: 0,
+				},
+				CustomLimit: 4200000,
+			},
 			GatewaySettings: v1Types.GatewaySettings{
 				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
 			},
-			Limit:     v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: v1Types.PayPlanType(types.Enterprise)}, CustomLimit: 4_200_000},
+			FirstDateSurpassed: testdata.MockTimestamp,
+			CreatedAt:          testdata.MockTimestamp,
+			UpdatedAt:          testdata.MockTimestamp,
+		},
+		"test_gigastake_app_1": {
+			ID:   "test_gigastake_app_1",
+			Name: "pokt_gigastake",
+			GatewayAAT: v1Types.GatewayAAT{
+				Address:              "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
+				ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
+				ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
+				ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
+				PrivateKey:           "test_0a6df2b97ae546da83f1a90b9b0c1e83",
+				Version:              "0.0.1",
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"test_gigastake_app_2": {
+			ID:   "test_gigastake_app_2",
+			Name: "optimism_gigastake",
+			GatewayAAT: v1Types.GatewayAAT{
+				Address:              "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
+				ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
+				ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
+				ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
+				PrivateKey:           "test_86b9e8e14a784db8a0a4c2ee532b6a12",
+				Version:              "0.0.1",
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"test_gigastake_app_3": {
+			ID:   "test_gigastake_app_3",
+			Name: "harmony_gigastake",
+			GatewayAAT: v1Types.GatewayAAT{
+				Address:              "test_e570c841d5cd4f6197e0428ed7c517fd",
+				ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
+				ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
+				ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
+				PrivateKey:           "test_25a9063b3b7b42148dc17033fbbab5c6",
+				Version:              "0.0.1",
+			},
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
@@ -1381,7 +1408,6 @@ var (
 			AccountID:         "account_1",
 			Name:              "pokt_app_123",
 			UserID:            "user_1",
-			Gigastake:         false,
 			GigastakeRedirect: true,
 			RequestTimeout:    5_000,
 			Applications: []*v1Types.Application{
@@ -1418,7 +1444,6 @@ var (
 			AccountID:         "account_2",
 			Name:              "pokt_app_456",
 			UserID:            "user_3",
-			Gigastake:         false,
 			GigastakeRedirect: true,
 			RequestTimeout:    10_000,
 			Applications: []*v1Types.Application{
@@ -1461,7 +1486,6 @@ var (
 			AccountID:         "account_3",
 			Name:              "pokt_app_789",
 			UserID:            "user_5",
-			Gigastake:         false,
 			GigastakeRedirect: true,
 			RequestTimeout:    10_000,
 			Applications: []*v1Types.Application{
@@ -1500,6 +1524,72 @@ var (
 			CreatedAt: testdata.MockTimestamp,
 			UpdatedAt: testdata.MockTimestamp,
 		},
+		"legacy_lb_1": {
+			ID:        "legacy_lb_1",
+			Gigastake: true,
+			Applications: []*v1Types.Application{
+				{
+					ID:   "test_gigastake_app_1",
+					Name: "pokt_gigastake",
+					GatewayAAT: v1Types.GatewayAAT{
+						Address:              "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
+						ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
+						ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
+						ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
+						PrivateKey:           "test_0a6df2b97ae546da83f1a90b9b0c1e83",
+						Version:              "0.0.1",
+					},
+					CreatedAt: testdata.MockTimestamp,
+					UpdatedAt: testdata.MockTimestamp,
+				},
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"legacy_lb_2": {
+			ID:        "legacy_lb_2",
+			Gigastake: true,
+			Applications: []*v1Types.Application{
+				{
+					ID:   "test_gigastake_app_2",
+					Name: "optimism_gigastake",
+					GatewayAAT: v1Types.GatewayAAT{
+						Address:              "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
+						ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
+						ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
+						ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
+						PrivateKey:           "test_86b9e8e14a784db8a0a4c2ee532b6a12",
+						Version:              "0.0.1",
+					},
+					CreatedAt: testdata.MockTimestamp,
+					UpdatedAt: testdata.MockTimestamp,
+				},
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
+		"legacy_lb_3": {
+			ID:        "legacy_lb_3",
+			Gigastake: true,
+			Applications: []*v1Types.Application{
+				{
+					ID:   "test_gigastake_app_3",
+					Name: "harmony_gigastake",
+					GatewayAAT: v1Types.GatewayAAT{
+						Address:              "test_e570c841d5cd4f6197e0428ed7c517fd",
+						ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
+						ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
+						ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
+						PrivateKey:           "test_25a9063b3b7b42148dc17033fbbab5c6",
+						Version:              "0.0.1",
+					},
+					CreatedAt: testdata.MockTimestamp,
+					UpdatedAt: testdata.MockTimestamp,
+				},
+			},
+			CreatedAt: testdata.MockTimestamp,
+			UpdatedAt: testdata.MockTimestamp,
+		},
 	}
 
 	testBlockchains = map[string]v1Types.Blockchain{
@@ -1514,7 +1604,7 @@ var (
 			BlockchainAliases: []string{"pokt-mainnet"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
+				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_1"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
@@ -1536,7 +1626,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
+				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: ""},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -1555,7 +1645,7 @@ var (
 			BlockchainAliases: []string{"harmony-0"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
+				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_3"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
@@ -1576,7 +1666,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "test_app_1"},
+				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_2"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",

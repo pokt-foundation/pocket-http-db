@@ -18,8 +18,8 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
 	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.GigastakeApps, nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
