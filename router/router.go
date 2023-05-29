@@ -70,7 +70,6 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/blockchain/{id}", rt.GetBlockchain).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v1/application", rt.GetApplications).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/application/{id}", rt.GetApplication).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/application/first_date_surpassed", rt.UpdateFirstDateSurpassed).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v1/load_balancer", rt.GetLoadBalancers).Methods(http.MethodGet)
@@ -196,20 +195,6 @@ func (rt *Router) GetApplications(w http.ResponseWriter, r *http.Request) {
 	})
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, applications)
-}
-
-func (rt *Router) GetApplication(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-
-	appID := vars["id"]
-
-	application, err := rt.cache.GetLegacyApplication(appID)
-	if err != nil {
-		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, application)
 }
 
 func (rt *Router) GetLoadBalancersByUserID(w http.ResponseWriter, r *http.Request) {

@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-
 	dbclient "github.com/pokt-foundation/db-client/client"
 	v1Types "github.com/pokt-foundation/portal-db/types" // TODO: REPLACE v1Types for types once the db-client updates to v2
 	"github.com/pokt-foundation/portal-db/v2/types"
@@ -57,11 +55,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				blockchains, err := ts.client1.GetBlockchains(testCtx)
 				ts.ErrorIs(test.err, err)
-				cmp.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
+				ts.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
 
 				blockchains, err = ts.client2.GetBlockchains(testCtx)
 				ts.NoError(err)
-				cmp.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
+				ts.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
 			})
 
 		}
@@ -90,11 +88,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedBlockchain, blockchain)
+				ts.Equal(test.expectedBlockchain, blockchain)
 
 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchainID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedBlockchain, blockchain)
+				ts.Equal(test.expectedBlockchain, blockchain)
 			})
 		}
 	})
@@ -115,43 +113,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				applications, err := ts.client1.GetApplications(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplications, applicationsToMap(applications))
+				ts.Equal(test.expectedApplications, applicationsToMap(applications))
 
 				applications, err = ts.client2.GetApplications(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplications, applicationsToMap(applications))
-			})
-		}
-	})
-
-	ts.Run("Test_GetApplicationByID", func() {
-		tests := []struct {
-			name                string
-			applicationID       string
-			expectedApplication *v1Types.Application
-			err                 error
-		}{
-			{
-				name:                "Should fetch one application by ID",
-				applicationID:       "test_protocol_app_1",
-				expectedApplication: expectedLegacyApplications["test_protocol_app_1"],
-			},
-			{
-				name:          "Should fail if the application does not exist in the DB",
-				applicationID: "test_not_real_app",
-				err:           fmt.Errorf("Response not OK. 404 Not Found: portal app not found for app ID test_not_real_app"),
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				applicationByID, err := ts.client1.GetApplicationByID(testCtx, test.applicationID)
-				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplication, applicationByID)
-
-				applicationByID, err = ts.client2.GetApplicationByID(testCtx, test.applicationID)
-				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplication, applicationByID)
+				ts.Equal(test.expectedApplications, applicationsToMap(applications))
 			})
 		}
 	})
@@ -183,13 +149,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				applicationsByUserID, err := ts.client1.GetApplicationsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
+					ts.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
 				}
 
 				applicationsByUserID, err = ts.client2.GetApplicationsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
+					ts.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
 				}
 			})
 		}
@@ -215,11 +181,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				loadBalancers, err := ts.client1.GetLoadBalancers(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+				ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 
 				loadBalancers, err = ts.client2.GetLoadBalancers(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+				ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 			})
 		}
 	})
@@ -247,11 +213,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				loadBalancerByID, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancer, loadBalancerByID)
+				ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 
 				loadBalancerByID, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancer, loadBalancerByID)
+				ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 			})
 		}
 	})
@@ -307,13 +273,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.userID, filter)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 				}
 
 				loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID, filter)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 				}
 			})
 		}
@@ -335,11 +301,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				payPlans, err := ts.client1.GetPayPlans(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
+				ts.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
 
 				payPlans, err = ts.client2.GetPayPlans(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
+				ts.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
 			})
 		}
 	})
@@ -368,11 +334,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				payPlanByType, err := ts.client1.GetPayPlanByType(testCtx, test.payPlanType)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlan, payPlanByType)
+				ts.Equal(test.expectedPayPlan, payPlanByType)
 
 				payPlanByType, err = ts.client2.GetPayPlanByType(testCtx, test.payPlanType)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlan, payPlanByType)
+				ts.Equal(test.expectedPayPlan, payPlanByType)
 			})
 		}
 	})
@@ -428,11 +394,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPermissions, permissionsByUserID)
+				ts.Equal(test.expectedPermissions, permissionsByUserID)
 
 				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPermissions, permissionsByUserID)
+				ts.Equal(test.expectedPermissions, permissionsByUserID)
 			})
 		}
 	})
@@ -468,13 +434,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				pendingLoadBalancersByPortalID, err := ts.client1.GetPendingLoadBalancersByUserID(testCtx, test.userPortalID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
 				}
 
 				pendingLoadBalancersByPortalID, err = ts.client2.GetPendingLoadBalancersByUserID(testCtx, test.userPortalID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
 				}
 			})
 		}
@@ -513,11 +479,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				count, err := ts.client1.GetLoadBalancersCountByUserID(testCtx, test.portalUserID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedCount, count)
+				ts.Equal(test.expectedCount, count)
 
 				count, err = ts.client2.GetLoadBalancersCountByUserID(testCtx, test.portalUserID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedCount, count)
+				ts.Equal(test.expectedCount, count)
 			})
 		}
 	})
@@ -555,13 +521,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				ts.Equal(test.err, err)
 	// 				blockchain.CreatedAt = mockTimestamp
 	// 				blockchain.UpdatedAt = mockTimestamp
-	// 				cmp.Equal(test.blockchain, blockchain)
+	// 				ts.Equal(test.blockchain, blockchain)
 
 	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchain.ID)
 	// 				ts.Equal(test.err, err)
 	// 				blockchain.CreatedAt = mockTimestamp
 	// 				blockchain.UpdatedAt = mockTimestamp
-	// 				cmp.Equal(test.blockchain, blockchain)
+	// 				ts.Equal(test.blockchain, blockchain)
 	// 			}
 	// 		})
 	// 	}
@@ -599,18 +565,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				ts.Equal(test.err, err)
 	// 				ts.Len(blockchain.Redirects, len(test.redirects))
 	// 				for i, redirect := range blockchain.Redirects {
-	// 					cmp.Equal(test.redirects[i].Alias, redirect.Alias)
-	// 					cmp.Equal(test.redirects[i].Domain, redirect.Domain)
-	// 					cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
+	// 					ts.Equal(test.redirects[i].Alias, redirect.Alias)
+	// 					ts.Equal(test.redirects[i].Domain, redirect.Domain)
+	// 					ts.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
 	// 				}
 
 	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
 	// 				ts.Equal(test.err, err)
 	// 				ts.Len(blockchain.Redirects, len(test.redirects))
 	// 				for i, redirect := range blockchain.Redirects {
-	// 					cmp.Equal(test.redirects[i].Alias, redirect.Alias)
-	// 					cmp.Equal(test.redirects[i].Domain, redirect.Domain)
-	// 					cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
+	// 					ts.Equal(test.redirects[i].Alias, redirect.Alias)
+	// 					ts.Equal(test.redirects[i].Domain, redirect.Domain)
+	// 					ts.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
 	// 				}
 	// 			}
 	// 		})
@@ -715,19 +681,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				test.loadBalancer.Applications[0].ID = createdLB.Applications[0].ID
 				clearTimeFields(createdLB)
 
-				cmp.Equal(test.loadBalancer, createdLB)
+				ts.Equal(test.loadBalancer, createdLB)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
 					ts.Equal(test.err, err)
 					clearTimeFields(loadBalancer)
-					cmp.Equal(test.loadBalancer, loadBalancer)
+					ts.Equal(test.loadBalancer, loadBalancer)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
 					ts.Equal(test.err, err)
 					clearTimeFields(loadBalancer)
-					cmp.Equal(test.loadBalancer, loadBalancer)
+					ts.Equal(test.loadBalancer, loadBalancer)
 				}
 			})
 		}
@@ -795,16 +761,16 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							break
 						}
 					}
-					cmp.Equal(test.loadBalancerUsers, userAccessSliceToMap(updatedLB.Users))
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(updatedLB.Users))
 
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
 				}
 			})
 		}
@@ -842,7 +808,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				<-time.After(50 * time.Millisecond)
 	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
 	// 				ts.Equal(test.err, err)
-	// 				cmp.Equal(test.active, blockchain.Active)
+	// 				ts.Equal(test.active, blockchain.Active)
 	// 			}
 	// 		})
 	// 	}
@@ -933,19 +899,20 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
-					applicationID := createdLB.Applications[0].ID
 
-					application, err := ts.client1.GetApplicationByID(testCtx, applicationID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
+					application := loadBalancer.Applications[0]
 					ts.NoError(err)
-					cmp.Equal(test.applicationAfterUpdate.Name, application.Name)
-					cmp.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
-					cmp.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
+					ts.Equal(test.applicationAfterUpdate.Name, application.Name)
+					ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
+					ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 
-					application, err = ts.client2.GetApplicationByID(testCtx, applicationID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
+					application = loadBalancer.Applications[0]
 					ts.NoError(err)
-					cmp.Equal(test.applicationAfterUpdate.Name, application.Name)
-					cmp.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
-					cmp.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
+					ts.Equal(test.applicationAfterUpdate.Name, application.Name)
+					ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
+					ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 				}
 			})
 		}
@@ -995,13 +962,27 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 					for _, appID := range test.protocolAppIDs {
-						application, err := ts.client1.GetApplicationByID(testCtx, appID)
+						applications, err := ts.client1.GetApplications(testCtx)
 						ts.NoError(err)
-						cmp.Equal(test.expectedDate, application.FirstDateSurpassed)
+						exists := false
+						for _, application := range applications {
+							if application.ID == appID {
+								exists = true
+								ts.Equal(test.expectedDate, application.FirstDateSurpassed)
+							}
+						}
+						ts.True(exists)
 
-						application, err = ts.client2.GetApplicationByID(testCtx, appID)
+						applications, err = ts.client2.GetApplications(testCtx)
 						ts.NoError(err)
-						cmp.Equal(test.expectedDate, application.FirstDateSurpassed)
+						exists = false
+						for _, application := range applications {
+							if application.ID == appID {
+								exists = true
+								ts.Equal(test.expectedDate, application.FirstDateSurpassed)
+							}
+						}
+						ts.True(exists)
 					}
 				}
 			})
@@ -1065,27 +1046,27 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				<-time.After(50 * time.Millisecond)
 	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, updatedChain.ID)
 	// 				ts.NoError(err)
-	// 				cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-	// 				cmp.Equal(test.expectedChain.Description, blockchain.Description)
-	// 				cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-	// 				cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-	// 				cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-	// 				cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-	// 				cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-	// 				cmp.Equal(test.expectedChain.Path, blockchain.Path)
-	// 				cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// 				ts.Equal(test.expectedChain.Description, blockchain.Description)
+	// 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// 				ts.Equal(test.expectedChain.Path, blockchain.Path)
+	// 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 
 	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
 	// 				ts.NoError(err)
-	// 				cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-	// 				cmp.Equal(test.expectedChain.Description, blockchain.Description)
-	// 				cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-	// 				cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-	// 				cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-	// 				cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-	// 				cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-	// 				cmp.Equal(test.expectedChain.Path, blockchain.Path)
-	// 				cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// 				ts.Equal(test.expectedChain.Description, blockchain.Description)
+	// 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// 				ts.Equal(test.expectedChain.Path, blockchain.Path)
+	// 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 	// 			}
 	// 		})
 	// 	}
@@ -1198,20 +1179,20 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					if test.providerUserID != "" {
 						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 					}
 				}
 			})
@@ -1269,21 +1250,21 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					if test.providerUserID != "" {
 						// user should have been added to the user permissions in the cache
 						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						exists := false
 						loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
@@ -1427,18 +1408,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					// user should have been removed from the user permissions in the cache
 					_, err = ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
-					cmp.Equal(test.permissionsFetchError, err)
+					ts.Equal(test.permissionsFetchError, err)
 
 					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
-					cmp.Equal(test.permissionsFetchError, err)
+					ts.Equal(test.permissionsFetchError, err)
 
 					// user's LB should have been removed from the user's LBs map in the cache
 					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
@@ -1481,11 +1462,26 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
-					_, err := ts.client1.GetApplicationByID(testCtx, test.protocolAppID)
-					ts.Equal(test.expectedError, err)
 
-					_, err = ts.client2.GetApplicationByID(testCtx, test.protocolAppID)
-					ts.Equal(test.expectedError, err)
+					applications, err := ts.client1.GetApplications(testCtx)
+					ts.NoError(err)
+					exists := false
+					for _, application := range applications {
+						if application.ID == test.applicationID {
+							exists = true
+						}
+					}
+					ts.False(exists)
+
+					applications, err = ts.client2.GetApplications(testCtx)
+					ts.NoError(err)
+					exists = false
+					for _, application := range applications {
+						if application.ID == test.applicationID {
+							exists = true
+						}
+					}
+					ts.False(exists)
 				}
 			})
 		}

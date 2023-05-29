@@ -15,7 +15,6 @@ import (
 var (
 	errAccountNotFound           = errors.New("account not found for ID %s")
 	ErrPortalAppNotFound         = errors.New("portal app not found for load balancer ID %s")
-	errPortalAppNotFoundForApp   = errors.New("portal app not found for app ID %s")
 	errUserNotFound              = errors.New("user not found for provider user ID %s")
 	errPlanNotFound              = errors.New("plan not found for type %s")
 	errPortalAppsNotFoundForUser = errors.New("portal app not found for user ID %s")
@@ -40,10 +39,12 @@ func (c *Cache) GetLegacyApplications(options Options) []v1Types.Application {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	portalApps := c.GetPortalApps(options)
 	var applications []v1Types.Application
 
+	portalApps := c.portalApps
+
 	for _, portalApp := range portalApps {
+		// TODO is this needed?
 		// If app doesn't have account/user it is a Gigastakes app
 		// so use empty values for user ID, plan type and daily limit
 		var appUserID = ""
@@ -52,7 +53,7 @@ func (c *Cache) GetLegacyApplications(options Options) []v1Types.Application {
 			appUserID = userID
 		}
 
-		legacyApps := legacyadapters.ConvertPortalAppToLegacyApplications(portalApp, appUserID)
+		legacyApps := legacyadapters.ConvertPortalAppToLegacyApplications(*portalApp, appUserID)
 
 		var apps []v1Types.Application
 		for _, app := range legacyApps {
@@ -62,36 +63,14 @@ func (c *Cache) GetLegacyApplications(options Options) []v1Types.Application {
 		applications = append(applications, apps...)
 	}
 
+	gigastakeApps := c.gigastakeApps
+	for _, gigastakeApp := range gigastakeApps {
+		legacyApp := legacyadapters.ConvertGigastakeAppToLegacyApplication(gigastakeApp)
+
+		applications = append(applications, *legacyApp)
+	}
+
 	return applications
-}
-
-// GetLegacyApplication returns one V2 PortalApp in the cache converted to a V1 Application
-func (c *Cache) GetLegacyApplication(appID string) (v1Types.Application, error) {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	portalAppID := v2Types.ProtocolAppID(appID)
-
-	portalApp := c.GetPortalAppByProtocolID(portalAppID)
-
-	if portalApp.ID == "" {
-		return v1Types.Application{}, fmt.Errorf(errPortalAppNotFoundForApp.Error(), appID)
-	}
-
-	// If app doesn't have account/user it is a Gigastakes app
-	// so use empty values for user ID, plan type and daily limit
-	appAccount := &v2Types.Account{
-		Plan:  &v2Types.Plan{},
-		Users: map[v2Types.UserID]v2Types.AccountUserAccess{},
-	}
-	if _, account, err := c.getUserIDAndAccount(portalApp.AccountID); err == nil {
-		// If app has Account and user then fill in user ID and plan type
-		appAccount = account
-	}
-
-	application := legacyadapters.ConvertPortalAppToLegacyApplication(portalApp, string(appAccount.OwnerID), v2Types.ProtocolAppID(appID))
-
-	return application, nil
 }
 
 // GetLegacyLoadBalancersByUserID returns all V1 LoadBalancers for a User ID
@@ -172,6 +151,12 @@ func (c *Cache) GetLegacyLoadBalancers(ctx context.Context) []v1Types.LoadBalanc
 	for _, account := range c.accounts {
 		for _, portalApp := range account.PortalApps {
 			lbs = append(lbs, legacyadapters.ConvertPortalAppToLegacyLoadBalancer(*portalApp, *account, account.Users))
+		}
+	}
+
+	for _, chain := range c.chains {
+		if len(chain.GigastakeApps) > 0 {
+			lbs = append(lbs, legacyadapters.ConvertChainToLegacyGigastakeLoadBalancer(*chain))
 		}
 	}
 

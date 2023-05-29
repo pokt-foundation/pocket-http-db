@@ -27,6 +27,7 @@ func NewTestCache(t *testing.T) *Cache {
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
+	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.GigastakeApps, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users[types.UserID("usertest")], nil)
 
@@ -84,34 +85,19 @@ func Test_SetCache(t *testing.T) {
 			expected: *testdata.PortalApps["test_app_1"],
 		},
 		{
-			name:     "Should return portal app by protocol ID",
-			actual:   cache.GetPortalAppByProtocolID("test_protocol_app_1"),
-			expected: *testdata.PortalApps["test_app_1"],
-		},
-		{
-			name:   "Should return portal app by protocol ID with multiple AATs",
-			actual: cache.GetPortalAppByProtocolID("test_protocol_app_4"),
-			expected: func() types.PortalApp {
-				originalPortalApp := testdata.PortalApps["test_app_3"]
-				expectedPortalApp := *originalPortalApp
-				expectedPortalApp.AATs = map[types.ProtocolAppID]types.AAT{
-					"test_protocol_app_4": {
-						ID:              "test_protocol_app_4",
-						Address:         "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
-						PublicKey:       "test_f6a5d8690ecb669865bd752b7796a920",
-						ClientPublicKey: "test_6ee5ea553408f0895923fd1569dc5072",
-						PrivateKey:      "test_838d29d61a65401f7d56d084cb6e4783",
-						Signature:       "test_cf05cf9bb26111c548e88fb6157af708",
-						Version:         "0.0.1",
-					},
-				}
-				return expectedPortalApp
-			}(),
-		},
-		{
 			name:     "Should return all portal apps",
 			actual:   portalAppsToMap(cache.GetPortalApps(Options{})),
 			expected: testdata.PortalApps,
+		},
+		{
+			name:     "Should return gigastake app by AAT ID",
+			actual:   cache.GetGigastakeAppByAATID("test_gigastake_app_1"),
+			expected: *testdata.GigastakeApps["test_gigastake_app_1"],
+		},
+		{
+			name:     "Should return all gigastake apps",
+			actual:   gigastakeAppsToMap(cache.GetGigastakeApps(Options{})),
+			expected: testdata.GigastakeApps,
 		},
 		{
 			name:     "Should return chain by ID",
@@ -187,6 +173,11 @@ func TestCache_SetCache_Failure(t *testing.T) {
 			err:          errors.New("error on Chains"),
 		},
 		{
+			name:         "should fail if ReadGigastakeApps fails",
+			failedMethod: "ReadGigastakeApps",
+			err:          errors.New("error on GigastakeApps"),
+		},
+		{
 			name:         "should fail if ReadBlockedContracts fails",
 			failedMethod: "ReadBlockedContracts",
 			err:          errors.New("error on blocked contracts"),
@@ -232,6 +223,14 @@ func TestCache_SetCache_Failure(t *testing.T) {
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
 
+			case "ReadGigastakeApps":
+				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
+
 			case "ReadBlockedContracts":
 				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
 				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
@@ -239,6 +238,7 @@ func TestCache_SetCache_Failure(t *testing.T) {
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, nil)
+				readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.ProtocolAppID]*types.GigastakeApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx).Return(types.GlobalBlockedContracts{}, test.err)
 
 			}
@@ -1436,6 +1436,14 @@ func portalAppsToMap(portalApps []types.PortalApp) map[types.PortalAppID]*types.
 		portalAppsMap[portalApps[i].ID] = &portalApps[i]
 	}
 	return portalAppsMap
+}
+
+func gigastakeAppsToMap(gigastakeApps []types.GigastakeApp) map[types.ProtocolAppID]*types.GigastakeApp {
+	gigastakeAppsMap := make(map[types.ProtocolAppID]*types.GigastakeApp)
+	for i := range gigastakeApps {
+		gigastakeAppsMap[gigastakeApps[i].AATID] = &gigastakeApps[i]
+	}
+	return gigastakeAppsMap
 }
 
 func chainsToMap(chains []types.Chain) map[types.RelayChainID]*types.Chain {

@@ -35,11 +35,13 @@ type (
 		pendingUsers             map[types.UserID]types.User
 
 		portalApps              map[types.PortalAppID]*types.PortalApp
-		portalAppsByProtocolID  map[types.ProtocolAppID]*types.PortalApp
 		pendingPortalAppAATs    map[types.PortalAppID]types.AAT
 		pendingSettings         map[types.PortalAppID]types.Settings
 		pendingAppNotifications map[types.PortalAppID]types.AppNotification
 		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
+
+		gigastakeApps           map[types.ProtocolAppID]*types.GigastakeApp
+		pendingGigastakeAppAATS map[types.ProtocolAppID]types.AAT
 
 		chains              map[types.RelayChainID]*types.Chain
 		pendingAltruists    map[types.RelayChainID][]types.Altruist
@@ -75,7 +77,9 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingPortalAppAATs:     make(map[types.PortalAppID]types.AAT),
 		pendingSettings:          make(map[types.PortalAppID]types.Settings),
 		pendingAppNotifications:  make(map[types.PortalAppID]types.AppNotification),
+		pendingWhitelists:        make(map[types.PortalAppID][]types.Whitelist),
 		pendingAltruists:         make(map[types.RelayChainID][]types.Altruist),
+		pendingGigastakeAppAATS:  make(map[types.ProtocolAppID]types.AAT),
 		pendingAliasDomains:      make(map[types.RelayChainID][]types.AliasDomains),
 		pendingChecks:            make(map[types.RelayChainID][]types.Check),
 	}
@@ -121,14 +125,14 @@ func (c *Cache) setCache(ctx context.Context) error {
 		return fmt.Errorf("setUserData - %w", err)
 	}
 
-	err = c.setPlansAccountsAndPortalApps(ctx)
+	err = c.setPlansAccountsAndApps(ctx)
 	if err != nil {
-		return fmt.Errorf("setAccountsAndPortalApps - %w", err)
+		return fmt.Errorf("setPlansAccountsAndApps - %w", err)
 	}
 
-	err = c.setChains(ctx)
+	err = c.setChainsAndGigastakeApps(ctx)
 	if err != nil {
-		return fmt.Errorf("setChains - %w", err)
+		return fmt.Errorf("setChainsAndGigastakeApps - %w", err)
 	}
 
 	err = c.setBlockedContracts(ctx)
@@ -157,9 +161,9 @@ func (c *Cache) setUserData(ctx context.Context) error {
 	return nil
 }
 
-// setAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
+// setAccountsAndPortalApps reads Plans, Accounts, PortalApps and Gigastake Apps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
-func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
+func (c *Cache) setPlansAccountsAndApps(ctx context.Context) error {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
@@ -183,19 +187,13 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		}
 	}
 
-	// Set pointers to Account PortalApps and PortalApps by ProtocolID (applications.application_id in V1)
-	portalAppsByProtocolID := make(map[types.ProtocolAppID]*types.PortalApp)
-
+	// Set pointers to Account PortalApps
 	for portalAppID, portalApp := range portalApps {
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			if account.PortalApps == nil {
 				account.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
 			}
 			account.PortalApps[portalAppID] = portalApp
-		}
-
-		for protocolAppID := range portalApp.AATs {
-			portalAppsByProtocolID[protocolAppID] = portalApp
 		}
 	}
 
@@ -215,19 +213,31 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 	c.accounts = accounts
 	c.accountsByUserID = accountsByUserID
 	c.portalApps = portalApps
-	c.portalAppsByProtocolID = portalAppsByProtocolID
 
 	return nil
 }
 
-// setChains reads Chains from the database and sets them in the cache.
-func (c *Cache) setChains(ctx context.Context) error {
+// setChainsAndGigastakeApps reads Chains and GigastakeApps from the database,
+// sets them in the cache and sets each Chain's GigastakeApps
+func (c *Cache) setChainsAndGigastakeApps(ctx context.Context) error {
 	chains, err := c.reader.ReadChains(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
 		return fmt.Errorf("ReadChains - %w", err)
 	}
+	gigastakeApps, err := c.reader.ReadGigastakeApps(ctx, types.DriverOptions{IncludeDeleted: true})
+	if err != nil {
+		return fmt.Errorf("ReadGigastakeApps - %w", err)
+	}
+
+	// Set pointers to Chain GigastakeApps
+	for _, gigastakeApp := range gigastakeApps {
+		if chain, ok := chains[gigastakeApp.ChainID]; ok {
+			chain.GigastakeApps = append(chain.GigastakeApps, gigastakeApp)
+		}
+	}
 
 	c.chains = chains
+	c.gigastakeApps = gigastakeApps
 
 	return nil
 }
@@ -503,28 +513,6 @@ func (c *Cache) GetPortalApp(portalAppID types.PortalAppID) types.PortalApp {
 	return *portalApp
 }
 
-// GetPortalApp returns PortalApp from cache by portalAppID
-func (c *Cache) GetPortalAppByProtocolID(protocolAppID types.ProtocolAppID) types.PortalApp {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	portalApp, ok := c.portalAppsByProtocolID[protocolAppID]
-	if !ok {
-		return types.PortalApp{}
-	}
-
-	portalAppDeref := *portalApp
-
-	// Ensure only the requested protocol app AAT is returned
-	for aatProtocalAppID := range portalAppDeref.AATs {
-		if aatProtocalAppID != protocolAppID {
-			delete(portalAppDeref.AATs, aatProtocalAppID)
-		}
-	}
-
-	return portalAppDeref
-}
-
 // GetPortalApps returns all PortalApps in cache
 func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	c.rwMutex.RLock()
@@ -555,7 +543,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	if portalApp.Deleted {
 		delete(c.portalApps, portalApp.ID)
-		delete(c.portalAppsByProtocolID, portalApp.ProtocolAppID())
+
 		if account, ok := c.accounts[portalApp.AccountID]; ok {
 			delete(account.PortalApps, portalApp.ID)
 		}
@@ -596,10 +584,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
-
-	if protocolAppID := portalApp.ProtocolAppID(); protocolAppID != "" {
-		c.portalAppsByProtocolID[protocolAppID] = &portalApp
-	}
 
 	if account, ok := c.accounts[portalApp.AccountID]; ok {
 		if account.PortalApps == nil {
@@ -677,9 +661,6 @@ func (c *Cache) addWhitelist(whitelist types.Whitelist) {
 	appID := whitelist.AppID
 	whitelist.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
-	if c.pendingWhitelists == nil {
-		c.pendingWhitelists = make(map[types.PortalAppID][]types.Whitelist)
-	}
 	c.pendingWhitelists[appID] = append(c.pendingWhitelists[appID], whitelist)
 
 	portalApp, ok := c.portalApps[appID]
@@ -704,6 +685,38 @@ func (c *Cache) deleteWhitelist(whitelist types.Whitelist) {
 	}
 
 	portalApp.DeleteWhitelist(whitelist)
+}
+
+/* ---------- GigastakeApps ---------- */
+
+// GetGigastakeApps returns GigastakeApp from cache by types
+// GetGigastakeAppByAATID returns GigastakeApp from cache by aatID
+func (c *Cache) GetGigastakeAppByAATID(aatID types.ProtocolAppID) types.GigastakeApp {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	gigastakeApp, ok := c.gigastakeApps[aatID]
+	if !ok {
+		return types.GigastakeApp{}
+	}
+
+	return *gigastakeApp
+}
+
+// GetGigastakeApps returns all GigastakeApps in cache
+func (c *Cache) GetGigastakeApps(options Options) []types.GigastakeApp {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	var gigastakeAppsToReturn []types.GigastakeApp
+
+	for _, gigastakeApp := range c.gigastakeApps {
+		if options.IncludeDeleted || !gigastakeApp.Deleted {
+			gigastakeAppsToReturn = append(gigastakeAppsToReturn, *gigastakeApp)
+		}
+	}
+
+	return gigastakeAppsToReturn
 }
 
 /* ---------- Chains ---------- */
