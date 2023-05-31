@@ -80,7 +80,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/integration", rt.CreateLoadBalancerIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.UpdateLoadBalancerUserRole).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.AcceptLoadBalancerUser).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete) // TODO update to use userID not email
+	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.DeleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user", rt.CreatePortalUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v1/user/{id}/portal_id", rt.GetPortalUserID).Methods(http.MethodGet)
