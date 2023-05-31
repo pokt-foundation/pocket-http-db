@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
-
 	dbclient "github.com/pokt-foundation/db-client/client"
 	v1Types "github.com/pokt-foundation/portal-db/types" // TODO: REPLACE v1Types for types once the db-client updates to v2
 	"github.com/pokt-foundation/portal-db/v2/types"
@@ -57,11 +55,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				blockchains, err := ts.client1.GetBlockchains(testCtx)
 				ts.ErrorIs(test.err, err)
-				cmp.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
+				ts.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
 
 				blockchains, err = ts.client2.GetBlockchains(testCtx)
 				ts.NoError(err)
-				cmp.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
+				ts.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
 			})
 
 		}
@@ -90,11 +88,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedBlockchain, blockchain)
+				ts.Equal(test.expectedBlockchain, blockchain)
 
 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchainID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedBlockchain, blockchain)
+				ts.Equal(test.expectedBlockchain, blockchain)
 			})
 		}
 	})
@@ -115,43 +113,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				applications, err := ts.client1.GetApplications(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplications, applicationsToMap(applications))
+				ts.Equal(test.expectedApplications, applicationsToMap(applications))
 
 				applications, err = ts.client2.GetApplications(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplications, applicationsToMap(applications))
-			})
-		}
-	})
-
-	ts.Run("Test_GetApplicationByID", func() {
-		tests := []struct {
-			name                string
-			applicationID       string
-			expectedApplication *v1Types.Application
-			err                 error
-		}{
-			{
-				name:                "Should fetch one application by ID",
-				applicationID:       "test_protocol_app_1",
-				expectedApplication: expectedLegacyApplications["test_protocol_app_1"],
-			},
-			{
-				name:          "Should fail if the application does not exist in the DB",
-				applicationID: "test_not_real_app",
-				err:           fmt.Errorf("Response not OK. 404 Not Found: portal app not found for app ID test_not_real_app"),
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				applicationByID, err := ts.client1.GetApplicationByID(testCtx, test.applicationID)
-				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplication, applicationByID)
-
-				applicationByID, err = ts.client2.GetApplicationByID(testCtx, test.applicationID)
-				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedApplication, applicationByID)
+				ts.Equal(test.expectedApplications, applicationsToMap(applications))
 			})
 		}
 	})
@@ -183,13 +149,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				applicationsByUserID, err := ts.client1.GetApplicationsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
+					ts.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
 				}
 
 				applicationsByUserID, err = ts.client2.GetApplicationsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
+					ts.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
 				}
 			})
 		}
@@ -202,11 +168,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			err                   error
 		}{
 			{
-				name: "Should fetch all load balancers in the database (for portal apps that have an account)",
+				name: "Should fetch all load balancers in the database",
 				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
-					"test_app_1": expectedLegacyLoadBalancers["test_app_1"],
-					"test_app_2": expectedLegacyLoadBalancers["test_app_2"],
-					"test_app_3": expectedLegacyLoadBalancers["test_app_3"],
+					"test_app_1":  expectedLegacyLoadBalancers["test_app_1"],
+					"test_app_2":  expectedLegacyLoadBalancers["test_app_2"],
+					"test_app_3":  expectedLegacyLoadBalancers["test_app_3"],
+					"legacy_lb_1": expectedLegacyLoadBalancers["legacy_lb_1"],
+					"legacy_lb_2": expectedLegacyLoadBalancers["legacy_lb_2"],
+					"legacy_lb_3": expectedLegacyLoadBalancers["legacy_lb_3"],
 				},
 			},
 		}
@@ -215,11 +184,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				loadBalancers, err := ts.client1.GetLoadBalancers(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+				ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 
 				loadBalancers, err = ts.client2.GetLoadBalancers(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+				ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 			})
 		}
 	})
@@ -247,11 +216,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				loadBalancerByID, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancer, loadBalancerByID)
+				ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 
 				loadBalancerByID, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedLoadBalancer, loadBalancerByID)
+				ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 			})
 		}
 	})
@@ -307,13 +276,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.userID, filter)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 				}
 
 				loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID, filter)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
 				}
 			})
 		}
@@ -335,11 +304,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				payPlans, err := ts.client1.GetPayPlans(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
+				ts.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
 
 				payPlans, err = ts.client2.GetPayPlans(testCtx)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
+				ts.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
 			})
 		}
 	})
@@ -368,11 +337,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				payPlanByType, err := ts.client1.GetPayPlanByType(testCtx, test.payPlanType)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlan, payPlanByType)
+				ts.Equal(test.expectedPayPlan, payPlanByType)
 
 				payPlanByType, err = ts.client2.GetPayPlanByType(testCtx, test.payPlanType)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPayPlan, payPlanByType)
+				ts.Equal(test.expectedPayPlan, payPlanByType)
 			})
 		}
 	})
@@ -428,11 +397,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPermissions, permissionsByUserID)
+				ts.Equal(test.expectedPermissions, permissionsByUserID)
 
 				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, test.userID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedPermissions, permissionsByUserID)
+				ts.Equal(test.expectedPermissions, permissionsByUserID)
 			})
 		}
 	})
@@ -468,13 +437,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				pendingLoadBalancersByPortalID, err := ts.client1.GetPendingLoadBalancersByUserID(testCtx, test.userPortalID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
 				}
 
 				pendingLoadBalancersByPortalID, err = ts.client2.GetPendingLoadBalancersByUserID(testCtx, test.userPortalID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					cmp.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
+					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
 				}
 			})
 		}
@@ -488,17 +457,17 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			err           error
 		}{
 			{
-				name:          "Should return the count of load balancer owned by a portal user ID",
+				name:          "Should return the count of load balancers owned by a portal user ID",
 				portalUserID:  "user_1",
 				expectedCount: 1,
 			},
 			{
-				name:          "Should return the count of load balancer owned by a portal user ID",
-				portalUserID:  "user_4",
-				expectedCount: 2,
+				name:          "Should return the count of load balancers owned by a portal user ID",
+				portalUserID:  "user_3",
+				expectedCount: 1,
 			},
 			{
-				name:          "Should return 0 if there's no lb owned by this portal user ID",
+				name:          "Should return 0 if there's no load balancers owned by this portal user ID",
 				portalUserID:  "user_9000",
 				expectedCount: 0,
 			},
@@ -513,11 +482,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			ts.Run(test.name, func() {
 				count, err := ts.client1.GetLoadBalancersCountByUserID(testCtx, test.portalUserID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedCount, count)
+				ts.Equal(test.expectedCount, count)
 
 				count, err = ts.client2.GetLoadBalancersCountByUserID(testCtx, test.portalUserID)
 				ts.Equal(test.err, err)
-				cmp.Equal(test.expectedCount, count)
+				ts.Equal(test.expectedCount, count)
 			})
 		}
 	})
@@ -555,13 +524,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				ts.Equal(test.err, err)
 	// 				blockchain.CreatedAt = mockTimestamp
 	// 				blockchain.UpdatedAt = mockTimestamp
-	// 				cmp.Equal(test.blockchain, blockchain)
+	// 				ts.Equal(test.blockchain, blockchain)
 
 	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchain.ID)
 	// 				ts.Equal(test.err, err)
 	// 				blockchain.CreatedAt = mockTimestamp
 	// 				blockchain.UpdatedAt = mockTimestamp
-	// 				cmp.Equal(test.blockchain, blockchain)
+	// 				ts.Equal(test.blockchain, blockchain)
 	// 			}
 	// 		})
 	// 	}
@@ -599,18 +568,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				ts.Equal(test.err, err)
 	// 				ts.Len(blockchain.Redirects, len(test.redirects))
 	// 				for i, redirect := range blockchain.Redirects {
-	// 					cmp.Equal(test.redirects[i].Alias, redirect.Alias)
-	// 					cmp.Equal(test.redirects[i].Domain, redirect.Domain)
-	// 					cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
+	// 					ts.Equal(test.redirects[i].Alias, redirect.Alias)
+	// 					ts.Equal(test.redirects[i].Domain, redirect.Domain)
+	// 					ts.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
 	// 				}
 
 	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.redirectInput.BlockchainID)
 	// 				ts.Equal(test.err, err)
 	// 				ts.Len(blockchain.Redirects, len(test.redirects))
 	// 				for i, redirect := range blockchain.Redirects {
-	// 					cmp.Equal(test.redirects[i].Alias, redirect.Alias)
-	// 					cmp.Equal(test.redirects[i].Domain, redirect.Domain)
-	// 					cmp.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
+	// 					ts.Equal(test.redirects[i].Alias, redirect.Alias)
+	// 					ts.Equal(test.redirects[i].Domain, redirect.Domain)
+	// 					ts.Equal(test.redirects[i].LoadBalancerID, redirect.LoadBalancerID)
 	// 				}
 	// 			}
 	// 		})
@@ -695,12 +664,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		tests := []struct {
 			name                   string
 			loadBalancer           *v1Types.LoadBalancer
+			userID                 string
 			expectedCovalentAPIKey string
 			err                    error
 		}{
 			{
 				name:                   "Should create a single loadBalancer in the DB",
 				loadBalancer:           createLegacyLoadBalancer,
+				userID:                 "user_1",
 				expectedCovalentAPIKey: "covalent_api_key_1",
 			},
 		}
@@ -712,22 +683,24 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				test.loadBalancer.Integrations.CovalentAPIKeyFree = test.expectedCovalentAPIKey
 				test.loadBalancer.ID = createdLB.ID
+				test.loadBalancer.UserID = test.userID
 				test.loadBalancer.Applications[0].ID = createdLB.Applications[0].ID
+				test.loadBalancer.Applications[0].UserID = test.userID
 				clearTimeFields(createdLB)
 
-				cmp.Equal(test.loadBalancer, createdLB)
+				ts.Equal(test.loadBalancer, createdLB)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
 					ts.Equal(test.err, err)
 					clearTimeFields(loadBalancer)
-					cmp.Equal(test.loadBalancer, loadBalancer)
+					ts.Equal(test.loadBalancer, loadBalancer)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
 					ts.Equal(test.err, err)
 					clearTimeFields(loadBalancer)
-					cmp.Equal(test.loadBalancer, loadBalancer)
+					ts.Equal(test.loadBalancer, loadBalancer)
 				}
 			})
 		}
@@ -795,16 +768,16 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							break
 						}
 					}
-					cmp.Equal(test.loadBalancerUsers, userAccessSliceToMap(updatedLB.Users))
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(updatedLB.Users))
 
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
 				}
 			})
 		}
@@ -842,7 +815,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				<-time.After(50 * time.Millisecond)
 	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
 	// 				ts.Equal(test.err, err)
-	// 				cmp.Equal(test.active, blockchain.Active)
+	// 				ts.Equal(test.active, blockchain.Active)
 	// 			}
 	// 		})
 	// 	}
@@ -933,19 +906,20 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
-					applicationID := createdLB.Applications[0].ID
 
-					application, err := ts.client1.GetApplicationByID(testCtx, applicationID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
+					application := loadBalancer.Applications[0]
 					ts.NoError(err)
-					cmp.Equal(test.applicationAfterUpdate.Name, application.Name)
-					cmp.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
-					cmp.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
+					ts.Equal(test.applicationAfterUpdate.Name, application.Name)
+					ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
+					ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 
-					application, err = ts.client2.GetApplicationByID(testCtx, applicationID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
+					application = loadBalancer.Applications[0]
 					ts.NoError(err)
-					cmp.Equal(test.applicationAfterUpdate.Name, application.Name)
-					cmp.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
-					cmp.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
+					ts.Equal(test.applicationAfterUpdate.Name, application.Name)
+					ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
+					ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 				}
 			})
 		}
@@ -995,13 +969,27 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 					for _, appID := range test.protocolAppIDs {
-						application, err := ts.client1.GetApplicationByID(testCtx, appID)
+						applications, err := ts.client1.GetApplications(testCtx)
 						ts.NoError(err)
-						cmp.Equal(test.expectedDate, application.FirstDateSurpassed)
+						exists := false
+						for _, application := range applications {
+							if application.ID == appID {
+								exists = true
+								ts.Equal(test.expectedDate, application.FirstDateSurpassed)
+							}
+						}
+						ts.True(exists)
 
-						application, err = ts.client2.GetApplicationByID(testCtx, appID)
+						applications, err = ts.client2.GetApplications(testCtx)
 						ts.NoError(err)
-						cmp.Equal(test.expectedDate, application.FirstDateSurpassed)
+						exists = false
+						for _, application := range applications {
+							if application.ID == appID {
+								exists = true
+								ts.Equal(test.expectedDate, application.FirstDateSurpassed)
+							}
+						}
+						ts.True(exists)
 					}
 				}
 			})
@@ -1065,27 +1053,27 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	// 				<-time.After(50 * time.Millisecond)
 	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, updatedChain.ID)
 	// 				ts.NoError(err)
-	// 				cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-	// 				cmp.Equal(test.expectedChain.Description, blockchain.Description)
-	// 				cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-	// 				cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-	// 				cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-	// 				cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-	// 				cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-	// 				cmp.Equal(test.expectedChain.Path, blockchain.Path)
-	// 				cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// 				ts.Equal(test.expectedChain.Description, blockchain.Description)
+	// 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// 				ts.Equal(test.expectedChain.Path, blockchain.Path)
+	// 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 
 	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
 	// 				ts.NoError(err)
-	// 				cmp.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-	// 				cmp.Equal(test.expectedChain.Description, blockchain.Description)
-	// 				cmp.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-	// 				cmp.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-	// 				cmp.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-	// 				cmp.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-	// 				cmp.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-	// 				cmp.Equal(test.expectedChain.Path, blockchain.Path)
-	// 				cmp.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// 				ts.Equal(test.expectedChain.Description, blockchain.Description)
+	// 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// 				ts.Equal(test.expectedChain.Path, blockchain.Path)
+	// 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 	// 			}
 	// 		})
 	// 	}
@@ -1198,20 +1186,20 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					if test.providerUserID != "" {
 						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 					}
 				}
 			})
@@ -1269,21 +1257,21 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					if test.providerUserID != "" {
 						// user should have been added to the user permissions in the cache
 						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
-						cmp.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						exists := false
 						loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
@@ -1427,18 +1415,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					cmp.Equal(test.loadBalancerUsers, loadBalancer.Users)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					// user should have been removed from the user permissions in the cache
 					_, err = ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
-					cmp.Equal(test.permissionsFetchError, err)
+					ts.Equal(test.permissionsFetchError, err)
 
 					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
-					cmp.Equal(test.permissionsFetchError, err)
+					ts.Equal(test.permissionsFetchError, err)
 
 					// user's LB should have been removed from the user's LBs map in the cache
 					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
@@ -1481,11 +1469,26 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
-					_, err := ts.client1.GetApplicationByID(testCtx, test.protocolAppID)
-					ts.Equal(test.expectedError, err)
 
-					_, err = ts.client2.GetApplicationByID(testCtx, test.protocolAppID)
-					ts.Equal(test.expectedError, err)
+					applications, err := ts.client1.GetApplications(testCtx)
+					ts.NoError(err)
+					exists := false
+					for _, application := range applications {
+						if application.ID == test.applicationID {
+							exists = true
+						}
+					}
+					ts.False(exists)
+
+					applications, err = ts.client2.GetApplications(testCtx)
+					ts.NoError(err)
+					exists = false
+					for _, application := range applications {
+						if application.ID == test.applicationID {
+							exists = true
+						}
+					}
+					ts.False(exists)
 				}
 			})
 		}
@@ -1569,10 +1572,9 @@ var (
 
 	expectedLegacyApplications = map[string]*v1Types.Application{
 		"test_protocol_app_1": {
-			ID:                 "test_protocol_app_1",
-			UserID:             "auth0|james_holden",
-			Name:               "pokt_app_123",
-			FirstDateSurpassed: mockTimestamp,
+			ID:     "test_protocol_app_1",
+			UserID: "user_1",
+			Name:   "pokt_app_123",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_34715cae753e67c75fbb340442e7de8e",
 				ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
@@ -1596,26 +1598,23 @@ var (
 			},
 			Limit: v1Types.AppLimit{
 				PayPlan: v1Types.PayPlan{
-					Type:  "basic_plan",
-					Limit: 1000,
+					Type:  v1Types.FreetierV0,
+					Limit: 250_000,
 				},
-				CustomLimit: 0,
 			},
 			NotificationSettings: v1Types.NotificationSettings{
-				Full:          true,
-				Half:          false,
 				Quarter:       true,
-				SignedUp:      false,
 				ThreeQuarters: true,
+				Full:          true,
 			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
+			FirstDateSurpassed: mockTimestamp,
+			CreatedAt:          mockTimestamp,
+			UpdatedAt:          mockTimestamp,
 		},
 		"test_protocol_app_2": {
-			ID:                 "test_protocol_app_2",
-			UserID:             "auth0|ellen_ripley",
-			Name:               "pokt_app_456",
-			FirstDateSurpassed: mockTimestamp,
+			ID:     "test_protocol_app_2",
+			UserID: "user_3",
+			Name:   "pokt_app_456",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_8237c72345f12d1b1a8b64a1a7f66fa4",
 				ApplicationPublicKey: "test_8237c72345f12d1b1a8b64a1a7f66fa4",
@@ -1624,9 +1623,14 @@ var (
 				PrivateKey:           "test_2e83c836a29b423a47d8e18c779fd422",
 				Version:              "0.0.1",
 			},
+			Limit: v1Types.AppLimit{
+				PayPlan: v1Types.PayPlan{
+					Type:  v1Types.PayAsYouGoV0,
+					Limit: 0,
+				},
+			},
 			GatewaySettings: v1Types.GatewaySettings{
 				SecretKey:           "test_9c9e3b193cfba5348f93bb2f3e3fb794",
-				SecretKeyRequired:   false,
 				WhitelistOrigins:    []string{"https://example.com"},
 				WhitelistUserAgents: []string{"Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"},
 				WhitelistContracts: []v1Types.WhitelistContracts{
@@ -1637,25 +1641,18 @@ var (
 				},
 				WhitelistBlockchains: []string{"0021"},
 			},
-			Limit: v1Types.AppLimit{
-				PayPlan: v1Types.PayPlan{
-					Type:  "pro_plan",
-					Limit: 5000,
-				},
-				CustomLimit: 0,
-			},
 			NotificationSettings: v1Types.NotificationSettings{
 				Half: true,
 				Full: true,
 			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
+			FirstDateSurpassed: mockTimestamp,
+			CreatedAt:          mockTimestamp,
+			UpdatedAt:          mockTimestamp,
 		},
 		"test_protocol_app_3": {
-			ID:                 "test_protocol_app_3",
-			UserID:             "auth0|chrisjen_avasarala",
-			Name:               "pokt_app_789",
-			FirstDateSurpassed: mockTimestamp,
+			ID:     "test_protocol_app_3",
+			UserID: "user_5",
+			Name:   "pokt_app_789",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_b5e07928fc80083c13ad0201b81bae9b",
 				ApplicationPublicKey: "test_f608500e4fe3e09014fe2411b4a560b5",
@@ -1664,19 +1661,24 @@ var (
 				PrivateKey:           "test_8663e187c19f3c6e27317eab4ed6d7d5",
 				Version:              "0.0.1",
 			},
-			GatewaySettings: v1Types.GatewaySettings{SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1"},
 			Limit: v1Types.AppLimit{
-				PayPlan:     v1Types.PayPlan{Type: "startup_plan", Limit: 500},
-				CustomLimit: 0,
+				PayPlan: v1Types.PayPlan{
+					Type:  v1Types.Enterprise,
+					Limit: 0,
+				},
+				CustomLimit: 4_200_000,
 			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
+			GatewaySettings: v1Types.GatewaySettings{
+				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
+			},
+			FirstDateSurpassed: mockTimestamp,
+			CreatedAt:          mockTimestamp,
+			UpdatedAt:          mockTimestamp,
 		},
 		"test_protocol_app_4": {
-			ID:                 "test_protocol_app_4",
-			UserID:             "auth0|chrisjen_avasarala",
-			Name:               "pokt_app_789",
-			FirstDateSurpassed: mockTimestamp,
+			ID:     "test_protocol_app_4",
+			UserID: "user_5",
+			Name:   "pokt_app_789",
 			GatewayAAT: v1Types.GatewayAAT{
 				Address:              "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
 				ApplicationPublicKey: "test_f6a5d8690ecb669865bd752b7796a920",
@@ -1685,10 +1687,58 @@ var (
 				PrivateKey:           "test_838d29d61a65401f7d56d084cb6e4783",
 				Version:              "0.0.1",
 			},
-			GatewaySettings: v1Types.GatewaySettings{SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1"},
 			Limit: v1Types.AppLimit{
-				PayPlan:     v1Types.PayPlan{Type: "startup_plan", Limit: 500},
-				CustomLimit: 0,
+				PayPlan: v1Types.PayPlan{
+					Type:  v1Types.Enterprise,
+					Limit: 0,
+				},
+				CustomLimit: 4200000,
+			},
+			GatewaySettings: v1Types.GatewaySettings{
+				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
+			},
+			FirstDateSurpassed: mockTimestamp,
+			CreatedAt:          mockTimestamp,
+			UpdatedAt:          mockTimestamp,
+		},
+		"test_gigastake_app_1": {
+			ID:   "test_gigastake_app_1",
+			Name: "pokt_gigastake",
+			GatewayAAT: v1Types.GatewayAAT{
+				Address:              "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
+				ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
+				ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
+				ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
+				PrivateKey:           "test_0a6df2b97ae546da83f1a90b9b0c1e83",
+				Version:              "0.0.1",
+			},
+			CreatedAt: mockTimestamp,
+			UpdatedAt: mockTimestamp,
+		},
+		"test_gigastake_app_2": {
+			ID:   "test_gigastake_app_2",
+			Name: "optimism_gigastake",
+			GatewayAAT: v1Types.GatewayAAT{
+				Address:              "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
+				ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
+				ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
+				ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
+				PrivateKey:           "test_86b9e8e14a784db8a0a4c2ee532b6a12",
+				Version:              "0.0.1",
+			},
+			CreatedAt: mockTimestamp,
+			UpdatedAt: mockTimestamp,
+		},
+		"test_gigastake_app_3": {
+			ID:   "test_gigastake_app_3",
+			Name: "harmony_gigastake",
+			GatewayAAT: v1Types.GatewayAAT{
+				Address:              "test_e570c841d5cd4f6197e0428ed7c517fd",
+				ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
+				ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
+				ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
+				PrivateKey:           "test_25a9063b3b7b42148dc17033fbbab5c6",
+				Version:              "0.0.1",
 			},
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
@@ -1698,20 +1748,11 @@ var (
 	expectedLegacyLoadBalancers = map[string]*v1Types.LoadBalancer{
 		"test_app_1": {
 			ID:                "test_app_1",
+			AccountID:         "account_1",
 			Name:              "pokt_app_123",
-			UserID:            "auth0|james_holden",
-			RequestTimeout:    5000,
-			Gigastake:         true,
+			UserID:            "user_1",
 			GigastakeRedirect: true,
-			StickyOptions: v1Types.StickyOptions{
-				Duration: "60",
-				StickyOrigins: []string{
-					"chrome-extension://",
-					"moz-extension://",
-				},
-				StickyMax:  300,
-				Stickiness: true,
-			},
+			RequestTimeout:    5_000,
 			Applications: []*v1Types.Application{
 				expectedLegacyApplications["test_protocol_app_1"],
 			},
@@ -1742,21 +1783,14 @@ var (
 			UpdatedAt: mockTimestamp,
 		},
 		"test_app_2": {
-			ID:             "test_app_2",
-			Name:           "pokt_app_456",
-			UserID:         "auth0|ellen_ripley",
-			RequestTimeout: 10000,
+			ID:                "test_app_2",
+			AccountID:         "account_2",
+			Name:              "pokt_app_456",
+			UserID:            "user_3",
+			GigastakeRedirect: true,
+			RequestTimeout:    10_000,
 			Applications: []*v1Types.Application{
 				expectedLegacyApplications["test_protocol_app_2"],
-			},
-			StickyOptions: v1Types.StickyOptions{
-				Duration: "30",
-				StickyOrigins: []string{
-					"https://example.com",
-					"https://test.com",
-				},
-				StickyMax:  600,
-				Stickiness: true,
 			},
 			Users: []v1Types.UserAccess{
 				{
@@ -1791,10 +1825,12 @@ var (
 			UpdatedAt: mockTimestamp,
 		},
 		"test_app_3": {
-			ID:             "test_app_3",
-			Name:           "pokt_app_789",
-			UserID:         "auth0|chrisjen_avasarala",
-			RequestTimeout: 10000,
+			ID:                "test_app_3",
+			AccountID:         "account_3",
+			Name:              "pokt_app_789",
+			UserID:            "user_5",
+			GigastakeRedirect: true,
+			RequestTimeout:    10_000,
 			Applications: []*v1Types.Application{
 				expectedLegacyApplications["test_protocol_app_3"],
 				expectedLegacyApplications["test_protocol_app_4"],
@@ -1831,38 +1867,67 @@ var (
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
 		},
-		"test_app_4": {
-			ID:                "test_app_4",
-			UserID:            "auth0|ulfric_stormcloak",
-			Name:              "test_account_4",
-			RequestTimeout:    0,
-			Applications:      []*v1Types.Application(nil),
-			Gigastake:         false,
-			GigastakeRedirect: false,
-			StickyOptions: v1Types.StickyOptions{
-				Stickiness: false,
-			},
-			Users: []v1Types.UserAccess{
+		"legacy_lb_1": {
+			ID:        "legacy_lb_1",
+			Gigastake: true,
+			Applications: []*v1Types.Application{
 				{
-					UserID:   "user_4",
-					RoleName: "OWNER",
-					Email:    "ulfric.stormcloak123@test.com",
-					Accepted: true,
+					ID:   "test_gigastake_app_1",
+					Name: "pokt_gigastake",
+					GatewayAAT: v1Types.GatewayAAT{
+						Address:              "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
+						ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
+						ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
+						ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
+						PrivateKey:           "test_0a6df2b97ae546da83f1a90b9b0c1e83",
+						Version:              "0.0.1",
+					},
+					CreatedAt: mockTimestamp,
+					UpdatedAt: mockTimestamp,
 				},
 			},
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
 		},
-		"test_app_5": {
-			ID:     "test_app_5",
-			Name:   "test_account_5",
-			UserID: "auth0|ulfric_stormcloak",
-			Users: []v1Types.UserAccess{
+		"legacy_lb_2": {
+			ID:        "legacy_lb_2",
+			Gigastake: true,
+			Applications: []*v1Types.Application{
 				{
-					UserID:   "user_4",
-					RoleName: "OWNER",
-					Email:    "ulfric.stormcloak123@test.com",
-					Accepted: true,
+					ID:   "test_gigastake_app_2",
+					Name: "optimism_gigastake",
+					GatewayAAT: v1Types.GatewayAAT{
+						Address:              "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
+						ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
+						ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
+						ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
+						PrivateKey:           "test_86b9e8e14a784db8a0a4c2ee532b6a12",
+						Version:              "0.0.1",
+					},
+					CreatedAt: mockTimestamp,
+					UpdatedAt: mockTimestamp,
+				},
+			},
+			CreatedAt: mockTimestamp,
+			UpdatedAt: mockTimestamp,
+		},
+		"legacy_lb_3": {
+			ID:        "legacy_lb_3",
+			Gigastake: true,
+			Applications: []*v1Types.Application{
+				{
+					ID:   "test_gigastake_app_3",
+					Name: "harmony_gigastake",
+					GatewayAAT: v1Types.GatewayAAT{
+						Address:              "test_e570c841d5cd4f6197e0428ed7c517fd",
+						ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
+						ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
+						ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
+						PrivateKey:           "test_25a9063b3b7b42148dc17033fbbab5c6",
+						Version:              "0.0.1",
+					},
+					CreatedAt: mockTimestamp,
+					UpdatedAt: mockTimestamp,
 				},
 			},
 			CreatedAt: mockTimestamp,
@@ -1871,37 +1936,36 @@ var (
 	}
 
 	expectedLegacyPayPlans = map[string]*v1Types.PayPlan{
-		"developer_plan":  {Type: "developer_plan", Limit: 100},
-		"startup_plan":    {Type: "startup_plan", Limit: 500},
-		"basic_plan":      {Type: "basic_plan", Limit: 1000},
-		"pro_plan":        {Type: "pro_plan", Limit: 5000},
-		"enterprise_plan": {Type: "enterprise_plan", Limit: 10000},
+		"basic_plan":       {Type: "basic_plan", Limit: 1_000},
+		"developer_plan":   {Type: "developer_plan", Limit: 100},
+		"enterprise_plan":  {Type: "enterprise_plan", Limit: 10_000},
+		"pro_plan":         {Type: "pro_plan", Limit: 5_000},
+		"startup_plan":     {Type: "startup_plan", Limit: 500},
+		"ENTERPRISE":       {Type: "ENTERPRISE", Limit: 0},
+		"FREETIER_V0":      {Type: "FREETIER_V0", Limit: 250_000},
+		"PAY_AS_YOU_GO_V0": {Type: "PAY_AS_YOU_GO_V0", Limit: 0},
+		"TEST_PLAN_10K":    {Type: "TEST_PLAN_10K", Limit: 10_000},
+		"TEST_PLAN_90K":    {Type: "TEST_PLAN_90K", Limit: 90_000},
+		"TEST_PLAN_V0":     {Type: "TEST_PLAN_V0", Limit: 0},
 	}
 
 	expectedLegacyBlockchains = map[string]*v1Types.Blockchain{
 		"0001": {
 			ID:                "0001",
 			Altruist:          "https://test_pocket:auth123456@altruist-0001.com:1234", // pragma: allowlist secret
-			Blockchain:        "mainnet",
+			Blockchain:        "pokt-mainnet",
 			Description:       "Pocket Network Mainnet",
 			EnforceResult:     "JSON",
 			Path:              "/v1/query/height",
 			Ticker:            "POKT",
-			BlockchainAliases: []string{"mainnet"},
+			BlockchainAliases: []string{"pokt-mainnet"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{
-					Alias:          "altruist-0001",
-					Domain:         "pokt-rpc.gateway.pokt.network",
-					LoadBalancerID: "test_app_1",
-					CreatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-				},
+				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_1"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
-				ResultKey: "result.sync_info",
-				Allowance: 1,
+				ResultKey: "result.sync_info", Allowance: 1,
 			},
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
@@ -1919,18 +1983,11 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{
-					Alias:          "altruist-0021",
-					Domain:         "eth-rpc.gateway.pokt.network",
-					LoadBalancerID: "test_app_3",
-					CreatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-				},
+				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: ""},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
-				ResultKey: "result",
-				Allowance: 5,
+				ResultKey: "result", Allowance: 5,
 			},
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
@@ -1945,13 +2002,7 @@ var (
 			BlockchainAliases: []string{"harmony-0"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{
-					Alias:          "altruist-0040",
-					Domain:         "hmy-rpc.gateway.pokt.network",
-					LoadBalancerID: "test_app_3",
-					CreatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-				},
+				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_3"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
@@ -1972,13 +2023,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{
-					Alias:          "altruist-0053",
-					Domain:         "op-rpc.gateway.pokt.network",
-					LoadBalancerID: "test_app_2",
-					CreatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-					UpdatedAt:      time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC),
-				},
+				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_2"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -1989,16 +2034,14 @@ var (
 			UpdatedAt: mockTimestamp,
 		},
 		"0064": {
-			ID:                "0064",
-			Altruist:          "https://test_pocket:auth123456@altruist-0064.com:1234", // pragma: allowlist secret
-			Blockchain:        "sui-testnet",
-			Description:       "Sui Testnet",
-			EnforceResult:     "JSON",
-			Ticker:            "SUI-TESTNET",
-			BlockchainAliases: []string{"sui-testnet"},
-			LogLimitBlocks:    100000,
-			RequestTimeout:    60000,
-			Active:            false,
+			ID:             "0064",
+			Altruist:       "https://test_pocket:auth123456@altruist-0064.com:1234", // pragma: allowlist secret
+			Blockchain:     "sui-testnet",
+			Description:    "Sui Testnet",
+			EnforceResult:  "JSON",
+			Ticker:         "SUI-TESTNET",
+			LogLimitBlocks: 100000,
+			RequestTimeout: 60000,
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"sui_blockNumber\",\"params\":[]}",
 				ResultKey: "result",
@@ -2039,9 +2082,7 @@ var (
 		UserID:            "auth0|james_holden",
 		ApplicationIDs:    []string(nil),
 		RequestTimeout:    5000,
-		Gigastake:         true,
 		GigastakeRedirect: true,
-		StickyOptions:     v1Types.StickyOptions{Duration: "60", StickyOrigins: []string{"chrome-extension://", "moz-extension://"}, StickyMax: 300, Stickiness: true},
 		Applications: []*v1Types.Application{
 			{
 				UserID: "auth0|james_holden",
@@ -2061,9 +2102,8 @@ var (
 		},
 		Users: []v1Types.UserAccess{
 			{UserID: "user_1", RoleName: v1Types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
-			{UserID: "user_2", RoleName: v1Types.RoleAdmin, Email: "paul.atreides456@test.com", Accepted: true},
-			{UserID: "user_8", RoleName: v1Types.RoleAdmin, Email: "rick.deckard456@test.com", Accepted: false},
 		},
+		AccountID: "account_1",
 	}
 
 	testCtx = context.Background()

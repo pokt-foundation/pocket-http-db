@@ -25,7 +25,8 @@ DROP TYPE IF EXISTS whitelist_type CASCADE;
 
 -- Drop Triggers to Avoid Breaking PHD Listener
 DROP TRIGGER IF EXISTS portal_applications_notify_event ON portal_applications;
-DROP TRIGGER IF EXISTS portal_application_aats_notify_event ON portal_application_aats;
+DROP TRIGGER IF EXISTS gigastake_applications_notify_event ON gigastake_applications;
+DROP TRIGGER IF EXISTS aats_notify_event ON aats;
 DROP TRIGGER IF EXISTS portal_application_settings_notify_event ON portal_application_settings;
 DROP TRIGGER IF EXISTS portal_application_whitelists_notify_event ON portal_application_whitelists;
 DROP TRIGGER IF EXISTS portal_application_notifications_notify_event ON portal_application_notifications;
@@ -37,7 +38,7 @@ DROP TRIGGER IF EXISTS user_roles_notify_event ON user_roles;
 DROP TRIGGER IF EXISTS pay_plans_notify_event ON pay_plans;
 DROP TRIGGER IF EXISTS chains_notify_event ON chains;
 DROP TRIGGER IF EXISTS chain_altruists_notify_event ON chain_altruists;
-DROP TRIGGER IF EXISTS chain_gigastake_redirects_notify_event ON chain_gigastake_redirects;
+DROP TRIGGER IF EXISTS chain_alias_domains_notify_event ON chain_alias_domains;
 DROP TRIGGER IF EXISTS chain_checks_notify_event ON chain_checks;
 DROP TRIGGER IF EXISTS global_blocked_contracts_notify_event ON global_blocked_contracts;
 
@@ -51,12 +52,18 @@ INSERT
     OR
 UPDATE
     OR DELETE ON portal_applications FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER portal_application_aats_notify_event
+CREATE TRIGGER gigastake_applications_notify_event
 AFTER
 INSERT
     OR
 UPDATE
-    OR DELETE ON portal_application_aats FOR EACH ROW EXECUTE PROCEDURE notify_event();
+    OR DELETE ON gigastake_applications FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER aats_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON aats FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER portal_application_settings_notify_event
 AFTER
 INSERT
@@ -129,12 +136,12 @@ INSERT
     OR
 UPDATE
     OR DELETE ON chain_altruists FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER chain_gigastake_redirects_notify_event
+CREATE TRIGGER chain_alias_domains_notify_event
 AFTER
 INSERT
     OR
 UPDATE
-    OR DELETE ON chain_gigastake_redirects FOR EACH ROW EXECUTE PROCEDURE notify_event();
+    OR DELETE ON chain_alias_domains FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER chain_checks_notify_event
 AFTER
 INSERT
