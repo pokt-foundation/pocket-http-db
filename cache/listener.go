@@ -59,18 +59,6 @@ func (c *Cache) parsePortalAppNotification(n types.Notification) {
 	}
 }
 
-func (c *Cache) parseAATNotification(n types.Notification) {
-	appAAT, ok := n.Data.(*types.AAT)
-	if !ok {
-		c.log.Error("parseAppAATsNotification failed")
-		return
-	}
-
-	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addPortalAppAAT(*appAAT)
-	}
-}
-
 func (c *Cache) parseSettingsNotification(n types.Notification) {
 	appSettings, ok := n.Data.(*types.Settings)
 	if !ok {
@@ -106,6 +94,41 @@ func (c *Cache) parseAppNotificationNotification(n types.Notification) {
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
 		c.addAppNotification(*appNotification)
+	}
+}
+
+/* ---------- AATs ---------- */
+
+func (c *Cache) parseAATNotification(n types.Notification) {
+	appAAT, ok := n.Data.(*types.AAT)
+	if !ok {
+		c.log.Error("parseAppAATsNotification failed")
+		return
+	}
+
+	switch appAAT.Gigastake {
+	case true:
+		if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+			c.addGigastakeAppAAT(*appAAT)
+		}
+	default:
+		if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+			c.addPortalAppAAT(*appAAT)
+		}
+	}
+}
+
+/* ---------- GigastakeApps ---------- */
+
+func (c *Cache) parseGigastakeAppNotification(n types.Notification) {
+	gigastakeApp, ok := n.Data.(*types.GigastakeApp)
+	if !ok {
+		c.log.Error("parseGigastakeAppsNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertGigastakeApp(*gigastakeApp)
 	}
 }
 
@@ -227,14 +250,19 @@ func (c *Cache) parseNotification(n types.Notification) {
 
 	case types.TablePortalApps:
 		c.parsePortalAppNotification(n)
-	case types.TableAATs:
-		c.parseAATNotification(n)
 	case types.TableAppSettings:
 		c.parseSettingsNotification(n)
 	case types.TableAppWhitelists:
 		c.parseWhitelistNotification(n)
 	case types.TableAppNotifications:
 		c.parseAppNotificationNotification(n)
+
+	case types.TableAATs:
+		c.parseAATNotification(n)
+
+	case types.TableGigastakeApps:
+		c.parseGigastakeAppNotification(n)
+
 	case types.TableChains:
 		c.parseChainNotification(n)
 	case types.TableChainAltruists:

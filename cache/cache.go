@@ -755,7 +755,6 @@ func (c *Cache) deleteWhitelist(whitelist types.Whitelist) {
 
 /* ---------- GigastakeApps ---------- */
 
-// GetGigastakeApps returns GigastakeApp from cache by types
 // GetGigastakeAppByAATID returns GigastakeApp from cache by aatID
 func (c *Cache) GetGigastakeAppByAATID(aatID types.ProtocolAppID) types.GigastakeApp {
 	c.rwMutex.RLock()
@@ -783,6 +782,46 @@ func (c *Cache) GetGigastakeApps(options Options) []types.GigastakeApp {
 	}
 
 	return gigastakeAppsToReturn
+}
+
+// upsertGigastakeApp adds, updates or deletes GigastakeApp in cache
+func (c *Cache) upsertGigastakeApp(gigastakeApp types.GigastakeApp) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	if existingGigastakeApp, ok := c.gigastakeApps[gigastakeApp.AATID]; ok {
+		gigastakeApp.AAT = existingGigastakeApp.AAT
+	}
+
+	if gigastakeApp.Deleted {
+		delete(c.gigastakeApps, gigastakeApp.AATID)
+		return
+	}
+
+	pendingAAT, ok := c.pendingGigastakeAppAATS[gigastakeApp.AATID]
+	if ok {
+		gigastakeApp.AAT = pendingAAT
+		delete(c.pendingGigastakeAppAATS, gigastakeApp.AATID)
+	}
+
+	c.gigastakeApps[gigastakeApp.AATID] = &gigastakeApp
+}
+
+// addGigastakeAppAAT adds the AAT for a GigastakeApp to the cache
+func (c *Cache) addGigastakeAppAAT(aat types.AAT) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	appID := aat.ID
+	aat.ID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
+	gigastakeApp, ok := c.gigastakeApps[appID]
+	if !ok {
+		c.pendingGigastakeAppAATS[appID] = aat
+		return
+	}
+
+	gigastakeApp.AAT = aat
 }
 
 /* ---------- Chains ---------- */

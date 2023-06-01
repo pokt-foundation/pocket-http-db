@@ -496,6 +496,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 // This ensures the write tests do not modify the seed data expected by the read tests
 func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
+	/* ------ V2 Chain Create/Update Tests ------ */
+
 	// ts.Run("Test_CreateBlockchain", func() {
 	// 	tests := []struct {
 	// 		name       string
