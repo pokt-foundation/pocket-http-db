@@ -649,12 +649,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					// If the user was created, it should have permissions
 					providerID := createdUser.User.AuthProviders[types.AuthTypeAuth0Username].ProviderUserID
 					permission, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerID))
+					ts.NoError(err)
 					ts.NotNil(permission)
-					ts.Nil(err)
 
 					permission, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerID))
+					ts.NoError(err)
 					ts.NotNil(permission)
-					ts.Nil(err)
 				}
 			})
 		}
@@ -706,120 +706,220 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	ts.Run("Test_CreateLoadBalancerUser", func() {
+	ts.Run("Test_UpdateLoadBalancerUserRole", func() {
 		tests := []struct {
 			name              string
 			loadBalancerID    string
-			user              v1Types.UserAccess
-			loadBalancerUsers map[string]v1Types.UserAccess
+			userID            string
+			update            v1Types.UpdateUserAccess
+			loadBalancerUsers []v1Types.UserAccess
+			userLBPermissions map[string]v1Types.LoadBalancerPermissions
 			err               error
 		}{
 			{
-				name:           "Should add a single new user to an existing load balancer in the DB",
+				name:           "Should update a single user for an existing load balancer in the DB",
 				loadBalancerID: "test_app_1",
-				user: v1Types.UserAccess{
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_2",
 					RoleName: v1Types.RoleMember,
-					Email:    "member_new@test.com",
 				},
-				loadBalancerUsers: map[string]v1Types.UserAccess{
-					"user_1": {UserID: "user_1", RoleName: v1Types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
-					"user_2": {UserID: "user_2", RoleName: v1Types.RoleAdmin, Email: "paul.atreides456@test.com", Accepted: true},
-					"user_8": {UserID: "user_8", RoleName: v1Types.RoleAdmin, Email: "rick.deckard456@test.com", Accepted: false},
-					// ID dynamically generated on creation
-					"": {UserID: "", RoleName: v1Types.RoleMember, Email: "member_new@test.com", Accepted: false},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "rick.deckard456@test.com", Accepted: false},
+					{RoleName: v1Types.RoleMember, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+				},
+				userLBPermissions: map[string]v1Types.LoadBalancerPermissions{
+					"auth0|paul_atreides": {
+						RoleName: v1Types.RoleMember, Permissions: []v1Types.PermissionsEnum{
+							"read:endpoint",
+						},
+					},
 				},
 			},
 			{
-				name:           "Should add a single existing user to an existing load balancer in the DB",
-				loadBalancerID: "test_app_2",
-				user: v1Types.UserAccess{
-					RoleName: v1Types.RoleMember,
-					Email:    "frodo.baggins123@test.com",
+				name:           "Should update a single user back for an existing load balancer in the DB",
+				loadBalancerID: "test_app_1",
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_2",
+					RoleName: v1Types.RoleAdmin,
 				},
-				loadBalancerUsers: map[string]v1Types.UserAccess{
-					"user_3": {UserID: "user_3", RoleName: v1Types.RoleOwner, Email: "ellen.ripley789@test.com", Accepted: true},
-					"user_4": {UserID: "user_4", RoleName: v1Types.RoleMember, Email: "ulfric.stormcloak123@test.com", Accepted: true},
-					"user_9": {UserID: "user_9", RoleName: v1Types.RoleMember, Email: "tyrion.lannister789@test.com", Accepted: false},
-					"user_2": {UserID: "user_2", RoleName: v1Types.RoleMember, Email: "paul.atreides456@test.com", Accepted: true},
-					// ID dynamically generated on creation
-					"": {UserID: "", RoleName: v1Types.RoleMember, Email: "frodo.baggins123@test.com", Accepted: false},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "rick.deckard456@test.com", Accepted: false},
 				},
+				userLBPermissions: map[string]v1Types.LoadBalancerPermissions{
+					"auth0|paul_atreides": {
+						RoleName: v1Types.RoleAdmin, Permissions: []v1Types.PermissionsEnum{
+							"read:endpoint", "write:endpoint",
+						},
+					},
+				},
+			},
+			{
+				name:           "Should transfer ownership for an existing load balancer in the DB",
+				loadBalancerID: "test_app_1",
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_2",
+					RoleName: v1Types.RoleOwner,
+				},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "rick.deckard456@test.com", Accepted: false},
+				},
+				userLBPermissions: map[string]v1Types.LoadBalancerPermissions{
+					"auth0|james_holden": {
+						RoleName: v1Types.RoleAdmin, Permissions: []v1Types.PermissionsEnum{
+							"read:endpoint", "write:endpoint",
+						},
+					},
+					"auth0|paul_atreides": {
+						RoleName: v1Types.RoleOwner, Permissions: []v1Types.PermissionsEnum{
+							"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint",
+						},
+					},
+				},
+			},
+			{
+				name:           "Should transfer ownership back to original owner for an existing load balancer in the DB",
+				loadBalancerID: "test_app_1",
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_1",
+					RoleName: v1Types.RoleOwner,
+				},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "rick.deckard456@test.com", Accepted: false},
+				},
+				userLBPermissions: map[string]v1Types.LoadBalancerPermissions{
+					"auth0|paul_atreides": {
+						RoleName: v1Types.RoleAdmin, Permissions: []v1Types.PermissionsEnum{
+							"read:endpoint", "write:endpoint",
+						},
+					},
+					"auth0|james_holden": {
+						RoleName: v1Types.RoleOwner, Permissions: []v1Types.PermissionsEnum{
+							"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint",
+						},
+					},
+				},
+			},
+			{
+				name:           "Should update a single unaccepted user to ADMIN for an existing load balancer in the DB",
+				loadBalancerID: "test_app_1",
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_8",
+					RoleName: v1Types.RoleAdmin,
+				},
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "rick.deckard456@test.com", Accepted: false},
+				},
+			},
+			{
+				name:           "Should fail if attempting to transfer ownership and the user has not accepted their invite",
+				loadBalancerID: "test_app_1",
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_8",
+					RoleName: v1Types.RoleOwner,
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot transfer ownership to user ID 'user_8' for account ID 'account_1' because the user has not accepted their invite"),
+			},
+			{
+				name:           "Should fail if load balancer ID not provided",
+				loadBalancerID: "",
+				err:            fmt.Errorf("no load balancer ID"),
+			},
+			{
+				name:           "Should fail if invalid role name provided",
+				loadBalancerID: "test_app_1",
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_8",
+					RoleName: v1Types.RoleName("wrong_one"),
+				},
+				err: fmt.Errorf("invalid role name"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
-				loadBalancerID: "sir_not_appearing_in_this_film",
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID sir_not_appearing_in_this_film"),
+				loadBalancerID: "im_not_here",
+				update: v1Types.UpdateUserAccess{
+					UserID:   "user_8",
+					RoleName: v1Types.RoleMember,
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID im_not_here"),
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				updatedLB, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, test.user)
+				_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.update)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					// Find the user in updatedLB.Users with the same email as test.user
-					for _, updatedUser := range updatedLB.Users {
-						if updatedUser.Email == test.user.Email {
-							// Update the UserID in test.loadBalancerUsers
-							lbUser := test.loadBalancerUsers[""]
-							lbUser.UserID = updatedUser.UserID
-							test.loadBalancerUsers[updatedUser.UserID] = lbUser
-							delete(test.loadBalancerUsers, "")
-							break
-						}
-					}
-					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(updatedLB.Users))
-
 					<-time.After(50 * time.Millisecond)
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+					if len(test.userLBPermissions) > 0 {
+						for providerUserID, userLBPermissions := range test.userLBPermissions {
+							permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerUserID))
+							ts.Equal(test.err, err)
+							ts.Equal(userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+
+							permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerUserID))
+							ts.Equal(test.err, err)
+							ts.Equal(userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
+						}
+					}
 				}
 			})
 		}
 	})
 
-	// ts.Run("Test_ActivateBlockchain", func() {
-	// 	tests := []struct {
-	// 		name         string
-	// 		blockchainID string
-	// 		active       bool
-	// 		err          error
-	// 	}{
-	// 		{
-	// 			name:         "Should set a blockchain's active field to false",
-	// 			blockchainID: "0001",
-	// 			active:       false,
-	// 		},
-	// 		{
-	// 			name:         "Should set a blockchain's active field to true",
-	// 			blockchainID: "0001",
-	// 			active:       true,
-	// 		},
-	// 		{
-	// 			name:         "Should fail if blockchain cannot be found",
-	// 			blockchainID: "5440",
-	// 			err:          fmt.Errorf("Response not OK. 500 Internal Server Error: blockchain not found for chain ID 5440"),
-	// 		},
-	// 	}
+	// // ts.Run("Test_ActivateBlockchain", func() {
+	// // 	tests := []struct {
+	// // 		name         string
+	// // 		blockchainID string
+	// // 		active       bool
+	// // 		err          error
+	// // 	}{
+	// // 		{
+	// // 			name:         "Should set a blockchain's active field to false",
+	// // 			blockchainID: "0001",
+	// // 			active:       false,
+	// // 		},
+	// // 		{
+	// // 			name:         "Should set a blockchain's active field to true",
+	// // 			blockchainID: "0001",
+	// // 			active:       true,
+	// // 		},
+	// // 		{
+	// // 			name:         "Should fail if blockchain cannot be found",
+	// // 			blockchainID: "5440",
+	// // 			err:          fmt.Errorf("Response not OK. 500 Internal Server Error: blockchain not found for chain ID 5440"),
+	// // 		},
+	// // 	}
 
-	// 	for _, test := range tests {
-	// 		ts.Run(test.name, func() {
-	// 			_, err := ts.client1.ActivateBlockchain(testCtx, test.blockchainID, test.active)
-	// 			ts.Equal(test.err, err)
-	// 			if test.err == nil {
-	// 				<-time.After(50 * time.Millisecond)
-	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
-	// 				ts.Equal(test.err, err)
-	// 				ts.Equal(test.active, blockchain.Active)
-	// 			}
-	// 		})
-	// 	}
-	// })
+	// // 	for _, test := range tests {
+	// // 		ts.Run(test.name, func() {
+	// // 			_, err := ts.client1.ActivateBlockchain(testCtx, test.blockchainID, test.active)
+	// // 			ts.Equal(test.err, err)
+	// // 			if test.err == nil {
+	// // 				<-time.After(50 * time.Millisecond)
+	// // 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
+	// // 				ts.Equal(test.err, err)
+	// // 				ts.Equal(test.active, blockchain.Active)
+	// // 			}
+	// // 		})
+	// // 	}
+	// // })
 
 	ts.Run("Test_UpdateLoadBalancer", func() {
 		tests := []struct {
@@ -996,215 +1096,88 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	// ts.Run("Test_UpdateBlockchain", func() {
-	// 	allowanceInt := 123
+	// // ts.Run("Test_UpdateBlockchain", func() {
+	// // 	allowanceInt := 123
 
-	// 	tests := []struct {
-	// 		name             string
-	// 		blockchainID     string
-	// 		blockchainUpdate v1Types.UpdateBlockchain
-	// 		expectedChain    v1Types.Blockchain
-	// 		err              error
-	// 	}{
-	// 		{
-	// 			name:         "Should update a single blockchain in the DB",
-	// 			blockchainID: "0001",
-	// 			blockchainUpdate: v1Types.UpdateBlockchain{
-	// 				Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
-	// 				Blockchain:        "pokt-mainnet-updated",
-	// 				Description:       "POKT Network Mainnet Updated",
-	// 				RequestTimeout:    66_654,
-	// 				ResultKey:         "updated-key",
-	// 				LogLimitBlocks:    100_010,
-	// 				Ticker:            "SUCH-WOW",
-	// 				BlockchainAliases: []string{"pokt-mainnet", "another-one"},
-	// 				EnforceResult:     "JSUN",
-	// 				Path:              "new-path",
-	// 				Body:              `{"new-body": "alliance"}`,
-	// 				Allowance:         &allowanceInt,
-	// 			},
-	// 			expectedChain: v1Types.Blockchain{
-	// 				ID:                "0001",
-	// 				Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
-	// 				Blockchain:        "pokt-mainnet-updated",
-	// 				Description:       "POKT Network Mainnet Updated",
-	// 				EnforceResult:     "JSUN",
-	// 				Ticker:            "SUCH-WOW",
-	// 				Path:              "new-path",
-	// 				BlockchainAliases: []string{"pokt-mainnet", "another-one"},
-	// 				LogLimitBlocks:    100_010,
-	// 				Active:            true,
-	// 				RequestTimeout:    66_654,
-	// 				// Redirects are handled via their own update process
-	// 				SyncCheckOptions: v1Types.SyncCheckOptions{
-	// 					Body:      `{"new-body": "alliance"}`,
-	// 					ResultKey: "updated-key",
-	// 					Allowance: 123,
-	// 				},
-	// 			},
-	// 		},
-	// 	}
+	// // 	tests := []struct {
+	// // 		name             string
+	// // 		blockchainID     string
+	// // 		blockchainUpdate v1Types.UpdateBlockchain
+	// // 		expectedChain    v1Types.Blockchain
+	// // 		err              error
+	// // 	}{
+	// // 		{
+	// // 			name:         "Should update a single blockchain in the DB",
+	// // 			blockchainID: "0001",
+	// // 			blockchainUpdate: v1Types.UpdateBlockchain{
+	// // 				Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
+	// // 				Blockchain:        "pokt-mainnet-updated",
+	// // 				Description:       "POKT Network Mainnet Updated",
+	// // 				RequestTimeout:    66_654,
+	// // 				ResultKey:         "updated-key",
+	// // 				LogLimitBlocks:    100_010,
+	// // 				Ticker:            "SUCH-WOW",
+	// // 				BlockchainAliases: []string{"pokt-mainnet", "another-one"},
+	// // 				EnforceResult:     "JSUN",
+	// // 				Path:              "new-path",
+	// // 				Body:              `{"new-body": "alliance"}`,
+	// // 				Allowance:         &allowanceInt,
+	// // 			},
+	// // 			expectedChain: v1Types.Blockchain{
+	// // 				ID:                "0001",
+	// // 				Altruist:          "https://test-update:test-password123@shared-test2.nodes.pokt.network:12345", // pragma: allowlist secret
+	// // 				Blockchain:        "pokt-mainnet-updated",
+	// // 				Description:       "POKT Network Mainnet Updated",
+	// // 				EnforceResult:     "JSUN",
+	// // 				Ticker:            "SUCH-WOW",
+	// // 				Path:              "new-path",
+	// // 				BlockchainAliases: []string{"pokt-mainnet", "another-one"},
+	// // 				LogLimitBlocks:    100_010,
+	// // 				Active:            true,
+	// // 				RequestTimeout:    66_654,
+	// // 				// Redirects are handled via their own update process
+	// // 				SyncCheckOptions: v1Types.SyncCheckOptions{
+	// // 					Body:      `{"new-body": "alliance"}`,
+	// // 					ResultKey: "updated-key",
+	// // 					Allowance: 123,
+	// // 				},
+	// // 			},
+	// // 		},
+	// // 	}
 
-	// 	for _, test := range tests {
-	// 		ts.Run(test.name, func() {
-	// 			updatedChain, err := ts.client1.UpdateBlockchain(testCtx, test.blockchainID, test.blockchainUpdate)
-	// 			ts.Equal(test.err, err)
-	// 			if err == nil {
-	// 				<-time.After(50 * time.Millisecond)
-	// 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, updatedChain.ID)
-	// 				ts.NoError(err)
-	// 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-	// 				ts.Equal(test.expectedChain.Description, blockchain.Description)
-	// 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-	// 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-	// 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-	// 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-	// 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-	// 				ts.Equal(test.expectedChain.Path, blockchain.Path)
-	// 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// // 	for _, test := range tests {
+	// // 		ts.Run(test.name, func() {
+	// // 			updatedChain, err := ts.client1.UpdateBlockchain(testCtx, test.blockchainID, test.blockchainUpdate)
+	// // 			ts.Equal(test.err, err)
+	// // 			if err == nil {
+	// // 				<-time.After(50 * time.Millisecond)
+	// // 				blockchain, err := ts.client1.GetBlockchainByID(testCtx, updatedChain.ID)
+	// // 				ts.NoError(err)
+	// // 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// // 				ts.Equal(test.expectedChain.Description, blockchain.Description)
+	// // 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// // 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// // 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// // 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// // 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// // 				ts.Equal(test.expectedChain.Path, blockchain.Path)
+	// // 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
 
-	// 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
-	// 				ts.NoError(err)
-	// 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
-	// 				ts.Equal(test.expectedChain.Description, blockchain.Description)
-	// 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
-	// 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
-	// 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
-	// 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
-	// 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
-	// 				ts.Equal(test.expectedChain.Path, blockchain.Path)
-	// 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
-	// 			}
-	// 		})
-	// 	}
-	// })
-
-	ts.Run("Test_UpdateLoadBalancerUserRole", func() {
-		tests := []struct {
-			name              string
-			loadBalancerID    string
-			providerUserID    string
-			userID            string
-			update            v1Types.UpdateUserAccess
-			loadBalancerUsers []v1Types.UserAccess
-			userLBPermissions v1Types.LoadBalancerPermissions
-			err               error
-		}{
-			{
-				name:           "Should update a single user for an existing load balancer in the DB",
-				loadBalancerID: "test_app_1",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_8",
-					RoleName: v1Types.RoleMember,
-				},
-				loadBalancerUsers: []v1Types.UserAccess{
-					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1Types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
-				},
-			},
-			{
-				name:           "Should transfer ownership for an existing load balancer in the DB",
-				loadBalancerID: "test_app_1",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_2",
-					Email:    "james.holden123@test.com",
-					RoleName: v1Types.RoleOwner,
-				},
-				loadBalancerUsers: []v1Types.UserAccess{
-					{RoleName: v1Types.RoleAdmin, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1Types.RoleOwner, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1Types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
-				},
-			},
-			{
-				name:           "Should transfer ownership back to original owner for an existing load balancer in the DB",
-				loadBalancerID: "test_app_1",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_1",
-					Email:    "paul.atreides456@test.com",
-					RoleName: v1Types.RoleOwner,
-				},
-				loadBalancerUsers: []v1Types.UserAccess{
-					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1Types.RoleMember, UserID: "user_8", Email: "", Accepted: false},
-				},
-			},
-			{
-				name:           "Should update a single unaccepted user to ADMIN for an existing load balancer in the DB",
-				loadBalancerID: "test_app_1",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_8",
-					RoleName: v1Types.RoleAdmin,
-				},
-				loadBalancerUsers: []v1Types.UserAccess{
-					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "", Accepted: false},
-				},
-			},
-			{
-				name:           "Should fail if attempting to transfer ownership and the user has not accepted their invite",
-				loadBalancerID: "test_app_1",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_8",
-					Email:    "paul.atreides456@test.com",
-					RoleName: v1Types.RoleOwner,
-				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot transfer ownership to user ID 'user_8' for account ID 'account_1' because the user has not accepted their invite"),
-			},
-			{
-				name:           "Should fail if load balancer ID not provided",
-				loadBalancerID: "",
-				err:            fmt.Errorf("no load balancer ID"),
-			},
-			{
-				name:           "Should fail if invalid role name provided",
-				loadBalancerID: "test_app_1",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_8",
-					RoleName: v1Types.RoleName("wrong_one"),
-				},
-				err: fmt.Errorf("invalid role name"),
-			},
-			{
-				name:           "Should fail if load balancer cannot be found",
-				loadBalancerID: "im_not_here",
-				update: v1Types.UpdateUserAccess{
-					UserID:   "user_8",
-					RoleName: v1Types.RoleMember,
-				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID im_not_here"),
-			},
-		}
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.update)
-				ts.Equal(test.err, err)
-				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
-					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
-
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
-					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
-
-					if test.providerUserID != "" {
-						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
-						ts.Equal(test.err, err)
-						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
-
-						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
-						ts.Equal(test.err, err)
-						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
-					}
-				}
-			})
-		}
-	})
+	// // 				blockchain, err = ts.client2.GetBlockchainByID(testCtx, updatedChain.ID)
+	// // 				ts.NoError(err)
+	// // 				ts.Equal(test.expectedChain.Blockchain, blockchain.Blockchain)
+	// // 				ts.Equal(test.expectedChain.Description, blockchain.Description)
+	// // 				ts.Equal(test.expectedChain.RequestTimeout, blockchain.RequestTimeout)
+	// // 				ts.Equal(test.expectedChain.LogLimitBlocks, blockchain.LogLimitBlocks)
+	// // 				ts.Equal(test.expectedChain.Ticker, blockchain.Ticker)
+	// // 				ts.Equal(test.expectedChain.BlockchainAliases, blockchain.BlockchainAliases)
+	// // 				ts.Equal(test.expectedChain.EnforceResult, blockchain.EnforceResult)
+	// // 				ts.Equal(test.expectedChain.Path, blockchain.Path)
+	// // 				ts.Equal(test.expectedChain.SyncCheckOptions, blockchain.SyncCheckOptions)
+	// // 			}
+	// // 		})
+	// // 	}
+	// // })
 
 	ts.Run("Test_AcceptLoadBalancerUser", func() {
 		tests := []struct {
@@ -1220,9 +1193,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				loadBalancerID: "test_app_1",
 				providerUserID: "auth0|rick_deckard",
 				loadBalancerUsers: []v1Types.UserAccess{
-					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "", Accepted: true},
-					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "", Accepted: true},
-					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "", Accepted: true},
+					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_8", Email: "rick.deckard456@test.com", Accepted: true},
 				},
 				userLBPermissions: v1Types.LoadBalancerPermissions{
 					RoleName:    v1Types.RoleAdmin,
@@ -1321,6 +1294,159 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
+	ts.Run("Test_CreateLoadBalancerUser", func() {
+		tests := []struct {
+			name              string
+			loadBalancerID    string
+			user              v1Types.UserAccess
+			loadBalancerUsers map[string]v1Types.UserAccess
+			err               error
+		}{
+			{
+				name:           "Should add a single new user to an existing load balancer in the DB",
+				loadBalancerID: "test_app_1",
+				user: v1Types.UserAccess{
+					RoleName: v1Types.RoleMember,
+					Email:    "member_new@test.com",
+				},
+				loadBalancerUsers: map[string]v1Types.UserAccess{
+					"user_1": {UserID: "user_1", RoleName: v1Types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
+					"user_2": {UserID: "user_2", RoleName: v1Types.RoleAdmin, Email: "paul.atreides456@test.com", Accepted: true},
+					"user_8": {UserID: "user_8", RoleName: v1Types.RoleAdmin, Email: "rick.deckard456@test.com", Accepted: true},
+					// ID dynamically generated on creation
+					"": {UserID: "", RoleName: v1Types.RoleMember, Email: "member_new@test.com", Accepted: false},
+				},
+			},
+			{
+				name:           "Should add a single existing user to an existing load balancer in the DB",
+				loadBalancerID: "test_app_2",
+				user: v1Types.UserAccess{
+					RoleName: v1Types.RoleMember,
+					Email:    "frodo.baggins123@test.com",
+				},
+				loadBalancerUsers: map[string]v1Types.UserAccess{
+					"user_3": {UserID: "user_3", RoleName: v1Types.RoleOwner, Email: "ellen.ripley789@test.com", Accepted: true},
+					"user_4": {UserID: "user_4", RoleName: v1Types.RoleMember, Email: "ulfric.stormcloak123@test.com", Accepted: true},
+					"user_9": {UserID: "user_9", RoleName: v1Types.RoleMember, Email: "tyrion.lannister789@test.com", Accepted: false},
+					"user_2": {UserID: "user_2", RoleName: v1Types.RoleMember, Email: "paul.atreides456@test.com", Accepted: true},
+					// ID dynamically generated on creation
+					"": {UserID: "", RoleName: v1Types.RoleMember, Email: "frodo.baggins123@test.com", Accepted: false},
+				},
+			},
+			{
+				name:           "Should fail if load balancer cannot be found",
+				loadBalancerID: "sir_not_appearing_in_this_film",
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID sir_not_appearing_in_this_film"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				updatedLB, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, test.user)
+				ts.Equal(test.err, err)
+				if test.err == nil {
+					// Find the user in updatedLB.Users with the same email as test.user
+					for _, updatedUser := range updatedLB.Users {
+						if updatedUser.Email == test.user.Email {
+							// Update the UserID in test.loadBalancerUsers
+							lbUser := test.loadBalancerUsers[""]
+							lbUser.UserID = updatedUser.UserID
+							test.loadBalancerUsers[updatedUser.UserID] = lbUser
+							delete(test.loadBalancerUsers, "")
+							break
+						}
+					}
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(updatedLB.Users))
+
+					<-time.After(50 * time.Millisecond)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					ts.Equal(test.err, err)
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					ts.Equal(test.err, err)
+					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+				}
+			})
+		}
+	})
+
+	ts.Run("Test_DeleteLoadBalancerUser", func() {
+		tests := []struct {
+			name                       string
+			loadBalancerID             string
+			userID, providerUserID     string
+			loadBalancerUsers          []v1Types.UserAccess
+			lbsAfterDelete             int
+			err, permissionsFetchError error
+		}{
+			{
+				name:           "Should remove a single user from an existing load balancer in the DB",
+				loadBalancerID: "test_app_3",
+				userID:         "user_7",
+				providerUserID: "auth0|frodo_baggins",
+				loadBalancerUsers: []v1Types.UserAccess{
+					{RoleName: v1Types.RoleOwner, UserID: "user_5", Email: "chrisjen.avasarala1@test.com", Accepted: true},
+					{RoleName: v1Types.RoleAdmin, UserID: "user_6", Email: "amos.burton789@test.com", Accepted: true},
+					{RoleName: v1Types.RoleMember, UserID: "user_10", Email: "daenerys.targaryen123@test.com", Accepted: false},
+				},
+				lbsAfterDelete:        1,
+				permissionsFetchError: fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID user_7"),
+			},
+			{
+				name:           "Should fail if load balancer cannot be found",
+				loadBalancerID: "why_am_i_not_a_load_balancer",
+				userID:         "user_9",
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID why_am_i_not_a_load_balancer"),
+			},
+			{
+				name:           "Should fail if load balancer ID not provided",
+				loadBalancerID: "",
+				userID:         "user_9",
+				err:            fmt.Errorf("no load balancer ID"),
+			},
+			{
+				name:           "Should fail if user ID not provided",
+				loadBalancerID: "test_app_1",
+				userID:         "",
+				err:            fmt.Errorf("no user ID"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
+				ts.Equal(test.err, err)
+				if test.err == nil {
+					<-time.After(50 * time.Millisecond)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					ts.Equal(test.err, err)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					ts.Equal(test.err, err)
+					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
+
+					// user should have been removed from the user permissions in the cache
+					_, err = ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
+					ts.Equal(test.permissionsFetchError, err)
+
+					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
+					ts.Equal(test.permissionsFetchError, err)
+
+					// user's LB should have been removed from the user's LBs map in the cache
+					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
+					ts.NoError(err)
+					ts.Len(lbs, test.lbsAfterDelete)
+
+					lbs, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
+					ts.NoError(err)
+					ts.Len(lbs, test.lbsAfterDelete)
+				}
+			})
+		}
+	})
+
 	ts.Run("Test_RemoveLoadBalancer", func() {
 		tests := []struct {
 			name           string
@@ -1353,89 +1479,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
 					ts.Equal("Response not OK. 404 Not Found: portal app not found for load balancer ID test_app_3", err.Error())
 					ts.Nil(loadBalancer)
-				}
-			})
-		}
-	})
-
-	ts.Run("Test_DeleteLoadBalancerUser", func() {
-		tests := []struct {
-			name                       string
-			loadBalancerID             string
-			userID, providerUserID     string
-			loadBalancerUsers          []v1Types.UserAccess
-			testPendingUsers           []v1Types.UserAccess
-			err, permissionsFetchError error
-		}{
-			{
-				name:           "Should remove a single user from an existing load balancer in the DB",
-				loadBalancerID: "test_app_1",
-				userID:         "user_8",
-				providerUserID: "auth0|rick_deckard",
-				loadBalancerUsers: []v1Types.UserAccess{
-					{RoleName: v1Types.RoleOwner, UserID: "user_1", Email: "james.holden123@test.com", Accepted: true},
-					{RoleName: v1Types.RoleAdmin, UserID: "user_2", Email: "paul.atreides456@test.com", Accepted: true},
-				},
-			},
-			{
-				name:           "Should fail if load balancer cannot be found",
-				loadBalancerID: "why_am_i_not_a_load_balancer",
-				userID:         "user_9",
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID why_am_i_not_a_load_balancer"),
-			},
-			{
-				name:           "Should fail if load balancer ID not provided",
-				loadBalancerID: "",
-				userID:         "user_9",
-				err:            fmt.Errorf("no load balancer ID"),
-			},
-			{
-				name:           "Should fail if user ID not provided",
-				loadBalancerID: "test_app_1",
-				userID:         "",
-				err:            fmt.Errorf("no user ID"),
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				if len(test.testPendingUsers) != 0 {
-					var updatedLB *v1Types.LoadBalancer
-					for _, user := range test.testPendingUsers {
-						lb, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, user)
-						ts.NoError(err)
-						updatedLB = lb
-					}
-					ts.Len(updatedLB.Users, 3+len(test.testPendingUsers))
-				}
-
-				_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
-				ts.Equal(test.err, err)
-				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
-					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
-
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
-					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
-
-					// user should have been removed from the user permissions in the cache
-					_, err = ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
-					ts.Equal(test.permissionsFetchError, err)
-
-					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
-					ts.Equal(test.permissionsFetchError, err)
-
-					// user's LB should have been removed from the user's LBs map in the cache
-					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
-					ts.NoError(err)
-					ts.Len(lbs, 0)
-
-					lbs, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
-					ts.NoError(err)
-					ts.Len(lbs, 0)
 				}
 			})
 		}
@@ -2119,6 +2162,28 @@ type phdE2EWriteTestSuite struct {
 	suite.Suite
 	client1, client2 dbclient.IDBClient
 }
+
+// func (ts *phdE2EWriteTestSuite) SetupTest() {
+// 	ts.resetDatabase()
+// 	ts.resetCache("http://localhost:8080/reset_cache")
+// 	ts.resetCache("http://localhost:8081/reset_cache")
+// }
+
+// func (ts *phdE2EWriteTestSuite) resetDatabase() {
+// 	cmd := exec.Command("bash", "-c", "cat ./testdata/reset_test_db.sql | docker exec -i portal-db psql -U postgres -d postgres")
+// 	err := cmd.Run()
+// 	if err != nil {
+// 		ts.T().Errorf("failed to reset database: %v", err)
+// 	}
+// }
+
+// func (ts *phdE2EWriteTestSuite) resetCache(url string) {
+// 	cmd := exec.Command("bash", "-c", "curl -X POST -H 'authorization: test_api_key_6789' "+url)
+// 	err := cmd.Run()
+// 	if err != nil {
+// 		ts.T().Errorf("failed to reset cache for url %s: %v", url, err)
+// 	}
+// }
 
 func initDBClient(ts DBClientInitializer) error {
 	baseConfig := dbclient.Config{

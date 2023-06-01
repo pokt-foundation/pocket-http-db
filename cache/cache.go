@@ -418,6 +418,15 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 	accountID := accountUser.AccountID
 	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
+	// Save incoming portal app ID and user role
+	var incomingPortalAppID types.PortalAppID
+	var incomingPortalAppRole types.RoleName
+	for portalAppID, role := range accountUser.PortalAppRoles {
+		incomingPortalAppID = portalAppID
+		incomingPortalAppRole = role
+		break
+	}
+
 	// Add user to permissions map if they have accepted their invitation
 	if accountUser.Accepted {
 		userPermissions, ok := c.userPermissions[accountUser.UserID]
@@ -429,8 +438,21 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 			c.userPermissions[accountUser.UserID] = userPermissions
 		}
 
-		for portalAppID, userRole := range accountUser.PortalAppRoles {
-			_, err := userPermissions.UpsertPermissions(portalAppID, userRole)
+		switch accountUser.Owner {
+		// If incoming account user is owner, set permissions for all account's portal apps
+		case true:
+			if account, ok := c.accounts[accountID]; ok {
+				for portalAppID := range account.PortalApps {
+					_, err := userPermissions.UpsertPermissions(portalAppID, types.RoleOwner)
+					if err != nil {
+						fmt.Printf("error upserting user permissions: %v\n", err)
+					}
+				}
+			}
+
+		// If incoming account user is not owner only set permissions for incoming portal app
+		default:
+			_, err := userPermissions.UpsertPermissions(incomingPortalAppID, incomingPortalAppRole)
 			if err != nil {
 				fmt.Printf("error upserting user permissions: %v\n", err)
 			}
@@ -448,11 +470,30 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 			account.Users = make(map[types.UserID]types.AccountUserAccess)
 		}
 
+		// Set values from existing app to avoid overwriting cache
 		if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
 			accountUser.Email = existingAccountUser.Email
+			accountUser.PortalAppRoles = existingAccountUser.PortalAppRoles
 		}
 
 		account.Users[accountUser.UserID] = accountUser
+		if user, ok := account.Users[accountUser.UserID]; ok {
+			if user.PortalAppRoles == nil {
+				user.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
+			}
+
+			switch accountUser.Owner {
+			// If incoming account user is owner, set owner for all account's portal apps
+			case true:
+				for portalAppID := range account.PortalApps {
+					user.PortalAppRoles[portalAppID] = types.RoleOwner
+				}
+
+			// If incoming account user is not owner only set role for incoming portal app
+			default:
+				user.PortalAppRoles[incomingPortalAppID] = incomingPortalAppRole
+			}
+		}
 
 		if _, ok := c.accountsByUserID[accountUser.UserID]; !ok {
 			c.accountsByUserID[accountUser.UserID] = make(map[types.AccountID]*types.Account)
@@ -488,6 +529,10 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	accountID := accountUser.AccountID
 	userID := accountUser.UserID
 	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
+	if accountUser.Owner {
+		return
+	}
 
 	// Remove user permissions for each PortalApp in the account
 	if userPermissions, ok := c.userPermissions[userID]; ok {
@@ -595,10 +640,21 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	c.portalApps[portalApp.ID] = &portalApp
 
 	if account, ok := c.accounts[portalApp.AccountID]; ok {
+		// Assign new app to account's PortalApps map
 		if account.PortalApps == nil {
 			account.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
 		}
 		account.PortalApps[portalApp.ID] = &portalApp
+
+		// Set account owner to OWNER role for new app
+		if ownerID, err := account.GetOwnerID(); err == nil {
+			if owner, ok := account.Users[ownerID]; ok {
+				if owner.PortalAppRoles == nil {
+					owner.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
+				}
+				owner.PortalAppRoles[portalApp.ID] = types.RoleOwner
+			}
+		}
 	}
 }
 
@@ -914,8 +970,8 @@ func (c *Cache) addCheck(check types.Check) {
 // upsertUser updates or inserts user
 // TODO update more fields on the account user when users creation logic updated
 func (c *Cache) upsertUser(user types.User) {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
 
 	c.pendingUsers[user.ID] = user
 
