@@ -57,6 +57,196 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	})
 }
 
+/* ---------- V2 Chain Handler Method Unit Tests ---------- */
+
+func TestRouter_CreateNewChainAndGigastakeApps(t *testing.T) {
+	tests := []struct {
+		name             string
+		newChainInput    types.NewChainInput
+		expectedStatus   int
+		expectedNewChain *types.NewChainInput
+	}{
+		{
+			name:             "Should create a new chain and its GigastakeApps",
+			newChainInput:    testdata.TestCreateNewChainInput,
+			expectedStatus:   http.StatusOK,
+			expectedNewChain: &testdata.TestCreateNewChainInput,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteChainAndGigastakeApps", mock.Anything, mock.Anything, mock.Anything).Return(test.expectedNewChain, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			newChainInputBytes, err := json.Marshal(test.newChainInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/chain", bytes.NewBuffer(newChainInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var chainResp *types.NewChainInput
+			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
+			c.NoError(err)
+			c.Equal(test.expectedNewChain, chainResp)
+		})
+	}
+}
+
+func TestRouter_CreateNewGigastakeApp(t *testing.T) {
+	tests := []struct {
+		name                 string
+		gigastakeAppInput    types.GigastakeApp
+		expectedStatus       int
+		expectedGigastakeApp *types.GigastakeApp // assume you have this type that matches the output structure
+	}{
+		{
+			name:                 "Should create a new GigastakeApp",
+			gigastakeAppInput:    testdata.TestCreateGigastakeApp,
+			expectedStatus:       http.StatusOK,
+			expectedGigastakeApp: &testdata.TestCreateGigastakeApp,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteGigastakeApp", mock.Anything, mock.Anything, mock.Anything).Return(test.expectedGigastakeApp, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			gigastakeAppInputBytes, err := json.Marshal(test.gigastakeAppInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/chain/gigastake", bytes.NewBuffer(gigastakeAppInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var gigastakeAppResp *types.GigastakeApp
+			err = json.Unmarshal(rr.Body.Bytes(), &gigastakeAppResp)
+			c.NoError(err)
+			c.Equal(test.expectedGigastakeApp, gigastakeAppResp)
+		})
+	}
+}
+
+func TestRouter_UpdateChain(t *testing.T) {
+	tests := []struct {
+		name           string
+		chainUpdate    types.Chain
+		expectedStatus int
+		expectedChain  *types.Chain
+	}{
+		{
+			name:           "Should update a chain",
+			chainUpdate:    testdata.UpdateChainOne,
+			expectedStatus: http.StatusOK,
+			expectedChain:  &testdata.UpdateChainOne,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateChain", mock.Anything, test.chainUpdate, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			chainUpdateBytes, err := json.Marshal(test.chainUpdate)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/chain", bytes.NewBuffer(chainUpdateBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var chainResp *types.Chain
+			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
+			c.NoError(err)
+			c.Equal(test.expectedChain, chainResp)
+		})
+	}
+}
+
+func TestRouter_ActivateChain(t *testing.T) {
+	tests := []struct {
+		name           string
+		chainID        types.RelayChainID
+		active         bool
+		expectedStatus int
+	}{
+		{
+			name:           "Should activate a chain",
+			chainID:        "test_chain_id",
+			active:         true,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Should deactivate a chain",
+			chainID:        "0064",
+			active:         false,
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	c := require.New(t)
+	router, err := newTestRouter(t)
+	c.NoError(err)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("SetChainActiveStatus", mock.Anything, test.chainID, test.active, mock.Anything).Return(test.active, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			activeBytes, err := json.Marshal(test.active)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/chain/%s/activate", test.chainID), bytes.NewBuffer(activeBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var activated bool
+			err = json.Unmarshal(rr.Body.Bytes(), &activated)
+			c.NoError(err)
+			c.Equal(test.active, activated)
+		})
+	}
+}
+
+/* ---------- V1 Unit Tests ---------- */
+
 func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -573,28 +763,6 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 				c.NoError(err)
 				c.Equal(test.expectedPortalApp, appResp)
 			}
-
-			// TODO - update this if/when listener channel to router methods added
-			// if test.expectAccount {
-			// 	var lbAccount types.Account
-			// 	for _, account := range router.Cache.GetAccounts(cache.Options{}) {
-			// 		if account.LegacyLoadBalancerID == testdata.LegacyLoadBalancer.ID {
-			// 			lbAccount = account
-			// 			break
-			// 		}
-			// 	}
-			// 	c.True(lbAccount.ID != 0)
-
-			// 	account := router.Cache.GetAccount(lbAccount.ID)
-			// 	c.NotEmpty(account.ID)
-			// 	c.Equal(test.loadBalancer.ID, string(account.ID))
-			// }
-
-			// if test.expectPortalApp {
-			// 	portalApp := router.Cache.GetPortalApp(types.PortalAppID(test.loadBalancer.Applications[0].ID))
-			// 	c.NotEmpty(portalApp.ID)
-			// 	c.Equal(test.loadBalancer.Applications[0].ID, string(portalApp.ID))
-			// }
 		})
 	}
 }
@@ -647,51 +815,6 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 		})
 	}
 }
-
-// func TestRouter_CreateRedirect(t *testing.T) {
-// 	tests := []struct {
-// 		name             string
-// 		redirect         v1Types.Redirect
-// 		expectedStatus   int
-// 		expectedResponse v1Types.Redirect
-// 	}{
-// 		{
-// 			name:             "Should create a new redirect",
-// 			redirect:         testdata.LegacyRedirect,
-// 			expectedStatus:   http.StatusOK,
-// 			expectedResponse: testdata.LegacyRedirect,
-// 		},
-// 	}
-
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			c := require.New(t)
-
-// 			router, err := newTestRouter(t)
-// 			c.NoError(err)
-
-// 			writerMock := driver.NewMockDriver(t)
-// 			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-// 			router.writer = writerMock
-
-// 			rr := httptest.NewRecorder()
-
-// 			redirectBytes, err := json.Marshal(test.redirect)
-// 			c.NoError(err)
-
-// 			req, err := http.NewRequest(http.MethodPost, "/v1/blockchain/redirect", bytes.NewBuffer(redirectBytes))
-// 			c.NoError(err)
-
-// 			router.Router.ServeHTTP(rr, req)
-// 			c.Equal(test.expectedStatus, rr.Code)
-
-// 			var redirectResp v1Types.Redirect
-// 			err = json.Unmarshal(rr.Body.Bytes(), &redirectResp)
-// 			c.NoError(err)
-// 			c.Equal(test.expectedResponse, redirectResp)
-// 		})
-// 	}
-// }
 
 func TestRouter_CreatePortalUser(t *testing.T) {
 	tests := []struct {
@@ -1080,113 +1203,6 @@ func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
 	}
 }
 
-// func TestRouter_UpdateBlockchain(t *testing.T) {
-// 	tests := []struct {
-// 		name             string
-// 		blockchainID     string
-// 		updateBlockchain v1Types.UpdateBlockchain
-// 		expectedStatus   int
-// 	}{
-// 		{
-// 			name:             "Should update blockchain",
-// 			blockchainID:     "0001",
-// 			updateBlockchain: testdata.LegacyUpdateBlockchain,
-// 			expectedStatus:   http.StatusOK,
-// 		},
-// 	}
-
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			c := require.New(t)
-
-// 			router, err := newTestRouter(t)
-// 			c.NoError(err)
-
-// 			writerMock := driver.NewMockDriver(t)
-// 			writerMock.On("UpdateChain", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-// 			router.writer = writerMock
-
-// 			rr := httptest.NewRecorder()
-
-// 			updateBlockchainBytes, err := json.Marshal(test.updateBlockchain)
-// 			c.NoError(err)
-
-// 			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v1/blockchain/%s", test.blockchainID), bytes.NewBuffer(updateBlockchainBytes))
-// 			c.NoError(err)
-
-// 			router.Router.ServeHTTP(rr, req)
-// 			c.Equal(test.expectedStatus, rr.Code)
-
-// 			var updatedChainResp v1Types.Blockchain
-// 			err = json.Unmarshal(rr.Body.Bytes(), &updatedChainResp)
-// 			c.NoError(err)
-
-// 			c.Equal(test.updateBlockchain.Blockchain, updatedChainResp.Blockchain)
-// 			c.Equal(test.updateBlockchain.Description, updatedChainResp.Description)
-// 			c.Equal(test.updateBlockchain.EnforceResult, updatedChainResp.EnforceResult)
-// 			c.Equal(test.updateBlockchain.Path, updatedChainResp.Path)
-// 			c.Equal(test.updateBlockchain.Ticker, updatedChainResp.Ticker)
-// 			c.ElementsMatch(test.updateBlockchain.BlockchainAliases, updatedChainResp.BlockchainAliases)
-// 			c.Equal(test.updateBlockchain.Body, updatedChainResp.SyncCheckOptions.Body)
-// 			c.Equal(test.updateBlockchain.ResultKey, updatedChainResp.SyncCheckOptions.ResultKey)
-// 			c.Equal(*test.updateBlockchain.Allowance, updatedChainResp.SyncCheckOptions.Allowance)
-// 			c.Equal(test.updateBlockchain.Altruist, updatedChainResp.Altruist)
-// 		})
-// 	}
-// }
-
-// func TestRouter_ActivateBlockchain(t *testing.T) {
-// 	tests := []struct {
-// 		name           string
-// 		blockchainID   string
-// 		active         bool
-// 		expectedStatus int
-// 	}{
-// 		{
-// 			name:           "Should deactivate blockchain",
-// 			blockchainID:   "0001",
-// 			active:         false,
-// 			expectedStatus: http.StatusOK,
-// 		},
-// 		{
-// 			name:           "Should activate blockchain",
-// 			blockchainID:   "0001",
-// 			active:         true,
-// 			expectedStatus: http.StatusOK,
-// 		},
-// 	}
-
-// 	for _, test := range tests {
-// 		t.Run(test.name, func(t *testing.T) {
-// 			c := require.New(t)
-
-// 			router, err := newTestRouter(t)
-// 			c.NoError(err)
-
-// 			writerMock := driver.NewMockDriver(t)
-// 			writerMock.On("SetChainActiveStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.active, nil).Once()
-// 			router.writer = writerMock
-
-// 			rr := httptest.NewRecorder()
-
-// 			activeBytes, err := json.Marshal(test.active)
-// 			c.NoError(err)
-
-// 			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v1/blockchain/%s/activate", test.blockchainID), bytes.NewBuffer(activeBytes))
-// 			c.NoError(err)
-
-// 			router.Router.ServeHTTP(rr, req)
-// 			c.Equal(test.expectedStatus, rr.Code)
-
-// 			var activatedResp bool
-// 			err = json.Unmarshal(rr.Body.Bytes(), &activatedResp)
-// 			c.NoError(err)
-
-// 			c.Equal(test.active, activatedResp)
-// 		})
-// 	}
-// }
-
 /* ---------- Test Utils ---------- */
 
 func convertApplicationsToMap(apps []v1Types.Application) map[string]*v1Types.Application {
@@ -1237,7 +1253,7 @@ var (
 				ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
 				ApplicationSignature: "test_1dc39a2e5a84a35bf030969a0b3231f7",
 				ClientPublicKey:      "test_89a3af6a587aec02cfade6f5000424c2",
-				PrivateKey:           "test_11b8d394ca331d7c7a71ca1896d630f6",
+				PrivateKey:           "",
 				Version:              "0.0.1",
 			},
 			GatewaySettings: v1Types.GatewaySettings{
@@ -1277,7 +1293,7 @@ var (
 				ApplicationPublicKey: "test_8237c72345f12d1b1a8b64a1a7f66fa4",
 				ApplicationSignature: "test_f48d33b30ddaf60a1e5bb50d2ba8da5a",
 				ClientPublicKey:      "test_04c71d90a92f40416b6f1d7d8af17e02",
-				PrivateKey:           "test_2e83c836a29b423a47d8e18c779fd422",
+				PrivateKey:           "",
 				Version:              "0.0.1",
 			},
 			Limit: v1Types.AppLimit{
@@ -1315,7 +1331,7 @@ var (
 				ApplicationPublicKey: "test_f608500e4fe3e09014fe2411b4a560b5",
 				ApplicationSignature: "test_c3cd8be16ba32e24dd49fdb0247fc9b8",
 				ClientPublicKey:      "test_328a9cf1b35085eeaa669aa858f6fba9",
-				PrivateKey:           "test_8663e187c19f3c6e27317eab4ed6d7d5",
+				PrivateKey:           "",
 				Version:              "0.0.1",
 			},
 			Limit: v1Types.AppLimit{
@@ -1341,7 +1357,7 @@ var (
 				ApplicationPublicKey: "test_f6a5d8690ecb669865bd752b7796a920",
 				ApplicationSignature: "test_cf05cf9bb26111c548e88fb6157af708",
 				ClientPublicKey:      "test_6ee5ea553408f0895923fd1569dc5072",
-				PrivateKey:           "test_838d29d61a65401f7d56d084cb6e4783",
+				PrivateKey:           "",
 				Version:              "0.0.1",
 			},
 			Limit: v1Types.AppLimit{
@@ -1366,7 +1382,7 @@ var (
 				ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
 				ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
 				ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
-				PrivateKey:           "test_0a6df2b97ae546da83f1a90b9b0c1e83",
+				PrivateKey:           "",
 				Version:              "0.0.1",
 			},
 			CreatedAt: testdata.MockTimestamp,
@@ -1380,7 +1396,7 @@ var (
 				ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
 				ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
 				ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
-				PrivateKey:           "test_86b9e8e14a784db8a0a4c2ee532b6a12",
+				PrivateKey:           "",
 				Version:              "0.0.1",
 			},
 			CreatedAt: testdata.MockTimestamp,
@@ -1394,7 +1410,7 @@ var (
 				ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
 				ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
 				ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
-				PrivateKey:           "test_25a9063b3b7b42148dc17033fbbab5c6",
+				PrivateKey:           "",
 				Version:              "0.0.1",
 			},
 			CreatedAt: testdata.MockTimestamp,
@@ -1536,7 +1552,7 @@ var (
 						ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
 						ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
 						ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
-						PrivateKey:           "test_0a6df2b97ae546da83f1a90b9b0c1e83",
+						PrivateKey:           "",
 						Version:              "0.0.1",
 					},
 					CreatedAt: testdata.MockTimestamp,
@@ -1558,7 +1574,7 @@ var (
 						ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
 						ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
 						ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
-						PrivateKey:           "test_86b9e8e14a784db8a0a4c2ee532b6a12",
+						PrivateKey:           "",
 						Version:              "0.0.1",
 					},
 					CreatedAt: testdata.MockTimestamp,
@@ -1580,7 +1596,7 @@ var (
 						ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
 						ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
 						ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
-						PrivateKey:           "test_25a9063b3b7b42148dc17033fbbab5c6",
+						PrivateKey:           "",
 						Version:              "0.0.1",
 					},
 					CreatedAt: testdata.MockTimestamp,

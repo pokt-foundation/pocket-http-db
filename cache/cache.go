@@ -62,7 +62,8 @@ type (
 	}
 
 	Options struct {
-		IncludeDeleted bool
+		IncludeDeleted,
+		ExcludeChainGigastakeApps bool
 	}
 )
 
@@ -796,6 +797,10 @@ func (c *Cache) GetChain(chainID types.RelayChainID, options Options) types.Chai
 		return types.Chain{}
 	}
 
+	if options.ExcludeChainGigastakeApps {
+		return chain.ClearGigastakeApps()
+	}
+
 	return *chain
 }
 
@@ -808,7 +813,13 @@ func (c *Cache) GetChains(options Options) []types.Chain {
 
 	for _, chain := range c.chains {
 		if options.IncludeDeleted || !chain.Deleted {
-			chainsToReturn = append(chainsToReturn, *chain)
+			chainToReturn := *chain
+
+			if options.ExcludeChainGigastakeApps {
+				chainToReturn = chainToReturn.ClearGigastakeApps()
+			}
+
+			chainsToReturn = append(chainsToReturn, chainToReturn)
 		}
 	}
 

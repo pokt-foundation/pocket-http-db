@@ -60,11 +60,16 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/", rt.HealthCheck).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/reset_cache", rt.ResetCache).Methods(http.MethodPost)
 
-	// TODO update Blockchain create/update endpoints to /v2
-	// rt.Router.HandleFunc("/v1/blockchain", rt.CreateBlockchain).Methods(http.MethodPost)
-	// rt.Router.HandleFunc("/v1/blockchain/{id}", rt.UpdateBlockchain).Methods(http.MethodPut)
-	// rt.Router.HandleFunc("/v1/blockchain/{id}/activate", rt.ActivateBlockchain).Methods(http.MethodPost)
-	// rt.Router.HandleFunc("/v1/blockchain/redirect", rt.CreateRedirect).Methods(http.MethodPost)
+	/* ----- V2 Endpoints ----- */
+	// V2 endpoints are for the new DB schema and access the cache and V2 structs directly.
+
+	rt.Router.HandleFunc("/v2/chain", rt.CreateNewChainAndGigastakeApps).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/chain/gigastake", rt.CreateNewGigastakeApp).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/chain", rt.UpdateChain).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v2/chain/{id}/activate", rt.ActivateChain).Methods(http.MethodPut)
+
+	/* ----- V1 Endpoints ----- */
+	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
 
 	rt.Router.HandleFunc("/v1/blockchain", rt.GetBlockchains).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/blockchain/{id}", rt.GetBlockchain).Methods(http.MethodGet)
@@ -98,6 +103,8 @@ func NewRouter(config Config) (*Router, error) {
 
 	return rt, nil
 }
+
+/* ---------- Middleware and Health Checks ---------- */
 
 func (rt *Router) AuthorizationHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -150,7 +157,100 @@ func (rt *Router) ResetCache(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-/* ---------- Read Methods ---------- */
+/* ---------- V2 Chain Handler Methods ---------- */
+
+// POST /v2/chain - Creates a new blockchain and its Gigastake apps.
+func (rt *Router) CreateNewChainAndGigastakeApps(w http.ResponseWriter, r *http.Request) {
+	var newChainInput types.NewChainInput
+
+	err := json.NewDecoder(r.Body).Decode(&newChainInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreateNewChainAndGigastakeApps Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	createdChainAndGigastakeApps, err := rt.writer.WriteChainAndGigastakeApps(r.Context(), newChainInput, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteChainAndGigastakeApps failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, createdChainAndGigastakeApps)
+}
+
+// POST /v2/chain/gigastake - Creates a new Gigastake app.
+func (rt *Router) CreateNewGigastakeApp(w http.ResponseWriter, r *http.Request) {
+	var gigastakeAppInput types.GigastakeApp
+
+	err := json.NewDecoder(r.Body).Decode(&gigastakeAppInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("CreateNewGigastakeApp Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	createdGigastakeApp, err := rt.writer.WriteGigastakeApp(r.Context(), gigastakeAppInput, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteGigastakeApp failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, createdGigastakeApp)
+}
+
+// PUT /v2/chain - Updates an existing blockchain.
+func (rt *Router) UpdateChain(w http.ResponseWriter, r *http.Request) {
+	var chainUpdate types.Chain
+
+	err := json.NewDecoder(r.Body).Decode(&chainUpdate)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateChain Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	err = rt.writer.UpdateChain(r.Context(), chainUpdate, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateChain failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, chainUpdate)
+}
+
+// PUT /v2/chain/{id}/activate - Activates or deactivates a blockchain by ID.
+func (rt *Router) ActivateChain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := types.RelayChainID(vars["id"])
+
+	var active bool
+
+	err := json.NewDecoder(r.Body).Decode(&active)
+	if err != nil {
+		rt.logError(fmt.Errorf("ActivateChain decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	activated, err := rt.writer.SetChainActiveStatus(r.Context(), chainID, active, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("SetChainActiveStatus in ActivateChain failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, activated)
+}
+
+/* ---------- V1 Read Methods ---------- */
 
 func (rt *Router) GetUserPermissionsByUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -296,7 +396,7 @@ func (rt *Router) GetLoadBalancersCountByPortalID(w http.ResponseWriter, r *http
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lbsCount)
 }
 
-/* ---------- Create Methods ---------- */
+/* ---------- V1 Create Methods ---------- */
 
 func (rt *Router) CreateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	var lb v1Types.LoadBalancer
@@ -370,49 +470,6 @@ func (rt *Router) CreateLoadBalancerIntegration(w http.ResponseWriter, r *http.R
 	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedLB)
 }
 
-// func (rt *Router) CreateBlockchain(w http.ResponseWriter, r *http.Request) {
-// 	var blockchain v1Types.Blockchain
-
-// 	err := json.NewDecoder(r.Body).Decode(&blockchain)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("CreateBlockchain decode failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-// 		return
-// 	}
-// 	defer r.Body.Close()
-
-// 	fullBlockchain, err := rt.cache.CreateLegacyBlockchain(r.Context(), rt.writer, blockchain)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("CreateLegacyBlockchain in CreateBlockchain failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
-// 		return
-// 	}
-
-// 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullBlockchain)
-// }
-
-// func (rt *Router) CreateRedirect(w http.ResponseWriter, r *http.Request) {
-// 	var redirect v1Types.Redirect
-
-// 	err := json.NewDecoder(r.Body).Decode(&redirect)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("CreateRedirect decode failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-// 		return
-// 	}
-
-// 	defer r.Body.Close()
-
-// 	fullRedirect, err := rt.cache.CreateLegacyRedirect(r.Context(), rt.writer, redirect)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("CreateLegacyRedirect in CreateRedirect failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
-// 		return
-// 	}
-
-// 	jsonresponse.RespondWithJSON(w, http.StatusOK, fullRedirect)
-// }
-
 func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
 	var userInput types.CreateUser
 
@@ -427,7 +484,7 @@ func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
 	newUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), userInput, time.Now())
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteUserNewSignUp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -439,7 +496,7 @@ func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, createPortalUserResponse)
 }
 
-/* ---------- Update Methods ---------- */
+/* ---------- V1 Update Methods ---------- */
 
 func (rt *Router) UpdateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -562,51 +619,3 @@ func (rt *Router) DeleteLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
-
-// func (rt *Router) UpdateBlockchain(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	blockchainID := vars["id"]
-
-// 	var update v1Types.UpdateBlockchain
-
-// 	err := json.NewDecoder(r.Body).Decode(&update)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("UpdateBlockchain decode failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-// 		return
-// 	}
-// 	defer r.Body.Close()
-
-// 	updatedChain, err := rt.cache.UpdateLegacyBlockchain(r.Context(), rt.writer, blockchainID, update)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("UpdateLegacyBlockchain in UpdateBlockchain failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
-// 		return
-// 	}
-
-// 	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedChain)
-// }
-
-// func (rt *Router) ActivateBlockchain(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	blockchainID := vars["id"]
-
-// 	var active bool
-
-// 	err := json.NewDecoder(r.Body).Decode(&active)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("ActivateBlockchain decode failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-// 		return
-// 	}
-// 	defer r.Body.Close()
-
-// 	activated, err := rt.cache.ActivateLegacyBlockchain(r.Context(), rt.writer, blockchainID, active)
-// 	if err != nil {
-// 		rt.logError(fmt.Errorf("ActivateLegacyBlockchain in ActivateBlockchain failed: %w", err))
-// 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
-// 		return
-// 	}
-
-// 	jsonresponse.RespondWithJSON(w, http.StatusOK, activated)
-// }
