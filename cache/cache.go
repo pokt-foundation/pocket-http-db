@@ -241,10 +241,11 @@ func (c *Cache) setChainsAndGigastakeApps(ctx context.Context) error {
 	// Set pointers to Chain GigastakeApps
 	for aatID, gigastakeApp := range gigastakeApps {
 		if chain, ok := chains[gigastakeApp.ChainID]; ok {
-			if _, ok := chain.GigastakeApps[aatID]; !ok {
+			if chain.GigastakeApps == nil {
 				chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
 			}
 			chain.GigastakeApps[aatID] = gigastakeApp
+
 		}
 	}
 

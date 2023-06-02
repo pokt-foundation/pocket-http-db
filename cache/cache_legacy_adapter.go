@@ -359,18 +359,8 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 			for _, roleName := range user.PortalAppRoles {
 				if roleName == v2Types.RoleOwner {
 					account = userAccount
-
-					if account.Plan.Type == v2Types.Enterprise {
-						for _, app := range account.PortalApps {
-							if app.LegacyFields.CustomLimit != 0 {
-								portalApp.LegacyFields.CustomLimit = app.LegacyFields.CustomLimit
-								break
-							}
-						}
-					}
 				}
 			}
-
 			break
 		}
 	}

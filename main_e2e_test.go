@@ -628,6 +628,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				gigastakeAppInput: testdata.TestCreateGigastakeApp,
 				expected:          &testdata.TestCreateGigastakeApp,
 			},
+			{
+				name: "Should return an error for non-existent chain ID",
+				gigastakeAppInput: v2Types.GigastakeApp{
+					ChainID: "0666",
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error chain does not exist for chain ID '0666'"),
+			},
 		}
 
 		for _, test := range tests {
@@ -637,6 +644,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
+
 					timestamp := createdGigastakeApp.CreatedAt
 
 					// Ensure timestamps are the same before comparing
