@@ -63,6 +63,7 @@ func NewRouter(config Config) (*Router, error) {
 	/* ----- V2 Endpoints ----- */
 	// V2 endpoints are for the new DB schema and access the cache and V2 structs directly.
 
+	rt.Router.HandleFunc("/v2/chain/{id}", rt.GetChain).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/chain", rt.CreateNewChainAndGigastakeApps).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.CreateNewGigastakeApp).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain", rt.UpdateChain).Methods(http.MethodPut)
@@ -159,6 +160,20 @@ func (rt *Router) ResetCache(w http.ResponseWriter, r *http.Request) {
 
 /* ---------- V2 Chain Handler Methods ---------- */
 
+func (rt *Router) GetChain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := types.RelayChainID(vars["id"])
+
+	chain := rt.cache.GetChain(chainID, cache.Options{})
+	if chain.ID == "" {
+		rt.logError(fmt.Errorf("GetChain failed: %w", errBlockchainNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, chain)
+}
+
 // POST /v2/chain - Creates a new blockchain and its Gigastake apps.
 func (rt *Router) CreateNewChainAndGigastakeApps(w http.ResponseWriter, r *http.Request) {
 	var newChainInput types.NewChainInput
@@ -174,7 +189,7 @@ func (rt *Router) CreateNewChainAndGigastakeApps(w http.ResponseWriter, r *http.
 	createdChainAndGigastakeApps, err := rt.writer.WriteChainAndGigastakeApps(r.Context(), newChainInput, time.Now())
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteChainAndGigastakeApps failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -484,7 +499,7 @@ func (rt *Router) CreatePortalUser(w http.ResponseWriter, r *http.Request) {
 	newUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), userInput, time.Now())
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteUserNewSignUp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 

@@ -1333,7 +1333,10 @@ func Test_upsertChain(t *testing.T) {
 			// Update the expected Chain with the pending data
 			expectedChain := chain
 			if altruists, ok := test.pendingAltruists[chain.ID]; ok {
-				expectedChain.Altruists = altruists
+				expectedChain.Altruists = make(map[types.AltruistURL]types.Altruist)
+				for _, altruist := range altruists {
+					expectedChain.Altruists[altruist.URL] = altruist
+				}
 			}
 			if aliasDomains, ok := test.pendingAliasDomains[chain.ID]; ok {
 				if expectedChain.AliasDomains == nil {

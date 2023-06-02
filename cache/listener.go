@@ -156,6 +156,24 @@ func (c *Cache) parseChainAltruistNotification(n types.Notification) {
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
 		c.addAltruist(*chainAltruist)
 	}
+	if n.Action == types.ActionDelete {
+		c.deleteAltruist(*chainAltruist)
+	}
+}
+
+func (c *Cache) parseChainCheckNotification(n types.Notification) {
+	chainCheck, ok := n.Data.(*types.Check)
+	if !ok {
+		c.log.Error("parseChainCheckNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addCheck(*chainCheck)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteCheck(*chainCheck)
+	}
 }
 
 func (c *Cache) parseChainAliasDomainsNotification(n types.Notification) {
@@ -170,18 +188,6 @@ func (c *Cache) parseChainAliasDomainsNotification(n types.Notification) {
 	}
 	if n.Action == types.ActionDelete {
 		c.deleteAliasDomains(*aliasDomains)
-	}
-}
-
-func (c *Cache) parseChainCheckNotification(n types.Notification) {
-	chainCheck, ok := n.Data.(*types.Check)
-	if !ok {
-		c.log.Error("parseChainCheckNotification failed")
-		return
-	}
-
-	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addCheck(*chainCheck)
 	}
 }
 

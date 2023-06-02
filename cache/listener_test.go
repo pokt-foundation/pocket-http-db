@@ -556,8 +556,8 @@ func Test_parseChainNotification(t *testing.T) {
 				Description:   "Boba",
 				EnforceResult: "JSON",
 				Ticker:        "BOBA",
-				Altruists: []types.Altruist{
-					{
+				Altruists: map[types.AltruistURL]types.Altruist{
+					"https://test-rpc.boba-1.io:1234": {
 						URL:      "https://test-rpc.boba-1.io:1234",
 						AuthType: types.ChainAuthTypeBasicAuth,
 						Auth:     "test_pocket:auth123456",
@@ -592,13 +592,13 @@ func Test_parseChainNotification(t *testing.T) {
 				LogLimitBlocks: 100000,
 				RequestTimeout: 60000,
 				Active:         false,
-				Altruists: []types.Altruist{
-					{
+				Altruists: map[types.AltruistURL]types.Altruist{
+					"https://altruist-0064.com:1234": {
 						URL:      "https://altruist-0064.com:1234",
 						AuthType: types.ChainAuthTypeBasicAuth,
 						Auth:     "test_pocket:auth123456",
 					},
-					{
+					"https://altruist-0064-2.com:1234": {
 						URL:      "https://altruist-0064-2.com:1234",
 						AuthType: types.ChainAuthTypeBasicAuth,
 						Auth:     "test_pocket:auth123456",
@@ -650,8 +650,8 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 			chainID:         "0017",
 			chain: types.Chain{
 				ID: "0017",
-				Altruists: []types.Altruist{
-					{
+				Altruists: map[types.AltruistURL]types.Altruist{
+					"https://test-rpc.neptune.io:1234": {
 						ChainID:  "0017",
 						URL:      "https://test-rpc.neptune.io:1234",
 						Auth:     "auth_token",
@@ -666,8 +666,8 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 			chainID:         "0017",
 			chain: types.Chain{
 				ID: "0017",
-				Altruists: []types.Altruist{
-					{
+				Altruists: map[types.AltruistURL]types.Altruist{
+					"https://test-rpc.neptune.io:1234": {
 						ChainID:  "0017",
 						URL:      "https://test-rpc.neptune.io:1234",
 						Auth:     "new_auth_token",
@@ -689,7 +689,10 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 
 			readerMock.listener.MockEvent("", test.sideTableAction, &test.chain)
 
-			test.chain.Altruists[0].ChainID = "" // is unset in the cache TODO will be changed soon
+			for _, altruist := range test.chain.Altruists {
+				altruist.ChainID = "" // is unset in the cache TODO will be changed soon
+				test.chain.Altruists[altruist.URL] = altruist
+			}
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 

@@ -43,10 +43,11 @@ type (
 		gigastakeApps           map[types.ProtocolAppID]*types.GigastakeApp
 		pendingGigastakeAppAATS map[types.ProtocolAppID]types.AAT
 
-		chains              map[types.RelayChainID]*types.Chain
-		pendingAltruists    map[types.RelayChainID][]types.Altruist
-		pendingAliasDomains map[types.RelayChainID][]types.AliasDomains
-		pendingChecks       map[types.RelayChainID][]types.Check
+		chains               map[types.RelayChainID]*types.Chain
+		pendingAltruists     map[types.RelayChainID][]types.Altruist
+		pendingAliasDomains  map[types.RelayChainID][]types.AliasDomains
+		pendingChecks        map[types.RelayChainID][]types.Check
+		pendingGigastakeApps map[types.RelayChainID][]types.GigastakeApp
 
 		plans map[types.PayPlanType]*types.Plan
 
@@ -83,6 +84,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingGigastakeAppAATS:  make(map[types.ProtocolAppID]types.AAT),
 		pendingAliasDomains:      make(map[types.RelayChainID][]types.AliasDomains),
 		pendingChecks:            make(map[types.RelayChainID][]types.Check),
+		pendingGigastakeApps:     make(map[types.RelayChainID][]types.GigastakeApp),
 	}
 
 	startTime := time.Now()
@@ -606,8 +608,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		return
 	}
 
-	pendingAAT, ok := c.pendingPortalAppAATs[portalApp.ID]
-	if ok {
+	if pendingAAT, ok := c.pendingPortalAppAATs[portalApp.ID]; ok {
 		if portalApp.AATs == nil {
 			portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
 		}
@@ -615,14 +616,12 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		delete(c.pendingPortalAppAATs, portalApp.ID)
 	}
 
-	pendingSettings, ok := c.pendingSettings[portalApp.ID]
-	if ok {
+	if pendingSettings, ok := c.pendingSettings[portalApp.ID]; ok {
 		portalApp.Settings = pendingSettings
 		delete(c.pendingSettings, portalApp.ID)
 	}
 
-	pendingNotification, ok := c.pendingAppNotifications[portalApp.ID]
-	if ok {
+	if pendingNotification, ok := c.pendingAppNotifications[portalApp.ID]; ok {
 		if portalApp.Notifications == nil {
 			portalApp.Notifications = make(map[types.NotificationType]types.AppNotification)
 		}
@@ -630,8 +629,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		delete(c.pendingAppNotifications, portalApp.ID)
 	}
 
-	pendingWhitelists, ok := c.pendingWhitelists[portalApp.ID]
-	if ok {
+	if pendingWhitelists, ok := c.pendingWhitelists[portalApp.ID]; ok {
 		for _, whitelist := range pendingWhitelists {
 			portalApp.AddWhitelist(whitelist)
 		}
@@ -805,6 +803,16 @@ func (c *Cache) upsertGigastakeApp(gigastakeApp types.GigastakeApp) {
 	}
 
 	c.gigastakeApps[gigastakeApp.AATID] = &gigastakeApp
+
+	if chain, ok := c.chains[gigastakeApp.ChainID]; ok {
+		if chain.GigastakeApps == nil {
+			chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
+		}
+		chain.GigastakeApps[gigastakeApp.AATID] = &gigastakeApp
+		return
+	}
+
+	c.pendingGigastakeApps[gigastakeApp.ChainID] = append(c.pendingGigastakeApps[gigastakeApp.ChainID], gigastakeApp)
 }
 
 // addGigastakeAppAAT adds the AAT for a GigastakeApp to the cache
@@ -822,6 +830,15 @@ func (c *Cache) addGigastakeAppAAT(aat types.AAT) {
 	}
 
 	gigastakeApp.AAT = aat
+
+	if chain, ok := c.chains[gigastakeApp.ChainID]; ok {
+		if chain.GigastakeApps == nil {
+			chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
+		}
+		chain.GigastakeApps[gigastakeApp.AATID] = gigastakeApp
+		return
+	}
+
 }
 
 /* ---------- Chains ---------- */
@@ -874,16 +891,30 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		chain.Altruists = existingChain.Altruists
 		chain.AliasDomains = existingChain.AliasDomains
 		chain.Checks = existingChain.Checks
+		chain.GigastakeApps = existingChain.GigastakeApps
 	}
 
-	pendingAltruists, ok := c.pendingAltruists[chain.ID]
-	if ok {
-		chain.Altruists = pendingAltruists
+	if pendingAltruists, ok := c.pendingAltruists[chain.ID]; ok {
+		if chain.Altruists == nil {
+			chain.Altruists = make(map[types.AltruistURL]types.Altruist)
+		}
+		for _, pendingAltruist := range pendingAltruists {
+			chain.Altruists[pendingAltruist.URL] = pendingAltruist
+		}
 		delete(c.pendingAltruists, chain.ID)
 	}
 
-	pendingAliasDomains, ok := c.pendingAliasDomains[chain.ID]
-	if ok {
+	if pendingChecks, ok := c.pendingChecks[chain.ID]; ok {
+		if chain.Checks == nil {
+			chain.Checks = make(map[types.ChainCheckType]types.Check)
+		}
+		for _, check := range pendingChecks {
+			chain.Checks[check.Type] = check
+		}
+		delete(c.pendingChecks, chain.ID)
+	}
+
+	if pendingAliasDomains, ok := c.pendingAliasDomains[chain.ID]; ok {
 		if chain.AliasDomains == nil {
 			chain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
 		}
@@ -893,15 +924,14 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		delete(c.pendingAliasDomains, chain.ID)
 	}
 
-	pendingChecks, ok := c.pendingChecks[chain.ID]
-	if ok {
-		if chain.Checks == nil {
-			chain.Checks = make(map[types.ChainCheckType]types.Check)
+	if pendingGigastakeApps, ok := c.pendingGigastakeApps[chain.ID]; ok {
+		if chain.GigastakeApps == nil {
+			chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
 		}
-		for _, check := range pendingChecks {
-			chain.Checks[check.Type] = check
+		for _, gigastakeApp := range pendingGigastakeApps {
+			chain.GigastakeApps[gigastakeApp.AATID] = &gigastakeApp
 		}
-		delete(c.pendingChecks, chain.ID)
+		delete(c.pendingGigastakeApps, chain.ID)
 	}
 
 	c.chains[chain.ID] = &chain
@@ -925,26 +955,15 @@ func (c *Cache) addAltruist(altruist types.Altruist) {
 	chainID := altruist.ChainID
 	altruist.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
-	altruistExists := func(altruists []types.Altruist) bool {
-		for i, existingAltruist := range altruists {
-			if existingAltruist.URL == altruist.URL {
-				altruists[i] = altruist
-				return true
-			}
-		}
-		return false
-	}
-
 	if chain, ok := c.chains[chainID]; ok {
-		if !altruistExists(chain.Altruists) {
-			chain.Altruists = append(chain.Altruists, altruist)
+		if chain.Altruists == nil {
+			chain.Altruists = make(map[types.AltruistURL]types.Altruist)
 		}
+		chain.Altruists[altruist.URL] = altruist
 		return
 	}
 
-	if !altruistExists(c.pendingAltruists[chainID]) {
-		c.pendingAltruists[chainID] = append(c.pendingAltruists[chainID], altruist)
-	}
+	c.pendingAltruists[chainID] = append(c.pendingAltruists[chainID], altruist)
 }
 
 // addAliasDomains adds or updates AliasDomains saved in cache
@@ -983,13 +1002,36 @@ func (c *Cache) addAliasDomains(aliasDomains types.AliasDomains) {
 	c.pendingAliasDomains[chainID] = append(c.pendingAliasDomains[chainID], aliasDomains)
 }
 
+// deleteAltruist removes an Altruist from cache
+func (c *Cache) deleteAltruist(altruist types.Altruist) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	chainID := altruist.ChainID
+
+	if chain, ok := c.chains[chainID]; ok {
+		delete(chain.Altruists, altruist.URL)
+	}
+}
+
+// deleteCheck removes a Check from cache
+func (c *Cache) deleteCheck(check types.Check) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	chainID := check.ChainID
+
+	if chain, ok := c.chains[chainID]; ok {
+		delete(chain.Checks, check.Type)
+	}
+}
+
 // deleteAliasDomains removes AliasDomains from cache
 func (c *Cache) deleteAliasDomains(aliasDomains types.AliasDomains) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
 	chainID := aliasDomains.ChainID
-	aliasDomains.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	if chain, ok := c.chains[chainID]; ok {
 		delete(chain.AliasDomains, aliasDomains.Alias)
