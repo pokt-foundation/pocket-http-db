@@ -732,7 +732,7 @@ func Test_addPortalAppAAT(t *testing.T) {
 				Address:         "test_6bc837b1b0e526569dda9acbbcbb4f40",
 				PublicKey:       "test_1e8f7cc2e1f812c7531fc020a75f4284",
 				ClientPublicKey: "test_b8f50f694400f9b365ab5a498f5392dc",
-				PrivateKey:      "test_3c28401b57940fbfd1c45da1a177d5e1",
+				PrivateKey:      "",
 				Signature:       "test_31f6d4a85f31e51f5b6d33dd2dd2fc2d",
 				Version:         "0.0.1",
 			},
@@ -751,7 +751,7 @@ func Test_addPortalAppAAT(t *testing.T) {
 				Address:         "test_8a75937963fee71e048c652a44491a53",
 				PublicKey:       "test_ba65207ac55d99d1d190efb002ff3002",
 				ClientPublicKey: "test_4d14919baae64635462597d587e1be43",
-				PrivateKey:      "test_e02452030aa264af1d71bfa7ab021089",
+				PrivateKey:      "",
 				Signature:       "test_b77fc382440d5afe286e491bf86b7cad",
 				Version:         "0.0.1",
 			},
@@ -1032,6 +1032,162 @@ func Test_deleteWhitelist(t *testing.T) {
 	}
 }
 
+/* ---------- GigastakeApps ---------- */
+
+func Test_upsertGigastakeApp(t *testing.T) {
+	testGigastakeApp := testdata.TestCreateGigastakeApp
+	testBaseGigastakeApp := types.GigastakeApp{
+		AATID:     testGigastakeApp.AATID,
+		ChainID:   testGigastakeApp.ChainID,
+		Name:      testGigastakeApp.Name,
+		CreatedAt: testGigastakeApp.CreatedAt,
+		UpdatedAt: testGigastakeApp.UpdatedAt,
+	}
+
+	tests := []struct {
+		name           string
+		gigastakeApp   types.GigastakeApp
+		pendingAAT     map[types.ProtocolAppID]types.AAT
+		update, delete bool
+	}{
+		{
+			name:         "Should add a new GigastakeApp to cache with no pending AAT",
+			gigastakeApp: testBaseGigastakeApp,
+			pendingAAT:   nil,
+			update:       false,
+			delete:       false,
+		},
+		{
+			name:         "Should add a new GigastakeApp to cache with pending AAT",
+			gigastakeApp: testBaseGigastakeApp,
+			pendingAAT:   map[types.ProtocolAppID]types.AAT{testBaseGigastakeApp.AATID: testGigastakeApp.AAT},
+			update:       false,
+			delete:       false,
+		},
+		{
+			name:         "Should update an existing GigastakeApp in cache with pending AAT",
+			gigastakeApp: *testdata.GigastakeApps["test_gigastake_app_1"],
+			pendingAAT:   map[types.ProtocolAppID]types.AAT{testBaseGigastakeApp.AATID: testGigastakeApp.AAT},
+			update:       true,
+			delete:       false,
+		},
+		{
+			name:         "Should delete an existing GigastakeApp in cache",
+			gigastakeApp: *testdata.GigastakeApps["test_gigastake_app_1"],
+			pendingAAT:   nil,
+			update:       false,
+			delete:       true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			cache := NewTestCache(t)
+
+			if test.update || test.delete {
+				storedGigastakeApp := cache.GetGigastakeAppByAATID(test.gigastakeApp.AATID)
+				c.Equal(test.gigastakeApp, storedGigastakeApp, "GigastakeApp should be present in cache before update")
+			}
+			if test.delete {
+				test.gigastakeApp.Deleted = true
+			}
+
+			// Update the expected GigastakeApp with the pending AAT
+			expectedGigastakeApp := test.gigastakeApp
+			if aat, ok := test.pendingAAT[test.gigastakeApp.AATID]; ok {
+				expectedGigastakeApp.AAT = aat
+			}
+
+			// Add pending AAT to cache
+			cache.pendingGigastakeAppAATS = test.pendingAAT
+
+			// Add, update, or delete GigastakeApp
+			cache.upsertGigastakeApp(test.gigastakeApp)
+
+			gigastakeAppFound := findGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.AATID)
+			if test.delete {
+				c.False(gigastakeAppFound, "GigastakeApp should be removed from gigastakeApps map")
+			} else {
+				c.True(gigastakeAppFound, "GigastakeApp should be found in gigastakeApps map")
+
+				// Check GigastakeApp in cache
+				storedGigastakeApp := cache.GetGigastakeAppByAATID(test.gigastakeApp.AATID)
+				c.Equal(expectedGigastakeApp, storedGigastakeApp, "GigastakeApp should be added to cache")
+			}
+
+			_, ok := cache.pendingGigastakeAppAATS[test.gigastakeApp.AATID]
+			c.False(ok, "Pending AAT should be removed from cache")
+		})
+	}
+}
+
+func Test_addGigastakeAppAAT(t *testing.T) {
+	tests := []struct {
+		name           string
+		aat            types.AAT
+		gigastakeAppID types.ProtocolAppID
+		gigastakeApp   *types.GigastakeApp
+	}{
+		{
+			name: "Should add AAT to an existing GigastakeApp in cache",
+			aat: types.AAT{
+				ID:              "test_gigastake_app_1",
+				Address:         "test_6bc837b1b0e526569dda9acbbcbb4f40",
+				PublicKey:       "test_1e8f7cc2e1f812c7531fc020a75f4284",
+				ClientPublicKey: "test_b8f50f694400f9b365ab5a498f5392dc",
+				Signature:       "test_31f6d4a85f31e51f5b6d33dd2dd2fc2d",
+				Version:         "0.0.1",
+			},
+			gigastakeAppID: "test_gigastake_app_1",
+			gigastakeApp: &types.GigastakeApp{
+				AATID:     "test_gigastake_app_1",
+				Name:      "pokt_gigastake",
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			},
+		},
+		{
+			name: "Should store AAT in pendingGigastakeAppAATS map if GigastakeApp not in cache",
+			aat: types.AAT{
+				ID:              "test_protocol_app_new_2",
+				Address:         "test_8a75937963fee71e048c652a44491a53",
+				PublicKey:       "test_ba65207ac55d99d1d190efb002ff3002",
+				ClientPublicKey: "test_4d14919baae64635462597d587e1be43",
+				Signature:       "test_b77fc382440d5afe286e491bf86b7cad",
+				Version:         "0.0.1",
+			},
+			gigastakeAppID: "test_protocol_app_new_2",
+			gigastakeApp:   nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			cache := NewTestCache(t)
+
+			if test.gigastakeApp != nil {
+				cache.upsertGigastakeApp(*test.gigastakeApp)
+			}
+
+			cache.addGigastakeAppAAT(test.aat)
+			test.aat.ID = "" // is unset in the cache TODO will be changed soon
+
+			if test.gigastakeApp != nil {
+				storedGigastakeApp := cache.GetGigastakeAppByAATID(test.gigastakeAppID)
+				c.Equal(test.aat, storedGigastakeApp.AAT, "AAT should be added to the GigastakeApp in cache")
+			} else {
+				storedAAT, ok := cache.pendingGigastakeAppAATS[test.gigastakeAppID]
+				c.True(ok, "AAT should be stored in pendingGigastakeAppAATS map")
+				c.Equal(test.aat, storedAAT, "AAT should be equal to the pending AAT")
+			}
+		})
+	}
+}
+
 /* ---------- Chains ---------- */
 
 func Test_upsertChain(t *testing.T) {
@@ -1177,7 +1333,10 @@ func Test_upsertChain(t *testing.T) {
 			// Update the expected Chain with the pending data
 			expectedChain := chain
 			if altruists, ok := test.pendingAltruists[chain.ID]; ok {
-				expectedChain.Altruists = altruists
+				expectedChain.Altruists = make(map[types.AltruistURL]types.Altruist)
+				for _, altruist := range altruists {
+					expectedChain.Altruists[altruist.URL] = altruist
+				}
 			}
 			if aliasDomains, ok := test.pendingAliasDomains[chain.ID]; ok {
 				if expectedChain.AliasDomains == nil {
@@ -1483,6 +1642,15 @@ func getAccountFromAccounts(accounts []types.Account, accountID types.AccountID)
 func findPortalAppInPortalApps(portalApps []types.PortalApp, portalAppID types.PortalAppID) bool {
 	for _, portalApp := range portalApps {
 		if portalApp.ID == portalAppID {
+			return true
+		}
+	}
+	return false
+}
+
+func findGigastakeAppInGigastakeApps(gigastakeApps []types.GigastakeApp, aatID types.ProtocolAppID) bool {
+	for _, app := range gigastakeApps {
+		if app.AATID == aatID {
 			return true
 		}
 	}

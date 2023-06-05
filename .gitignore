@@ -33,3 +33,4 @@ portal-api-go
 
 # Pre-Commit Install file
 pre-commit-2.20.0.pyz
+pre-commit-2.20.0.pyz.*
