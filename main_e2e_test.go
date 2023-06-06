@@ -577,6 +577,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
+					ts.NotEmpty(createdChainResp.GigastakeApps[0].ID)
+
 					createdChain := createdChainResp.Chain
 					createdGigastakeApps := createdChainResp.GigastakeApps
 					timestamp := createdChain.CreatedAt
@@ -586,6 +588,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.Equal(test.newChainInput.Chain, createdChain)
 					for _, expectedApp := range test.newChainInput.GigastakeApps {
+						expectedApp.ID = createdChainResp.GigastakeApps[0].ID
+						expectedApp.ChainIDs = map[v2Types.RelayChainID]struct{}{
+							test.newChainInput.Chain.ID: {},
+						}
 						expectedApp.CreatedAt = timestamp
 						expectedApp.UpdatedAt = timestamp
 						ts.Equal(test.newChainInput.GigastakeApps, createdGigastakeApps)
@@ -640,9 +646,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
 
+					ts.NotEmpty(createdGigastakeApp.ID)
+
 					timestamp := createdGigastakeApp.CreatedAt
 
-					// Ensure timestamps are the same before comparing
+					// Ensure ID and timestamps are the same before comparing
+					test.expected.ID = createdGigastakeApp.ID
 					test.expected.CreatedAt = timestamp
 					test.expected.UpdatedAt = timestamp
 					test.expected.PrivateKey = ""

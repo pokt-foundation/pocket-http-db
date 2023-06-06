@@ -170,7 +170,7 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 		for _, portalApp := range account.PortalApps {
 			for _, aat := range portalApp.AATs {
 				if userID, err := account.GetOwnerID(); err == nil {
-					legacyApp := legacyadapters.ConvertPortalAppToLegacyApplication(*portalApp, string(userID), aat.LegacyAppID)
+					legacyApp := legacyadapters.ConvertPortalAppToLegacyApplication(*portalApp, string(userID), aat)
 
 					applications = append(applications, legacyApp)
 				}
