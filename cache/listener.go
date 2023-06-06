@@ -97,24 +97,15 @@ func (c *Cache) parseAppNotificationNotification(n types.Notification) {
 	}
 }
 
-/* ---------- AATs ---------- */
-
-func (c *Cache) parseAATNotification(n types.Notification) {
+func (c *Cache) parsePortalAppAATNotification(n types.Notification) {
 	appAAT, ok := n.Data.(*types.AAT)
 	if !ok {
-		c.log.Error("parseAppAATsNotification failed")
+		c.log.Error("parsePortalAppAATNotification failed")
 		return
 	}
 
-	switch appAAT.Gigastake {
-	case true:
-		if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-			c.addGigastakeAppAAT(*appAAT)
-		}
-	default:
-		if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-			c.addPortalAppAAT(*appAAT)
-		}
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addPortalAppAAT(*appAAT)
 	}
 }
 
@@ -129,6 +120,18 @@ func (c *Cache) parseGigastakeAppNotification(n types.Notification) {
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
 		c.upsertGigastakeApp(*gigastakeApp)
+	}
+}
+
+func (c *Cache) parseChainGigastakeAppNotification(n types.Notification) {
+	chainGigastakeApp, ok := n.Data.(*types.ChainGigastakeApp)
+	if !ok {
+		c.log.Error("parseChainGigastakeAppNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addChainGigastakeApp(*chainGigastakeApp)
 	}
 }
 
@@ -262,12 +265,14 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseWhitelistNotification(n)
 	case types.TableAppNotifications:
 		c.parseAppNotificationNotification(n)
-
-	case types.TableAATs:
-		c.parseAATNotification(n)
+	case types.TablePortalAppAATs:
+		c.parsePortalAppAATNotification(n)
 
 	case types.TableGigastakeApps:
 		c.parseGigastakeAppNotification(n)
+
+	case types.TableChainGigastakeApps:
+		c.parseChainGigastakeAppNotification(n)
 
 	case types.TableChains:
 		c.parseChainNotification(n)
