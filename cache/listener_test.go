@@ -201,15 +201,16 @@ func Test_parsePortalAppNotification(t *testing.T) {
 				ID:        "test_app_create_e2887s4",
 				AccountID: "account_1",
 				Name:      "create_pokt_app_2",
-				AATs: map[types.ProtocolAppID]types.AAT{
-					"test_protocol_app_1": {
-						ID:              "test_protocol_app_1",
+				AATs: map[types.AATID]types.AAT{
+					1: {
+						ID:              1,
 						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
 						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
 						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
 						PrivateKey:      "",
 						Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
 						Version:         "0.0.1",
+						LegacyAppID:     "test_protocol_app_1",
 					},
 				},
 				Settings: types.Settings{
@@ -276,15 +277,16 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should add AAT to PortalApp in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			portalApp: &types.PortalApp{
-				AATs: map[types.ProtocolAppID]types.AAT{
-					"test_protocol_app_3": {
-						ID:              "test_protocol_app_3",
+				AATs: map[types.AATID]types.AAT{
+					3: {
+						ID:              3,
 						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
 						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
 						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
 						PrivateKey:      "",
 						Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
 						Version:         "0.0.1",
+						LegacyAppID:     "test_protocol_app_3",
 					},
 				},
 			},
@@ -293,15 +295,16 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should update AAT in PortalApp in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			portalApp: &types.PortalApp{
-				AATs: map[types.ProtocolAppID]types.AAT{
-					"test_protocol_app_3": {
-						ID:              "test_protocol_app_3",
+				AATs: map[types.AATID]types.AAT{
+					3: {
+						ID:              3,
 						Address:         "test_80bd695bd00e788aefb90931beeb4354",
 						PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
 						ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",
 						PrivateKey:      "",
 						Signature:       "test_bef7b8a4562c500d9a16802364d4eb57",
 						Version:         "0.0.1",
+						LegacyAppID:     "test_protocol_app_3",
 					},
 				},
 			},
@@ -318,8 +321,6 @@ func Test_parseAATNotification(t *testing.T) {
 			// Add the PortalApp to the cache
 			cache.upsertPortalApp(*test.portalApp)
 
-			// test.portalApp.AATs.AppID = "" // is unset in the cache TODO will be changed soon
-
 			readerMock.listener.MockEvent("", test.sideTableAction, test.portalApp)
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
@@ -335,67 +336,55 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 		name             string
 		mainTableAction  types.Action
 		sideTablesAction types.Action
-		gigastakeAppID   types.ProtocolAppID
 		gigastakeApp     types.GigastakeApp
 	}{
 		{
 			name:             "Should insert GigastakeApp in cache when receiving an insert notification",
 			mainTableAction:  types.ActionInsert,
 			sideTablesAction: types.ActionInsert,
-			gigastakeAppID:   "test_gigastake_app_1",
 			gigastakeApp: types.GigastakeApp{
-				AATID:   "test_gigastake_app_1",
-				ChainID: "0001",
-				Name:    "pokt_gigastake",
-				AAT: types.AAT{
-					ID:              "test_gigastake_app_1",
-					Gigastake:       true,
-					Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
-					PublicKey:       "test_37a0e8437f5149dc98a9a5b207efc2d0",
-					PrivateKey:      "",
-					ClientPublicKey: "test_65c29f0cc82e418b81a528a0c0682a9f",
-					Signature:       "test_f22651fb566346fca30b605e5f46e3ca",
-					Version:         "0.0.1",
-				},
-				CreatedAt:  testdata.MockTimestamp,
-				UpdatedAt:  testdata.MockTimestamp,
-				LegacyLBID: "legacy_lb_1",
+				ID:              "test_gigastake_app_1",
+				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
+				Name:            "pokt_gigastake",
+				Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
+				PublicKey:       "test_37a0e8437f5149dc98a9a5b207efc2d0",
+				PrivateKey:      "",
+				ClientPublicKey: "test_65c29f0cc82e418b81a528a0c0682a9f",
+				Signature:       "test_f22651fb566346fca30b605e5f46e3ca",
+				Version:         "0.0.1",
+				CreatedAt:       testdata.MockTimestamp,
+				UpdatedAt:       testdata.MockTimestamp,
+				LegacyLBID:      "legacy_lb_1",
 			},
 		},
 		{
 			name:             "Should update GigastakeApp in cache when receiving an update notification",
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
-			gigastakeAppID:   "test_gigastake_app_1",
 			gigastakeApp: types.GigastakeApp{
-				AATID:   "test_gigastake_app_1",
-				ChainID: "0001",
-				Name:    "updated_pokt_gigastake",
-				AAT: types.AAT{
-					ID:              "test_gigastake_app_1",
-					Gigastake:       true,
-					Address:         "test_updated_address",
-					PublicKey:       "test_updated_public_key",
-					PrivateKey:      "",
-					ClientPublicKey: "test_updated_client_public_key",
-					Signature:       "test_updated_signature",
-					Version:         "0.0.1",
-				},
-				CreatedAt:  testdata.MockTimestamp,
-				UpdatedAt:  testdata.MockTimestamp,
-				LegacyLBID: "updated_legacy_lb_1",
+				ID:              "test_gigastake_app_1",
+				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
+				Name:            "updated_pokt_gigastake",
+				Address:         "test_updated_address",
+				PublicKey:       "test_updated_public_key",
+				PrivateKey:      "",
+				ClientPublicKey: "test_updated_client_public_key",
+				Signature:       "test_updated_signature",
+				Version:         "0.0.1",
+				CreatedAt:       testdata.MockTimestamp,
+				UpdatedAt:       testdata.MockTimestamp,
+				LegacyLBID:      "updated_legacy_lb_1",
 			},
 		},
 		{
 			name:             "Should delete GigastakeApp in cache when receiving an update notification with GigastakeApp.Deleted = true",
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
-			gigastakeAppID:   "test_gigastake_app_1",
 			gigastakeApp: types.GigastakeApp{
-				AATID:   "test_gigastake_app_1",
-				ChainID: "0001",
-				Name:    "pokt_gigastake",
-				Deleted: true,
+				ID:       "test_gigastake_app_1",
+				ChainIDs: map[types.RelayChainID]struct{}{"0001": {}},
+				Name:     "pokt_gigastake",
+				Deleted:  true,
 			},
 		},
 	}
@@ -407,18 +396,15 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 			readerMock := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
 
-			test.gigastakeApp.AATID = test.gigastakeAppID
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, &test.gigastakeApp)
 
 			time.Sleep(200 * time.Millisecond) // need time for cache refresh
 
-			test.gigastakeApp.AAT.ID = ""
-
 			if !test.gigastakeApp.Deleted {
-				c.Equal(test.gigastakeApp, cache.GetGigastakeAppByAATID(test.gigastakeAppID))
+				c.Equal(test.gigastakeApp, cache.GetGigastakeAppByID(test.gigastakeApp.ID))
 			}
 
-			gigastakeAppFound := findGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeAppID)
+			gigastakeAppFound := findGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.ID)
 			if test.gigastakeApp.Deleted {
 				c.False(gigastakeAppFound, "GigastakeApp should be removed from gigastakeApps map")
 			} else {

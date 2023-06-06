@@ -75,8 +75,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 				if err == nil {
 					// Assign GigastakeApp to the chain's GigastakeApps
-					test.expectedChain.GigastakeApps = make(map[v2Types.ProtocolAppID]*v2Types.GigastakeApp)
-					test.expectedChain.GigastakeApps[test.gigastakeApp.AATID] = test.gigastakeApp
+					test.expectedChain.GigastakeApps = make(map[v2Types.GigastakeAppID]*v2Types.GigastakeApp)
+					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
 
 					// Compare the expectedChain and actual
 					ts.Equal(test.expectedChain, got)
@@ -577,6 +577,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
+					ts.NotEmpty(createdChainResp.GigastakeApps[0].ID)
+
 					createdChain := createdChainResp.Chain
 					createdGigastakeApps := createdChainResp.GigastakeApps
 					timestamp := createdChain.CreatedAt
@@ -586,14 +588,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.Equal(test.newChainInput.Chain, createdChain)
 					for _, expectedApp := range test.newChainInput.GigastakeApps {
+						expectedApp.ID = createdChainResp.GigastakeApps[0].ID
+						expectedApp.ChainIDs = map[v2Types.RelayChainID]struct{}{
+							test.newChainInput.Chain.ID: {},
+						}
 						expectedApp.CreatedAt = timestamp
 						expectedApp.UpdatedAt = timestamp
-						for _, createdApp := range createdGigastakeApps {
-							expectedApp.AATID = createdApp.AATID
-							expectedApp.ChainID = createdApp.ChainID
-							expectedApp.AAT.ID = createdApp.AATID
-							ts.Equal(test.newChainInput.GigastakeApps, createdGigastakeApps)
-						}
+						ts.Equal(test.newChainInput.GigastakeApps, createdGigastakeApps)
 					}
 
 					createdChainByID, err := ts.client1.GetChainByID(testCtx, createdChain.ID)
@@ -631,7 +632,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should return an error for non-existent chain ID",
 				gigastakeAppInput: v2Types.GigastakeApp{
-					ChainID: "0666",
+					ChainIDs: map[v2Types.RelayChainID]struct{}{"0666": {}},
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error chain does not exist for chain ID '0666'"),
 			},
@@ -645,14 +646,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
 
+					ts.NotEmpty(createdGigastakeApp.ID)
+
 					timestamp := createdGigastakeApp.CreatedAt
 
-					// Ensure timestamps are the same before comparing
+					// Ensure ID and timestamps are the same before comparing
+					test.expected.ID = createdGigastakeApp.ID
 					test.expected.CreatedAt = timestamp
 					test.expected.UpdatedAt = timestamp
-					test.expected.AATID = createdGigastakeApp.AATID
-					test.expected.AAT.ID = createdGigastakeApp.AATID
-					test.expected.AAT.PrivateKey = ""
+					test.expected.PrivateKey = ""
 
 					ts.Equal(test.expected, createdGigastakeApp)
 				}

@@ -40,8 +40,8 @@ type (
 		pendingAppNotifications map[types.PortalAppID]types.AppNotification
 		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
 
-		gigastakeApps           map[types.ProtocolAppID]*types.GigastakeApp
-		pendingGigastakeAppAATS map[types.ProtocolAppID]types.AAT
+		gigastakeApps              map[types.GigastakeAppID]*types.GigastakeApp
+		pendingChainsGigastakeApps map[types.GigastakeAppID]types.ChainGigastakeApp
 
 		chains               map[types.RelayChainID]*types.Chain
 		pendingAltruists     map[types.RelayChainID][]types.Altruist
@@ -74,17 +74,17 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		log:    config.Logger,
 
-		pendingAccountUserAccess: make(map[types.AccountID][]types.AccountUserAccess),
-		pendingUsers:             make(map[types.UserID]types.User),
-		pendingPortalAppAATs:     make(map[types.PortalAppID]types.AAT),
-		pendingSettings:          make(map[types.PortalAppID]types.Settings),
-		pendingAppNotifications:  make(map[types.PortalAppID]types.AppNotification),
-		pendingWhitelists:        make(map[types.PortalAppID][]types.Whitelist),
-		pendingAltruists:         make(map[types.RelayChainID][]types.Altruist),
-		pendingGigastakeAppAATS:  make(map[types.ProtocolAppID]types.AAT),
-		pendingAliasDomains:      make(map[types.RelayChainID][]types.AliasDomains),
-		pendingChecks:            make(map[types.RelayChainID][]types.Check),
-		pendingGigastakeApps:     make(map[types.RelayChainID][]types.GigastakeApp),
+		pendingAccountUserAccess:   make(map[types.AccountID][]types.AccountUserAccess),
+		pendingUsers:               make(map[types.UserID]types.User),
+		pendingPortalAppAATs:       make(map[types.PortalAppID]types.AAT),
+		pendingSettings:            make(map[types.PortalAppID]types.Settings),
+		pendingAppNotifications:    make(map[types.PortalAppID]types.AppNotification),
+		pendingWhitelists:          make(map[types.PortalAppID][]types.Whitelist),
+		pendingAltruists:           make(map[types.RelayChainID][]types.Altruist),
+		pendingChainsGigastakeApps: make(map[types.GigastakeAppID]types.ChainGigastakeApp),
+		pendingAliasDomains:        make(map[types.RelayChainID][]types.AliasDomains),
+		pendingChecks:              make(map[types.RelayChainID][]types.Check),
+		pendingGigastakeApps:       make(map[types.RelayChainID][]types.GigastakeApp),
 	}
 
 	startTime := time.Now()
@@ -240,12 +240,14 @@ func (c *Cache) setChainsAndGigastakeApps(ctx context.Context) error {
 
 	// Set pointers to Chain GigastakeApps
 	for aatID, gigastakeApp := range gigastakeApps {
-		if chain, ok := chains[gigastakeApp.ChainID]; ok {
-			if chain.GigastakeApps == nil {
-				chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
-			}
-			chain.GigastakeApps[aatID] = gigastakeApp
+		for chainID := range gigastakeApp.ChainIDs {
+			if chain, ok := chains[chainID]; ok {
+				if chain.GigastakeApps == nil {
+					chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
+				}
+				chain.GigastakeApps[aatID] = gigastakeApp
 
+			}
 		}
 	}
 
@@ -611,7 +613,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	if pendingAAT, ok := c.pendingPortalAppAATs[portalApp.ID]; ok {
 		if portalApp.AATs == nil {
-			portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
+			portalApp.AATs = make(map[types.AATID]types.AAT)
 		}
 		portalApp.AATs[pendingAAT.ID] = pendingAAT
 		delete(c.pendingPortalAppAATs, portalApp.ID)
@@ -663,8 +665,8 @@ func (c *Cache) addPortalAppAAT(aat types.AAT) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	appID := aat.PortalAppID
-	aat.PortalAppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+	appID := aat.AppID
+	aat.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	c.pendingPortalAppAATs[appID] = aat
 
@@ -674,7 +676,7 @@ func (c *Cache) addPortalAppAAT(aat types.AAT) {
 	}
 
 	if portalApp.AATs == nil {
-		portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
+		portalApp.AATs = make(map[types.AATID]types.AAT)
 	}
 	portalApp.AATs[aat.ID] = aat
 }
@@ -754,12 +756,12 @@ func (c *Cache) deleteWhitelist(whitelist types.Whitelist) {
 
 /* ---------- GigastakeApps ---------- */
 
-// GetGigastakeAppByAATID returns GigastakeApp from cache by aatID
-func (c *Cache) GetGigastakeAppByAATID(aatID types.ProtocolAppID) types.GigastakeApp {
+// GetGigastakeAppByID returns GigastakeApp from cache by aatID
+func (c *Cache) GetGigastakeAppByID(gigastakeAppID types.GigastakeAppID) types.GigastakeApp {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	gigastakeApp, ok := c.gigastakeApps[aatID]
+	gigastakeApp, ok := c.gigastakeApps[gigastakeAppID]
 	if !ok {
 		return types.GigastakeApp{}
 	}
@@ -788,58 +790,66 @@ func (c *Cache) upsertGigastakeApp(gigastakeApp types.GigastakeApp) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	if existingGigastakeApp, ok := c.gigastakeApps[gigastakeApp.AATID]; ok {
-		gigastakeApp.AAT = existingGigastakeApp.AAT
-	}
-
 	if gigastakeApp.Deleted {
-		delete(c.gigastakeApps, gigastakeApp.AATID)
+		delete(c.gigastakeApps, gigastakeApp.ID)
 		return
 	}
 
-	pendingAAT, ok := c.pendingGigastakeAppAATS[gigastakeApp.AATID]
-	if ok {
-		gigastakeApp.AAT = pendingAAT
-		delete(c.pendingGigastakeAppAATS, gigastakeApp.AATID)
+	if existingGigastakeApp, ok := c.gigastakeApps[gigastakeApp.ID]; ok {
+		gigastakeApp.ChainIDs = existingGigastakeApp.ChainIDs
 	}
 
-	c.gigastakeApps[gigastakeApp.AATID] = &gigastakeApp
+	if pendingChainGigastake, ok := c.pendingChainsGigastakeApps[gigastakeApp.ID]; ok {
+		chainID := pendingChainGigastake.ChainID
 
-	if chain, ok := c.chains[gigastakeApp.ChainID]; ok {
-		if chain.GigastakeApps == nil {
-			chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
+		if gigastakeApp.ChainIDs == nil {
+			gigastakeApp.ChainIDs = make(map[types.RelayChainID]struct{})
 		}
-		chain.GigastakeApps[gigastakeApp.AATID] = &gigastakeApp
-		return
+		gigastakeApp.ChainIDs[chainID] = struct{}{}
+
+		delete(c.pendingChainsGigastakeApps, gigastakeApp.ID)
 	}
 
-	c.pendingGigastakeApps[gigastakeApp.ChainID] = append(c.pendingGigastakeApps[gigastakeApp.ChainID], gigastakeApp)
+	c.gigastakeApps[gigastakeApp.ID] = &gigastakeApp
+
+	for chainID := range gigastakeApp.ChainIDs {
+		if chain, ok := c.chains[chainID]; ok {
+			if chain.GigastakeApps == nil {
+				chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
+			}
+			chain.GigastakeApps[gigastakeApp.ID] = &gigastakeApp
+			continue
+		}
+
+		c.pendingGigastakeApps[chainID] = append(c.pendingGigastakeApps[chainID], gigastakeApp)
+	}
 }
 
-// addGigastakeAppAAT adds the AAT for a GigastakeApp to the cache
-func (c *Cache) addGigastakeAppAAT(aat types.AAT) {
+// addChainGigastakeApp adds the AAT for a GigastakeApp to the cache
+func (c *Cache) addChainGigastakeApp(chainGigastake types.ChainGigastakeApp) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	appID := aat.ID
-	aat.ID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+	gigastakeAppID := chainGigastake.GigastakeAppID
+	chainID := chainGigastake.ChainID
 
-	gigastakeApp, ok := c.gigastakeApps[appID]
+	gigastakeApp, ok := c.gigastakeApps[gigastakeAppID]
 	if !ok {
-		c.pendingGigastakeAppAATS[appID] = aat
+		c.pendingChainsGigastakeApps[gigastakeAppID] = chainGigastake
 		return
 	}
 
-	gigastakeApp.AAT = aat
+	gigastakeApp.ChainIDs[chainID] = struct{}{}
 
-	if chain, ok := c.chains[gigastakeApp.ChainID]; ok {
+	if chain, ok := c.chains[chainID]; ok {
 		if chain.GigastakeApps == nil {
-			chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
+			chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
 		}
-		chain.GigastakeApps[gigastakeApp.AATID] = gigastakeApp
+		chain.GigastakeApps[gigastakeApp.ID] = gigastakeApp
 		return
 	}
 
+	c.pendingGigastakeApps[chainID] = append(c.pendingGigastakeApps[chainID], *gigastakeApp)
 }
 
 /* ---------- Chains ---------- */
@@ -927,10 +937,10 @@ func (c *Cache) upsertChain(chain types.Chain) {
 
 	if pendingGigastakeApps, ok := c.pendingGigastakeApps[chain.ID]; ok {
 		if chain.GigastakeApps == nil {
-			chain.GigastakeApps = make(map[types.ProtocolAppID]*types.GigastakeApp)
+			chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
 		}
 		for _, gigastakeApp := range pendingGigastakeApps {
-			chain.GigastakeApps[gigastakeApp.AATID] = &gigastakeApp
+			chain.GigastakeApps[gigastakeApp.ID] = &gigastakeApp
 		}
 		delete(c.pendingGigastakeApps, chain.ID)
 	}
