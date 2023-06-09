@@ -1,11 +1,11 @@
 name: Build and Push Docker Image to Google Artifact Registry
 
 on:
-  workflow_run:
-    workflows: ["Build & Test"]
-    branches: [master, staging, v2-staging]
-    types:
-      - completed
+  push:
+    branches:
+      - master
+      - staging
+      - v2-staging
 
 env:
   PROJECT_ID: portal-gb-prod
@@ -14,15 +14,55 @@ env:
   REGISTRY: us-central1-docker.pkg.dev
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - name: Run Golang ci Action
+        uses: golangci/golangci-lint-action@v3
+
+  test:
+    name: Test
+    runs-on: ubuntu-22.04
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - name: Set up cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Set up Docker test stack
+        run: make test_env_up
+
+      - name: Run all tests
+        run: make run_all_tests
+
   semantic-tag:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: [lint, test]
     name: Semantic Release Tag
     runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Tag Semantic Release Version
         uses: codfish/semantic-release-action@v2
@@ -45,7 +85,7 @@ jobs:
   login-build-push:
     name: Push Docker Image sto Google Artifact Registry
     runs-on: ubuntu-22.04
-    needs: [semantic-tag]
+    needs: [lint, test, semantic-tag]
     if: ${{ needs.semantic-tag.outputs.new-release-published == 'true' }}
 
     steps:
