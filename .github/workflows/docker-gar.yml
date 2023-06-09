@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to Google Artifact Registry
+name: Lint, Test and Push to Google Artifact Registry
 
 on:
   push:
@@ -56,10 +56,10 @@ jobs:
       - name: Run all tests
         run: make run_all_tests
 
-  semantic-tag:
-    needs: [lint, test]
+  tag:
     name: Semantic Release Tag
     runs-on: ubuntu-22.04
+    needs: [lint, test]
 
     steps:
       - uses: actions/checkout@v3
@@ -72,8 +72,7 @@ jobs:
               'master',
               {
                 name: 'v2-staging',
-                prerelease: true,
-                prereleaseId: 'rc'
+                prerelease: 'rc'
               }
             ]
           tag_format: "v${version}"
@@ -83,10 +82,10 @@ jobs:
             ['@semantic-release/commit-analyzer']
 
   login-build-push:
-    name: Push Docker Image sto Google Artifact Registry
+    if: needs.tag.outputs.new-release-published == 'true'
+    name: Push Docker Image to Google Artifact Registry
     runs-on: ubuntu-22.04
-    needs: [lint, test, semantic-tag]
-    if: ${{ needs.semantic-tag.outputs.new-release-published == 'true' }}
+    needs: [lint, test, tag]
 
     steps:
       - uses: actions/checkout@v3
@@ -113,5 +112,5 @@ jobs:
           build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.semantic-tag.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.tag.outputs.version }}
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest
