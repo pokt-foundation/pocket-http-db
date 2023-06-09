@@ -60,11 +60,15 @@ jobs:
     name: Semantic Release Tag
     runs-on: ubuntu-22.04
     needs: [lint, test]
+    outputs:
+      new-release-published: ${{ steps.semantic.outputs.release-new-release-published }}
+      version: ${{ steps.semantic.outputs.release-version }}
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Tag Semantic Release Version
+        id: semantic
         uses: codfish/semantic-release-action@v2
         with:
           branches: |
@@ -82,7 +86,7 @@ jobs:
             ['@semantic-release/commit-analyzer']
 
   push:
-    if: needs.tag.outputs.version
+    if: needs.tag.outputs.new-release-published == 'true'
     name: Push Docker Image to Google Artifact Registry
     runs-on: ubuntu-22.04
     needs: [lint, test, tag]
