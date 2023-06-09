@@ -3,6 +3,7 @@ name: Build and Push Docker Image to Google Artifact Registry
 on:
   workflow_run:
     workflows: ["Build & Test"]
+    branches: [master, staging, v2-staging]
     types:
       - completed
 
@@ -16,10 +17,6 @@ jobs:
   login-build-push:
     name: Docker login, build, and push
     runs-on: ubuntu-22.04
-    if: |
-      github.event.workflow_run.head_branch == 'master' ||
-      github.event.workflow_run.head_branch == 'staging' ||
-      github.event.workflow_run.head_branch == 'v2-staging'
 
     steps:
       - uses: actions/checkout@v3
