@@ -2,9 +2,9 @@ name: "CodeQL"
 
 on:
   push:
-    branches: ["master", "staging", "v2-staging"]
+    branches: ["master", "staging"]
   pull_request:
-    branches: ["master", "staging", "v2-staging"]
+    branches: ["master", "staging"]
 
 jobs:
   analyze:

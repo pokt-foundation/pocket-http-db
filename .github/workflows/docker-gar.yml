@@ -2,10 +2,7 @@ name: Lint, Test and Push to Google Artifact Registry
 
 on:
   push:
-    branches:
-      - master
-      - staging
-      - v2-staging
+    branches: [master, staging]
 
 env:
   PROJECT_ID: portal-gb-prod
@@ -75,7 +72,7 @@ jobs:
             [
               'master',
               {
-                name: 'v2-staging',
+                name: 'staging',
                 prerelease: 'rc'
               }
             ]
@@ -111,7 +108,7 @@ jobs:
           password: ${{ steps.auth.outputs.access_token }}
 
       - name: Tag Docker image and push to Google Artifact Registry
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
           build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
           push: true
