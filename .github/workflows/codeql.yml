@@ -2,16 +2,14 @@ name: "CodeQL"
 
 on:
   push:
-    branches: [ "master", "staging" ]
+    branches: ["master", "staging", "v2-staging"]
   pull_request:
-    branches: [ "master" ]
-  schedule:
-    - cron: "54 4 * * 5"
+    branches: ["master", "staging", "v2-staging"]
 
 jobs:
   analyze:
     name: Analyze
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       actions: read
       contents: read
@@ -20,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ go ]
+        language: [go]
 
     steps:
       - name: Checkout
