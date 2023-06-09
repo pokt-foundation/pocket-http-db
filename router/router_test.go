@@ -59,7 +59,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 /* ---------- V2 Chain Handler Method Unit Tests ---------- */
 
-func TestRouter_CreateNewChainAndGigastakeApps(t *testing.T) {
+func TestRouter_createNewChainAndGigastakeApps(t *testing.T) {
 	tests := []struct {
 		name             string
 		newChainInput    types.NewChainInput
@@ -104,7 +104,7 @@ func TestRouter_CreateNewChainAndGigastakeApps(t *testing.T) {
 	}
 }
 
-func TestRouter_CreateNewGigastakeApp(t *testing.T) {
+func TestRouter_createNewGigastakeApp(t *testing.T) {
 	tests := []struct {
 		name                 string
 		gigastakeAppInput    types.GigastakeApp
@@ -149,7 +149,7 @@ func TestRouter_CreateNewGigastakeApp(t *testing.T) {
 	}
 }
 
-func TestRouter_UpdateChain(t *testing.T) {
+func TestRouter_updateChain(t *testing.T) {
 	tests := []struct {
 		name           string
 		chainUpdate    types.Chain
@@ -194,7 +194,7 @@ func TestRouter_UpdateChain(t *testing.T) {
 	}
 }
 
-func TestRouter_ActivateChain(t *testing.T) {
+func TestRouter_activateChain(t *testing.T) {
 	tests := []struct {
 		name           string
 		chainID        types.RelayChainID
@@ -247,7 +247,7 @@ func TestRouter_ActivateChain(t *testing.T) {
 
 /* ---------- V1 Unit Tests ---------- */
 
-func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
+func TestRouter_getUserPermissionsByUserID(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         string
@@ -303,7 +303,7 @@ func TestRouter_GetUserPermissionsByUserID(t *testing.T) {
 	}
 }
 
-func TestRouter_GetApplicationsByUserID(t *testing.T) {
+func TestRouter_getApplicationsByUserID(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         string
@@ -352,7 +352,7 @@ func TestRouter_GetApplicationsByUserID(t *testing.T) {
 	}
 }
 
-func TestRouter_GetApplications(t *testing.T) {
+func TestRouter_getApplications(t *testing.T) {
 	tests := []struct {
 		name           string
 		expectedApps   map[string]*v1Types.Application
@@ -391,7 +391,7 @@ func TestRouter_GetApplications(t *testing.T) {
 	}
 }
 
-func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
+func TestRouter_getLoadBalancersByUserID(t *testing.T) {
 	tests := []struct {
 		name           string
 		userID         string
@@ -459,7 +459,7 @@ func TestRouter_GetLoadBalancersByUserID(t *testing.T) {
 	}
 }
 
-func TestRouter_GetLoadBalancers(t *testing.T) {
+func TestRouter_getLoadBalancers(t *testing.T) {
 	tests := []struct {
 		name           string
 		expectedLBs    map[string]v1Types.LoadBalancer
@@ -497,7 +497,7 @@ func TestRouter_GetLoadBalancers(t *testing.T) {
 	}
 }
 
-func TestRouter_GetLoadBalancer(t *testing.T) {
+func TestRouter_getLoadBalancer(t *testing.T) {
 	tests := []struct {
 		name           string
 		loadBalancerID string
@@ -542,7 +542,7 @@ func TestRouter_GetLoadBalancer(t *testing.T) {
 	}
 }
 
-func TestRouter_GetBlockchains(t *testing.T) {
+func TestRouter_getBlockchains(t *testing.T) {
 	tests := []struct {
 		name           string
 		expectedChains map[string]v1Types.Blockchain
@@ -580,7 +580,7 @@ func TestRouter_GetBlockchains(t *testing.T) {
 	}
 }
 
-func TestRouter_GetBlockchain(t *testing.T) {
+func TestRouter_getBlockchain(t *testing.T) {
 	tests := []struct {
 		name           string
 		blockchainID   string
@@ -625,7 +625,7 @@ func TestRouter_GetBlockchain(t *testing.T) {
 	}
 }
 
-func TestRouter_GetPayPlans(t *testing.T) {
+func TestRouter_getPayPlans(t *testing.T) {
 	tests := []struct {
 		name             string
 		expectedPayPlans map[string]v1Types.PayPlan
@@ -663,7 +663,7 @@ func TestRouter_GetPayPlans(t *testing.T) {
 	}
 }
 
-func TestRouter_GetPayPlan(t *testing.T) {
+func TestRouter_getPayPlan(t *testing.T) {
 	tests := []struct {
 		name            string
 		payPlanType     string
@@ -714,7 +714,7 @@ func TestRouter_GetPayPlan(t *testing.T) {
 	}
 }
 
-func TestRouter_CreateLoadBalancer(t *testing.T) {
+func TestRouter_createLoadBalancer(t *testing.T) {
 	tests := []struct {
 		name              string
 		loadBalancer      v1Types.LoadBalancer
@@ -767,7 +767,7 @@ func TestRouter_CreateLoadBalancer(t *testing.T) {
 	}
 }
 
-func TestRouter_CreateLoadBalancerUser(t *testing.T) {
+func TestRouter_createLoadBalancerUser(t *testing.T) {
 	tests := []struct {
 		name                      string
 		loadBalancerID            string
@@ -816,7 +816,7 @@ func TestRouter_CreateLoadBalancerUser(t *testing.T) {
 	}
 }
 
-func TestRouter_CreatePortalUser(t *testing.T) {
+func TestRouter_createPortalUser(t *testing.T) {
 	tests := []struct {
 		name             string
 		userInput        types.CreateUser
@@ -881,7 +881,7 @@ func TestRouter_CreatePortalUser(t *testing.T) {
 	}
 }
 
-func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
+func TestRouter_updateFirstDateSurpassed(t *testing.T) {
 	tests := []struct {
 		name           string
 		updateInput    types.UpdateFirstDateSurpassed
@@ -929,7 +929,7 @@ func TestRouter_UpdateFirstDateSurpassed(t *testing.T) {
 	}
 }
 
-func TestRouter_UpdateLoadBalancer(t *testing.T) {
+func TestRouter_updateLoadBalancer(t *testing.T) {
 	tests := []struct {
 		name           string
 		lbID           string
@@ -1027,7 +1027,7 @@ func TestRouter_UpdateLoadBalancer(t *testing.T) {
 	}
 }
 
-func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
+func TestRouter_updateLoadBalancerUserRole(t *testing.T) {
 	tests := []struct {
 		name           string
 		lbID           string
@@ -1094,7 +1094,7 @@ func TestRouter_UpdateLoadBalancerUserRole(t *testing.T) {
 	}
 }
 
-func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
+func TestRouter_acceptLoadBalancerUser(t *testing.T) {
 	tests := []struct {
 		name           string
 		lbID           string
@@ -1153,7 +1153,7 @@ func TestRouter_AcceptLoadBalancerUser(t *testing.T) {
 	}
 }
 
-func TestRouter_DeleteLoadBalancerUser(t *testing.T) {
+func TestRouter_deleteLoadBalancerUser(t *testing.T) {
 	tests := []struct {
 		name           string
 		lbID           string
