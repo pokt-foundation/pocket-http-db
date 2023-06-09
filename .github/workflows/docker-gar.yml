@@ -41,7 +41,7 @@ jobs:
             ['@semantic-release/commit-analyzer']
 
   login-build-push:
-    name: Docker login, build, and push
+    name: Push Docker Image sto Google Artifact Registry
     runs-on: ubuntu-22.04
     needs: [semantic-tag]
     if: ${{ needs.semantic-tag.outputs.new-release-published == 'true' }}
