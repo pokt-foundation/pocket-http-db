@@ -81,8 +81,8 @@ jobs:
           plugins: |
             ['@semantic-release/commit-analyzer']
 
-  login-build-push:
-    if: needs.tag.outputs.new-release-published == 'true'
+  push:
+    if: needs.tag.outputs.version
     name: Push Docker Image to Google Artifact Registry
     runs-on: ubuntu-22.04
     needs: [lint, test, tag]
