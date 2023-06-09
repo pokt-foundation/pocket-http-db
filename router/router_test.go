@@ -194,7 +194,7 @@ func TestRouter_createNewGigastakeApp(t *testing.T) {
 		name                 string
 		gigastakeAppInput    types.GigastakeApp
 		expectedStatus       int
-		expectedGigastakeApp *types.GigastakeApp // assume you have this type that matches the output structure
+		expectedGigastakeApp *types.GigastakeApp
 	}{
 		{
 			name:                 "Should create a new GigastakeApp",
@@ -326,6 +326,131 @@ func TestRouter_activateChain(t *testing.T) {
 			err = json.Unmarshal(rr.Body.Bytes(), &activated)
 			c.NoError(err)
 			c.Equal(test.active, activated)
+		})
+	}
+}
+
+/* ---------- V2 Portal App Handler Method Unit Tests ---------- */
+
+func TestRouter_getPortalAppByID(t *testing.T) {
+	tests := []struct {
+		name              string
+		portalAppID       types.PortalAppID
+		expectedStatus    int
+		expectedPortalApp types.PortalApp
+	}{
+		{
+			name:              "Should fetch a single portal application",
+			portalAppID:       "test_app_1",
+			expectedStatus:    http.StatusOK,
+			expectedPortalApp: *testdata.PortalApps["test_app_1"],
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/portal_app/%s", test.portalAppID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var portalAppResp types.PortalApp
+			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
+			c.NoError(err)
+			c.Equal(test.expectedPortalApp, portalAppResp)
+		})
+	}
+}
+
+func TestRouter_getAllPortalApps(t *testing.T) {
+	tests := []struct {
+		name               string
+		expectedStatus     int
+		expectedPortalApps map[types.PortalAppID]*types.PortalApp
+	}{
+		{
+			name:               "Should fetch all portal applications",
+			expectedStatus:     http.StatusOK,
+			expectedPortalApps: testdata.PortalApps,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/portal_app", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var portalAppsResp []types.PortalApp
+			err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
+			c.NoError(err)
+			portalAppsRespMap := map[types.PortalAppID]*types.PortalApp{}
+			for i := range portalAppsResp {
+				portalAppsRespMap[portalAppsResp[i].ID] = &portalAppsResp[i]
+			}
+			c.Equal(test.expectedPortalApps, portalAppsRespMap)
+		})
+	}
+}
+
+func TestRouter_createNewPortalApp(t *testing.T) {
+	tests := []struct {
+		name              string
+		portalAppInput    types.PortalApp
+		expectedStatus    int
+		expectedPortalApp *types.PortalApp
+	}{
+		{
+			name:              "Should create a new PortalApp",
+			portalAppInput:    *testdata.TestCreatePortalApp,
+			expectedStatus:    http.StatusOK,
+			expectedPortalApp: testdata.TestCreatePortalApp,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WritePortalApp", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(test.expectedPortalApp, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			portalAppInputBytes, err := json.Marshal(test.portalAppInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/portal_app", bytes.NewBuffer(portalAppInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var portalAppResp *types.PortalApp
+			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
+			c.NoError(err)
+			c.Equal(test.expectedPortalApp, portalAppResp)
 		})
 	}
 }

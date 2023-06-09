@@ -17,8 +17,10 @@ import (
 )
 
 var (
-	errNoChainsFound error = errors.New("no chains were found")
-	errChainNotFound error = errors.New("chain not found")
+	errNoChainsFound     error = errors.New("no chains were found")
+	errChainNotFound     error = errors.New("chain not found")
+	errNoPortalAppsFound error = errors.New("no portal apps were found")
+	errPortalAppNotFound error = errors.New("portal app not found")
 
 	errBlockchainNotFound    error = errors.New("blockchain not found")
 	errInvalidRoleNameFilter error = errors.New("invalid role name filter")
@@ -72,6 +74,10 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.createNewGigastakeApp).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain", rt.updateChain).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/{id}/activate", rt.activateChain).Methods(http.MethodPut)
+
+	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.getPortalAppByID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/portal_app", rt.getAllPortalApps).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/portal_app", rt.createNewPortalApp).Methods(http.MethodPost)
 
 	/* ----- V1 Endpoints ----- */
 	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
@@ -205,7 +211,7 @@ func (rt *Router) createNewChainAndGigastakeApps(w http.ResponseWriter, r *http.
 
 	createdChainAndGigastakeApps, err := rt.writer.WriteChainAndGigastakeApps(r.Context(), newChainInput, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("writeChainAndGigastakeApps failed: %w", err))
+		rt.logError(fmt.Errorf("WriteChainAndGigastakeApps failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -227,7 +233,7 @@ func (rt *Router) createNewGigastakeApp(w http.ResponseWriter, r *http.Request) 
 
 	createdGigastakeApp, err := rt.writer.WriteGigastakeApp(r.Context(), gigastakeAppInput, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("writeGigastakeApp failed: %w", err))
+		rt.logError(fmt.Errorf("WriteGigastakeApp failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -249,7 +255,7 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 
 	err = rt.writer.UpdateChain(r.Context(), chainUpdate, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("updateChain failed: %w", err))
+		rt.logError(fmt.Errorf("UpdateChain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -274,12 +280,63 @@ func (rt *Router) activateChain(w http.ResponseWriter, r *http.Request) {
 
 	activated, err := rt.writer.SetChainActiveStatus(r.Context(), chainID, active, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("setChainActiveStatus in ActivateChain failed: %w", err))
+		rt.logError(fmt.Errorf("SetChainActiveStatus in ActivateChain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, activated)
+}
+
+/* ---------- V2 Portal App Handler Methods ---------- */
+
+// GET /v2/portal_app/{id} - Fetches a single portal application by its PortalAppID.
+func (rt *Router) getPortalAppByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	portalAppID := types.PortalAppID(vars["id"])
+
+	portalApp := rt.cache.GetPortalApp(portalAppID)
+	if portalApp.ID == "" {
+		rt.logError(fmt.Errorf("getPortalAppByID failed: %w", errPortalAppNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errPortalAppNotFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, portalApp)
+}
+
+// GET /v2/portal_app - Fetches all portal applications.
+func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
+	portalApps := rt.cache.GetPortalApps(cache.Options{})
+	if len(portalApps) == 0 {
+		rt.logError(fmt.Errorf("getAllPortalApps failed: %w", errNoPortalAppsFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, portalApps)
+}
+
+// POST /v2/portal_app - Creates a new portal application.
+func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
+	var portalAppInput types.PortalApp
+
+	err := json.NewDecoder(r.Body).Decode(&portalAppInput)
+	if err != nil {
+		rt.logError(fmt.Errorf("createNewPortalApp Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	createdPortalApp, err := rt.writer.WritePortalApp(r.Context(), portalAppInput, portalAppInput.AAT(), time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("WritePortalApp failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, createdPortalApp)
 }
 
 /* ---------- V1 Read Methods ---------- */
