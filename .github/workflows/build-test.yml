@@ -9,7 +9,8 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch:
+      - staging
+      - v2-staging
 
 jobs:
   lint:
