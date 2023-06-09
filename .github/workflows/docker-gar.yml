@@ -17,6 +17,7 @@ jobs:
   login-build-push:
     name: Docker login, build, and push
     runs-on: ubuntu-22.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - uses: actions/checkout@v3
@@ -38,29 +39,9 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
-      - name: Tag
-        uses: codfish/semantic-release-action@v2.2.0
-        id: semantic
-        with:
-          branches: |
-            [
-              'master',
-              {
-                name: 'staging',
-                prerelease: true,
-                prereleaseId: 'rc'
-              },
-              {
-                name: 'v2-staging',
-                prerelease: true,
-                prereleaseId: 'rc'
-              }
-            ]
-          tag_format: "v${version}"
-          additional_packages: |
-            ['@semantic-release/commit-analyzer']
-          plugins: |
-            ['@semantic-release/commit-analyzer']
+      - id: semantic
+        name: Tag Semantic Release Version
+        uses: codfish/semantic-release-action@v2
 
       - id: docker-push-tagged
         if: steps.semantic.outputs.new-release-published == 'true'

@@ -1,0 +1,19 @@
+{
+  "branches": [
+    "master",
+    {
+      "name": "staging",
+      "prerelease": true,
+      "prereleaseId": "rc"
+    },
+    {
+      "name": "v2-staging",
+      "prerelease": true,
+      "prereleaseId": "rc"
+    }
+  ],
+  "tagFormat": "v${version}",
+  "plugins": [
+    "@semantic-release/commit-analyzer"
+  ]
+}
