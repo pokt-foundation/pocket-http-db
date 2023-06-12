@@ -64,7 +64,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:    "Should return error if chain does not exist",
 				chainID: "9999",
-				err:     fmt.Errorf("Response not OK. 404 Not Found: blockchain not found"),
+				err:     fmt.Errorf("Response not OK. 404 Not Found: chain not found"),
 			},
 		}
 
