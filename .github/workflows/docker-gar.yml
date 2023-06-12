@@ -1,0 +1,117 @@
+name: Lint, Test and Push to Google Artifact Registry
+
+on:
+  push:
+    branches: [master, staging]
+
+env:
+  PROJECT_ID: portal-gb-prod
+  REPOSITORY: pocket-http-db
+  IMAGE: pocket-http-db
+  REGISTRY: us-central1-docker.pkg.dev
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - name: Run Golang ci Action
+        uses: golangci/golangci-lint-action@v3
+
+  test:
+    name: Test
+    runs-on: ubuntu-22.04
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+
+      - name: Set up cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Set up Docker test stack
+        run: make test_env_up
+
+      - name: Run all tests
+        run: make run_all_tests
+
+  tag:
+    name: Semantic Release Tag
+    runs-on: ubuntu-22.04
+    needs: [lint, test]
+    outputs:
+      new: ${{ steps.semantic.outputs.new-release-published }}
+      version: ${{ steps.semantic.outputs.release-version }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Tag Semantic Release Version
+        id: semantic
+        uses: codfish/semantic-release-action@v2
+        with:
+          branches: |
+            [
+              'master',
+              {
+                name: 'staging',
+                prerelease: 'rc'
+              }
+            ]
+          tag_format: "v${version}"
+          additional_packages: |
+            ['@semantic-release/commit-analyzer']
+          plugins: |
+            ['@semantic-release/commit-analyzer']
+
+  push:
+    if: needs.tag.outputs.new == 'true'
+    name: Push Docker Image to Google Artifact Registry
+    runs-on: ubuntu-22.04
+    needs: [lint, test, tag]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: docker/setup-buildx-action@v2
+
+      - name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v0.6.0"
+        id: auth
+        with:
+          credentials_json: "${{ secrets.GCP_CREDENTIALS }}"
+          token_format: "access_token"
+
+      - name: Login to GAR
+        uses: docker/login-action@v2
+        with:
+          registry: "${{ env.REGISTRY }}"
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Tag Docker image and push to Google Artifact Registry
+        uses: docker/build-push-action@v4
+        with:
+          build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.tag.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest

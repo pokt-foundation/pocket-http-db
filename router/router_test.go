@@ -279,6 +279,53 @@ func TestRouter_updateChain(t *testing.T) {
 	}
 }
 
+func TestRouter_updateGigastakeApp(t *testing.T) {
+	tests := []struct {
+		name               string
+		gigastakeAppUpdate types.UpdateGigastakeApp
+		expectedStatus     int
+	}{
+		{
+			name: "Should update a Gigastake App",
+			gigastakeAppUpdate: types.UpdateGigastakeApp{
+				ID:       "test_gigastake_app_1",
+				Name:     "pokt_gigastake_updated",
+				ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateGigastakeApp", mock.Anything, test.gigastakeAppUpdate, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			gigastakeAppUpdateBytes, err := json.Marshal(test.gigastakeAppUpdate)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/chain/gigastake", bytes.NewBuffer(gigastakeAppUpdateBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var gigastakeAppResp types.UpdateGigastakeApp
+			err = json.Unmarshal(rr.Body.Bytes(), &gigastakeAppResp)
+			c.NoError(err)
+			c.Equal(test.gigastakeAppUpdate, gigastakeAppResp)
+		})
+	}
+}
+
 func TestRouter_activateChain(t *testing.T) {
 	tests := []struct {
 		name           string

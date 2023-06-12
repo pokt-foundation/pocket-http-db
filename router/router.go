@@ -70,6 +70,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/chain", rt.getAllChains).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/chain", rt.createNewChainAndGigastakeApps).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.createNewGigastakeApp).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain", rt.updateChain).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/{id}/activate", rt.activateChain).Methods(http.MethodPut)
 
@@ -255,6 +256,28 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, chainUpdate)
+}
+
+// PUT /v2/chain/gigastake - Updates a Gigastake app.
+func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
+	var gigastakeAppUpdate types.UpdateGigastakeApp
+
+	err := json.NewDecoder(r.Body).Decode(&gigastakeAppUpdate)
+	if err != nil {
+		rt.logError(fmt.Errorf("createNewGigastakeApp Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	err = rt.writer.UpdateGigastakeApp(r.Context(), gigastakeAppUpdate, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("writeGigastakeApp failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, gigastakeAppUpdate)
 }
 
 // PUT /v2/chain/{id}/activate - Activates or deactivates a blockchain by ID.

@@ -15,7 +15,7 @@
 
 ## DB Client
 
-To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and should allow easy use of PHD from other backend services.
+To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
 
 ## Modifying Functionality
 
