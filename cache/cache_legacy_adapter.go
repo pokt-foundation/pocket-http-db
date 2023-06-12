@@ -79,13 +79,7 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 	filteredAccounts := []v2Types.Account{}
 	switch {
 	case roleNameFilter == v1Types.RoleName(""):
-		for _, account := range accounts {
-			for _, user := range account.Users {
-				if user.Accepted {
-					filteredAccounts = accounts
-				}
-			}
-		}
+		filteredAccounts = accounts
 
 	case roleNameFilter != v1Types.RoleName(""):
 		for _, account := range accounts {
