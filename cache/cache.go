@@ -219,7 +219,6 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 
 	// Create map of Accounts by UserID for all Account team members
 	accountsByUserID := make(map[types.UserID]AccountsForUser)
-
 	for _, account := range accounts {
 		for _, user := range account.Users {
 			if _, ok := accountsByUserID[user.UserID]; !ok {

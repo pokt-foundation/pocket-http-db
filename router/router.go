@@ -21,6 +21,7 @@ var (
 	errChainNotFound            error = errors.New("chain not found")
 	errNoPortalAppsFound        error = errors.New("no portal apps were found")
 	errPortalAppNotFound        error = errors.New("portal app not found")
+	errAccountNotFound          error = errors.New("account not found")
 	errNoAccountsFoundForUserID error = errors.New("no accounts were found for user ID")
 
 	errBlockchainNotFound    error = errors.New("blockchain not found")
@@ -73,8 +74,8 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/chain", rt.getAllChains).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/chain", rt.createNewChainAndGigastakeApps).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.createNewGigastakeApp).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain", rt.updateChain).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/{id}/activate", rt.activateChain).Methods(http.MethodPut)
 
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.getPortalAppByID).Methods(http.MethodGet)
@@ -83,6 +84,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.updatePortalApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
 
+	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccountByID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/{userID}/account", rt.createAccount).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
@@ -414,40 +416,39 @@ func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
 
 /* ---------- V2 Account Handler Methods ---------- */
 
-// GET /v2/{userID}/account - Fetches all accounts for a given user ID.
-func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
-	roleNameFilter := types.RoleName(r.URL.Query().Get("filter"))
-	if roleNameFilter != types.RoleName("") && !roleNameFilter.IsValid() {
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
+// GET /v2/account/{id} - Get one Account by account ID.
+func (rt *Router) getAccountByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := types.AccountID(vars["id"])
+
+	account := rt.cache.GetAccount(userID)
+	if account.ID == "" {
+		rt.logError(fmt.Errorf("getAccountByID failed: %w", errAccountNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errAccountNotFound.Error())
 		return
 	}
 
+	jsonresponse.RespondWithJSON(w, http.StatusOK, account)
+}
+
+// GET /v2/{userID}/account - Fetches all accounts a given user ID is the OWNER of.
+func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
 
 	accounts := rt.cache.GetAccountsByUserID(userID)
-	if len(accounts) == 0 {
+
+	filteredAccounts := []types.Account{}
+	for _, account := range accounts {
+		if account.Users[userID].Owner {
+			filteredAccounts = append(filteredAccounts, account)
+			break
+		}
+	}
+	if len(filteredAccounts) == 0 {
 		rt.logError(fmt.Errorf("getAccountsByUser failed: %w", errNoAccountsFoundForUserID))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoAccountsFoundForUserID.Error())
 		return
-	}
-
-	filteredAccounts := []types.Account{}
-
-	for _, account := range accounts {
-		if user, ok := account.Users[userID]; ok && user.Accepted {
-			switch {
-			case roleNameFilter == types.RoleName(""):
-				filteredAccounts = append(filteredAccounts, account)
-
-			default:
-				for _, roleName := range user.PortalAppRoles {
-					if roleName == types.RoleName(roleNameFilter) {
-						filteredAccounts = append(filteredAccounts, account)
-					}
-				}
-			}
-		}
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredAccounts)
