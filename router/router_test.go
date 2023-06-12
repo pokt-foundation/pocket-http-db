@@ -279,6 +279,53 @@ func TestRouter_updateChain(t *testing.T) {
 	}
 }
 
+func TestRouter_updateGigastakeApp(t *testing.T) {
+	tests := []struct {
+		name               string
+		gigastakeAppUpdate types.UpdateGigastakeApp
+		expectedStatus     int
+	}{
+		{
+			name: "Should update a Gigastake App",
+			gigastakeAppUpdate: types.UpdateGigastakeApp{
+				ID:       "test_gigastake_app_1",
+				Name:     "pokt_gigastake_updated",
+				ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateGigastakeApp", mock.Anything, test.gigastakeAppUpdate, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			gigastakeAppUpdateBytes, err := json.Marshal(test.gigastakeAppUpdate)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/chain/gigastake", bytes.NewBuffer(gigastakeAppUpdateBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var gigastakeAppResp types.UpdateGigastakeApp
+			err = json.Unmarshal(rr.Body.Bytes(), &gigastakeAppResp)
+			c.NoError(err)
+			c.Equal(test.gigastakeAppUpdate, gigastakeAppResp)
+		})
+	}
+}
+
 func TestRouter_activateChain(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -410,6 +457,62 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 	}
 }
 
+func TestRouter_getPortalAppsByUser(t *testing.T) {
+	tests := []struct {
+		name               string
+		userID             types.UserID
+		roleFilter         types.RoleName
+		expectedStatus     int
+		expectedPortalApps []types.PortalApp
+	}{
+		{
+			name:               "Should fetch all portal applications for a user",
+			userID:             "user_1",
+			roleFilter:         "",
+			expectedStatus:     http.StatusOK,
+			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_1"]},
+		},
+		{
+			name:               "Should fetch all portal applications for a user with a specific role",
+			userID:             "user_4",
+			roleFilter:         types.RoleMember,
+			expectedStatus:     http.StatusOK,
+			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_2"]},
+		},
+		{
+			name:               "Should fail if no portal apps are found for a given user",
+			userID:             "user_4",
+			roleFilter:         types.RoleAdmin,
+			expectedStatus:     http.StatusNotFound,
+			expectedPortalApps: []types.PortalApp{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/portal_app?filter=%s", test.userID, test.roleFilter), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedStatus == http.StatusOK {
+				var portalAppsResp []types.PortalApp
+				err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
+				c.NoError(err)
+				c.Equal(test.expectedPortalApps, portalAppsResp)
+			}
+		})
+	}
+}
+
 func TestRouter_createNewPortalApp(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -451,6 +554,136 @@ func TestRouter_createNewPortalApp(t *testing.T) {
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
 			c.NoError(err)
 			c.Equal(test.expectedPortalApp, portalAppResp)
+		})
+	}
+}
+
+func TestRouter_updatePortalApp(t *testing.T) {
+	tests := []struct {
+		name            string
+		portalAppID     types.PortalAppID
+		portalAppUpdate types.UpdatePortalApp
+		expectedStatus  int
+	}{
+		{
+			name:        "Should update PortalApp name only",
+			portalAppID: "test_app_1",
+			portalAppUpdate: types.UpdatePortalApp{
+				Name: testdata.UpdatePortalAppName,
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:        "Should update PortalApp settings only",
+			portalAppID: "test_app_1",
+			portalAppUpdate: types.UpdatePortalApp{
+				Settings: testdata.UpdatePortalAppSettings,
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:        "Should update PortalApp notifications only",
+			portalAppID: "test_app_1",
+			portalAppUpdate: types.UpdatePortalApp{
+				Notifications: testdata.UpdatePortalAppNotifications,
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:        "Should update PortalApp whitelists only",
+			portalAppID: "test_app_1",
+			portalAppUpdate: types.UpdatePortalApp{
+				Whitelists: testdata.UpdatePortalAppWhitelists,
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:        "Should update PortalApp plan only",
+			portalAppID: "test_app_1",
+			portalAppUpdate: types.UpdatePortalApp{
+				PlanType:   testdata.UpdatePortalAppPlan.PlanType,
+				DailyLimit: testdata.UpdatePortalAppPlan.DailyLimit,
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:        "Should update PortalApp enterprise plan only",
+			portalAppID: "test_app_1",
+			portalAppUpdate: types.UpdatePortalApp{
+				PlanType:    testdata.UpdatePortalAppEnterprisePlan.PlanType,
+				CustomLimit: testdata.UpdatePortalAppEnterprisePlan.CustomLimit,
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdatePortalApp", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			portalAppUpdateBytes, err := json.Marshal(test.portalAppUpdate)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/portal_app/%s", test.portalAppID), bytes.NewBuffer(portalAppUpdateBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var portalAppResp types.UpdatePortalApp
+			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
+			c.NoError(err)
+			test.portalAppUpdate.AppID = test.portalAppID
+			c.Equal(test.portalAppUpdate, portalAppResp)
+		})
+	}
+}
+
+func TestRouter_deletePortalApp(t *testing.T) {
+	tests := []struct {
+		name           string
+		portalAppID    types.PortalAppID
+		expectedStatus int
+	}{
+		{
+			name:           "Should delete a Portal App",
+			portalAppID:    "test_portal_app_1",
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("SetPortalAppDeleted", mock.Anything, test.portalAppID, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/portal_app/%s", string(test.portalAppID)), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var portalAppResp types.PortalAppID
+			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
+			c.NoError(err)
+			c.Equal(test.portalAppID, portalAppResp)
 		})
 	}
 }

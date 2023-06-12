@@ -630,8 +630,16 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				expected:          &testdata.TestCreateGigastakeApp,
 			},
 			{
+				name: "Should return an error if no name provided",
+				gigastakeAppInput: v2Types.GigastakeApp{
+					Name: "",
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: gigastake app name cannot be empty"),
+			},
+			{
 				name: "Should return an error for non-existent chain ID",
 				gigastakeAppInput: v2Types.GigastakeApp{
+					Name:     "whatever",
 					ChainIDs: map[v2Types.RelayChainID]struct{}{"0666": {}},
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error chain does not exist for chain ID '0666'"),
