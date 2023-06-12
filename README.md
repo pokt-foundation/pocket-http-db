@@ -15,7 +15,7 @@
 
 ## DB Client
 
-To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and should allow easy use of PHD from other backend services.
+To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
 
 ## Modifying Functionality
 
@@ -55,7 +55,7 @@ When adding or updating functionality to PHD, there is a order of operations tha
 
 5. **Finally, update the DB Client `docker-compose.test.yml` file (**line 7**) back to the `master` branch of PHD**
 
-By following these steps, you can ensure all changes are tested at every stage of development, from the database to the PHD API to the DB client used in other packages. This will give you a high degree of confidence in any modifications. 
+By following these steps, you can ensure all changes are tested at every stage of development, from the database to the PHD API to the DB client used in other packages. This will give you a high degree of confidence in any modifications.
 
 In addition, the `DB Client` will be up to date and ready for use in any other repos that require these updates.
 
