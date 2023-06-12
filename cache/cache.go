@@ -98,7 +98,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 	cache.log.WithFields(
 		logrus.Fields{
 			"cache_refresh_minutes": config.CacheRefreshMinutes.Minutes(),
-			"cache_time_to_set":     fmt.Sprintf("%dms", elapsedTime),
+			"db_time_to_fetch":      fmt.Sprintf("%dms", elapsedTime),
 		},
 	).Info("cache successfully set")
 
@@ -126,65 +126,76 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 
 // setCache initializes the cache by setting user permissions, accounts and portal apps, chains, and plans.
 func (c *Cache) setCache(ctx context.Context) error {
+	// Perform all the database reads first without locking the mutex
+	userPermissions, userIDs, err := c.fetchUserData(ctx)
+	if err != nil {
+		return err
+	}
+
+	plans, accounts, portalApps, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(ctx)
+	if err != nil {
+		return err
+	}
+
+	chains, gigastakeApps, err := c.fetchChainsAndGigastakeApps(ctx)
+	if err != nil {
+		return err
+	}
+
+	blockedContracts, err := c.fetchBlockedContracts(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Lock the mutex only once data is fetched
+	// to minimize the time the lock is held.
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	err := c.setUserData(ctx)
-	if err != nil {
-		return fmt.Errorf("setUserData - %w", err)
-	}
-
-	err = c.setPlansAccountsAndPortalApps(ctx)
-	if err != nil {
-		return fmt.Errorf("setPlansAccountsAndPortalApps - %w", err)
-	}
-
-	err = c.setChainsAndGigastakeApps(ctx)
-	if err != nil {
-		return fmt.Errorf("setChainsAndGigastakeApps - %w", err)
-	}
-
-	err = c.setBlockedContracts(ctx)
-	if err != nil {
-		return fmt.Errorf("setBlockedContracts - %w", err)
-	}
+	// Set the cache with the fetched data
+	c.userPermissions = userPermissions
+	c.userIDs = userIDs
+	c.plans = plans
+	c.accounts = accounts
+	c.accountsByUserID = accountsByUserID
+	c.portalApps = portalApps
+	c.chains = chains
+	c.gigastakeApps = gigastakeApps
+	c.blockedContracts = blockedContracts
 
 	return nil
 }
 
-// setUserPermissions reads UserPermissions from the database and sets them in the cache.
-func (c *Cache) setUserData(ctx context.Context) error {
+// fetchUserData reads UserPermissions from the database and returns them.
+func (c *Cache) fetchUserData(ctx context.Context) (map[types.UserID]*types.UserPermissions, map[types.ProviderUserID]types.UserID, error) {
 	userPermissions, err := c.reader.ReadUserPermissions(ctx)
 	if err != nil {
-		return fmt.Errorf("ReadUserPermissions - %w", err)
+		return nil, nil, fmt.Errorf("ReadUserPermissions - %w", err)
 	}
-
-	c.userPermissions = userPermissions
 
 	userIDs, err := c.reader.ReadUserIDsMap(ctx)
 	if err != nil {
-		return fmt.Errorf("ReadUserIDsMap - %w", err)
+		return nil, nil, fmt.Errorf("ReadUserIDsMap - %w", err)
 	}
-	c.userIDs = userIDs
 
-	return nil
+	return userPermissions, userIDs, nil
 }
 
-// setAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
+// fetchPlansAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
-func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
+func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.PayPlanType]*types.Plan, map[types.AccountID]*types.Account, map[types.PortalAppID]*types.PortalApp, map[types.UserID]AccountsForUser, error) {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
-		return fmt.Errorf("ReadPlans - %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("ReadPlans - %w", err)
 	}
 	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return fmt.Errorf("ReadAccounts - %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("ReadAccounts - %w", err)
 	}
 	portalApps, err := c.reader.ReadPortalApps(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return fmt.Errorf("ReadPortalApps - %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("ReadPortalApps - %w", err)
 	}
 
 	// Set pointer to Account Plan
@@ -192,7 +203,7 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
+			return nil, nil, nil, nil, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
 		}
 	}
 
@@ -218,24 +229,19 @@ func (c *Cache) setPlansAccountsAndPortalApps(ctx context.Context) error {
 		}
 	}
 
-	c.plans = plans
-	c.accounts = accounts
-	c.accountsByUserID = accountsByUserID
-	c.portalApps = portalApps
-
-	return nil
+	return plans, accounts, portalApps, accountsByUserID, nil
 }
 
-// setChainsAndGigastakeApps reads Chains and GigastakeApps from the database,
-// sets them in the cache and sets each Chain's GigastakeApps
-func (c *Cache) setChainsAndGigastakeApps(ctx context.Context) error {
+// fetchChainsAndGigastakeApps reads Chains and GigastakeApps from the database and returns them.
+// It also sets pointers to GigastakeApps on Chains.
+func (c *Cache) fetchChainsAndGigastakeApps(ctx context.Context) (map[types.RelayChainID]*types.Chain, map[types.GigastakeAppID]*types.GigastakeApp, error) {
 	chains, err := c.reader.ReadChains(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return fmt.Errorf("ReadChains - %w", err)
+		return nil, nil, fmt.Errorf("ReadChains - %w", err)
 	}
 	gigastakeApps, err := c.reader.ReadGigastakeApps(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return fmt.Errorf("ReadGigastakeApps - %w", err)
+		return nil, nil, fmt.Errorf("ReadGigastakeApps - %w", err)
 	}
 
 	// Set pointers to Chain GigastakeApps
@@ -251,22 +257,16 @@ func (c *Cache) setChainsAndGigastakeApps(ctx context.Context) error {
 		}
 	}
 
-	c.chains = chains
-	c.gigastakeApps = gigastakeApps
-
-	return nil
+	return chains, gigastakeApps, nil
 }
 
-// setBlockedContracts reads BlockedContracts from the database and sets them in the cache.
-func (c *Cache) setBlockedContracts(ctx context.Context) error {
+// fetchBlockedContracts reads BlockedContracts from the database and returns them.
+func (c *Cache) fetchBlockedContracts(ctx context.Context) (types.GlobalBlockedContracts, error) {
 	blockedContracts, err := c.reader.ReadBlockedContracts(ctx)
 	if err != nil {
-		return fmt.Errorf("ReadBlockedContracts - %w", err)
+		return types.GlobalBlockedContracts{}, fmt.Errorf("ReadBlockedContracts - %w", err)
 	}
-
-	c.blockedContracts = blockedContracts
-
-	return nil
+	return blockedContracts, nil
 }
 
 // cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes)
