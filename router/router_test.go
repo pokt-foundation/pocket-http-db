@@ -594,14 +594,16 @@ func TestRouter_updatePortalApp(t *testing.T) {
 
 func TestRouter_deletePortalApp(t *testing.T) {
 	tests := []struct {
-		name           string
-		portalAppID    types.PortalAppID
-		expectedStatus int
+		name             string
+		portalAppID      types.PortalAppID
+		expectedStatus   int
+		expectedResponse map[string]string
 	}{
 		{
-			name:           "Should delete a Portal App",
-			portalAppID:    "test_portal_app_1",
-			expectedStatus: http.StatusOK,
+			name:             "Should delete a Portal App",
+			portalAppID:      "test_portal_app_1",
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]string{"status": "deleted"},
 		},
 	}
 
@@ -624,10 +626,58 @@ func TestRouter_deletePortalApp(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
-			var portalAppResp types.PortalAppID
+			var portalAppResp map[string]string
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
 			c.NoError(err)
-			c.Equal(test.portalAppID, portalAppResp)
+			c.Equal(test.expectedResponse, portalAppResp)
+		})
+	}
+}
+
+/* ---------- V2 Account Handler Method Unit Tests ---------- */
+
+func TestRouter_getAccountsByUser(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         types.UserID
+		expectedStatus int
+		expectedData   []types.Account
+	}{
+		{
+			name:           "Should fetch all accounts for a given user ID",
+			userID:         "user_4",
+			expectedStatus: http.StatusOK,
+			expectedData: []types.Account{
+				*testdata.Accounts["account_2"],
+				*testdata.Accounts["account_4"],
+				*testdata.Accounts["account_5"],
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("GetAccountsByUserID", test.userID).Return(test.expectedData, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/%s/account", test.userID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountsResp []types.Account
+			err = json.Unmarshal(rr.Body.Bytes(), &accountsResp)
+			c.NoError(err)
+			c.Equal(test.expectedData, accountsResp)
 		})
 	}
 }
@@ -648,7 +698,7 @@ func TestRouter_getUserPermissionsByUserID(t *testing.T) {
 				UserID: "auth0|ellen_ripley",
 				LoadBalancers: map[v1Types.LoadBalancerID]v1Types.LoadBalancerPermissions{
 					"test_app_2": {
-						RoleName:    "OWNER",
+						RoleName:    v1Types.RoleOwner,
 						Permissions: []v1Types.PermissionsEnum{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"},
 					},
 				},
@@ -1819,7 +1869,7 @@ var (
 			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_1",
-					RoleName: "OWNER",
+					RoleName: v1Types.RoleOwner,
 					Email:    "james.holden123@test.com",
 					Accepted: true,
 				},
@@ -1855,7 +1905,7 @@ var (
 			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_3",
-					RoleName: "OWNER",
+					RoleName: v1Types.RoleOwner,
 					Email:    "ellen.ripley789@test.com",
 					Accepted: true,
 				},
@@ -1898,7 +1948,7 @@ var (
 			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_5",
-					RoleName: "OWNER",
+					RoleName: v1Types.RoleOwner,
 					Email:    "chrisjen.avasarala1@test.com",
 					Accepted: true,
 				},
