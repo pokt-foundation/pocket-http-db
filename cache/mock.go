@@ -3,25 +3,25 @@ package cache
 import (
 	"testing"
 
-	"github.com/pokt-foundation/portal-db/driver"
-	postgresdriver "github.com/pokt-foundation/portal-db/postgres-driver"
-	"github.com/pokt-foundation/portal-db/types"
+	"github.com/pokt-foundation/portal-db/v2/driver"
+	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
+	"github.com/pokt-foundation/portal-db/v2/types"
 )
 
 type ReaderMock struct {
 	driver.MockDriver
-	lMock        *postgresdriver.ListenerMock
+	listener     *postgresdriver.ListenerMock
 	notification chan *types.Notification
 }
 
 func NewReaderMock(t *testing.T) *ReaderMock {
 	mock := &ReaderMock{
 		MockDriver:   *driver.NewMockDriver(t),
-		lMock:        postgresdriver.NewListenerMock(),
+		listener:     postgresdriver.NewListenerMock(),
 		notification: make(chan *types.Notification, 32),
 	}
 
-	go postgresdriver.Listen(mock.lMock.NotificationChannel(), mock.notification)
+	go postgresdriver.Listen(mock.listener.NotificationChannel(), mock.notification)
 
 	return mock
 }
