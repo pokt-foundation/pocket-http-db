@@ -457,6 +457,62 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 	}
 }
 
+func TestRouter_getPortalAppsByUser(t *testing.T) {
+	tests := []struct {
+		name               string
+		userID             types.UserID
+		roleFilter         types.RoleName
+		expectedStatus     int
+		expectedPortalApps []types.PortalApp
+	}{
+		{
+			name:               "Should fetch all portal applications for a user",
+			userID:             "user_1",
+			roleFilter:         "",
+			expectedStatus:     http.StatusOK,
+			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_1"]},
+		},
+		{
+			name:               "Should fetch all portal applications for a user with a specific role",
+			userID:             "user_4",
+			roleFilter:         types.RoleMember,
+			expectedStatus:     http.StatusOK,
+			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_2"]},
+		},
+		{
+			name:               "Should fail if no portal apps are found for a given user",
+			userID:             "user_4",
+			roleFilter:         types.RoleAdmin,
+			expectedStatus:     http.StatusNotFound,
+			expectedPortalApps: []types.PortalApp{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/portal_app?filter=%s", test.userID, test.roleFilter), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedStatus == http.StatusOK {
+				var portalAppsResp []types.PortalApp
+				err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
+				c.NoError(err)
+				c.Equal(test.expectedPortalApps, portalAppsResp)
+			}
+		})
+	}
+}
+
 func TestRouter_createNewPortalApp(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -711,7 +767,7 @@ func TestRouter_getAccountsByUser(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/%s/account", test.userID), nil)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/account", test.userID), nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
@@ -766,7 +822,7 @@ func TestRouter_createAccount(t *testing.T) {
 			accountInputBytes, err := json.Marshal(test.accountInput)
 			c.NoError(err)
 
-			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v2/%s/account", test.userID), bytes.NewBuffer(accountInputBytes))
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v2/user/%s/account", test.userID), bytes.NewBuffer(accountInputBytes))
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)

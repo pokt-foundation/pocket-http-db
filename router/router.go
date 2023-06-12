@@ -1,6 +1,7 @@
 package router
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,12 +86,14 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccountByID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v2/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v2/{userID}/account", rt.createAccount).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.createAccountIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.updateAccountIntegration).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.deleteAccount).Methods(http.MethodDelete)
+
+	rt.Router.HandleFunc("/v2/user/{userID}/portal_app", rt.getPortalAppsByUser).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.createAccount).Methods(http.MethodPost)
 
 	/* ----- V1 Endpoints ----- */
 	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
@@ -352,6 +355,53 @@ func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, portalApps)
 }
 
+// GET /v2/user/{userID}/portal_app - Fetches all portal applications.
+func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
+	roleNameFilter := types.RoleName(r.URL.Query().Get("filter"))
+	if roleNameFilter != types.RoleName("") && !roleNameFilter.IsValid() {
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
+		return
+	}
+
+	vars := mux.Vars(r)
+	userID := types.UserID(vars["userID"])
+
+	userAccounts := rt.cache.GetAccountsByUserID(userID)
+	Plog("userAccounts", userAccounts)
+
+	filteredPortalApps := []types.PortalApp{}
+	for _, account := range userAccounts {
+		if user, ok := account.Users[userID]; ok && user.Accepted {
+			for portalAppID, roleName := range user.PortalAppRoles {
+				if roleNameFilter == "" || roleName == types.RoleName(roleNameFilter) {
+					if portalApp, ok := account.PortalApps[portalAppID]; ok {
+						filteredPortalApps = append(filteredPortalApps, *portalApp)
+					}
+				}
+			}
+		}
+	}
+	if len(filteredPortalApps) == 0 {
+		rt.logError(fmt.Errorf("getPortalAppsByUser failed: %w", errNoPortalAppsFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredPortalApps)
+}
+
+func Plog(args ...interface{}) {
+	for _, arg := range args {
+		var prettyJSON bytes.Buffer
+		jsonArg, _ := json.Marshal(arg)
+		str := string(jsonArg)
+		_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
+		output := prettyJSON.String()
+
+		fmt.Println(output)
+	}
+}
+
 // POST /v2/portal_app - Creates a new portal application.
 func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
 	var portalAppInput types.PortalApp
@@ -431,27 +481,20 @@ func (rt *Router) getAccountByID(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, account)
 }
 
-// GET /v2/{userID}/account - Fetches all accounts a given user ID is the OWNER of.
+// GET /v2/{userID}/account - Fetches all accounts for a given user ID.
 func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
 
 	accounts := rt.cache.GetAccountsByUserID(userID)
 
-	filteredAccounts := []types.Account{}
-	for _, account := range accounts {
-		if account.Users[userID].Owner {
-			filteredAccounts = append(filteredAccounts, account)
-			break
-		}
-	}
-	if len(filteredAccounts) == 0 {
+	if len(accounts) == 0 {
 		rt.logError(fmt.Errorf("getAccountsByUser failed: %w", errNoAccountsFoundForUserID))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoAccountsFoundForUserID.Error())
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredAccounts)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, accounts)
 }
 
 // POST /v2/{userID}/account - Creates an Account in the database for a single user.
