@@ -23,6 +23,7 @@ var (
 	errPortalAppNotFound        error = errors.New("portal app not found")
 	errAccountNotFound          error = errors.New("account not found")
 	errNoAccountsFoundForUserID error = errors.New("no accounts were found for user ID")
+	errUserNotFound                   = errors.New("user not found for provider user ID")
 
 	errBlockchainNotFound    error = errors.New("blockchain not found")
 	errInvalidRoleNameFilter error = errors.New("invalid role name filter")
@@ -95,9 +96,12 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/account/user/accept", rt.acceptAccountUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/user/remove", rt.removeAccountUser).Methods(http.MethodPut)
 
+	rt.Router.HandleFunc("/v2/user", rt.createUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/user/{userID}/permission", rt.getUserPermissionByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/portal_app", rt.getPortalAppsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.createAccount).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/user/{userID}", rt.deleteUser).Methods(http.MethodDelete)
 
 	/* ----- V1 Endpoints ----- */
 	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
@@ -694,6 +698,61 @@ func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "removed"})
+}
+
+/* ---------- V2 User Handler Methods ---------- */
+
+// GET /v2/user/{userID}/permission - Gets all PortalApp permissions for a given provider user ID.
+func (rt *Router) getUserPermissionByUserID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	providerUserID := types.ProviderUserID(vars["userID"])
+
+	portalUserID := rt.cache.GetUserIDFromProviderUserID(providerUserID)
+	if portalUserID == "" {
+		rt.logError(fmt.Errorf("GetUserIDFromProviderUserID failed: %w", errUserNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errUserNotFound.Error())
+	}
+
+	userPermissions := rt.cache.GetUserPermissionsByUserID(portalUserID)
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, userPermissions)
+}
+
+// POST /v2/user - Creates a new User in the database. Called in response to a new user sign up.
+func (rt *Router) createUser(w http.ResponseWriter, r *http.Request) {
+	var user types.CreateUser
+
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		rt.logError(fmt.Errorf("createUser Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	createdUser, _, err := rt.writer.WriteUserNewSignUp(r.Context(), user, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteUserNewSignUp failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, createdUser)
+}
+
+// DELETE /v2/user/{userID} - Deletes a User (WARNING: this will perform a hard delete in the database).
+func (rt *Router) deleteUser(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := types.UserID(vars["userID"])
+
+	_, err := rt.writer.DeletePortalUser(r.Context(), userID)
+	if err != nil {
+		rt.logError(fmt.Errorf("DeletePortalUser failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 /* ---------- V1 Read Methods ---------- */

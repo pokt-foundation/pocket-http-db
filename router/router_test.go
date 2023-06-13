@@ -1234,6 +1234,169 @@ func TestRouter_removeAccountUser(t *testing.T) {
 	}
 }
 
+/* ---------- V2 User Handler Method Unit Tests ---------- */
+
+func TestRouter_getUserPermissionByUserID(t *testing.T) {
+	tests := []struct {
+		name                   string
+		userID                 types.ProviderUserID
+		expectedUserPermission *types.UserPermissions
+		expectedStatus         int
+	}{
+		{
+			name:   "Should fetch user permissions for a given user ID",
+			userID: "auth0|ellen_ripley",
+			expectedUserPermission: &types.UserPermissions{
+				UserID: "user_3",
+				PortalApps: map[types.PortalAppID]types.PortalAppPermissions{
+					"test_app_2": {
+						RoleName: types.RoleOwner,
+						Permissions: []types.Permissions{
+							"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint",
+						},
+					},
+				},
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:                   "Should return 404 status for non-existent user ID",
+			userID:                 "auth0|sir_robin",
+			expectedUserPermission: nil,
+			expectedStatus:         http.StatusNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/permission", test.userID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedUserPermission != nil {
+				var userPermissionResp *types.UserPermissions
+				err = json.Unmarshal(rr.Body.Bytes(), &userPermissionResp)
+				c.NoError(err)
+				c.Equal(test.expectedUserPermission, userPermissionResp)
+			}
+		})
+	}
+}
+
+func TestRouter_createUser(t *testing.T) {
+	tests := []struct {
+		name            string
+		createUserInput types.CreateUser
+		expectedStatus  int
+		expectedUser    *types.User
+	}{
+		{
+			name: "Should create a new user",
+			createUserInput: types.CreateUser{
+				Email:          "ellen_ripley@nostromo.space",
+				ProviderUserID: "auth0|ellen_ripley",
+			},
+			expectedStatus: http.StatusOK,
+			expectedUser: &types.User{
+				ID:       "user_3",
+				Email:    "ellen_ripley@nostromo.space",
+				SignedUp: true,
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					"auth0": {
+						UserID:         "user_3",
+						ProviderUserID: "auth0|ellen_ripley",
+						Type:           "auth0",
+						Provider:       "auth0",
+						Federated:      true,
+					},
+				},
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteUserNewSignUp", mock.Anything, test.createUserInput, mock.Anything).Return(test.expectedUser, types.AccountID(""), nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			userInputBytes, err := json.Marshal(test.createUserInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/user", bytes.NewBuffer(userInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var userResp *types.User
+			err = json.Unmarshal(rr.Body.Bytes(), &userResp)
+			c.NoError(err)
+			c.Equal(test.expectedUser, userResp)
+		})
+	}
+}
+
+func TestRouter_deleteUser(t *testing.T) {
+	tests := []struct {
+		name            string
+		userID          types.UserID
+		expectedStatus  int
+		expectedMessage string
+	}{
+		{
+			name:            "Should delete a user",
+			userID:          "user_3",
+			expectedStatus:  http.StatusOK,
+			expectedMessage: "deleted",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("DeletePortalUser", mock.Anything, test.userID).Return(types.UserID(""), nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/user/%s", test.userID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var message map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &message)
+			c.NoError(err)
+			c.Equal(test.expectedMessage, message["status"])
+		})
+	}
+}
+
 /* ---------- V1 Unit Tests ---------- */
 
 func TestRouter_getUserPermissionsByUserID(t *testing.T) {
