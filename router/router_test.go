@@ -1397,6 +1397,194 @@ func TestRouter_deleteUser(t *testing.T) {
 	}
 }
 
+/* ---------- V2 Global Blocked Contracts Handler Method Unit Tests ---------- */
+
+func TestRouter_getBlockedContracts(t *testing.T) {
+	tests := []struct {
+		name                string
+		expectedStatus      int
+		expectedBlockedCons map[types.BlockedAddress]struct{}
+	}{
+		{
+			name:                "Should fetch all blocked contracts",
+			expectedStatus:      http.StatusOK,
+			expectedBlockedCons: testdata.GlobalBlockedContracts.BlockedAddresses,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/blocked_contract", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var blockedContracts types.GlobalBlockedContracts
+			err = json.Unmarshal(rr.Body.Bytes(), &blockedContracts)
+			c.NoError(err)
+			c.Equal(test.expectedBlockedCons, blockedContracts.BlockedAddresses)
+		})
+	}
+}
+
+func TestRouter_writeBlockedContract(t *testing.T) {
+	tests := []struct {
+		name             string
+		blockedContract  types.BlockedContract
+		expectedStatus   int
+		expectedResponse map[string]string
+	}{
+		{
+			name: "Should add a new blocked contract",
+			blockedContract: types.BlockedContract{
+				BlockedAddress: "0xtest_0123456789abcdef0123456789abcdef012345",
+				Active:         true,
+			},
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]string{"status": "added"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteBlockedContract", mock.Anything, test.blockedContract.BlockedAddress, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			blockedContractBytes, err := json.Marshal(test.blockedContract)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/blocked_contract", bytes.NewBuffer(blockedContractBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var response map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, response)
+		})
+	}
+}
+
+func TestRouter_updateBlockedContractActive(t *testing.T) {
+	tests := []struct {
+		name             string
+		blockedAddress   types.BlockedAddress
+		blockedInput     types.BlockedContract
+		expectedStatus   int
+		expectedResponse map[string]bool
+	}{
+		{
+			name:           "Should update blocked contract active status to true",
+			blockedAddress: "0xtest_6789abcdef0123456789abcdef01234567",
+			blockedInput: types.BlockedContract{
+				BlockedAddress: "0xtest_6789abcdef0123456789abcdef01234567",
+				Active:         true,
+			},
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]bool{"contract_active": true},
+		},
+		{
+			name:           "Should update blocked contract active status to false",
+			blockedAddress: "0xtest_6789abcdef0123456789abcdef01234567",
+			blockedInput: types.BlockedContract{
+				BlockedAddress: "0xtest_6789abcdef0123456789abcdef01234567",
+				Active:         false,
+			},
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]bool{"contract_active": false},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateBlockedContractActive", mock.Anything, test.blockedAddress, test.blockedInput.Active, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			blockedInputBytes, err := json.Marshal(test.blockedInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/blocked_contract/%s/active", test.blockedAddress), bytes.NewBuffer(blockedInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var response map[string]bool
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, response)
+		})
+	}
+}
+
+func TestRouter_removeBlockedContract(t *testing.T) {
+	tests := []struct {
+		name             string
+		blockedAddress   types.BlockedAddress
+		expectedStatus   int
+		expectedResponse map[string]string
+	}{
+		{
+			name:             "Should remove a blocked contract",
+			blockedAddress:   "0xtest_6789abcdef0123456789abcdef01234567",
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]string{"status": "deleted"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("RemoveBlockedContract", mock.Anything, test.blockedAddress).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/blocked_contract/%s", test.blockedAddress), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var response map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, response)
+		})
+	}
+}
+
 /* ---------- V1 Unit Tests ---------- */
 
 func TestRouter_getUserPermissionsByUserID(t *testing.T) {
