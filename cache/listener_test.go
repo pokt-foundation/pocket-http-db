@@ -225,7 +225,20 @@ func Test_parsePortalAppNotification(t *testing.T) {
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
 			portalAppID:      "test_app_update_b03ca84c",
-			portalApp:        *testdata.TestUpdatePortalApp,
+			portalApp: types.PortalApp{
+				ID:        "test_app_update_b03ca84c",
+				AccountID: "account_1",
+				AATs:      map[types.AATID]types.AAT{0: {}},
+				Settings: types.Settings{
+					Environment:       types.EnvironmentProduction,
+					SecretKey:         "test_849c1397586f9fb6f902576120d0d10f",
+					SecretKeyRequired: true,
+				},
+				LegacyFields: types.LegacyFields{
+					CustomLimit:    0,
+					RequestTimeout: 5_000,
+				},
+			},
 		},
 		{
 			name:             "Should delete Account in cache when receiving an update notification with Account.Deleted = true",
