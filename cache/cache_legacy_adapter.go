@@ -348,14 +348,13 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 
 	accounts := c.GetAccountsByUserID(portalUserID)
 	for _, userAccount := range accounts {
-		// Each user can only own one account
 		if user, ok := userAccount.Users[portalUserID]; ok {
 			for _, roleName := range user.PortalAppRoles {
 				if roleName == v2Types.RoleOwner {
 					account = userAccount
+					break
 				}
 			}
-			break
 		}
 	}
 
