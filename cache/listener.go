@@ -220,6 +220,23 @@ func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
 	}
 }
 
+/* ---------- Global Blocked Contracts ---------- */
+
+func (c *Cache) parseGlobalBlockedContractsNotification(n types.Notification) {
+	blockedContract, ok := n.Data.(*types.BlockedContract)
+	if !ok {
+		c.log.Error("parseGlobalBlockedContractsNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertGlobalBlockedContract(*blockedContract)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteGlobalBlockedContract(*blockedContract)
+	}
+}
+
 /* ---------- Plans ---------- */
 
 // TODO - implement in cache
@@ -287,6 +304,9 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseUsersNotification(n)
 	case types.TableUserAuthProviders:
 		c.parseUserAuthProviderNotification(n)
+
+	case types.TableGlobalBlockedContracts:
+		c.parseGlobalBlockedContractsNotification(n)
 
 		// TODO - implement in cache
 		// case types.TablePayPlans:
