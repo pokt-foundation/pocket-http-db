@@ -237,34 +237,6 @@ func (c *Cache) parseGlobalBlockedContractsNotification(n types.Notification) {
 	}
 }
 
-/* ---------- Plans ---------- */
-
-// TODO - implement in cache
-// func (c *Cache) parsePayPlanNotification(n types.Notification) {
-// 	payPlan, ok := n.Data.(*types.Plan)
-// 	if !ok {
-// 		c.log.Error("parsePayPlanNotification failed")
-// 		return
-// 	}
-
-// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-// 		c.upsertPayPlan(*payPlan)
-// 	}
-// }
-
-// TODO - implement in cache
-// func (c *Cache) parseGlobalBlockedContractNotification(n types.Notification) {
-// 	blockedContract, ok := n.Data.(*types.BlockedContract)
-// 	if !ok {
-// 		c.log.Error("parseGlobalBlockedContractNotification failed")
-// 		return
-// 	}
-
-// 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-// 		c.upsertGlobalBlockedContract(*blockedContract)
-// 	}
-// }
-
 func (c *Cache) parseNotification(n types.Notification) {
 	switch n.Table {
 	case types.TableAccounts:
@@ -307,13 +279,6 @@ func (c *Cache) parseNotification(n types.Notification) {
 
 	case types.TableGlobalBlockedContracts:
 		c.parseGlobalBlockedContractsNotification(n)
-
-		// TODO - implement in cache
-		// case types.TablePayPlans:
-		// 	c.parsePayPlanNotification(n)
-
-		// case types.TableGlobalBlockedContracts:
-		// 	c.parseGlobalBlockedContractNotification(n)
 	}
 }
 
