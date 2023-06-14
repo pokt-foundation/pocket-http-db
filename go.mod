@@ -7,7 +7,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/pokt-foundation/db-client v1.11.0
 	github.com/pokt-foundation/portal-db v1.10.8
-	github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.91
+	github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.98
 	github.com/pokt-foundation/utils-go v0.5.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
