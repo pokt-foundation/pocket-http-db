@@ -100,6 +100,11 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.createAccount).Methods(http.MethodPost)
 
+	rt.Router.HandleFunc("/v2/blocked_contract", rt.getBlockedContracts).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/blocked_contract", rt.writeBlockedContract).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/blocked_contract/{address}/active", rt.updateBlockedContractActive).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v2/blocked_contract/{address}", rt.removeBlockedContract).Methods(http.MethodDelete)
+
 	/* ----- V1 Endpoints ----- */
 	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
 
@@ -697,6 +702,77 @@ func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "removed"})
+}
+
+/* ---------- V2 Blocked Contracts Handler Methods ---------- */
+
+// GET /v2/blocked_contract - Get all Blocked contracts.
+func (rt *Router) getBlockedContracts(w http.ResponseWriter, r *http.Request) {
+	blockedContracts := rt.cache.GetBlockedContracts()
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, blockedContracts)
+}
+
+// POST /v2/blocked_contract - Add a new blocked address to the global blocked contracts table.
+func (rt *Router) writeBlockedContract(w http.ResponseWriter, r *http.Request) {
+	var blockedContract types.BlockedContract
+
+	err := json.NewDecoder(r.Body).Decode(&blockedContract)
+	if err != nil {
+		rt.logError(fmt.Errorf("writeBlockedContract Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	err = rt.writer.WriteBlockedContract(r.Context(), blockedContract.BlockedAddress, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("WriteBlockedContract failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "added"})
+}
+
+// PUT /v2/blocked_contract/{address}/active - Activate or deactivate a blocked address in the global blocked contracts table.
+func (rt *Router) updateBlockedContractActive(w http.ResponseWriter, r *http.Request) {
+	var blockedContract types.BlockedContract
+
+	err := json.NewDecoder(r.Body).Decode(&blockedContract)
+	if err != nil {
+		rt.logError(fmt.Errorf("updateBlockedContractActive Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	vars := mux.Vars(r)
+	blockedAddress := types.BlockedAddress(vars["address"])
+
+	err = rt.writer.UpdateBlockedContractActive(r.Context(), blockedAddress, blockedContract.Active, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdateBlockedContractActive failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]bool{"contract_active": blockedContract.Active})
+}
+
+// DELETE /v2/blocked_contract/{address} - Delete a blocked address from the global blocked contracts table.
+func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	blockedAddress := types.BlockedAddress(vars["address"])
+
+	err := rt.writer.RemoveBlockedContract(r.Context(), blockedAddress)
+	if err != nil {
+		rt.logError(fmt.Errorf("RemoveBlockedContract failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
 /* ---------- V1 Read Methods ---------- */
