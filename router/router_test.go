@@ -59,6 +59,91 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 /* ---------- V2 Chain Handler Method Unit Tests ---------- */
 
+func TestRouter_getChainByID(t *testing.T) {
+	tests := []struct {
+		name                   string
+		chainID                types.RelayChainID
+		expectedStatus         int
+		expectedChain          types.Chain
+		expectedChainGigastake *types.GigastakeApp
+	}{
+		{
+			name:                   "Should fetch a single chain",
+			chainID:                "0001",
+			expectedStatus:         http.StatusOK,
+			expectedChain:          *testdata.Chains["0001"],
+			expectedChainGigastake: testdata.GigastakeApps["test_gigastake_app_1"],
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/chain/%s", test.chainID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var chainResp types.Chain
+			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
+			c.NoError(err)
+			test.expectedChain.GigastakeApps = map[types.GigastakeAppID]*types.GigastakeApp{
+				test.expectedChainGigastake.ID: test.expectedChainGigastake,
+			}
+			c.Equal(test.expectedChain, chainResp)
+		})
+	}
+}
+
+func TestRouter_getAllChains(t *testing.T) {
+	tests := []struct {
+		name           string
+		chainID        types.RelayChainID
+		expectedStatus int
+		expectedChains map[types.RelayChainID]*types.Chain
+	}{
+		{
+			name:           "Should fetch a single chain",
+			chainID:        "0001",
+			expectedStatus: http.StatusOK,
+			expectedChains: testdata.Chains,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/chain", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var chainsResp []types.Chain
+			err = json.Unmarshal(rr.Body.Bytes(), &chainsResp)
+			c.NoError(err)
+			chainsRespMap := map[types.RelayChainID]*types.Chain{}
+			for i := range chainsResp {
+				chainsRespMap[chainsResp[i].ID] = &chainsResp[i]
+			}
+			c.Equal(test.expectedChains, chainsRespMap)
+		})
+	}
+}
+
 func TestRouter_createNewChainAndGigastakeApps(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -190,6 +275,53 @@ func TestRouter_updateChain(t *testing.T) {
 			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
 			c.NoError(err)
 			c.Equal(test.expectedChain, chainResp)
+		})
+	}
+}
+
+func TestRouter_updateGigastakeApp(t *testing.T) {
+	tests := []struct {
+		name               string
+		gigastakeAppUpdate types.UpdateGigastakeApp
+		expectedStatus     int
+	}{
+		{
+			name: "Should update a Gigastake App",
+			gigastakeAppUpdate: types.UpdateGigastakeApp{
+				ID:       "test_gigastake_app_1",
+				Name:     "pokt_gigastake_updated",
+				ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateGigastakeApp", mock.Anything, test.gigastakeAppUpdate, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			gigastakeAppUpdateBytes, err := json.Marshal(test.gigastakeAppUpdate)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/chain/gigastake", bytes.NewBuffer(gigastakeAppUpdateBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var gigastakeAppResp types.UpdateGigastakeApp
+			err = json.Unmarshal(rr.Body.Bytes(), &gigastakeAppResp)
+			c.NoError(err)
+			c.Equal(test.gigastakeAppUpdate, gigastakeAppResp)
 		})
 	}
 }

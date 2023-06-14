@@ -17,6 +17,9 @@ import (
 )
 
 var (
+	errNoChainsFound error = errors.New("no chains were found")
+	errChainNotFound error = errors.New("chain not found")
+
 	errBlockchainNotFound    error = errors.New("blockchain not found")
 	errInvalidRoleNameFilter error = errors.New("invalid role name filter")
 	errPermissionsNotFound   error = errors.New("no permissions found for given user ID")
@@ -63,9 +66,11 @@ func NewRouter(config Config) (*Router, error) {
 	/* ----- V2 Endpoints ----- */
 	// V2 endpoints are for the new DB schema and access the cache and V2 structs directly.
 
-	rt.Router.HandleFunc("/v2/chain/{id}", rt.getChain).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/chain/{id}", rt.getChainByID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/chain", rt.getAllChains).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/chain", rt.createNewChainAndGigastakeApps).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.createNewGigastakeApp).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain", rt.updateChain).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/{id}/activate", rt.activateChain).Methods(http.MethodPut)
 
@@ -160,21 +165,34 @@ func (rt *Router) resetCache(w http.ResponseWriter, r *http.Request) {
 
 /* ---------- V2 Chain Handler Methods ---------- */
 
-func (rt *Router) getChain(w http.ResponseWriter, r *http.Request) {
+// GET /v2/chain/{id} - Fetches a single blockchains by its RelayChainID.
+func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
 
 	chain := rt.cache.GetChain(chainID, cache.Options{})
 	if chain.ID == "" {
-		rt.logError(fmt.Errorf("getChain failed: %w", errBlockchainNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
+		rt.logError(fmt.Errorf("getChainByID failed: %w", errChainNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errChainNotFound.Error())
 		return
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, chain)
 }
 
-// POST /v2/chain - Creates a new blockchain and its Gigastake apps.
+// GET /v2/chain - Fetches all blockchains.
+func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
+	chains := rt.cache.GetChains(cache.Options{})
+	if len(chains) == 0 {
+		rt.logError(fmt.Errorf("getAllChains failed: %w", errNoChainsFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoChainsFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, chains)
+}
+
+// POST /v2/chain - Creates a new blockchains and its Gigastake apps.
 func (rt *Router) createNewChainAndGigastakeApps(w http.ResponseWriter, r *http.Request) {
 	var newChainInput types.NewChainInput
 
@@ -238,6 +256,28 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, chainUpdate)
+}
+
+// PUT /v2/chain/gigastake - Updates a Gigastake app.
+func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
+	var gigastakeAppUpdate types.UpdateGigastakeApp
+
+	err := json.NewDecoder(r.Body).Decode(&gigastakeAppUpdate)
+	if err != nil {
+		rt.logError(fmt.Errorf("createNewGigastakeApp Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	err = rt.writer.UpdateGigastakeApp(r.Context(), gigastakeAppUpdate, time.Now())
+	if err != nil {
+		rt.logError(fmt.Errorf("writeGigastakeApp failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, gigastakeAppUpdate)
 }
 
 // PUT /v2/chain/{id}/activate - Activates or deactivates a blockchain by ID.
