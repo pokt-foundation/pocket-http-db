@@ -13,8 +13,8 @@ github.com/pokt-foundation/db-client v1.11.0 h1:B+qyZdCtyRa78xzAucQjUD8eCwndC6tn
 github.com/pokt-foundation/db-client v1.11.0/go.mod h1:sPvCYyFrhUPDH8wMMMuE7AdJqE3IVvOhH6KkkJcO4V8=
 github.com/pokt-foundation/portal-db v1.10.8 h1:YvTDrVc+P5NXk5NKk1zaoIHsWfsXsG1dWp3X5fa8K/A=
 github.com/pokt-foundation/portal-db v1.10.8/go.mod h1:Pf8IIeoj3mSIk0+eNdzssz3T7GvnWRkFKPwGsFT2D5w=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.94 h1:0k8yxc4IYme1nZYIZyzLXHilqBqM+QqCrQi0W3N9YeY=
-github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.94/go.mod h1:htymE+vj4je428TV0ypMUXtGFB2yOgskDEMe9wfZjWg=
+github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.98 h1:nprxnrbVQoP60kibF2XHErDiyT1Imhu7XuQuMddAarY=
+github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.98/go.mod h1:htymE+vj4je428TV0ypMUXtGFB2yOgskDEMe9wfZjWg=
 github.com/pokt-foundation/utils-go v0.5.0 h1:OKFZTbYBZ+m8Oh+J5Wt3GcPfd9CC0QW8yr5osdQ5zwY=
 github.com/pokt-foundation/utils-go v0.5.0/go.mod h1:VMYNYtm1NKfCceLqzs6QSRhLcivafktirc3FSnB7Hxs=
 github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
