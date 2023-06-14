@@ -377,6 +377,8 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 
 	userAccounts := rt.cache.GetAccountsByUserID(userID)
 
+	// If no role name filter prodided, will get all portal apps that user has any role for.
+	// If role name filter is provided will get only portal apps user has a specifc role for.
 	filteredPortalApps := []types.PortalApp{}
 	for _, account := range userAccounts {
 		if user, ok := account.Users[userID]; ok && user.Accepted {
