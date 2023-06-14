@@ -650,14 +650,16 @@ func TestRouter_updatePortalApp(t *testing.T) {
 
 func TestRouter_deletePortalApp(t *testing.T) {
 	tests := []struct {
-		name           string
-		portalAppID    types.PortalAppID
-		expectedStatus int
+		name             string
+		portalAppID      types.PortalAppID
+		expectedStatus   int
+		expectedResponse map[string]string
 	}{
 		{
-			name:           "Should delete a Portal App",
-			portalAppID:    "test_portal_app_1",
-			expectedStatus: http.StatusOK,
+			name:             "Should delete a Portal App",
+			portalAppID:      "test_portal_app_1",
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]string{"status": "deleted"},
 		},
 	}
 
@@ -680,10 +682,554 @@ func TestRouter_deletePortalApp(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
-			var portalAppResp types.PortalAppID
+			var portalAppResp map[string]string
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
 			c.NoError(err)
-			c.Equal(test.portalAppID, portalAppResp)
+			c.Equal(test.expectedResponse, portalAppResp)
+		})
+	}
+}
+
+/* ---------- V2 Account Handler Method Unit Tests ---------- */
+
+func TestRouter_getAccountByID(t *testing.T) {
+	tests := []struct {
+		name             string
+		accountID        types.AccountID
+		expectedStatus   int
+		expectedAccount  types.Account
+		accountPlan      *types.Plan
+		accountPortalApp *types.PortalApp
+	}{
+		{
+			name:             "Should get one account by ID",
+			accountID:        "account_1",
+			expectedStatus:   http.StatusOK,
+			expectedAccount:  *testdata.Accounts["account_1"],
+			accountPlan:      testdata.PayPlans["basic_plan"],
+			accountPortalApp: testdata.PortalApps["test_app_1"],
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/account/%s", test.accountID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountResp types.Account
+			err = json.Unmarshal(rr.Body.Bytes(), &accountResp)
+			c.NoError(err)
+			test.expectedAccount.Plan = test.accountPlan
+			test.expectedAccount.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
+			test.expectedAccount.PortalApps[test.accountPortalApp.ID] = test.accountPortalApp
+			c.Equal(test.expectedAccount, accountResp)
+		})
+	}
+}
+
+func TestRouter_getAccountsByUser(t *testing.T) {
+	tests := []struct {
+		name             string
+		userID           types.UserID
+		expectedStatus   int
+		expectedData     []types.Account
+		accountPlan      *types.Plan
+		accountPortalApp *types.PortalApp
+	}{
+		{
+			name:           "Should fetch all accounts for a given user ID",
+			userID:         "user_1",
+			expectedStatus: http.StatusOK,
+			expectedData: []types.Account{
+				*testdata.Accounts["account_1"],
+			},
+			accountPlan:      testdata.PayPlans["basic_plan"],
+			accountPortalApp: testdata.PortalApps["test_app_1"],
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/account", test.userID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountsResp []types.Account
+			err = json.Unmarshal(rr.Body.Bytes(), &accountsResp)
+			c.NoError(err)
+			test.expectedData[0].Plan = test.accountPlan
+			test.expectedData[0].PortalApps = make(map[types.PortalAppID]*types.PortalApp)
+			test.expectedData[0].PortalApps[test.accountPortalApp.ID] = test.accountPortalApp
+			c.Equal(test.expectedData, accountsResp)
+		})
+	}
+}
+
+func TestRouter_createAccount(t *testing.T) {
+	tests := []struct {
+		name            string
+		userID          types.UserID
+		accountInput    types.Account
+		expectedStatus  int
+		expectedAccount *types.Account
+	}{
+		{
+			name:           "Should create a new account",
+			userID:         "user_2",
+			accountInput:   *testdata.TestCreateAccount,
+			expectedStatus: http.StatusOK,
+			expectedAccount: &types.Account{
+				ID:        "account_77",
+				PlanType:  types.PayPlanType("developer_plan"),
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteAccount", mock.Anything, test.userID, test.accountInput, mock.Anything).Return(test.expectedAccount, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			accountInputBytes, err := json.Marshal(test.accountInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v2/user/%s/account", test.userID), bytes.NewBuffer(accountInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountResp *types.Account
+			err = json.Unmarshal(rr.Body.Bytes(), &accountResp)
+			c.NoError(err)
+			c.Equal(test.expectedAccount, accountResp)
+		})
+	}
+}
+
+func TestRouter_updateAccount(t *testing.T) {
+	tests := []struct {
+		name               string
+		accountID          types.AccountID
+		updateAccountInput types.UpdateAccount
+		expectedStatus     int
+		expectedAccount    *types.Account
+	}{
+		{
+			name:      "Should update an account",
+			accountID: "account_1",
+			updateAccountInput: types.UpdateAccount{
+				AccountID: "account_1",
+				PlanType:  types.TestPlan10K,
+			},
+			expectedStatus: http.StatusOK,
+			expectedAccount: &types.Account{
+				ID:       "account_1",
+				PlanType: types.TestPlan10K,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateAccount", mock.Anything, test.updateAccountInput, mock.Anything).Return(test.expectedAccount, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateAccountInputBytes, err := json.Marshal(test.updateAccountInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/account/%s", test.accountID), bytes.NewBuffer(updateAccountInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountResp *types.Account
+			err = json.Unmarshal(rr.Body.Bytes(), &accountResp)
+			c.NoError(err)
+			c.Equal(test.expectedAccount, accountResp)
+		})
+	}
+}
+
+func TestRouter_createAccountIntegration(t *testing.T) {
+	tests := []struct {
+		name                string
+		accountID           types.AccountID
+		accountIntegrations types.AccountIntegrations
+		expectedStatus      int
+		expectedIntegration *types.AccountIntegrations
+	}{
+		{
+			name:      "Should create an AccountIntegration",
+			accountID: "account_1",
+			accountIntegrations: types.AccountIntegrations{
+				AccountID:          "account_1",
+				CovalentAPIKeyFree: "covalent_free_key_1",
+				CovalentAPIKeyPaid: "covalent_paid_key_1",
+			},
+			expectedStatus: http.StatusOK,
+			expectedIntegration: &types.AccountIntegrations{
+				AccountID:          "account_1",
+				CovalentAPIKeyFree: "covalent_free_key_1",
+				CovalentAPIKeyPaid: "covalent_paid_key_1",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpsertAccountIntegration", mock.Anything, test.accountIntegrations).Return(test.expectedIntegration, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			accountIntegrationsBytes, err := json.Marshal(test.accountIntegrations)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/v2/account/%s/integration", test.accountID), bytes.NewBuffer(accountIntegrationsBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountIntegrationResp *types.AccountIntegrations
+			err = json.Unmarshal(rr.Body.Bytes(), &accountIntegrationResp)
+			c.NoError(err)
+			c.Equal(test.expectedIntegration, accountIntegrationResp)
+		})
+	}
+}
+
+func TestRouter_updateAccountIntegration(t *testing.T) {
+	tests := []struct {
+		name                string
+		accountID           types.AccountID
+		accountIntegrations types.AccountIntegrations
+		expectedStatus      int
+		expectedIntegration *types.AccountIntegrations
+	}{
+		{
+			name:      "Should update an AccountIntegration",
+			accountID: "account_1",
+			accountIntegrations: types.AccountIntegrations{
+				AccountID:          "account_1",
+				CovalentAPIKeyFree: "covalent_free_key_1_updated",
+				CovalentAPIKeyPaid: "covalent_paid_key_1_updated",
+			},
+			expectedStatus: http.StatusOK,
+			expectedIntegration: &types.AccountIntegrations{
+				AccountID:          "account_1",
+				CovalentAPIKeyFree: "covalent_free_key_1_updated",
+				CovalentAPIKeyPaid: "covalent_paid_key_1_updated",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpsertAccountIntegration", mock.Anything, test.accountIntegrations).Return(test.expectedIntegration, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			accountIntegrationsBytes, err := json.Marshal(test.accountIntegrations)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/account/%s/integration", test.accountID), bytes.NewBuffer(accountIntegrationsBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountIntegrationResp *types.AccountIntegrations
+			err = json.Unmarshal(rr.Body.Bytes(), &accountIntegrationResp)
+			c.NoError(err)
+			c.Equal(test.expectedIntegration, accountIntegrationResp)
+		})
+	}
+}
+
+func TestRouter_deleteAccount(t *testing.T) {
+	tests := []struct {
+		name           string
+		accountID      types.AccountID
+		expectedStatus int
+	}{
+		{
+			name:           "Should set account's Deleted field to true",
+			accountID:      "account_1",
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("SetAccountDeleted", mock.Anything, test.accountID, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/v2/account/%s", test.accountID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var deleteStatus map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &deleteStatus)
+			c.NoError(err)
+			c.Equal(map[string]string{"status": "deleted"}, deleteStatus)
+		})
+	}
+}
+
+/* ---------- V2 Account User Handler Method Unit Tests ---------- */
+
+func TestRouter_writeAccountUser(t *testing.T) {
+	tests := []struct {
+		name            string
+		createUserInput types.CreateAccountUserAccess
+		expectedStatus  int
+		expectedUserID  types.UserID
+	}{
+		{
+			name: "Should create a new account user",
+			createUserInput: types.CreateAccountUserAccess{
+				AccountID:   "account_1",
+				PortalAppID: "app_1",
+				Email:       "test@example.com",
+				RoleName:    "admin",
+			},
+			expectedStatus: http.StatusOK,
+			expectedUserID: "user_1",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteAccountUser", mock.Anything, test.createUserInput, mock.Anything).Return(test.expectedUserID, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			createUserInputBytes, err := json.Marshal(test.createUserInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/account/user", bytes.NewBuffer(createUserInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var userIDResp map[string]types.UserID
+			err = json.Unmarshal(rr.Body.Bytes(), &userIDResp)
+			c.NoError(err)
+			c.Equal(test.expectedUserID, userIDResp["userID"])
+		})
+	}
+}
+
+func TestRouter_updateAccountUserRole(t *testing.T) {
+	tests := []struct {
+		name            string
+		updateUserInput types.UpdateAccountUserRole
+		expectedStatus  int
+	}{
+		{
+			name: "Should update the role of an account user",
+			updateUserInput: types.UpdateAccountUserRole{
+				PortalAppID: "app_1",
+				UserID:      "user_1",
+				AccountID:   "account_1",
+				RoleName:    "admin",
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("SetAccountUserRole", mock.Anything, test.updateUserInput, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateUserInputBytes, err := json.Marshal(test.updateUserInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/account/user/update_role", bytes.NewBuffer(updateUserInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var statusResp map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &statusResp)
+			c.NoError(err)
+			c.Equal("updated", statusResp["status"])
+		})
+	}
+}
+
+func TestRouter_acceptAccountUser(t *testing.T) {
+	tests := []struct {
+		name            string
+		acceptUserInput types.UpdateAcceptAccountUser
+		expectedStatus  int
+	}{
+		{
+			name: "Should accept an account user",
+			acceptUserInput: types.UpdateAcceptAccountUser{
+				PortalAppID:      "app_1",
+				UserID:           "user_1",
+				AuthProviderType: types.AuthType("auth_type_1"),
+				ProviderUserID:   "providerUser_1",
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateAcceptAccountUser", mock.Anything, test.acceptUserInput, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			acceptUserInputBytes, err := json.Marshal(test.acceptUserInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/account/user/accept", bytes.NewBuffer(acceptUserInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var statusResp map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &statusResp)
+			c.NoError(err)
+			c.Equal("accepted", statusResp["status"])
+		})
+	}
+}
+
+func TestRouter_removeAccountUser(t *testing.T) {
+	tests := []struct {
+		name            string
+		removeUserInput types.UpdateRemoveAccountUser
+		expectedStatus  int
+	}{
+		{
+			name: "Should remove an account user",
+			removeUserInput: types.UpdateRemoveAccountUser{
+				UserID:      "user_1",
+				PortalAppID: "app_1",
+				AccountID:   "account_1",
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("RemoveAccountUser", mock.Anything, test.removeUserInput.UserID, test.removeUserInput.PortalAppID, test.removeUserInput.AccountID).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			removeUserInputBytes, err := json.Marshal(test.removeUserInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/account/user/remove", bytes.NewBuffer(removeUserInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var statusResp map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &statusResp)
+			c.NoError(err)
+			c.Equal("removed", statusResp["status"])
 		})
 	}
 }
@@ -704,7 +1250,7 @@ func TestRouter_getUserPermissionsByUserID(t *testing.T) {
 				UserID: "auth0|ellen_ripley",
 				LoadBalancers: map[v1Types.LoadBalancerID]v1Types.LoadBalancerPermissions{
 					"test_app_2": {
-						RoleName:    "OWNER",
+						RoleName:    v1Types.RoleOwner,
 						Permissions: []v1Types.PermissionsEnum{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"},
 					},
 				},
@@ -1875,7 +2421,7 @@ var (
 			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_1",
-					RoleName: "OWNER",
+					RoleName: v1Types.RoleOwner,
 					Email:    "james.holden123@test.com",
 					Accepted: true,
 				},
@@ -1911,7 +2457,7 @@ var (
 			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_3",
-					RoleName: "OWNER",
+					RoleName: v1Types.RoleOwner,
 					Email:    "ellen.ripley789@test.com",
 					Accepted: true,
 				},
@@ -1954,7 +2500,7 @@ var (
 			Users: []v1Types.UserAccess{
 				{
 					UserID:   "user_5",
-					RoleName: "OWNER",
+					RoleName: v1Types.RoleOwner,
 					Email:    "chrisjen.avasarala1@test.com",
 					Accepted: true,
 				},
