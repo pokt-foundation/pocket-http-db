@@ -1,7 +1,6 @@
 package router
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -357,7 +356,6 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 	userID := types.UserID(vars["userID"])
 
 	userAccounts := rt.cache.GetAccountsByUserID(userID)
-	Plog("userAccounts", userAccounts)
 
 	filteredPortalApps := []types.PortalApp{}
 	for _, account := range userAccounts {
@@ -378,18 +376,6 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredPortalApps)
-}
-
-func Plog(args ...interface{}) {
-	for _, arg := range args {
-		var prettyJSON bytes.Buffer
-		jsonArg, _ := json.Marshal(arg)
-		str := string(jsonArg)
-		_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-		output := prettyJSON.String()
-
-		fmt.Println(output)
-	}
 }
 
 // POST /v2/portal_app - Creates a new portal application.
