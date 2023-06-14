@@ -318,6 +318,27 @@ func (c *Cache) GetBlockedContracts() types.GlobalBlockedContracts {
 	return c.blockedContracts
 }
 
+// upsertGlobalBlockedContract inserts or updates a global blocked contract
+func (c *Cache) upsertGlobalBlockedContract(blockedContract types.BlockedContract) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	switch blockedContract.Active {
+	case false:
+		delete(c.blockedContracts.BlockedAddresses, blockedContract.BlockedAddress)
+	default:
+		c.blockedContracts.BlockedAddresses[blockedContract.BlockedAddress] = struct{}{}
+	}
+}
+
+// deleteGlobalBlockedContract deletes a global blocked contract
+func (c *Cache) deleteGlobalBlockedContract(blockedContract types.BlockedContract) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	delete(c.blockedContracts.BlockedAddresses, blockedContract.BlockedAddress)
+}
+
 /* ---------- Accounts ---------- */
 
 // GetAccount returns Account by accountID
@@ -369,10 +390,21 @@ func (c *Cache) upsertAccount(account types.Account) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	// If marked as deleted, remove Account from map
+	// and from all user ID maps of all Account users
+	if account.Deleted {
+		delete(c.accounts, account.ID)
+		for _, user := range account.Users {
+			delete(c.accountsByUserID, user.UserID)
+		}
+		return
+	}
+
 	// Ensure upsert does not overwrite existing Account fields
 	if existingAccount, ok := c.accounts[account.ID]; ok {
 		account.PortalApps = existingAccount.PortalApps
 		account.Users = existingAccount.Users
+		account.Integrations = existingAccount.Integrations
 	}
 	// Set plan in cache to latest value
 	if plan, ok := c.plans[account.PlanType]; ok {
@@ -400,18 +432,10 @@ func (c *Cache) upsertAccount(account types.Account) {
 	c.accounts[account.ID] = &account
 
 	for _, user := range account.Users {
-		switch account.Deleted {
-		// If marked as deleted, remove Account from all user ID maps of all Account users
-		case true:
-			delete(c.accountsByUserID, user.UserID)
-
-		// If not deleted, set Account to all user ID maps of all Account users
-		default:
-			if _, ok := c.accountsByUserID[user.UserID]; !ok {
-				c.accountsByUserID[user.UserID] = make(map[types.AccountID]*types.Account)
-			}
-			c.accountsByUserID[user.UserID][account.ID] = &account
+		if _, ok := c.accountsByUserID[user.UserID]; !ok {
+			c.accountsByUserID[user.UserID] = make(map[types.AccountID]*types.Account)
 		}
+		c.accountsByUserID[user.UserID][account.ID] = &account
 	}
 }
 
@@ -1070,7 +1094,6 @@ func (c *Cache) addCheck(check types.Check) {
 /* ---------- Users ---------- */
 
 // upsertUser updates or inserts user
-// TODO update more fields on the account user when users creation logic updated
 func (c *Cache) upsertUser(user types.User) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
