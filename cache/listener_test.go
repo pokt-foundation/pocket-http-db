@@ -34,76 +34,6 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 
 /* ---------- Accounts ---------- */
 
-func Test_parseAccountNotification(t *testing.T) {
-	tests := []struct {
-		name             string
-		mainTableAction  types.Action
-		sideTablesAction types.Action
-		accountID        types.AccountID
-		account          *types.Account
-	}{
-		{
-			name:             "Should insert Account in cache when receiving an insert notification",
-			mainTableAction:  types.ActionInsert,
-			sideTablesAction: types.ActionInsert,
-			accountID:        "account_6",
-			account:          testdata.TestCreateAccount,
-		},
-		{
-			name:             "Should update Account in cache when receiving an update notification",
-			mainTableAction:  types.ActionUpdate,
-			sideTablesAction: types.ActionUpdate,
-			accountID:        "account_1",
-			account: &types.Account{
-				PlanType:               types.PayPlanType("enterprise_plan"),
-				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-				PartnerThroughputLimit: 1_000,
-				PartnerAppLimit:        2,
-			},
-		},
-		{
-			name:             "Should delete Account in cache when receiving an update notification with Account.Deleted = true",
-			mainTableAction:  types.ActionUpdate,
-			sideTablesAction: types.ActionUpdate,
-			accountID:        "account_1",
-			account: &types.Account{
-				PlanType:               types.PayPlanType("enterprise_plan"),
-				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-				PartnerThroughputLimit: 1_000,
-				PartnerAppLimit:        2,
-				Deleted:                true,
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			readerMock := NewReaderMock(t)
-			cache := newTestListenerCache(t, readerMock)
-
-			test.account.ID = test.accountID
-			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, test.account)
-
-			time.Sleep(100 * time.Millisecond) // need time for cache refresh
-
-			account := cache.GetAccount(test.accountID)
-			c.Equal(test.account.PlanType, account.PlanType)
-			c.Equal(test.account.PartnerChainIDs, account.PartnerChainIDs)
-			c.Equal(test.account.PartnerThroughputLimit, account.PartnerThroughputLimit)
-			c.Equal(test.account.PartnerAppLimit, account.PartnerAppLimit)
-
-			accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), test.accountID)
-			if test.account.Deleted {
-				c.False(accountFound, "Account should be removed from accounts map")
-			} else {
-				c.True(accountFound, "Account should be found in accounts map")
-			}
-		})
-	}
-}
-
 func Test_parseAccountUserAccessNotification(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -179,6 +109,81 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			} else {
 				accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map")
+			}
+		})
+	}
+}
+
+func Test_parseAccountNotification(t *testing.T) {
+	tests := []struct {
+		name             string
+		mainTableAction  types.Action
+		sideTablesAction types.Action
+		accountID        types.AccountID
+		account          *types.Account
+	}{
+		{
+			name:             "Should insert Account in cache when receiving an insert notification",
+			mainTableAction:  types.ActionInsert,
+			sideTablesAction: types.ActionInsert,
+			accountID:        "account_6",
+			account:          testdata.TestCreateAccount,
+		},
+		{
+			name:             "Should update Account in cache when receiving an update notification",
+			mainTableAction:  types.ActionUpdate,
+			sideTablesAction: types.ActionUpdate,
+			accountID:        "account_1",
+			account: &types.Account{
+				PlanType:               types.PayPlanType("enterprise_plan"),
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
+				PartnerThroughputLimit: 1_000,
+				PartnerAppLimit:        2,
+			},
+		},
+		{
+			name:             "Should delete Account in cache when receiving an update notification with Account.Deleted = true",
+			mainTableAction:  types.ActionUpdate,
+			sideTablesAction: types.ActionUpdate,
+			accountID:        "account_1",
+			account: &types.Account{
+				PlanType:               types.PayPlanType("enterprise_plan"),
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
+				PartnerThroughputLimit: 1_000,
+				PartnerAppLimit:        2,
+				Deleted:                true,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+
+			test.account.ID = test.accountID
+			testAccount := test.account
+			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, testAccount)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			account := cache.GetAccount(test.accountID)
+			if testAccount.Deleted {
+				c.Empty(account)
+			} else {
+				c.Equal(testAccount.PlanType, account.PlanType)
+				c.Equal(testAccount.PartnerChainIDs, account.PartnerChainIDs)
+				c.Equal(testAccount.PartnerThroughputLimit, account.PartnerThroughputLimit)
+				c.Equal(testAccount.PartnerAppLimit, account.PartnerAppLimit)
+			}
+
+			accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), test.accountID)
+			if testAccount.Deleted {
+				c.False(accountFound, "Account should be removed from accounts map")
+			} else {
+				c.True(accountFound, "Account should be found in accounts map")
 			}
 		})
 	}

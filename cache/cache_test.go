@@ -255,127 +255,6 @@ func TestCache_SetCache_Failure(t *testing.T) {
 
 /* ---------- Accounts ---------- */
 
-func Test_upsertAccount(t *testing.T) {
-	tests := []struct {
-		name         string
-		account      types.Account
-		accountUsers AccountsForUser
-		pendingUsers map[types.AccountID][]types.AccountUserAccess
-	}{
-		{
-			name:    "Should insert a new account",
-			account: *testdata.TestCreateAccount,
-		},
-		{
-			name: "Should update an existing account",
-			account: types.Account{
-				ID:       "account_1",
-				PlanType: types.PayPlanType("enterprise_plan"),
-				Users: map[types.UserID]types.AccountUserAccess{
-					"user_1": testdata.AccountUserAccess[1],
-					"user_2": testdata.AccountUserAccess[2],
-					"user_8": testdata.AccountUserAccess[8],
-				},
-				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
-				},
-				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				PartnerThroughputLimit: 2_000,
-				PartnerAppLimit:        1,
-				CreatedAt:              testdata.MockTimestamp,
-				UpdatedAt:              testdata.MockTimestamp,
-			},
-		},
-		{
-			name: "Should update an existing account when pending users found in cache",
-			account: types.Account{
-				ID:       "account_1",
-				PlanType: types.PayPlanType("enterprise_plan"),
-				Users: map[types.UserID]types.AccountUserAccess{
-					"user_1": testdata.AccountUserAccess[1],
-					"user_2": testdata.AccountUserAccess[2],
-					"user_8": testdata.AccountUserAccess[8],
-					"user_3": testdata.AccountUserAccess[3],
-					"user_7": testdata.AccountUserAccess[7],
-				},
-				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
-				},
-				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				PartnerThroughputLimit: 2_000,
-				PartnerAppLimit:        1,
-				CreatedAt:              testdata.MockTimestamp,
-				UpdatedAt:              testdata.MockTimestamp,
-			},
-			pendingUsers: map[types.AccountID][]types.AccountUserAccess{
-				"account_1": {testdata.AccountUserAccess[7], testdata.AccountUserAccess[3]},
-			},
-		},
-		{
-			name: "Should update deleted account and remove from user ID accounts map",
-			account: types.Account{
-				ID:       "account_2",
-				PlanType: types.PayPlanType("pro_plan"),
-				Users: map[types.UserID]types.AccountUserAccess{
-					"user_3": testdata.AccountUserAccess[3],
-					"user_4": testdata.AccountUserAccess[4],
-					"user_9": testdata.AccountUserAccess[9],
-					"user_2": testdata.AccountUserAccess[10],
-				},
-				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_2": testdata.PortalApps["test_app_2"],
-				},
-				Deleted: true,
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-			accountID := test.account.ID
-
-			cache := NewTestCache(t)
-
-			if len(test.pendingUsers) > 0 {
-				cache.pendingAccountUserAccess = test.pendingUsers
-			}
-
-			// Upsert account
-			cache.upsertAccount(test.account)
-
-			if len(test.pendingUsers) > 0 {
-				for _, user := range test.pendingUsers[test.account.ID] {
-					test.account.Users[user.UserID] = user
-				}
-			}
-
-			test.account.Plan = cache.plans[test.account.PlanType]
-			c.Equal(test.account, cache.GetAccount(test.account.ID))
-
-			accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
-			if test.account.Deleted {
-				c.False(accountFound, "Account should be removed from accounts map")
-			} else {
-				c.True(accountFound, "Account should be found in accounts map")
-			}
-
-			for _, user := range test.account.Users {
-				accountsForUser := cache.GetAccountsByUserID(user.UserID)
-
-				accountInUserAccounts := findAccountInAccounts(accountsForUser, accountID)
-
-				if test.account.Deleted {
-					c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
-				} else {
-					c.True(accountInUserAccounts, "Account should be present in accountsByUserID map")
-					c.Equal(test.account, getAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
-				}
-			}
-		})
-	}
-}
-
 func Test_upsertAccountUser(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -449,6 +328,133 @@ func Test_upsertAccountUser(t *testing.T) {
 
 					c.True(ok, "PortalAppPermissions should be present in UserPermissions")
 					c.Equal(roleName, portalAppPermission.RoleName, "Role should be updated in UserPermissions")
+				}
+			}
+		})
+	}
+}
+
+func Test_upsertAccount(t *testing.T) {
+	tests := []struct {
+		name         string
+		account      types.Account
+		accountUsers AccountsForUser
+		pendingUsers map[types.AccountID][]types.AccountUserAccess
+	}{
+		{
+			name:    "Should insert a new account",
+			account: *testdata.TestCreateAccount,
+		},
+		{
+			name: "Should update an existing account",
+			account: types.Account{
+				ID:       "account_1",
+				PlanType: types.PayPlanType("enterprise_plan"),
+				Users: map[types.UserID]types.AccountUserAccess{
+					"user_1": testdata.AccountUserAccess[1],
+					"user_2": testdata.AccountUserAccess[2],
+					"user_8": testdata.AccountUserAccess[8],
+				},
+				PortalApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_1": testdata.PortalApps["test_app_1"],
+				},
+				Integrations:           types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+				PartnerThroughputLimit: 2_000,
+				PartnerAppLimit:        1,
+				CreatedAt:              testdata.MockTimestamp,
+				UpdatedAt:              testdata.MockTimestamp,
+			},
+		},
+		{
+			name: "Should update an existing account when pending users found in cache",
+			account: types.Account{
+				ID:       "account_1",
+				PlanType: types.PayPlanType("enterprise_plan"),
+				Users: map[types.UserID]types.AccountUserAccess{
+					"user_1": testdata.AccountUserAccess[1],
+					"user_2": testdata.AccountUserAccess[2],
+					"user_8": testdata.AccountUserAccess[8],
+					"user_3": testdata.AccountUserAccess[3],
+					"user_7": testdata.AccountUserAccess[7],
+				},
+				PortalApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_1": testdata.PortalApps["test_app_1"],
+				},
+				Integrations:           types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
+				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+				PartnerThroughputLimit: 2_000,
+				PartnerAppLimit:        1,
+				CreatedAt:              testdata.MockTimestamp,
+				UpdatedAt:              testdata.MockTimestamp,
+			},
+			pendingUsers: map[types.AccountID][]types.AccountUserAccess{
+				"account_1": {testdata.AccountUserAccess[7], testdata.AccountUserAccess[3]},
+			},
+		},
+		{
+			name: "Should update deleted account and remove from user ID accounts map",
+			account: types.Account{
+				ID:       "account_2",
+				PlanType: types.PayPlanType("pro_plan"),
+				Users: map[types.UserID]types.AccountUserAccess{
+					"user_3": testdata.AccountUserAccess[3],
+					"user_4": testdata.AccountUserAccess[4],
+					"user_9": testdata.AccountUserAccess[9],
+					"user_2": testdata.AccountUserAccess[10],
+				},
+				PortalApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_2": testdata.PortalApps["test_app_2"],
+				},
+				Integrations: types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
+				Deleted:      true,
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+			accountID := test.account.ID
+
+			cache := NewTestCache(t)
+
+			if len(test.pendingUsers) > 0 {
+				cache.pendingAccountUserAccess = test.pendingUsers
+			}
+
+			// Upsert account
+			cache.upsertAccount(test.account)
+			if test.account.Deleted {
+				c.Empty(cache.GetAccount(accountID), "Account should be removed from cache")
+			} else {
+				if len(test.pendingUsers) > 0 {
+					for _, user := range test.pendingUsers[test.account.ID] {
+						test.account.Users[user.UserID] = user
+					}
+				}
+
+				test.account.Plan = cache.plans[test.account.PlanType]
+				c.Equal(test.account, cache.GetAccount(test.account.ID))
+
+				accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
+				if test.account.Deleted {
+					c.False(accountFound, "Account should be removed from accounts map")
+				} else {
+					c.True(accountFound, "Account should be found in accounts map")
+				}
+
+				for _, user := range test.account.Users {
+					accountsForUser := cache.GetAccountsByUserID(user.UserID)
+
+					accountInUserAccounts := findAccountInAccounts(accountsForUser, accountID)
+
+					if test.account.Deleted {
+						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
+					} else {
+						c.True(accountInUserAccounts, "Account should be present in accountsByUserID map")
+						c.Equal(test.account, getAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+					}
 				}
 			}
 		})
