@@ -11,6 +11,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pokt-foundation/db-client v1.11.0 h1:B+qyZdCtyRa78xzAucQjUD8eCwndC6tnlY/Rd72CVn8=
 github.com/pokt-foundation/db-client v1.11.0/go.mod h1:sPvCYyFrhUPDH8wMMMuE7AdJqE3IVvOhH6KkkJcO4V8=
+github.com/pokt-foundation/db-client/v2 v2.0.3 h1:BuT0ZWLW1FBmnTUgU6McqtPMmTkuoWDtyv7aEodMbGk=
+github.com/pokt-foundation/db-client/v2 v2.0.3/go.mod h1:gk4LasMAPSUMjjmZ9rIIxdprRk+Euc2Z9/T99R0nN/A=
 github.com/pokt-foundation/portal-db v1.10.8 h1:YvTDrVc+P5NXk5NKk1zaoIHsWfsXsG1dWp3X5fa8K/A=
 github.com/pokt-foundation/portal-db v1.10.8/go.mod h1:Pf8IIeoj3mSIk0+eNdzssz3T7GvnWRkFKPwGsFT2D5w=
 github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.98 h1:nprxnrbVQoP60kibF2XHErDiyT1Imhu7XuQuMddAarY=

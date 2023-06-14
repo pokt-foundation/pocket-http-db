@@ -1294,10 +1294,10 @@ func TestRouter_getUserPermissionByUserID(t *testing.T) {
 
 func TestRouter_createUser(t *testing.T) {
 	tests := []struct {
-		name            string
-		createUserInput types.CreateUser
-		expectedStatus  int
-		expectedUser    *types.User
+		name                 string
+		createUserInput      types.CreateUser
+		expectedStatus       int
+		expectedUserResponse *types.CreateUserResponse
 	}{
 		{
 			name: "Should create a new user",
@@ -1306,21 +1306,24 @@ func TestRouter_createUser(t *testing.T) {
 				ProviderUserID: "auth0|ellen_ripley",
 			},
 			expectedStatus: http.StatusOK,
-			expectedUser: &types.User{
-				ID:       "user_3",
-				Email:    "ellen_ripley@nostromo.space",
-				SignedUp: true,
-				AuthProviders: map[types.AuthType]types.UserAuthProvider{
-					"auth0": {
-						UserID:         "user_3",
-						ProviderUserID: "auth0|ellen_ripley",
-						Type:           "auth0",
-						Provider:       "auth0",
-						Federated:      true,
+			expectedUserResponse: &types.CreateUserResponse{
+				User: types.User{
+					ID:       "user_3",
+					Email:    "ellen_ripley@nostromo.space",
+					SignedUp: true,
+					AuthProviders: map[types.AuthType]types.UserAuthProvider{
+						"auth0": {
+							UserID:         "user_3",
+							ProviderUserID: "auth0|ellen_ripley",
+							Type:           "auth0",
+							Provider:       "auth0",
+							Federated:      true,
+						},
 					},
+					CreatedAt: testdata.MockTimestamp,
+					UpdatedAt: testdata.MockTimestamp,
 				},
-				CreatedAt: testdata.MockTimestamp,
-				UpdatedAt: testdata.MockTimestamp,
+				AccountID: "account_42",
 			},
 		},
 	}
@@ -1333,7 +1336,7 @@ func TestRouter_createUser(t *testing.T) {
 			c.NoError(err)
 
 			writerMock := driver.NewMockDriver(t)
-			writerMock.On("WriteUserNewSignUp", mock.Anything, test.createUserInput, mock.Anything).Return(test.expectedUser, types.AccountID(""), nil).Once()
+			writerMock.On("WriteUserNewSignUp", mock.Anything, test.createUserInput, mock.Anything).Return(&test.expectedUserResponse.User, test.expectedUserResponse.AccountID, nil).Once()
 			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
@@ -1347,10 +1350,10 @@ func TestRouter_createUser(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
-			var userResp *types.User
+			var userResp *types.CreateUserResponse
 			err = json.Unmarshal(rr.Body.Bytes(), &userResp)
 			c.NoError(err)
-			c.Equal(test.expectedUser, userResp)
+			c.Equal(test.expectedUserResponse, userResp)
 		})
 	}
 }

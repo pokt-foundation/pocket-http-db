@@ -738,14 +738,17 @@ func (rt *Router) createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	createdUser, _, err := rt.writer.WriteUserNewSignUp(r.Context(), user, time.Now())
+	createdUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), user, time.Now())
 	if err != nil {
 		rt.logError(fmt.Errorf("WriteUserNewSignUp failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, createdUser)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, types.CreateUserResponse{
+		User:      *createdUser,
+		AccountID: accountID,
+	})
 }
 
 // DELETE /v2/user/{userID} - Deletes a User (WARNING: this will perform a hard delete in the database).
