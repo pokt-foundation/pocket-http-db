@@ -4444,7 +4444,7 @@ var (
 					Version:              "0.0.1",
 				},
 				GatewaySettings:      v1Types.GatewaySettings{SecretKey: "test_40f482d91a5ef2300ebb4e2308c"},
-				Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "basic_plan", Limit: 1_000}, CustomLimit: 0},
+				Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "FREETIER_V0", Limit: 250_000}, CustomLimit: 0},
 				NotificationSettings: v1Types.NotificationSettings{SignedUp: true, Quarter: false, Half: false, ThreeQuarters: true, Full: true},
 			},
 		},
