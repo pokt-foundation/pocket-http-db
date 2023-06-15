@@ -134,7 +134,7 @@ func buildConnectionString(options options) (string, error) {
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
 func httpHandler(router *router.Router, port string, log *logrus.Logger) {
-	log.Printf("Postgres API v1 running in port: %s", port)
+	log.Printf("Pocket HTTP DB v2 running on port: %s", port)
 	log.Fatal(http.ListenAndServe(":"+port, router.Router))
 }
 
@@ -142,6 +142,8 @@ func main() {
 	// Configure logger
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
+
+	logger.Printf("Pocket HTTP DB v2 starting...")
 
 	// Gather env vars
 	options := gatherOptions()
