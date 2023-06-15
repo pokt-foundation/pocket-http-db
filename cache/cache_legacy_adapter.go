@@ -365,8 +365,9 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 			return v1Types.LoadBalancer{}, fmt.Errorf(errWritingAccount.Error(), err)
 		}
 		account = *createdAccount
-		account.Plan = c.plans[v2Types.FreetierV0]
 	}
+
+	account.Plan = c.plans[v2Types.FreetierV0]
 
 	portalApp.AccountID = account.ID
 
