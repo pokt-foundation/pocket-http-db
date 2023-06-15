@@ -367,9 +367,12 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 		account = *createdAccount
 	}
 
+	account.PlanType = v2Types.FreetierV0
 	account.Plan = c.plans[v2Types.FreetierV0]
 
 	portalApp.AccountID = account.ID
+	portalApp.LegacyFields.PlanType = account.PlanType
+	portalApp.LegacyFields.DailyLimit = int32(account.Plan.LegacyDailyLimit)
 
 	// Write the portal app to the data store
 	createdPortalApp, err := writer.WritePortalApp(ctx, portalApp, aat, createdAt)
