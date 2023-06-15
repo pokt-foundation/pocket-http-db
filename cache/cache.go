@@ -678,6 +678,14 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 					owner.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
 				}
 				owner.PortalAppRoles[portalApp.ID] = types.RoleOwner
+
+				// Add owner to user permissions map
+				if userPermissions, ok := c.userPermissions[ownerID]; ok {
+					_, err = userPermissions.UpsertPermissions(portalApp.ID, types.RoleOwner)
+					if err != nil {
+						fmt.Printf("error upserting user permissions: %v\n", err)
+					}
+				}
 			}
 		}
 	}

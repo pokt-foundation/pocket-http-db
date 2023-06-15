@@ -3071,7 +3071,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		tests := []struct {
 			name                   string
 			loadBalancer           *v1Types.LoadBalancer
-			userID                 string
+			userID, providerUserID string
 			expectedCovalentAPIKey string
 			err                    error
 		}{
@@ -3079,6 +3079,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:                   "Should create a single loadBalancer in the DB",
 				loadBalancer:           createLegacyLoadBalancer,
 				userID:                 "user_1",
+				providerUserID:         "auth0|james_holden",
 				expectedCovalentAPIKey: "covalent_api_key_1",
 			},
 		}
@@ -3110,6 +3111,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.Equal(test.err, err)
 					clearTimeFields(loadBalancer)
 					ts.Equal(test.loadBalancer, loadBalancer)
+
+					// If the loadBalancer was created, it should have permissions
+					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
+					ts.Equal(test.err, err)
+					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
+
+					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
+					ts.Equal(test.err, err)
+					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
 				}
 			})
 		}

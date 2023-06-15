@@ -380,6 +380,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	account.PortalApps = map[v2Types.PortalAppID]*v2Types.PortalApp{
 		createdPortalApp.ID: createdPortalApp,
 	}
+
 	// Add the creator as the OWNER to the account before returning converted legacy load balancer
 	if accountUsers, ok := account.Users[portalUserID]; ok {
 		if accountUsers.PortalAppRoles == nil {
