@@ -65,7 +65,7 @@ func NewRouter(config Config) (*Router, error) {
 		log:     config.Log,
 	}
 
-	rt.Router.HandleFunc("/", rt.healthCheck).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/healthz", rt.healthCheck).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/reset_cache", rt.resetCache).Methods(http.MethodPost)
 
 	/* ----- V2 Endpoints ----- */
@@ -150,7 +150,7 @@ func NewRouter(config Config) (*Router, error) {
 func (rt *Router) authorizationHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This is the path of the health check endpoint
-		if r.URL.Path == "/" {
+		if r.URL.Path == "/healthz" {
 			h.ServeHTTP(w, r)
 
 			return

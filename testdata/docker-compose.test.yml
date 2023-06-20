@@ -19,6 +19,11 @@ services:
     depends_on:
       portal-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   pocket-http-db-2:
     build:
@@ -37,6 +42,11 @@ services:
     depends_on:
       portal-db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   portal-db:
     image: pocketfoundation/test-portal-postgres:latest
