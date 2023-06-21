@@ -870,6 +870,9 @@ func (c *Cache) addChainGigastakeApp(chainGigastake types.ChainGigastakeApp) {
 		return
 	}
 
+	if gigastakeApp.ChainIDs == nil {
+		gigastakeApp.ChainIDs = make(map[types.RelayChainID]struct{})
+	}
 	gigastakeApp.ChainIDs[chainID] = struct{}{}
 
 	if chain, ok := c.chains[chainID]; ok {

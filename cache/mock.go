@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pokt-foundation/portal-db/v2/driver"
@@ -14,16 +15,24 @@ type ReaderMock struct {
 	notification chan *types.Notification
 }
 
-func NewReaderMock(t *testing.T) *ReaderMock {
+func NewReaderMock(t *testing.T) (*ReaderMock, context.CancelFunc) {
+	notificationChannel := make(chan *types.Notification, 32)
+
+	listenerMock := postgresdriver.NewListenerMock(notificationChannel)
+	ctx, cancel := context.WithCancel(context.Background())
+
 	mock := &ReaderMock{
 		MockDriver:   *driver.NewMockDriver(t),
-		listener:     postgresdriver.NewListenerMock(),
-		notification: make(chan *types.Notification, 32),
+		listener:     listenerMock,
+		notification: notificationChannel,
 	}
 
-	go postgresdriver.Listen(mock.listener.NotificationChannel(), mock.notification)
+	err := listenerMock.Listen(ctx)
+	if err != nil {
+		panic(err)
+	}
 
-	return mock
+	return mock, cancel
 }
 
 func (r *ReaderMock) NotificationChannel() <-chan *types.Notification {

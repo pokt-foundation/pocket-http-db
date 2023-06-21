@@ -4,132 +4,142 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/lib/pq"
+	"github.com/jackc/pgx/v5"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
+	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/pokt-foundation/utils-go/environment"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	pgHost                     = "PG_HOST"
-	pgPort                     = "PG_PORT"
-	pgUser                     = "PG_USER"
-	pgPassword                 = "PG_PASSWORD"
-	pgDatabase                 = "PG_DATABASE"
-	pgSSLRootCert              = "PG_SSL_ROOT_CERT"
-	pgSSLCert                  = "PG_SSL_CERT"
-	pgSSLKey                   = "PG_SSL_KEY"
-	apiKeys                    = "API_KEYS"
+	// App Env determines type of DB connection.
+	appEnv = "APP_ENV"
+	// Postgres DB vars - Required for all Envs.
+	pgUser     = "PG_USER"
+	pgPassword = "PG_PASSWORD"
+	pgDatabase = "PG_DATABASE"
+	// Local DB vars - Required for development/test Env.
+	pgHost = "PG_HOST"
+	pgPort = "PG_PORT"
+	// CloudSQL DB vars - Required for production Env.
+	// May only set one of DB_PUBLIC_IP or DB_PRIVATE_IP; setting both will error.
+	dbInstanceConnectionName = "DB_INSTANCE_CONNECTION_NAME"
+	dbPublicIP               = "DB_PUBLIC_IP"
+	dbPrivateIP              = "DB_PRIVATE_IP"
+	// PHD config vars
+	apiKeys = "API_KEYS"
+	// Optional vars. Will use defaults if not set.
 	cacheRefresh               = "CACHE_REFRESH"
-	port                       = "PORT"
 	defaultCacheRefreshMinutes = 5
+	port                       = "PORT"
 	defaultPort                = "8080"
-
-	sslRootCertFilename = "ssl_root_cert.pem"
-	sslCertFilename     = "ssl_cert.pem"
-	sslKeyFilename      = "ssl_key.pem"
 )
 
-type options struct {
-	pgHost, pgPort, pgUser, pgPassword, pgDatabase,
-	pgSSLRootCert, pgSSLCert, pgSSLKey string
-	apiKeys             map[string]bool
-	cacheRefreshMinutes time.Duration
-	port                string
-}
+type (
+	options struct {
+		appEnv types.AppEnv
+
+		pgHost, pgPort, pgUser, pgPassword, pgDatabase,
+		dbInstanceConnectionName, dbPublicIP, dbPrivateIP string
+
+		apiKeys map[string]bool
+
+		cacheRefreshMinutes time.Duration
+		port                string
+	}
+	DBConfig interface {
+		GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error)
+	}
+	CloudSQLConfig struct {
+		options
+	}
+	TestDBConfig struct {
+		options
+	}
+)
 
 // gatherOptions collects and returns the required environment variables.
 func gatherOptions() options {
-	return options{
-		pgHost:              environment.MustGetString(pgHost),
-		pgPort:              environment.MustGetString(pgPort),
+	appEnv := types.AppEnv(environment.MustGetString(appEnv))
+	if !appEnv.IsValid() {
+		panic(fmt.Sprintf("invalid APP_ENV: %s", appEnv))
+	}
+
+	options := options{
+		appEnv:              appEnv,
 		pgUser:              environment.MustGetString(pgUser),
 		pgPassword:          environment.MustGetString(pgPassword),
 		pgDatabase:          environment.MustGetString(pgDatabase),
-		pgSSLRootCert:       environment.GetString(pgSSLRootCert, ""),
-		pgSSLCert:           environment.GetString(pgSSLCert, ""),
-		pgSSLKey:            environment.GetString(pgSSLKey, ""),
 		apiKeys:             environment.MustGetStringMap(apiKeys, ","),
 		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
 		port:                environment.GetString(port, defaultPort),
 	}
+
+	switch appEnv {
+	case types.AppEnvProduction:
+		// For CloudSQL DB
+		options.dbInstanceConnectionName = environment.MustGetString(dbInstanceConnectionName)
+		options.dbPublicIP = environment.GetString(dbPublicIP, "")
+		options.dbPrivateIP = environment.GetString(dbPrivateIP, "")
+	default:
+		// For local DB
+		options.pgHost = environment.MustGetString(pgHost)
+		options.pgPort = environment.MustGetString(pgPort)
+	}
+
+	return options
 }
 
-// createCertFile creates a .pem certificate file for connecting to the database using SSL.
-func createCertFile(content string, filename string) (string, error) {
-	// Remove the file if it exists
-	if _, err := os.Stat(filename); !os.IsNotExist(err) {
-		err := os.Remove(filename)
-		if err != nil {
-			return "", err
-		}
+// CloudSQLConfig.GetConn connects to a GCP CloudSQL instance using the cloudsqlconn lib.
+// Intended for production use. Will be used if APP_ENV is 'production'.
+func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
+	driverConfig := postgresdriver.CloudSQLConfig{
+		DBUser:                 c.options.pgUser,
+		DBPassword:             c.options.pgPassword,
+		DBName:                 c.options.pgDatabase,
+		InstanceConnectionName: c.options.dbInstanceConnectionName,
+		PublicIP:               c.options.dbPublicIP,
+		PrivateIP:              c.options.dbPrivateIP,
 	}
 
-	certFile, err := os.Create(filename)
+	mainConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
-	defer certFile.Close()
-
-	if err := certFile.Chmod(0600); err != nil {
-		return "", err
-	}
-
-	content = strings.ReplaceAll(content, "\\n", "\n")
-
-	_, err = certFile.WriteString(content)
+	listenerConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
 	if err != nil {
-		return "", err
+		return nil, nil, err
 	}
 
-	return certFile.Name(), nil
+	return mainConn, listenerConn, nil
 }
 
-// buildConnectionString constructs the Postgre connection string using the given options.
-// If the SSL env vars are present, it also creates certificate files for the SSL certificates.
-func buildConnectionString(options options) (string, error) {
-	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
-		options.pgHost,
-		options.pgPort,
-		options.pgUser,
-		options.pgPassword,
-		options.pgDatabase,
+// TestDBConfig.GetConn connects to a Postgres database using standard connection string and user/PW.
+// Intended to be used for running tests on a local Docker container. Will be used if APP_ENV is 'test' or 'development'.
+func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
+	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		c.options.pgHost,
+		c.options.pgPort,
+		c.options.pgUser,
+		c.options.pgPassword,
+		c.options.pgDatabase,
 	)
 
-	// Only configure the connection string to use SSL if all the SSL variables are present.
-	// This is to allow E2E testing of PHD using a local Docker Postgres DB without SSL.
-	if options.pgSSLRootCert != "" && options.pgSSLCert != "" && options.pgSSLKey != "" {
-		sslRootCertPath, err := createCertFile(options.pgSSLRootCert, sslRootCertFilename)
-		if err != nil {
-			return "", err
-		}
-		sslCertPath, err := createCertFile(options.pgSSLCert, sslCertFilename)
-		if err != nil {
-			return "", err
-		}
-		sslKeyPath, err := createCertFile(options.pgSSLKey, sslKeyFilename)
-		if err != nil {
-			return "", err
-		}
-
-		connectionString = fmt.Sprintf("%s sslmode=verify-ca sslrootcert=%s sslcert=%s sslkey=%s",
-			connectionString,
-			sslRootCertPath,
-			sslCertPath,
-			sslKeyPath,
-		)
-	} else {
-		connectionString = fmt.Sprintf("%s sslmode=disable", connectionString)
+	mainConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
+	if err != nil {
+		return nil, nil, err
+	}
+	listenerConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return connectionString, nil
+	return mainConn, listenerConn, nil
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
@@ -139,37 +149,41 @@ func httpHandler(router *router.Router, port string, log *logrus.Logger) {
 }
 
 func main() {
+	ctx := context.Background()
+
 	// Configure logger
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
-
 	logger.Printf("Pocket HTTP DB v2 starting...")
 
 	// Gather env vars
 	options := gatherOptions()
 
-	ctx := context.Background()
+	// Choose DB configuration based on APP_ENV
+	var dbConfig DBConfig
+	switch options.appEnv {
+	case types.AppEnvProduction:
+		// For CloudSQL DB
+		dbConfig = &CloudSQLConfig{options: options}
+	default:
+		// For local DB
+		dbConfig = &TestDBConfig{options: options}
+	}
 
-	// Connect to Postgres DB
-	connectionString, err := buildConnectionString(options)
+	// Connect to Postgres DB, initialize listener and instantiate driver
+	mainConn, listenerConn, err := dbConfig.GetConn(ctx)
 	if err != nil {
 		panic(err)
 	}
 
-	reportProblem := func(ev pq.ListenerEventType, err error) {
-		if err != nil {
-			fmt.Printf("Problem with listener, error: %s, event type: %d", err.Error(), ev)
-		}
-	}
-
-	listener := pq.NewListener(connectionString, 10*time.Second, time.Minute, reportProblem)
-
-	driver, err := postgresdriver.NewPostgresDriver(connectionString, listener)
+	notificationChannel := make(chan *types.Notification, 32)
+	listener := postgresdriver.NewPGXListener(listenerConn, notificationChannel)
+	driver, err := postgresdriver.NewPostgresDriver(mainConn, listener, notificationChannel)
 	if err != nil {
 		panic(err)
 	}
 
-	// Create the cache and router
+	// Pass DB reader to cache and instantiate
 	cache, err := cache.NewCache(ctx, cache.Config{
 		Reader:              driver,
 		Logger:              logger,
@@ -179,6 +193,7 @@ func main() {
 		panic(err)
 	}
 
+	// Pass cache and DB writer to router and instantiate
 	router, err := router.NewRouter(router.Config{
 		Cache:   cache,
 		Writer:  driver,

@@ -1381,7 +1381,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						Environment: "cascadia",
 					},
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: pq: invalid input value for enum environment: \"cascadia\""),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: invalid portal app environment provided: cascadia"),
 			},
 			{
 				name: "Should return an error for non-existent account ID",

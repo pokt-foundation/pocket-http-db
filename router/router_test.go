@@ -27,7 +27,7 @@ var testCtx = context.Background()
 func newTestRouter(t *testing.T) (*Router, error) {
 	c := require.New(t)
 
-	readerMock := cache.NewReaderMock(t)
+	readerMock, _ := cache.NewReaderMock(t)
 
 	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
 	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)

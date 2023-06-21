@@ -16,6 +16,7 @@ services:
       PG_PORT: 5432
       PG_DATABASE: postgres
       API_KEYS: test_api_key_6789
+      APP_ENV: test
     depends_on:
       portal-db:
         condition: service_healthy
@@ -39,6 +40,7 @@ services:
       PG_PORT: 5432
       PG_DATABASE: postgres
       API_KEYS: test_api_key_6789
+      APP_ENV: test
     depends_on:
       portal-db:
         condition: service_healthy
