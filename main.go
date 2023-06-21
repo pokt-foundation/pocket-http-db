@@ -17,22 +17,23 @@ import (
 )
 
 const (
-	// App env determines type of DB connection
+	// App Env determines type of DB connection.
 	appEnv = "APP_ENV"
-
-	// DB vars - Required for all envs
+	// Postgres DB vars - Required for all Envs.
 	pgUser     = "PG_USER"
 	pgPassword = "PG_PASSWORD"
 	pgDatabase = "PG_DATABASE"
-	// DB vars - Required for development/test env
+	// Local DB vars - Required for development/test Env.
 	pgHost = "PG_HOST"
 	pgPort = "PG_PORT"
-	// DB vars - Required for production env
+	// CloudSQL DB vars - Required for production Env.
+	// May only set one of DB_PUBLIC_IP or DB_PRIVATE_IP; setting both will error.
 	dbInstanceConnectionName = "DB_INSTANCE_CONNECTION_NAME"
+	dbPublicIP               = "DB_PUBLIC_IP"
 	dbPrivateIP              = "DB_PRIVATE_IP"
 	// PHD config vars
 	apiKeys = "API_KEYS"
-	// Optional vars (will default if not set)
+	// Optional vars. Will use defaults if not set.
 	cacheRefresh               = "CACHE_REFRESH"
 	defaultCacheRefreshMinutes = 5
 	port                       = "PORT"
@@ -44,22 +45,21 @@ type (
 		appEnv types.AppEnv
 
 		pgHost, pgPort, pgUser, pgPassword, pgDatabase,
-		dbInstanceConnectionName, dbPrivateIP string
+		dbInstanceConnectionName, dbPublicIP, dbPrivateIP string
 
-		apiKeys             map[string]bool
+		apiKeys map[string]bool
+
 		cacheRefreshMinutes time.Duration
 		port                string
 	}
-
 	DBConfig interface {
-		GetConn() (mainConn, listenerConn *pgx.Conn, err error)
+		GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error)
 	}
-
 	CloudSQLConfig struct {
-		options options
+		options
 	}
 	TestDBConfig struct {
-		options options
+		options
 	}
 )
 
@@ -72,9 +72,9 @@ func gatherOptions() options {
 
 	options := options{
 		appEnv:              appEnv,
-		pgHost:              environment.MustGetString(pgHost),
-		pgPort:              environment.MustGetString(pgPort),
 		pgUser:              environment.MustGetString(pgUser),
+		pgPassword:          environment.MustGetString(pgPassword),
+		pgDatabase:          environment.MustGetString(pgDatabase),
 		apiKeys:             environment.MustGetStringMap(apiKeys, ","),
 		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
 		port:                environment.GetString(port, defaultPort),
@@ -84,11 +84,12 @@ func gatherOptions() options {
 	case types.AppEnvProduction:
 		// For CloudSQL DB
 		options.dbInstanceConnectionName = environment.MustGetString(dbInstanceConnectionName)
+		options.dbPublicIP = environment.GetString(dbPublicIP, "")
 		options.dbPrivateIP = environment.GetString(dbPrivateIP, "")
 	default:
 		// For local DB
-		options.pgPassword = environment.MustGetString(pgPassword)
-		options.pgDatabase = environment.MustGetString(pgDatabase)
+		options.pgHost = environment.MustGetString(pgHost)
+		options.pgPort = environment.MustGetString(pgPort)
 	}
 
 	return options
@@ -96,20 +97,21 @@ func gatherOptions() options {
 
 // CloudSQLConfig.GetConn connects to a GCP CloudSQL instance using the cloudsqlconn lib.
 // Intended for production use. Will be used if APP_ENV is 'production'.
-func (c *CloudSQLConfig) GetConn() (mainConn, listenerConn *pgx.Conn, err error) {
+func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
 	driverConfig := postgresdriver.CloudSQLConfig{
 		DBUser:                 c.options.pgUser,
 		DBPassword:             c.options.pgPassword,
 		DBName:                 c.options.pgDatabase,
 		InstanceConnectionName: c.options.dbInstanceConnectionName,
+		PublicIP:               c.options.dbPublicIP,
 		PrivateIP:              c.options.dbPrivateIP,
 	}
 
-	mainConn, err = postgresdriver.NewCloudSQLPGXConnection(driverConfig)
+	mainConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	listenerConn, err = postgresdriver.NewCloudSQLPGXConnection(driverConfig)
+	listenerConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -119,7 +121,7 @@ func (c *CloudSQLConfig) GetConn() (mainConn, listenerConn *pgx.Conn, err error)
 
 // TestDBConfig.GetConn connects to a Postgres database using standard connection string and user/PW.
 // Intended to be used for running tests on a local Docker container. Will be used if APP_ENV is 'test' or 'development'.
-func (c *TestDBConfig) GetConn() (mainConn, listenerConn *pgx.Conn, err error) {
+func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.options.pgHost,
 		c.options.pgPort,
@@ -128,11 +130,11 @@ func (c *TestDBConfig) GetConn() (mainConn, listenerConn *pgx.Conn, err error) {
 		c.options.pgDatabase,
 	)
 
-	mainConn, err = postgresdriver.NewPGXConnection(connectionString)
+	mainConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
 	if err != nil {
 		return nil, nil, err
 	}
-	listenerConn, err = postgresdriver.NewPGXConnection(connectionString)
+	listenerConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -147,16 +149,15 @@ func httpHandler(router *router.Router, port string, log *logrus.Logger) {
 }
 
 func main() {
+	ctx := context.Background()
+
 	// Configure logger
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{})
-
 	logger.Printf("Pocket HTTP DB v2 starting...")
 
 	// Gather env vars
 	options := gatherOptions()
-
-	ctx := context.Background()
 
 	// Choose DB configuration based on APP_ENV
 	var dbConfig DBConfig
@@ -170,15 +171,13 @@ func main() {
 	}
 
 	// Connect to Postgres DB, initialize listener and instantiate driver
-	mainConn, listenerConn, err := dbConfig.GetConn()
+	mainConn, listenerConn, err := dbConfig.GetConn(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	notificationChannel := make(chan *types.Notification, 32)
-
 	listener := postgresdriver.NewPGXListener(listenerConn, notificationChannel)
-
 	driver, err := postgresdriver.NewPostgresDriver(mainConn, listener, notificationChannel)
 	if err != nil {
 		panic(err)

@@ -51,7 +51,7 @@ services:
       retries: 5
 
   portal-db:
-    image: pocketfoundation/test-portal-postgres:v2.0.0-rc.3
+    image: pocketfoundation/test-portal-postgres:latest
     container_name: portal-db
     restart: always
     ports:
