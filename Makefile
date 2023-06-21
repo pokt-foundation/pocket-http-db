@@ -46,12 +46,24 @@ test: test_unit test_env_up run_e2e_tests test_env_down
 # you can run the E2E tests use `make test_dev`. This will reset the test DB and cache before running the tests.
 # This allows for running the E2E tests multiple times quickly without having to restart the test env.
 reset_test_db:
-	cat ./testdata/reset_test_db.sql | docker exec -i portal-db psql -U postgres -d postgres >/dev/null 2>&1;
+	@echo "🧨 Resetting the test database ..."
+	@docker exec -it portal-db psql -U postgres -d postgres -f /scripts/reset_test_db.sql >/dev/null || (echo "❌ Database reset operation failed:" && docker exec -it test-database psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/reset_test_db.sql)
+	@echo "✅ Test database reset operation completed successfully!"
 reset_test_cache:
-	curl -X POST -H 'authorization: test_api_key_6789' http://localhost:8080/reset_cache;
-	curl -X POST -H 'authorization: test_api_key_6789' http://localhost:8081/reset_cache;
+	@echo "💡 Resetting the PHD cache ..."
+	@curl -X POST -H 'authorization: test_api_key_6789' http://localhost:8080/reset_cache >/dev/null 2>&1
+	@curl -X POST -H 'authorization: test_api_key_6789' http://localhost:8081/reset_cache >/dev/null 2>&1
+	@echo "✅ Test PHD cache reset completed successfully!"
+stop_test_phd:
+	@echo "⏹️ Stopping the test PHD containers ..."
+	@docker-compose -f ./testdata/docker-compose.test.yml stop pocket-http-db-1 pocket-http-db-2 >/dev/null 2>&1
+	@echo "✅ Test PHD containers stopped successfully!"
+start_test_phd:
+	@echo "▶️ Restarting the test PHD containers ..."
+	@docker-compose -f ./testdata/docker-compose.test.yml start pocket-http-db-1 pocket-http-db-2 >/dev/null 2>&1
+	@echo "✅ Test PHD containers restarted successfully!"
 
-test_dev: reset_test_db reset_test_cache run_e2e_tests
+test_dev: stop_test_phd reset_test_db start_test_phd reset_test_cache run_e2e_tests
 
 # This target install pre-commit to the repo and should be run only once, after cloning the repo for the first time.
 init-pre-commit:
