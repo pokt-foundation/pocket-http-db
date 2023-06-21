@@ -19,7 +19,7 @@ var testCtx = context.Background()
 func NewTestCache(t *testing.T) *Cache {
 	c := require.New(t)
 
-	readerMock := NewReaderMock(t)
+	readerMock, _ := NewReaderMock(t)
 
 	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
 	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
@@ -186,7 +186,7 @@ func TestCache_SetCache_Failure(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			readerMock := NewReaderMock(t)
+			readerMock, _ := NewReaderMock(t)
 
 			switch test.failedMethod {
 

@@ -85,12 +85,6 @@ INSERT
     OR
 UPDATE
     OR DELETE ON portal_application_notifications FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER stickiness_options_notify_event
-AFTER
-INSERT
-    OR
-UPDATE
-    OR DELETE ON stickiness_options FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER accounts_notify_event
 AFTER
 INSERT

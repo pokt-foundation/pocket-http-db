@@ -15,16 +15,11 @@ type ReaderMock struct {
 	notification chan *types.Notification
 }
 
-func NewReaderMock(t *testing.T) *ReaderMock {
+func NewReaderMock(t *testing.T) (*ReaderMock, context.CancelFunc) {
 	notificationChannel := make(chan *types.Notification, 32)
 
 	listenerMock := postgresdriver.NewListenerMock(notificationChannel)
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err := listenerMock.Listen(ctx)
-	if err != nil {
-		panic(err)
-	}
 
 	mock := &ReaderMock{
 		MockDriver:   *driver.NewMockDriver(t),
@@ -32,12 +27,12 @@ func NewReaderMock(t *testing.T) *ReaderMock {
 		notification: notificationChannel,
 	}
 
-	err = listenerMock.Listen(ctx)
+	err := listenerMock.Listen(ctx)
 	if err != nil {
 		panic(err)
 	}
 
-	return mock
+	return mock, cancel
 }
 
 func (r *ReaderMock) NotificationChannel() <-chan *types.Notification {

@@ -95,8 +95,9 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			test.account.ID = test.accountID
 			readerMock.listener.MockEvent("", test.sideTableAction, test.account)
@@ -160,8 +161,9 @@ func Test_parseAccountNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			test.account.ID = test.accountID
 			testAccount := test.account
@@ -263,8 +265,9 @@ func Test_parsePortalAppNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			test.portalApp.ID = test.portalAppID
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, &test.portalApp)
@@ -333,8 +336,9 @@ func Test_parseAATNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			// Add the PortalApp to the cache
 			cache.upsertPortalApp(*test.portalApp)
@@ -411,8 +415,9 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, &test.gigastakeApp)
 
@@ -466,8 +471,9 @@ func Test_parseSettingsNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			// Add the PortalApp to the cache
 			cache.upsertPortalApp(*test.portalApp)
@@ -519,8 +525,9 @@ func Test_parseWhitelistNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			if test.sideTableAction == types.ActionDelete {
 				storedPortalApp := cache.GetPortalApp(test.portalApp.ID)
@@ -628,8 +635,9 @@ func Test_parseChainNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, &test.chain)
 
@@ -686,8 +694,9 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			cache.upsertChain(test.chain)
 
@@ -763,8 +772,9 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			cache.upsertChain(test.chain)
 
@@ -845,8 +855,9 @@ func Test_parseChainCheckNotification(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
 
-			readerMock := NewReaderMock(t)
+			readerMock, cancel := NewReaderMock(t)
 			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
 
 			cache.upsertChain(test.chain)
 

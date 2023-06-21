@@ -4,10 +4,11 @@ go 1.19
 
 require (
 	github.com/gorilla/mux v1.8.0
+	github.com/jackc/pgx/v5 v5.4.1
 	github.com/pokt-foundation/db-client v1.11.0
 	github.com/pokt-foundation/db-client/v2 v2.0.3
 	github.com/pokt-foundation/portal-db v1.10.8
-	github.com/pokt-foundation/portal-db/v2 v2.0.0-beta.101
+	github.com/pokt-foundation/portal-db/v2 v2.0.0-rc.3
 	github.com/pokt-foundation/utils-go v0.5.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
@@ -26,7 +27,6 @@ require (
 	github.com/googleapis/gax-go/v2 v2.10.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.4.1 // indirect
 	github.com/jackc/pgxlisten v0.0.0-20230309145146-5d7f28456dce // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -45,5 +45,3 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/pokt-foundation/portal-db/v2 => ../portal-db

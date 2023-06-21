@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
@@ -15,41 +17,127 @@ import (
 )
 
 const (
-	pgUser                   = "PG_USER"
-	pgPassword               = "PG_PASSWORD"
-	pgDatabase               = "PG_DATABASE"
+	// App env determines type of DB connection
+	appEnv = "APP_ENV"
+
+	// DB vars - Required for all envs
+	pgUser     = "PG_USER"
+	pgPassword = "PG_PASSWORD"
+	pgDatabase = "PG_DATABASE"
+	// DB vars - Required for development/test env
+	pgHost = "PG_HOST"
+	pgPort = "PG_PORT"
+	// DB vars - Required for production env
 	dbInstanceConnectionName = "DB_INSTANCE_CONNECTION_NAME"
 	dbPrivateIP              = "DB_PRIVATE_IP"
-
+	// PHD config vars
 	apiKeys = "API_KEYS"
-
+	// Optional vars (will default if not set)
 	cacheRefresh               = "CACHE_REFRESH"
-	port                       = "PORT"
 	defaultCacheRefreshMinutes = 5
+	port                       = "PORT"
 	defaultPort                = "8080"
 )
 
-type options struct {
-	pgUser, pgPassword, pgDatabase,
-	dbInstanceConnectionName, dbPrivateIP string
-	apiKeys             map[string]bool
-	cacheRefreshMinutes time.Duration
-	port                string
-}
+type (
+	options struct {
+		appEnv types.AppEnv
+
+		pgHost, pgPort, pgUser, pgPassword, pgDatabase,
+		dbInstanceConnectionName, dbPrivateIP string
+
+		apiKeys             map[string]bool
+		cacheRefreshMinutes time.Duration
+		port                string
+	}
+
+	DBConfig interface {
+		GetConn() (mainConn, listenerConn *pgx.Conn, err error)
+	}
+
+	CloudSQLConfig struct {
+		options options
+	}
+	TestDBConfig struct {
+		options options
+	}
+)
 
 // gatherOptions collects and returns the required environment variables.
 func gatherOptions() options {
-	return options{
-		pgUser:                   environment.MustGetString(pgUser),
-		pgPassword:               environment.MustGetString(pgPassword),
-		pgDatabase:               environment.MustGetString(pgDatabase),
-		dbInstanceConnectionName: environment.MustGetString(dbInstanceConnectionName),
-		dbPrivateIP:              environment.GetString(dbPrivateIP, ""),
+	appEnv := types.AppEnv(environment.MustGetString(appEnv))
+	if !appEnv.IsValid() {
+		panic(fmt.Sprintf("invalid APP_ENV: %s", appEnv))
+	}
 
+	options := options{
+		appEnv:              appEnv,
+		pgHost:              environment.MustGetString(pgHost),
+		pgPort:              environment.MustGetString(pgPort),
+		pgUser:              environment.MustGetString(pgUser),
 		apiKeys:             environment.MustGetStringMap(apiKeys, ","),
 		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
 		port:                environment.GetString(port, defaultPort),
 	}
+
+	switch appEnv {
+	case types.AppEnvProduction:
+		// For CloudSQL DB
+		options.dbInstanceConnectionName = environment.MustGetString(dbInstanceConnectionName)
+		options.dbPrivateIP = environment.GetString(dbPrivateIP, "")
+	default:
+		// For local DB
+		options.pgPassword = environment.MustGetString(pgPassword)
+		options.pgDatabase = environment.MustGetString(pgDatabase)
+	}
+
+	return options
+}
+
+// CloudSQLConfig.GetConn connects to a GCP CloudSQL instance using the cloudsqlconn lib.
+// Intended for production use. Will be used if APP_ENV is 'production'.
+func (c *CloudSQLConfig) GetConn() (mainConn, listenerConn *pgx.Conn, err error) {
+	driverConfig := postgresdriver.CloudSQLConfig{
+		DBUser:                 c.options.pgUser,
+		DBPassword:             c.options.pgPassword,
+		DBName:                 c.options.pgDatabase,
+		InstanceConnectionName: c.options.dbInstanceConnectionName,
+		PrivateIP:              c.options.dbPrivateIP,
+	}
+
+	mainConn, err = postgresdriver.NewCloudSQLPGXConnection(driverConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	listenerConn, err = postgresdriver.NewCloudSQLPGXConnection(driverConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return mainConn, listenerConn, nil
+}
+
+// TestDBConfig.GetConn connects to a Postgres database using standard connection string and user/PW.
+// Intended to be used for running tests on a local Docker container. Will be used if APP_ENV is 'test' or 'development'.
+func (c *TestDBConfig) GetConn() (mainConn, listenerConn *pgx.Conn, err error) {
+	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		c.options.pgHost,
+		c.options.pgPort,
+		c.options.pgUser,
+		c.options.pgPassword,
+		c.options.pgDatabase,
+	)
+
+	mainConn, err = postgresdriver.NewPGXConnection(connectionString)
+	if err != nil {
+		return nil, nil, err
+	}
+	listenerConn, err = postgresdriver.NewPGXConnection(connectionString)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return mainConn, listenerConn, nil
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
@@ -70,20 +158,19 @@ func main() {
 
 	ctx := context.Background()
 
-	// Connect to Postgres DB
-	driverConfig := postgresdriver.CloudSQLConfig{
-		DBUser:                 options.pgUser,
-		DBPassword:             options.pgPassword,
-		DBName:                 options.pgDatabase,
-		InstanceConnectionName: options.dbInstanceConnectionName,
-		PrivateIP:              options.dbPrivateIP,
+	// Choose DB configuration based on APP_ENV
+	var dbConfig DBConfig
+	switch options.appEnv {
+	case types.AppEnvProduction:
+		// For CloudSQL DB
+		dbConfig = &CloudSQLConfig{options: options}
+	default:
+		// For local DB
+		dbConfig = &TestDBConfig{options: options}
 	}
 
-	mainConn, err := postgresdriver.NewCloudSQLPGXConnection(driverConfig)
-	if err != nil {
-		panic(err)
-	}
-	listenerConn, err := postgresdriver.NewCloudSQLPGXConnection(driverConfig)
+	// Connect to Postgres DB, initialize listener and instantiate driver
+	mainConn, listenerConn, err := dbConfig.GetConn()
 	if err != nil {
 		panic(err)
 	}
@@ -97,7 +184,7 @@ func main() {
 		panic(err)
 	}
 
-	// Create the cache and router
+	// Pass DB reader to cache and instantiate
 	cache, err := cache.NewCache(ctx, cache.Config{
 		Reader:              driver,
 		Logger:              logger,
@@ -107,6 +194,7 @@ func main() {
 		panic(err)
 	}
 
+	// Pass cache and DB writer to router and instantiate
 	router, err := router.NewRouter(router.Config{
 		Cache:   cache,
 		Writer:  driver,
