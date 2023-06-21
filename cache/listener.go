@@ -4,6 +4,58 @@ import (
 	"github.com/pokt-foundation/portal-db/v2/types"
 )
 
+func (c *Cache) listen() {
+	for {
+		n := <-c.reader.NotificationChannel()
+		go c.parseNotification(*n)
+	}
+}
+
+func (c *Cache) parseNotification(n types.Notification) {
+	switch n.Table {
+	case types.TableAccounts:
+		c.parseAccountNotification(n)
+	case types.TableAccountUserAccess:
+		c.parseAccountUserAccessNotification(n)
+	case types.TableAccountIntegrations:
+		c.parseAccountIntegrationsNotification(n)
+
+	case types.TablePortalApps:
+		c.parsePortalAppNotification(n)
+	case types.TableAppSettings:
+		c.parseSettingsNotification(n)
+	case types.TableAppWhitelists:
+		c.parseWhitelistNotification(n)
+	case types.TableAppNotifications:
+		c.parseAppNotificationNotification(n)
+	case types.TablePortalAppAATs:
+		c.parsePortalAppAATNotification(n)
+
+	case types.TableGigastakeApps:
+		c.parseGigastakeAppNotification(n)
+
+	case types.TableChainGigastakeApps:
+		c.parseChainGigastakeAppNotification(n)
+
+	case types.TableChains:
+		c.parseChainNotification(n)
+	case types.TableChainAltruists:
+		c.parseChainAltruistNotification(n)
+	case types.TableChainAliasDomains:
+		c.parseChainAliasDomainsNotification(n)
+	case types.TableChainChecks:
+		c.parseChainCheckNotification(n)
+
+	case types.TableUsers:
+		c.parseUsersNotification(n)
+	case types.TableUserAuthProviders:
+		c.parseUserAuthProviderNotification(n)
+
+	case types.TableGlobalBlockedContracts:
+		c.parseGlobalBlockedContractsNotification(n)
+	}
+}
+
 /* ---------- Accounts ---------- */
 
 func (c *Cache) parseAccountNotification(n types.Notification) {
@@ -234,57 +286,5 @@ func (c *Cache) parseGlobalBlockedContractsNotification(n types.Notification) {
 	}
 	if n.Action == types.ActionDelete {
 		c.deleteGlobalBlockedContract(*blockedContract)
-	}
-}
-
-func (c *Cache) parseNotification(n types.Notification) {
-	switch n.Table {
-	case types.TableAccounts:
-		c.parseAccountNotification(n)
-	case types.TableAccountUserAccess:
-		c.parseAccountUserAccessNotification(n)
-	case types.TableAccountIntegrations:
-		c.parseAccountIntegrationsNotification(n)
-
-	case types.TablePortalApps:
-		c.parsePortalAppNotification(n)
-	case types.TableAppSettings:
-		c.parseSettingsNotification(n)
-	case types.TableAppWhitelists:
-		c.parseWhitelistNotification(n)
-	case types.TableAppNotifications:
-		c.parseAppNotificationNotification(n)
-	case types.TablePortalAppAATs:
-		c.parsePortalAppAATNotification(n)
-
-	case types.TableGigastakeApps:
-		c.parseGigastakeAppNotification(n)
-
-	case types.TableChainGigastakeApps:
-		c.parseChainGigastakeAppNotification(n)
-
-	case types.TableChains:
-		c.parseChainNotification(n)
-	case types.TableChainAltruists:
-		c.parseChainAltruistNotification(n)
-	case types.TableChainAliasDomains:
-		c.parseChainAliasDomainsNotification(n)
-	case types.TableChainChecks:
-		c.parseChainCheckNotification(n)
-
-	case types.TableUsers:
-		c.parseUsersNotification(n)
-	case types.TableUserAuthProviders:
-		c.parseUserAuthProviderNotification(n)
-
-	case types.TableGlobalBlockedContracts:
-		c.parseGlobalBlockedContractsNotification(n)
-	}
-}
-
-func (c *Cache) listen() {
-	for {
-		n := <-c.reader.NotificationChannel()
-		go c.parseNotification(*n)
 	}
 }
