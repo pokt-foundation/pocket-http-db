@@ -1400,8 +1400,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						SecretKey:         "test_3e3fb7949c9e3b193cfba5348f93bb2f",
 						SecretKeyRequired: true,
 					},
-					AATs: map[types.AATID]types.AAT{
-						5: testdata.TestCreatePortalAppAAT,
+					AATs: map[types.ProtocolAppID]types.AAT{
+						"test_protocol_app_5": testdata.TestCreatePortalAppAAT,
 					},
 					Notifications: map[types.NotificationType]types.AppNotification{
 						types.NotificationTypeEmail: {
@@ -1485,7 +1485,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				test.portalAppInput.AATs = map[types.AATID]types.AAT{
+				test.portalAppInput.AATs = map[types.ProtocolAppID]types.AAT{
 					test.aatInput.ID: test.aatInput,
 				}
 				createdPortalApp, err := ts.v2Client1.CreatePortalApp(testCtx, *test.portalAppInput)
@@ -1502,10 +1502,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.expected.ID = createdPortalApp.ID
 					createdPortalApp.CreatedAt = timestamp
 					createdPortalApp.UpdatedAt = timestamp
-					aat := test.expected.AATs[5]
-					aat.ID = 5
+					aat := test.expected.AATs["test_protocol_app_5"]
+					aat.ID = createdPortalApp.AAT().ID
 					aat.PrivateKey = ""
-					test.expected.AATs[5] = aat
+					test.expected.AATs[createdPortalApp.AAT().ID] = aat
+					delete(test.expected.AATs, "test_protocol_app_5")
 
 					ts.Equal(test.expected, createdPortalApp)
 

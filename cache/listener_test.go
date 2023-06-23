@@ -208,16 +208,15 @@ func Test_parsePortalAppNotification(t *testing.T) {
 				ID:        "test_app_create_e2887s4",
 				AccountID: "account_1",
 				Name:      "create_pokt_app_2",
-				AATs: map[types.AATID]types.AAT{
-					1: {
-						ID:              1,
+				AATs: map[types.ProtocolAppID]types.AAT{
+					"test_protocol_app_1": {
+						ID:              "test_protocol_app_1",
 						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
 						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
 						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
 						PrivateKey:      "",
 						Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
 						Version:         "0.0.1",
-						LegacyAppID:     "test_protocol_app_1",
 					},
 				},
 				Settings: types.Settings{
@@ -235,7 +234,7 @@ func Test_parsePortalAppNotification(t *testing.T) {
 			portalApp: types.PortalApp{
 				ID:        "test_app_update_b03ca84c",
 				AccountID: "account_1",
-				AATs:      map[types.AATID]types.AAT{0: {}},
+				AATs:      map[types.ProtocolAppID]types.AAT{"": {}},
 				Settings: types.Settings{
 					Environment:       types.EnvironmentProduction,
 					SecretKey:         "test_849c1397586f9fb6f902576120d0d10f",
@@ -298,16 +297,15 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should add AAT to PortalApp in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			portalApp: &types.PortalApp{
-				AATs: map[types.AATID]types.AAT{
-					3: {
-						ID:              3,
+				AATs: map[types.ProtocolAppID]types.AAT{
+					"test_protocol_app_3": {
+						ID:              "test_protocol_app_3",
 						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
 						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
 						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
 						PrivateKey:      "",
 						Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
 						Version:         "0.0.1",
-						LegacyAppID:     "test_protocol_app_3",
 					},
 				},
 			},
@@ -316,16 +314,15 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should update AAT in PortalApp in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			portalApp: &types.PortalApp{
-				AATs: map[types.AATID]types.AAT{
-					3: {
-						ID:              3,
+				AATs: map[types.ProtocolAppID]types.AAT{
+					"test_protocol_app_3": {
+						ID:              "test_protocol_app_3",
 						Address:         "test_80bd695bd00e788aefb90931beeb4354",
 						PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
 						ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",
 						PrivateKey:      "",
 						Signature:       "test_bef7b8a4562c500d9a16802364d4eb57",
 						Version:         "0.0.1",
-						LegacyAppID:     "test_protocol_app_3",
 					},
 				},
 			},

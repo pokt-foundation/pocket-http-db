@@ -636,7 +636,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	if pendingAAT, ok := c.pendingPortalAppAATs[portalApp.ID]; ok {
 		if portalApp.AATs == nil {
-			portalApp.AATs = make(map[types.AATID]types.AAT)
+			portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
 		}
 		portalApp.AATs[pendingAAT.ID] = pendingAAT
 		delete(c.pendingPortalAppAATs, portalApp.ID)
@@ -707,7 +707,7 @@ func (c *Cache) addPortalAppAAT(aat types.AAT) {
 	}
 
 	if portalApp.AATs == nil {
-		portalApp.AATs = make(map[types.AATID]types.AAT)
+		portalApp.AATs = make(map[types.ProtocolAppID]types.AAT)
 	}
 	portalApp.AATs[aat.ID] = aat
 }

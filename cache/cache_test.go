@@ -672,7 +672,7 @@ func Test_upsertPortalApp(t *testing.T) {
 			// Update the expected PortalApp with the pending data
 			expectedPortalApp := test.portalApp
 			if aat, ok := test.pendingAAT[test.portalApp.ID]; ok {
-				expectedPortalApp.AATs = map[types.AATID]types.AAT{
+				expectedPortalApp.AATs = map[types.ProtocolAppID]types.AAT{
 					aat.ID: aat,
 				}
 			}
@@ -733,7 +733,7 @@ func Test_addPortalAppAAT(t *testing.T) {
 		{
 			name: "Should add AAT to an existing PortalApp in cache",
 			aat: types.AAT{
-				ID:              7,
+				ID:              "test_protocol_app_7",
 				AppID:           "test_app_new_3450he46fhs7",
 				Address:         "test_6bc837b1b0e526569dda9acbbcbb4f40",
 				PublicKey:       "test_1e8f7cc2e1f812c7531fc020a75f4284",
@@ -752,7 +752,7 @@ func Test_addPortalAppAAT(t *testing.T) {
 		{
 			name: "Should store AAT in pendingAAT map if PortalApp not in cache",
 			aat: types.AAT{
-				ID:              8,
+				ID:              "test_protocol_app_8",
 				AppID:           "test_app_nope_345he46fhs7",
 				Address:         "test_8a75937963fee71e048c652a44491a53",
 				PublicKey:       "test_ba65207ac55d99d1d190efb002ff3002",
