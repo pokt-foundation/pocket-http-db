@@ -1292,6 +1292,52 @@ func TestRouter_getUserPermissionByUserID(t *testing.T) {
 	}
 }
 
+func TestRouter_getPortalUserIDFromProviderUserID(t *testing.T) {
+	tests := []struct {
+		name           string
+		userID         types.ProviderUserID
+		expectedUserID types.UserID
+		expectedStatus int
+	}{
+		{
+			name:           "Should fetch Portal User ID for a given auth provider user ID",
+			userID:         "auth0|ellen_ripley",
+			expectedUserID: "user_3",
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Should return 404 status for non-existent user ID",
+			userID:         "auth0|sir_robin",
+			expectedUserID: "",
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s", test.userID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedStatus == http.StatusOK {
+				var portalUserIDResp types.UserID
+				err = json.Unmarshal(rr.Body.Bytes(), &portalUserIDResp)
+				c.NoError(err)
+				c.Equal(test.expectedUserID, portalUserIDResp)
+			}
+		})
+	}
+}
+
 func TestRouter_createUser(t *testing.T) {
 	tests := []struct {
 		name                 string

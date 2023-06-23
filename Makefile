@@ -8,20 +8,20 @@ test_env_up:
 	@echo "🧪 Starting up Pocket HTTP DB test environment ..."
 	@docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build >/dev/null
 	@echo "⏳ Waiting for test DB to be ready ..."
-	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 1; ((attempts++)); done
+	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🐘 Test Portal DB is up ..." || (echo "❌ Test Portal DB failed to start" && make test_env_down >/dev/null && exit 1)
 	@echo "⏳ Performing health check on pocket-http-db-1 ..."
-	@attempts=0; until curl -s http://localhost:8080/healthz >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 1; ((attempts++)); done
+	@attempts=0; until curl -s http://localhost:8080/healthz >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🖥️  pocket-http-db-1 is online ..." || (echo "❌ pocket-http-db-1 failed health check" && make test_env_down >/dev/null && exit 1)
 	@echo "⏳ Performing health check on pocket-http-db-2 ..."
-	@attempts=0; until curl -s http://localhost:8081/healthz >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 1; ((attempts++)); done
+	@attempts=0; until curl -s http://localhost:8081/healthz >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🖥️  pocket-http-db-2 is online ..." || (echo "❌ pocket-http-db-2 failed health check" && make test_env_down >/dev/null && exit 1)
 	@echo "🚀 Test environment is up!"
 test_db_up:
 	@echo "🧪 Starting up Pocket HTTP DB test database only ..."
 	@docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build portal-db >/dev/null
 	@echo "⏳ Waiting for test DB to be ready ..."
-	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 1; ((attempts++)); done
+	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🐘 Test Portal DB is up ..." || (echo "❌ Test Portal DB failed to start" && make test_env_down >/dev/null && exit 1)
 	@echo "🚀 Test environment is up ..."
 test_env_down:

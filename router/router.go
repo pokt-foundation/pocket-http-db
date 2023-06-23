@@ -98,6 +98,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/account/user/remove", rt.removeAccountUser).Methods(http.MethodPut)
 
 	rt.Router.HandleFunc("/v2/user", rt.createUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/user/{userID}", rt.getPortalUserIDFromProviderUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/permission", rt.getUserPermissionByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/portal_app", rt.getPortalAppsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
@@ -717,13 +718,27 @@ func (rt *Router) getUserPermissionByUserID(w http.ResponseWriter, r *http.Reque
 
 	portalUserID := rt.cache.GetUserIDFromProviderUserID(providerUserID)
 	if portalUserID == "" {
-		rt.logError(fmt.Errorf("GetUserIDFromProviderUserID failed: %w", errUserNotFound))
+		rt.logError(fmt.Errorf("GetUserIDFromProviderUserID in getUserPermissionByUserID failed: %w", errUserNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errUserNotFound.Error())
 	}
 
 	userPermissions := rt.cache.GetUserPermissionsByUserID(portalUserID)
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, userPermissions)
+}
+
+// GET /v2/user/{userID} - Gets the Portal User ID for a given auth provider user ID.
+func (rt *Router) getPortalUserIDFromProviderUserID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	providerUserID := types.ProviderUserID(vars["userID"])
+
+	portalUserID := rt.cache.GetUserIDFromProviderUserID(providerUserID)
+	if portalUserID == "" {
+		rt.logError(fmt.Errorf("GetUserIDFromProviderUserID in getPortalUserIDFromProviderUserID failed: %w", errUserNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errUserNotFound.Error())
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, portalUserID)
 }
 
 // POST /v2/user - Creates a new User in the database. Called in response to a new user sign up.

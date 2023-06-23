@@ -61,3 +61,5 @@ services:
       POSTGRES_DB: postgres
     healthcheck:
       test: pg_isready -U postgres
+      interval: 5s
+      retries: 5
