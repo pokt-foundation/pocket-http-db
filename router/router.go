@@ -130,7 +130,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.deleteLoadBalancerUser).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v1/user", rt.createPortalUser).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v1/user/{id}/portal_id", rt.getPortalUserID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v1/user/{userID}/portal_id", rt.getPortalUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/application", rt.getApplicationsByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.getLoadBalancersByUserID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.getUserPermissionsByUserID).Methods(http.MethodGet)
