@@ -5,6 +5,8 @@ services:
   pocket-http-db-1:
     build:
       context: ..
+      args:
+        IMAGE_TAG: test-image-tag-1
     container_name: pocket-http-db-1
     restart: always
     ports:
@@ -29,6 +31,8 @@ services:
   pocket-http-db-2:
     build:
       context: ..
+      args:
+        IMAGE_TAG: test-image-tag-2
     container_name: pocket-http-db-2
     restart: always
     ports:

@@ -110,7 +110,9 @@ jobs:
       - name: Tag Docker image and push to Google Artifact Registry
         uses: docker/build-push-action@v4
         with:
-          build-args: GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
+          build-args: |
+            IMAGE_TAG=${{ needs.tag.outputs.version }}
+            GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.tag.outputs.version }}

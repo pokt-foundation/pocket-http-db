@@ -38,6 +38,9 @@ const (
 	defaultCacheRefreshMinutes = 5
 	port                       = "PORT"
 	defaultPort                = "8080"
+	// Image tag used to return Docker image version in health check response body.
+	imageTag        = "IMAGE_TAG"
+	defaultImageTag = "development"
 )
 
 type (
@@ -50,7 +53,7 @@ type (
 		apiKeys map[string]bool
 
 		cacheRefreshMinutes time.Duration
-		port                string
+		port, imageTag      string
 	}
 	DBConfig interface {
 		GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error)
@@ -78,6 +81,7 @@ func gatherOptions() options {
 		apiKeys:             environment.MustGetStringMap(apiKeys, ","),
 		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
 		port:                environment.GetString(port, defaultPort),
+		imageTag:            environment.GetString(imageTag, defaultImageTag),
 	}
 
 	switch appEnv {
@@ -143,21 +147,21 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
-func httpHandler(router *router.Router, port string, log *logrus.Logger) {
-	log.Printf("Pocket HTTP DB v2 running on port: %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, router.Router))
+func httpHandler(router *router.Router, options options, log *logrus.Logger) {
+	log.Printf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port)
+	log.Fatal(http.ListenAndServe(":"+options.port, router.Router))
 }
 
 func main() {
 	ctx := context.Background()
 
-	// Configure logger
-	logger := logrus.New()
-	logger.SetFormatter(&logrus.JSONFormatter{})
-	logger.Printf("Pocket HTTP DB v2 starting...")
-
 	// Gather env vars
 	options := gatherOptions()
+
+	// Configure logger
+	log := logrus.New()
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.Printf("Pocket HTTP DB %s starting...", options.imageTag)
 
 	// Choose DB configuration based on APP_ENV
 	var dbConfig DBConfig
@@ -186,7 +190,7 @@ func main() {
 	// Pass DB reader to cache and instantiate
 	cache, err := cache.NewCache(ctx, cache.Config{
 		Reader:              driver,
-		Logger:              logger,
+		Logger:              log,
 		CacheRefreshMinutes: options.cacheRefreshMinutes,
 	})
 	if err != nil {
@@ -195,10 +199,11 @@ func main() {
 
 	// Pass cache and DB writer to router and instantiate
 	router, err := router.NewRouter(router.Config{
-		Cache:   cache,
-		Writer:  driver,
-		APIKeys: options.apiKeys,
-		Log:     logger,
+		Cache:    cache,
+		Writer:   driver,
+		APIKeys:  options.apiKeys,
+		Log:      log,
+		ImageTag: options.imageTag,
 	})
 	if err != nil {
 		panic(err)
@@ -207,6 +212,6 @@ func main() {
 	// Start the HTTP server
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go httpHandler(router, options.port, logger)
+	go httpHandler(router, options, log)
 	wg.Wait()
 }
