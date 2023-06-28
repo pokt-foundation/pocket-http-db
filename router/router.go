@@ -33,17 +33,19 @@ var (
 // router struct handler for router requests
 type (
 	Router struct {
-		Router  *mux.Router
-		writer  driver.Writer
-		cache   *cache.Cache
-		apiKeys map[string]bool
-		log     *logrus.Logger
+		Router   *mux.Router
+		writer   driver.Writer
+		cache    *cache.Cache
+		apiKeys  map[string]bool
+		log      *logrus.Logger
+		imageTag string
 	}
 	Config struct {
-		Cache   *cache.Cache
-		Writer  driver.Writer
-		APIKeys map[string]bool
-		Log     *logrus.Logger
+		Cache    *cache.Cache
+		Writer   driver.Writer
+		APIKeys  map[string]bool
+		Log      *logrus.Logger
+		ImageTag string
 	}
 )
 
@@ -58,11 +60,12 @@ func (rt *Router) logError(err error) {
 // NewRouter returns router instance
 func NewRouter(config Config) (*Router, error) {
 	rt := &Router{
-		Router:  mux.NewRouter(),
-		writer:  config.Writer,
-		cache:   config.Cache,
-		apiKeys: config.APIKeys,
-		log:     config.Log,
+		Router:   mux.NewRouter(),
+		writer:   config.Writer,
+		cache:    config.Cache,
+		apiKeys:  config.APIKeys,
+		log:      config.Log,
+		imageTag: config.ImageTag,
 	}
 
 	rt.Router.HandleFunc("/healthz", rt.healthCheck).Methods(http.MethodGet)
@@ -173,7 +176,7 @@ func (rt *Router) authorizationHandler(h http.Handler) http.Handler {
 
 func (rt *Router) healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte("Pocket HTTP DB is up and running!"))
+	_, err := w.Write([]byte(fmt.Sprintf("Pocket HTTP DB is up and running!\nImage Tag: %s", rt.imageTag)))
 	if err != nil {
 		panic(err)
 	}

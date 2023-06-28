@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"sort"
 	"testing"
 	"time"
@@ -41,6 +43,46 @@ func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
 // Runs all the read-only endpoint tests first to compare to test DB seed data only
 // ie. not yet including data written to the test DB by the test suite
 func (ts *phdE2EReadTestSuite) Test_ReadTests() {
+
+	/* ------ Health Check Endpoint ------ */
+
+	ts.Run("Test_HealthCheckEndpoint", func() {
+		tests := []struct {
+			name         string
+			url          string
+			expectedBody string
+			expectedCode int
+		}{
+			{
+				name:         "Should return status 200 and correct body on port 1",
+				url:          fmt.Sprintf("http://localhost:%s/healthz", phdPortOne),
+				expectedBody: "Pocket HTTP DB is up and running!\nImage Tag: test-image-tag-1",
+				expectedCode: http.StatusOK,
+			},
+			{
+				name:         "Should return status 200 and correct body on port 2",
+				url:          fmt.Sprintf("http://localhost:%s/healthz", phdPortTwo),
+				expectedBody: "Pocket HTTP DB is up and running!\nImage Tag: test-image-tag-2",
+				expectedCode: http.StatusOK,
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				resp, err := http.Get(test.url)
+				ts.NoError(err)
+
+				ts.Equal(test.expectedCode, resp.StatusCode)
+
+				bodyBytes, err := io.ReadAll(resp.Body)
+				ts.NoError(err)
+				ts.Equal(test.expectedBody, string(bodyBytes))
+
+				err = resp.Body.Close()
+				ts.NoError(err)
+			})
+		}
+	})
 
 	/* ------ V2 Chain Read Tests ------ */
 
