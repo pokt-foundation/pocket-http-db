@@ -690,6 +690,65 @@ func TestRouter_deletePortalApp(t *testing.T) {
 	}
 }
 
+func TestRouter_updatePortalAppFirstDateSurpassed(t *testing.T) {
+	tests := []struct {
+		name                     string
+		firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
+		expectedStatus           int
+	}{
+		{
+			name: "Should update PortalApp's FirstDateSurpassed field",
+			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
+				PortalAppIDs: []types.PortalAppID{
+					"test_app_1",
+					"test_app_2",
+				},
+				FirstDateSurpassed: testdata.MockTimestamp,
+			},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name: "Should handle no AppIDs provided",
+			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
+				PortalAppIDs:       []types.PortalAppID{},
+				FirstDateSurpassed: testdata.MockTimestamp,
+			},
+			expectedStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdatePortalAppsFirstDateSurpassed", mock.Anything, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			firstDateSurpassedUpdateBytes, err := json.Marshal(test.firstDateSurpassedUpdate)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/portal_app/first_date_surpassed", bytes.NewBuffer(firstDateSurpassedUpdateBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedStatus == http.StatusOK {
+				var response map[string]string
+				err = json.Unmarshal(rr.Body.Bytes(), &response)
+				c.NoError(err)
+				c.Equal("updated", response["status"])
+			}
+		})
+	}
+}
+
 /* ---------- V2 Account Handler Method Unit Tests ---------- */
 
 func TestRouter_getAccountByID(t *testing.T) {
@@ -2279,7 +2338,7 @@ func TestRouter_updateFirstDateSurpassed(t *testing.T) {
 		{
 			name: "Should update first date surpassed",
 			updateInput: types.UpdateFirstDateSurpassed{
-				PortalAppIDs:       []string{"test_app_1", "test_app_2", "test_app_3"},
+				PortalAppIDs:       []types.PortalAppID{"test_app_1", "test_app_2", "test_app_3"},
 				FirstDateSurpassed: testdata.MockTimestamp,
 			},
 			expectedStatus: http.StatusOK,

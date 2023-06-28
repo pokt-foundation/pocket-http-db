@@ -33,17 +33,19 @@ var (
 // router struct handler for router requests
 type (
 	Router struct {
-		Router  *mux.Router
-		writer  driver.Writer
-		cache   *cache.Cache
-		apiKeys map[string]bool
-		log     *logrus.Logger
+		Router   *mux.Router
+		writer   driver.Writer
+		cache    *cache.Cache
+		apiKeys  map[string]bool
+		log      *logrus.Logger
+		imageTag string
 	}
 	Config struct {
-		Cache   *cache.Cache
-		Writer  driver.Writer
-		APIKeys map[string]bool
-		Log     *logrus.Logger
+		Cache    *cache.Cache
+		Writer   driver.Writer
+		APIKeys  map[string]bool
+		Log      *logrus.Logger
+		ImageTag string
 	}
 )
 
@@ -58,11 +60,12 @@ func (rt *Router) logError(err error) {
 // NewRouter returns router instance
 func NewRouter(config Config) (*Router, error) {
 	rt := &Router{
-		Router:  mux.NewRouter(),
-		writer:  config.Writer,
-		cache:   config.Cache,
-		apiKeys: config.APIKeys,
-		log:     config.Log,
+		Router:   mux.NewRouter(),
+		writer:   config.Writer,
+		cache:    config.Cache,
+		apiKeys:  config.APIKeys,
+		log:      config.Log,
+		imageTag: config.ImageTag,
 	}
 
 	rt.Router.HandleFunc("/healthz", rt.healthCheck).Methods(http.MethodGet)
@@ -85,6 +88,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app", rt.createNewPortalApp).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.updatePortalApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
+	rt.Router.HandleFunc("/v2/portal_app/first_date_surpassed", rt.updatePortalAppFirstDateSurpassed).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccountByID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
@@ -173,7 +177,7 @@ func (rt *Router) authorizationHandler(h http.Handler) http.Handler {
 
 func (rt *Router) healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte("Pocket HTTP DB is up and running!"))
+	_, err := w.Write([]byte(fmt.Sprintf("Pocket HTTP DB is up and running!\nImage Tag: %s", rt.imageTag)))
 	if err != nil {
 		panic(err)
 	}
@@ -466,6 +470,33 @@ func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// POST /v2/portal_app/first_date_surpassed - Updates one or more PortalApps' FirstDateSurpassed field.
+func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
+	var firstDateSurpassedUpdate *types.UpdateFirstDateSurpassed
+
+	err := json.NewDecoder(r.Body).Decode(&firstDateSurpassedUpdate)
+	if err != nil {
+		rt.logError(fmt.Errorf("updatePortalAppFirstDateSurpassed Decode failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+
+	if len(firstDateSurpassedUpdate.PortalAppIDs) == 0 {
+		rt.logError(fmt.Errorf("updatePortalAppFirstDateSurpassed failed: %w", errNoPortalAppsFound))
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, errNoPortalAppsFound.Error())
+	}
+
+	err = rt.writer.UpdatePortalAppsFirstDateSurpassed(r.Context(), firstDateSurpassedUpdate)
+	if err != nil {
+		rt.logError(fmt.Errorf("UpdatePortalAppsFirstDateSurpassed failed: %w", err))
+		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
 /* ---------- V2 Account Handler Methods ---------- */
