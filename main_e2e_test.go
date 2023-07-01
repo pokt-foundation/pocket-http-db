@@ -1875,68 +1875,52 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	// ts.Run("Test_UpdatePortalAppsFirstDateSurpassed", func() {
-	// 	tests := []struct {
-	// 		name                     string
-	// 		firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
-	// 		err                      error
-	// 		expected                 map[string]string
-	// 	}{
-	// 		{
-	// 			name: "Should update FirstDateSurpassed field for a given list of Portal apps in the DB",
-	// 			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-	// 				PortalAppIDs:       []types.PortalAppID{"app_id_1", "app_id_2"},
-	// 				FirstDateSurpassed: testdata.MockTimestamp,
-	// 			},
-	// 			expected: map[string]string{"status": "updated"},
-	// 		},
-	// 		{
-	// 			name: "Should return an error if no app IDs provided",
-	// 			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-	// 				PortalAppIDs:       []types.PortalAppID{},
-	// 				FirstDateSurpassed: testdata.MockTimestamp,
-	// 			},
-	// 			err: fmt.Errorf("Response not OK. 400 Bad Request: no application IDs provided"),
-	// 		},
-	// 		{
-	// 			name: "Should return an error if invalid app ID provided",
-	// 			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-	// 				PortalAppIDs:       []types.PortalAppID{"invalid_app_id"},
-	// 				FirstDateSurpassed: testdata.MockTimestamp,
-	// 			},
-	// 			err: fmt.Errorf("Response not OK. 500 Internal Server Error: invalid application ID provided: invalid_app_id"),
-	// 		},
-	// 		{
-	// 			name: "Should return an error if non-existent app ID provided",
-	// 			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-	// 				PortalAppIDs:       []types.PortalAppID{"non_existing_app_id"},
-	// 				FirstDateSurpassed: testdata.MockTimestamp,
-	// 			},
-	// 			err: fmt.Errorf("Response not OK. 500 Internal Server Error: application does not exist for application ID 'non_existing_app_id'"),
-	// 		},
-	// 	}
+	ts.Run("Test_UpdatePortalAppsFirstDateSurpassed", func() {
+		tests := []struct {
+			name                     string
+			firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
+			err                      error
+			expected                 map[string]string
+		}{
+			{
+				name: "Should update FirstDateSurpassed field for a given list of Portal apps in the DB",
+				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
+					PortalAppIDs:       []types.PortalAppID{"test_app_1", "test_app_2"},
+					FirstDateSurpassed: testdata.MockTimestamp,
+				},
+				expected: map[string]string{"status": "updated"},
+			},
+			{
+				name: "Should return an error if no app IDs provided",
+				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
+					PortalAppIDs:       []types.PortalAppID{},
+					FirstDateSurpassed: testdata.MockTimestamp,
+				},
+				err: fmt.Errorf("Response not OK. 400 Bad Request"),
+			},
+		}
 
-	// 	for _, test := range tests {
-	// 		ts.Run(test.name, func() {
-	// 			result, err := ts.v2Client1.UpdatePortalAppsFirstDateSurpassed(testCtx, test.firstDateSurpassedUpdate)
-	// 			ts.Equal(test.err, err)
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				result, err := ts.v2Client1.UpdatePortalAppsFirstDateSurpassed(testCtx, test.firstDateSurpassedUpdate)
+				ts.Equal(test.err, err)
 
-	// 			if err == nil {
-	// 				ts.Equal(test.expected, result)
+				if test.err == nil {
+					ts.Equal(test.expected, result)
 
-	// 				for _, appID := range test.firstDateSurpassedUpdate.PortalAppIDs {
-	// 					portalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, appID)
-	// 					ts.NoError(err)
-	// 					ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
+					for _, appID := range test.firstDateSurpassedUpdate.PortalAppIDs {
+						portalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, appID)
+						ts.NoError(err)
+						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
 
-	// 					portalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, appID)
-	// 					ts.NoError(err)
-	// 					ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
-	// 				}
-	// 			}
-	// 		})
-	// 	}
-	// })
+						portalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, appID)
+						ts.NoError(err)
+						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
+					}
+				}
+			})
+		}
+	})
 
 	/* ------ V2 Account Write Tests ------ */
 
