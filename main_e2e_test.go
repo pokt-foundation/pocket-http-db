@@ -304,6 +304,34 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 	/* ------ V2 Account Read Tests ------ */
 
+	ts.Run("Test_GetAccounts", func() {
+		tests := []struct {
+			name           string
+			expectedAccNum int
+			err            error
+		}{
+			{
+				name:           "Should get all accounts",
+				expectedAccNum: 5,
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				accounts, err := ts.v2Client1.GetAllAccounts(testCtx)
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Len(accounts, test.expectedAccNum)
+
+					accounts, err = ts.v2Client2.GetAllAccounts(testCtx)
+					ts.Equal(test.err, err)
+					ts.Len(accounts, test.expectedAccNum)
+				}
+			})
+		}
+	})
+
 	ts.Run("Test_GetAccountByID", func() {
 		tests := []struct {
 			name        string

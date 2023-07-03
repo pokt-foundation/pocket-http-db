@@ -90,6 +90,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
 	rt.Router.HandleFunc("/v2/portal_app/first_date_surpassed", rt.updatePortalAppFirstDateSurpassed).Methods(http.MethodPost)
 
+	rt.Router.HandleFunc("/v2/account", rt.getAccounts).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccountByID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.createAccountIntegration).Methods(http.MethodPost)
@@ -500,6 +501,18 @@ func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *ht
 }
 
 /* ---------- V2 Account Handler Methods ---------- */
+
+// GET /v2/account - Get all Accounts.
+func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
+	accounts := rt.cache.GetAccounts(cache.Options{IncludeDeleted: true})
+	if len(accounts) == 0 {
+		rt.logError(fmt.Errorf("getAccounts failed: %w", errAccountNotFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errAccountNotFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, accounts)
+}
 
 // GET /v2/account/{id} - Get one Account by account ID.
 func (rt *Router) getAccountByID(w http.ResponseWriter, r *http.Request) {

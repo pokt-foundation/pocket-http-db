@@ -751,6 +751,43 @@ func TestRouter_updatePortalAppFirstDateSurpassed(t *testing.T) {
 
 /* ---------- V2 Account Handler Method Unit Tests ---------- */
 
+func TestRouter_getAccounts(t *testing.T) {
+	tests := []struct {
+		name             string
+		accountID        types.AccountID
+		expectedStatus   int
+		expectedAccounts int
+	}{
+		{
+			name:             "Should get all accounts",
+			expectedStatus:   http.StatusOK,
+			expectedAccounts: 5,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/account", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountsResp []types.Account
+			err = json.Unmarshal(rr.Body.Bytes(), &accountsResp)
+			c.NoError(err)
+			c.Len(accountsResp, test.expectedAccounts)
+		})
+	}
+}
+
 func TestRouter_getAccountByID(t *testing.T) {
 	tests := []struct {
 		name             string
