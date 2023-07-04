@@ -9,6 +9,7 @@ import (
 	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	legacyadapters "github.com/pokt-foundation/portal-db/v2/legacy-adapters"
+	"github.com/pokt-foundation/portal-db/v2/types"
 	v2Types "github.com/pokt-foundation/portal-db/v2/types"
 )
 
@@ -76,10 +77,12 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 
 	accounts := c.GetAccountsByUserID(portalUserID)
 
-	filteredAccounts := []v2Types.Account{}
+	filteredAccounts := make(map[types.AccountID]v2Types.Account)
 	switch {
 	case roleNameFilter == v1Types.RoleName(""):
-		filteredAccounts = accounts
+		for _, account := range accounts {
+			filteredAccounts[account.ID] = account
+		}
 
 	case roleNameFilter != v1Types.RoleName(""):
 		for _, account := range accounts {
@@ -87,7 +90,10 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 				if user.Accepted {
 					for _, roleName := range user.PortalAppRoles {
 						if roleName == v2Types.RoleName(roleNameFilter) {
-							filteredAccounts = append(filteredAccounts, account)
+							if _, ok := filteredAccounts[account.ID]; ok {
+								continue
+							}
+							filteredAccounts[account.ID] = account
 						}
 					}
 				}
