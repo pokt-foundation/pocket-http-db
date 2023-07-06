@@ -7,7 +7,9 @@ import (
 func (c *Cache) listen() {
 	for {
 		n := <-c.reader.NotificationChannel()
-		go c.parseNotification(*n)
+		if n != nil {
+			go c.parseNotification(*n)
+		}
 	}
 }
 
