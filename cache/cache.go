@@ -130,7 +130,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 
 	defer func() {
 		// log if there's any timeout
-		fmt.Println("connection timeout")
+		fmt.Println("connection timeout: ", copyCtx.Err())
 		cancel()
 	}()
 	// Perform all the database reads first without locking the mutex
@@ -185,6 +185,10 @@ func (c *Cache) fetchUserData(ctx context.Context) (map[types.UserID]*types.User
 		return nil, nil, fmt.Errorf("ReadUserIDsMap - %w", err)
 	}
 
+	if _, ok := <-ctx.Done(); !ok {
+		fmt.Println("cached error: fetchUserData: ", ctx.Err())
+	}
+
 	return userPermissions, userIDs, nil
 }
 
@@ -235,6 +239,10 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 		}
 	}
 
+	if _, ok := <-ctx.Done(); !ok {
+		fmt.Println("cached error: fetchPlansAccountsAndPortalApps: ", ctx.Err())
+	}
+
 	return plans, accounts, portalApps, accountsByUserID, nil
 }
 
@@ -263,6 +271,10 @@ func (c *Cache) fetchChainsAndGigastakeApps(ctx context.Context) (map[types.Rela
 		}
 	}
 
+	if _, ok := <-ctx.Done(); !ok {
+		fmt.Println("cached error: fetchChainsAndGigastakeApps: ", ctx.Err())
+	}
+
 	return chains, gigastakeApps, nil
 }
 
@@ -271,6 +283,10 @@ func (c *Cache) fetchBlockedContracts(ctx context.Context) (types.GlobalBlockedC
 	blockedContracts, err := c.reader.ReadBlockedContracts(ctx)
 	if err != nil {
 		return types.GlobalBlockedContracts{}, fmt.Errorf("ReadBlockedContracts - %w", err)
+	}
+
+	if _, ok := <-ctx.Done(); !ok {
+		fmt.Println("cached error: fetchBlockedContracts: ", ctx.Err())
 	}
 	return blockedContracts, nil
 }
