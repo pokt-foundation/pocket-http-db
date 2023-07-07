@@ -129,6 +129,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	copyCtx, cancel := context.WithTimeout(ctx, time.Duration(60*time.Second))
 
 	defer func() {
+		// log if there's any timeout
 		fmt.Println("connection timeout")
 		cancel()
 	}()
