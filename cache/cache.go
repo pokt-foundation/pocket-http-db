@@ -126,30 +126,28 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 
 // setCache initializes the cache by setting user permissions, accounts and portal apps, chains, and plans.
 func (c *Cache) setCache(ctx context.Context) error {
-	copyCtx, cancel := context.WithTimeout(ctx, time.Duration(60*time.Second))
+	contexWithTimout, cancel := context.WithTimeout(context.Background(), time.Duration(1*time.Minute))
 
 	defer func() {
-		// log if there's any timeout
-		fmt.Println("connection timeout")
 		cancel()
 	}()
 	// Perform all the database reads first without locking the mutex
-	userPermissions, userIDs, err := c.fetchUserData(copyCtx)
+	userPermissions, userIDs, err := c.fetchUserData(contexWithTimout)
 	if err != nil {
 		return err
 	}
 
-	plans, accounts, portalApps, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(copyCtx)
+	plans, accounts, portalApps, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(contexWithTimout)
 	if err != nil {
 		return err
 	}
 
-	chains, gigastakeApps, err := c.fetchChainsAndGigastakeApps(copyCtx)
+	chains, gigastakeApps, err := c.fetchChainsAndGigastakeApps(contexWithTimout)
 	if err != nil {
 		return err
 	}
 
-	blockedContracts, err := c.fetchBlockedContracts(copyCtx)
+	blockedContracts, err := c.fetchBlockedContracts(contexWithTimout)
 	if err != nil {
 		return err
 	}
@@ -183,6 +181,13 @@ func (c *Cache) fetchUserData(ctx context.Context) (map[types.UserID]*types.User
 	userIDs, err := c.reader.ReadUserIDsMap(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("ReadUserIDsMap - %w", err)
+	}
+
+	select {
+	case <-ctx.Done():
+		fmt.Println("cached error: fetchUserData: ", ctx.Err())
+	default:
+		fmt.Println("cache fetchUserData done")
 	}
 
 	return userPermissions, userIDs, nil
@@ -235,6 +240,13 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 		}
 	}
 
+	select {
+	case <-ctx.Done():
+		fmt.Println("cached error: fetchPlansAccountsAndPortalApps: ", ctx.Err())
+	default:
+		fmt.Println("cache fetchPlansAccountsAndPortalApps done")
+	}
+
 	return plans, accounts, portalApps, accountsByUserID, nil
 }
 
@@ -263,6 +275,13 @@ func (c *Cache) fetchChainsAndGigastakeApps(ctx context.Context) (map[types.Rela
 		}
 	}
 
+	select {
+	case <-ctx.Done():
+		fmt.Println("cached error: fetchChainsAndGigastakeApps: ", ctx.Err())
+	default:
+		fmt.Println("cache fetchChainsAndGigastakeApps done")
+	}
+
 	return chains, gigastakeApps, nil
 }
 
@@ -271,6 +290,13 @@ func (c *Cache) fetchBlockedContracts(ctx context.Context) (types.GlobalBlockedC
 	blockedContracts, err := c.reader.ReadBlockedContracts(ctx)
 	if err != nil {
 		return types.GlobalBlockedContracts{}, fmt.Errorf("ReadBlockedContracts - %w", err)
+	}
+
+	select {
+	case <-ctx.Done():
+		fmt.Println("cached error: fetchBlockedContracts: ", ctx.Err())
+	default:
+		fmt.Println("cache fetchBlockedContracts done")
 	}
 	return blockedContracts, nil
 }
