@@ -126,23 +126,29 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 
 // setCache initializes the cache by setting user permissions, accounts and portal apps, chains, and plans.
 func (c *Cache) setCache(ctx context.Context) error {
+	copyCtx, cancel := context.WithTimeout(ctx, time.Duration(60*time.Second))
+
+	defer func() {
+		fmt.Println("connection timeout")
+		cancel()
+	}()
 	// Perform all the database reads first without locking the mutex
-	userPermissions, userIDs, err := c.fetchUserData(ctx)
+	userPermissions, userIDs, err := c.fetchUserData(copyCtx)
 	if err != nil {
 		return err
 	}
 
-	plans, accounts, portalApps, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(ctx)
+	plans, accounts, portalApps, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(copyCtx)
 	if err != nil {
 		return err
 	}
 
-	chains, gigastakeApps, err := c.fetchChainsAndGigastakeApps(ctx)
+	chains, gigastakeApps, err := c.fetchChainsAndGigastakeApps(copyCtx)
 	if err != nil {
 		return err
 	}
 
-	blockedContracts, err := c.fetchBlockedContracts(ctx)
+	blockedContracts, err := c.fetchBlockedContracts(copyCtx)
 	if err != nil {
 		return err
 	}
