@@ -159,6 +159,7 @@ func main() {
 	options := gatherOptions()
 
 	// Configure logger
+	// TODO: use new logger
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.Printf("Pocket HTTP DB %s starting...", options.imageTag)
