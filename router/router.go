@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"net/http/pprof"
-
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	v1Types "github.com/pokt-foundation/portal-db/types"
@@ -72,13 +70,6 @@ func NewRouter(config Config) (*Router, error) {
 
 	rt.Router.HandleFunc("/healthz", rt.healthCheck).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/reset_cache", rt.resetCache).Methods(http.MethodPost)
-
-	rt.Router.HandleFunc("/debug/pprof", pprof.Index).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/debug/pprof/heap", pprof.Index).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/debug/pprof/profile", pprof.Profile).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/debug/pprof/symbol", pprof.Symbol).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/debug/pprof/trace", pprof.Trace).Methods(http.MethodGet)
 
 	/* ----- V2 Endpoints ----- */
 	// V2 endpoints are for the new DB schema and access the cache and V2 structs directly.

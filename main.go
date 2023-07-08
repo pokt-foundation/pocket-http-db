@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"sync"
 	"time"
 
@@ -153,6 +155,9 @@ func httpHandler(router *router.Router, options options, log *logrus.Logger) {
 }
 
 func main() {
+	go func() {
+		log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
+	}()
 	ctx := context.Background()
 
 	// Gather env vars
