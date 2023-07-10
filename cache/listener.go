@@ -11,13 +11,13 @@ func (c *Cache) listen() {
 	for {
 		n, ok := <-c.reader.NotificationChannel()
 		if !ok {
+			c.log.Error(errors.New("notification channel closed, exiting PHD"))
 			os.Exit(1)
-			c.log.Error(errors.New("Notification channel closed, exiting PHD"))
 		}
 
 		if n == nil {
 			// Temporary fix until proper reconnection logic is in place.
-			c.log.Error(errors.New("got a nil value from nitification listener"))
+			c.log.Error(errors.New("got a nil value from notification listener"))
 			continue
 		}
 
