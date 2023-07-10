@@ -1,15 +1,21 @@
 package cache
 
 import (
+	"errors"
+	"os"
+
 	"github.com/pokt-foundation/portal-db/v2/types"
 )
 
 func (c *Cache) listen() {
 	for {
 		n := <-c.reader.NotificationChannel()
-		if n != nil {
-			go c.parseNotification(*n)
+		if n == nil {
+			// Temporary fix until proper reconnection logic is in place.
+			c.log.Error(errors.New("Notification channel closed, exiting PHD"))
+			os.Exit(1)
 		}
+		go c.parseNotification(*n)
 	}
 }
 
