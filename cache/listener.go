@@ -3,6 +3,7 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/pokt-foundation/portal-db/types"
 	"github.com/sirupsen/logrus"
@@ -278,6 +279,10 @@ func (c *Cache) parseNotification(n types.Notification) {
 func (c *Cache) listen() {
 	for {
 		n := <-c.reader.NotificationChannel()
+		if n == nil {
+			c.logError(errors.New("Notification channel closed, exiting PHD"))
+			os.Exit(1)
+		}
 		go c.parseNotification(*n)
 	}
 }
