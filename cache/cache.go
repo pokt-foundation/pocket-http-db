@@ -301,7 +301,7 @@ func (c *Cache) fetchBlockedContracts(ctx context.Context) (types.GlobalBlockedC
 	return blockedContracts, nil
 }
 
-// cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes)
+// cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes).
 func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes time.Duration) {
 	for {
 		<-time.After(cacheRefreshMinutes)
