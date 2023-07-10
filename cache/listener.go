@@ -9,12 +9,18 @@ import (
 
 func (c *Cache) listen() {
 	for {
-		n := <-c.reader.NotificationChannel()
+		n, ok := <-c.reader.NotificationChannel()
+		if !ok {
+			os.Exit(1)
+			c.log.Error(errors.New("Notification channel closed, exiting PHD"))
+		}
+
 		if n == nil {
 			// Temporary fix until proper reconnection logic is in place.
-			c.log.Error(errors.New("Notification channel closed, exiting PHD"))
-			os.Exit(1)
+			c.log.Error(errors.New("got a nil value from nitification listener"))
+			continue
 		}
+
 		go c.parseNotification(*n)
 	}
 }
