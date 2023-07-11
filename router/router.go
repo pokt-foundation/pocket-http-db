@@ -210,6 +210,7 @@ func (rt *Router) resetCache(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
+	rt.log.WithField("chainID", chainID).Debug("getChainByID method called")
 
 	chain := rt.cache.GetChain(chainID, cache.Options{})
 	if chain.ID == "" {
@@ -223,6 +224,8 @@ func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/chain - Fetches all blockchains.
 func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getAllChainByID method called")
+
 	chains := rt.cache.GetChains(cache.Options{})
 	if len(chains) == 0 {
 		rt.logError(fmt.Errorf("getAllChains failed: %w", errNoChainsFound))
@@ -235,6 +238,8 @@ func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/chain - Creates a new blockchains and its Gigastake apps.
 func (rt *Router) createNewChainAndGigastakeApps(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getAllChainByID method called")
+
 	var newChainInput types.NewChainInput
 
 	err := json.NewDecoder(r.Body).Decode(&newChainInput)
@@ -257,6 +262,8 @@ func (rt *Router) createNewChainAndGigastakeApps(w http.ResponseWriter, r *http.
 
 // POST /v2/chain/gigastake - Creates a new Gigastake app.
 func (rt *Router) createNewGigastakeApp(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createNewGigastakeApp method called")
+
 	var gigastakeAppInput types.GigastakeApp
 
 	err := json.NewDecoder(r.Body).Decode(&gigastakeAppInput)
@@ -279,6 +286,8 @@ func (rt *Router) createNewGigastakeApp(w http.ResponseWriter, r *http.Request) 
 
 // PUT /v2/chain - Updates an existing blockchain.
 func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateChain method called")
+
 	var chainUpdate types.Chain
 
 	err := json.NewDecoder(r.Body).Decode(&chainUpdate)
@@ -301,6 +310,8 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/chain/gigastake - Updates a Gigastake app.
 func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateGigastakeApp method called")
+
 	var gigastakeAppUpdate types.UpdateGigastakeApp
 
 	err := json.NewDecoder(r.Body).Decode(&gigastakeAppUpdate)
@@ -323,6 +334,8 @@ func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/chain/{id}/activate - Activates or deactivates a blockchain by ID.
 func (rt *Router) activateChain(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("activateChain method called")
+
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
 
@@ -350,6 +363,8 @@ func (rt *Router) activateChain(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/portal_app/{id} - Fetches a single portal application by its PortalAppID.
 func (rt *Router) getPortalAppByID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPortalAppByID method called")
+
 	vars := mux.Vars(r)
 	portalAppID := types.PortalAppID(vars["id"])
 
@@ -365,6 +380,8 @@ func (rt *Router) getPortalAppByID(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/portal_app - Fetches all portal applications.
 func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getAllPortalApps method called")
+
 	portalApps := rt.cache.GetPortalApps(cache.Options{})
 	if len(portalApps) == 0 {
 		rt.logError(fmt.Errorf("getAllPortalApps failed: %w", errNoPortalAppsFound))
@@ -377,6 +394,8 @@ func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/user/{userID}/portal_app - Fetches all portal applications.
 func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPortalAppsByUser method called")
+
 	roleNameFilter := types.RoleName(r.URL.Query().Get("filter"))
 	if roleNameFilter != types.RoleName("") && !roleNameFilter.IsValid() {
 		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
@@ -413,6 +432,8 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/portal_app - Creates a new portal application.
 func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createNewPortalApp method called")
+
 	var portalAppInput types.PortalApp
 
 	err := json.NewDecoder(r.Body).Decode(&portalAppInput)
@@ -435,6 +456,8 @@ func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/portal_app/{id} - Updates a portal application.
 func (rt *Router) updatePortalApp(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updatePortalApp method called")
+
 	var portalAppUpdate types.UpdatePortalApp
 
 	err := json.NewDecoder(r.Body).Decode(&portalAppUpdate)
@@ -460,6 +483,8 @@ func (rt *Router) updatePortalApp(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /v2/portal_app/{id} - Deletes a portal application.
 func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("deletePortalApp method called")
+
 	vars := mux.Vars(r)
 	portalAppID := types.PortalAppID(vars["id"])
 
@@ -475,6 +500,8 @@ func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/portal_app/first_date_surpassed - Updates one or more PortalApps' FirstDateSurpassed field.
 func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updatePortalAppFirstDateSurpassed method called")
+
 	var firstDateSurpassedUpdate *types.UpdateFirstDateSurpassed
 
 	err := json.NewDecoder(r.Body).Decode(&firstDateSurpassedUpdate)
@@ -504,6 +531,8 @@ func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *ht
 
 // GET /v2/account - Get all Accounts.
 func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getAccounts method called")
+
 	accounts := rt.cache.GetAccounts(cache.Options{IncludeDeleted: true})
 	if len(accounts) == 0 {
 		rt.logError(fmt.Errorf("getAccounts failed: %w", errAccountNotFound))
@@ -531,6 +560,8 @@ func (rt *Router) getAccountByID(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/{userID}/account - Fetches all accounts for a given user ID.
 func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getAccountsByUser method called")
+
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
 
@@ -547,6 +578,8 @@ func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/{userID}/account - Creates an Account in the database for a single user.
 func (rt *Router) createAccount(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createAccount method called")
+
 	var account types.Account
 
 	err := json.NewDecoder(r.Body).Decode(&account)
@@ -572,6 +605,8 @@ func (rt *Router) createAccount(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/account/{id} - Update an Account.
 func (rt *Router) updateAccount(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateAccount method called")
+
 	var update types.UpdateAccount
 
 	err := json.NewDecoder(r.Body).Decode(&update)
@@ -598,6 +633,8 @@ func (rt *Router) updateAccount(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/account/{id}/integration - Add the Account Integrations for a single Account.
 func (rt *Router) createAccountIntegration(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createAccountIntegration method called")
+
 	var integrations types.AccountIntegrations
 
 	err := json.NewDecoder(r.Body).Decode(&integrations)
@@ -624,6 +661,8 @@ func (rt *Router) createAccountIntegration(w http.ResponseWriter, r *http.Reques
 
 // PUT /v2/account/{id}/integration - Updates the Account Integrations for a single Account.
 func (rt *Router) updateAccountIntegration(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateAccountIntegration method called")
+
 	var integrations types.AccountIntegrations
 
 	err := json.NewDecoder(r.Body).Decode(&integrations)
@@ -650,6 +689,8 @@ func (rt *Router) updateAccountIntegration(w http.ResponseWriter, r *http.Reques
 
 // DELETE /v2/account/{id} - Set the Account's Deleted field to true.
 func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("deleteAccount method called")
+
 	vars := mux.Vars(r)
 	accountID := types.AccountID(vars["id"])
 
@@ -667,6 +708,8 @@ func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/account/user - Create a single Account User.
 func (rt *Router) writeAccountUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("writeAccountUser method called")
+
 	var createUser types.CreateAccountUserAccess
 
 	err := json.NewDecoder(r.Body).Decode(&createUser)
@@ -689,6 +732,8 @@ func (rt *Router) writeAccountUser(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/account/user/update_role - Update the role for a single Account User.
 func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateAccountUserRole method called")
+
 	var updateUser types.UpdateAccountUserRole
 
 	err := json.NewDecoder(r.Body).Decode(&updateUser)
@@ -711,6 +756,8 @@ func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) 
 
 // PUT /v2/account/user/accept - Accept an AccountUserAccess.
 func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("acceptAccountUser method called")
+
 	var acceptUser types.UpdateAcceptAccountUser
 
 	err := json.NewDecoder(r.Body).Decode(&acceptUser)
@@ -733,6 +780,8 @@ func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/account/user/remove - Remove an AccountUserAccess.
 func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("removeAccountUser method called")
+
 	var removeUser types.UpdateRemoveAccountUser
 
 	err := json.NewDecoder(r.Body).Decode(&removeUser)
@@ -757,6 +806,8 @@ func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/user/{userID}/permission - Gets all PortalApp permissions for a given provider user ID.
 func (rt *Router) getUserPermissionByUserID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getUserPermissionByUserID method called")
+
 	vars := mux.Vars(r)
 	providerUserID := types.ProviderUserID(vars["userID"])
 
@@ -773,6 +824,8 @@ func (rt *Router) getUserPermissionByUserID(w http.ResponseWriter, r *http.Reque
 
 // GET /v2/user/{userID} - Gets the Portal User ID for a given auth provider user ID.
 func (rt *Router) getPortalUserID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPortalUserID method called")
+
 	vars := mux.Vars(r)
 	providerUserID := types.ProviderUserID(vars["userID"])
 
@@ -787,6 +840,8 @@ func (rt *Router) getPortalUserID(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/user - Creates a new User in the database. Called in response to a new user sign up.
 func (rt *Router) createUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createUser method called")
+
 	var user types.CreateUser
 
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -812,6 +867,8 @@ func (rt *Router) createUser(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /v2/user/{userID} - Deletes a User (WARNING: this will perform a hard delete in the database).
 func (rt *Router) deleteUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("deleteUser method called")
+
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
 
@@ -836,6 +893,8 @@ func (rt *Router) getBlockedContracts(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/blocked_contract - Add a new blocked address to the global blocked contracts table.
 func (rt *Router) writeBlockedContract(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("writeBlockedContract method called")
+
 	var blockedContract types.BlockedContract
 
 	err := json.NewDecoder(r.Body).Decode(&blockedContract)
@@ -858,6 +917,8 @@ func (rt *Router) writeBlockedContract(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/blocked_contract/{address}/active - Activate or deactivate a blocked address in the global blocked contracts table.
 func (rt *Router) updateBlockedContractActive(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateBlockedContractActive method called")
+
 	var blockedContract types.BlockedContract
 
 	err := json.NewDecoder(r.Body).Decode(&blockedContract)
@@ -883,6 +944,8 @@ func (rt *Router) updateBlockedContractActive(w http.ResponseWriter, r *http.Req
 
 // DELETE /v2/blocked_contract/{address} - Delete a blocked address from the global blocked contracts table.
 func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("removeBlockedContract method called")
+
 	vars := mux.Vars(r)
 	blockedAddress := types.BlockedAddress(vars["address"])
 
@@ -899,6 +962,8 @@ func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) 
 /* ---------- V1 Read Methods ---------- */
 
 func (rt *Router) getUserPermissionsByUserID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getUserPermissionsByUserID method called")
+
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
@@ -918,6 +983,8 @@ func (rt *Router) getUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 }
 
 func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getApplicationsByUserID method called")
+
 	vars := mux.Vars(r)
 
 	apps, err := rt.cache.GetLegacyApplicationsByUserID(r.Context(), vars["id"])
@@ -931,6 +998,8 @@ func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request
 }
 
 func (rt *Router) getApplications(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getApplications method called")
+
 	applications := rt.cache.GetLegacyApplications(cache.Options{
 		IncludeDeleted: false,
 	})
@@ -939,6 +1008,8 @@ func (rt *Router) getApplications(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getLoadBalancersByUserID method called")
+
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
@@ -959,10 +1030,14 @@ func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) getLoadBalancers(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getLoadBalancers method called")
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyLoadBalancers(r.Context()))
 }
 
 func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getLoadBalancer method called")
+
 	vars := mux.Vars(r)
 
 	lb, err := rt.cache.GetLegacyLoadBalancer(r.Context(), vars["id"])
@@ -976,6 +1051,8 @@ func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getBlockchains method called")
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyBlockchains(r.Context()))
 }
 
@@ -993,6 +1070,8 @@ func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getPayPlans(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPayPlans method called")
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyPayPlans(r.Context()))
 }
 
@@ -1011,6 +1090,8 @@ func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
 
 /* Returns all pending load balancers for a given portal user ID. */
 func (rt *Router) getPendingLoadBalancersByPortalID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPendingLoadBalancersByPortalID method called")
+
 	vars := mux.Vars(r)
 	userPortalID := vars["portalID"]
 
@@ -1026,6 +1107,8 @@ func (rt *Router) getPendingLoadBalancersByPortalID(w http.ResponseWriter, r *ht
 
 /* Returns the number of load balancers a given user owns, by portal ID */
 func (rt *Router) getLoadBalancersCountByPortalID(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getLoadBalancersCountByPortalID method called")
+
 	vars := mux.Vars(r)
 	userPortalID := vars["portalID"]
 
@@ -1037,6 +1120,8 @@ func (rt *Router) getLoadBalancersCountByPortalID(w http.ResponseWriter, r *http
 /* ---------- V1 Create Methods ---------- */
 
 func (rt *Router) createLoadBalancer(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createLoadBalancer method called")
+
 	var lb v1Types.LoadBalancer
 
 	err := json.NewDecoder(r.Body).Decode(&lb)
@@ -1058,6 +1143,8 @@ func (rt *Router) createLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) createLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createLoadBalancerUser method called")
+
 	vars := mux.Vars(r)
 
 	lbID := vars["id"]
@@ -1083,6 +1170,8 @@ func (rt *Router) createLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createLoadBalancerIntegration method called")
+
 	vars := mux.Vars(r)
 
 	lbID := vars["id"]
@@ -1109,6 +1198,8 @@ func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.R
 }
 
 func (rt *Router) createPortalUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("createPortalUser method called")
+
 	var userInput types.CreateUser
 
 	err := json.NewDecoder(r.Body).Decode(&userInput)
@@ -1137,6 +1228,8 @@ func (rt *Router) createPortalUser(w http.ResponseWriter, r *http.Request) {
 /* ---------- V1 Update Methods ---------- */
 
 func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateLoadBalancer method called")
+
 	vars := mux.Vars(r)
 
 	lbID := vars["id"]
@@ -1168,7 +1261,7 @@ func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	rt.log.Info("Received UpdateFirstDateSurpassed request")
+	rt.log.Debug("updateFirstDateSurpassed method called")
 
 	var updateInput types.UpdateFirstDateSurpassed
 
@@ -1197,6 +1290,8 @@ func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("updateLoadBalancerUserRole method called")
+
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1222,6 +1317,8 @@ func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 }
 
 func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("acceptLoadBalancerUser method called")
+
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1246,6 +1343,8 @@ func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) deleteLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("deleteLoadBalancerUser method called")
+
 	vars := mux.Vars(r)
 
 	lb, err := rt.cache.RemoveLegacyAccountUser(r.Context(), rt.writer, vars["userID"], vars["id"])
