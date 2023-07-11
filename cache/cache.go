@@ -575,11 +575,8 @@ func (c *Cache) upsertAccountIntegrations(accountIntegrations *types.AccountInte
 	defer c.rwMutex.Unlock()
 
 	accountID := accountIntegrations.AccountID
-	for i := range c.accounts {
-		if c.accounts[i].ID == accountID {
-			c.accounts[i].Integrations = *accountIntegrations
-			return
-		}
+	if account, ok := c.accounts[accountID]; ok {
+		account.Integrations = *accountIntegrations
 	}
 }
 
