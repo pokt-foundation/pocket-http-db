@@ -174,7 +174,7 @@ func main() {
 	// TODO: use new logger
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
-	logrus.SetLevel(logrus.Level(options.logLevel))
+	log.SetLevel(logrus.Level(options.logLevel))
 	log.Printf("Pocket HTTP DB %s starting...", options.imageTag)
 
 	// Choose DB configuration based on APP_ENV
