@@ -210,7 +210,7 @@ func (rt *Router) resetCache(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
-	rt.log.WithField("chainID", chainID).Debug("getChainByID method called")
+	rt.log.Debug("getChainByID method called")
 
 	chain := rt.cache.GetChain(chainID, cache.Options{})
 	if chain.ID == "" {
