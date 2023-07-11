@@ -43,6 +43,10 @@ const (
 	// Image tag used to return Docker image version in health check response body.
 	imageTag        = "IMAGE_TAG"
 	defaultImageTag = "development"
+
+	// TODO: add a map to take strings and converts to their logrus equivalent
+	// Valid Values are 0-6 going from fatal to trace
+	logLevel = "LOG_LEVEL"
 )
 
 type (
@@ -56,6 +60,8 @@ type (
 
 		cacheRefreshMinutes time.Duration
 		port, imageTag      string
+
+		logLevel int64
 	}
 	DBConfig interface {
 		GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error)
@@ -84,6 +90,7 @@ func gatherOptions() options {
 		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
 		port:                environment.GetString(port, defaultPort),
 		imageTag:            environment.GetString(imageTag, defaultImageTag),
+		logLevel:            environment.GetInt64(logLevel, 4), // defaults to INFO
 	}
 
 	switch appEnv {
@@ -167,6 +174,7 @@ func main() {
 	// TODO: use new logger
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
+	logrus.SetLevel(logrus.Level(options.logLevel))
 	log.Printf("Pocket HTTP DB %s starting...", options.imageTag)
 
 	// Choose DB configuration based on APP_ENV
