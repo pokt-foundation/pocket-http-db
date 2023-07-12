@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
@@ -64,7 +65,7 @@ type (
 		logLevel int64
 	}
 	DBConfig interface {
-		GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error)
+		GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, listenerConn *pgx.Conn, err error)
 	}
 	CloudSQLConfig struct {
 		options
@@ -110,7 +111,7 @@ func gatherOptions() options {
 
 // CloudSQLConfig.GetConn connects to a GCP CloudSQL instance using the cloudsqlconn lib.
 // Intended for production use. Will be used if APP_ENV is 'production'.
-func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
+func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, listenerConn *pgx.Conn, err error) {
 	driverConfig := postgresdriver.CloudSQLConfig{
 		DBUser:                 c.options.pgUser,
 		DBPassword:             c.options.pgPassword,
@@ -120,7 +121,7 @@ func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConn, listenerConn *p
 		PrivateIP:              c.options.dbPrivateIP,
 	}
 
-	mainConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
+	mainConnPool, err = postgresdriver.NewCloudSQLPGXPool(ctx, driverConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,12 +130,12 @@ func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConn, listenerConn *p
 		return nil, nil, err
 	}
 
-	return mainConn, listenerConn, nil
+	return mainConnPool, listenerConn, nil
 }
 
 // TestDBConfig.GetConn connects to a Postgres database using standard connection string and user/PW.
 // Intended to be used for running tests on a local Docker container. Will be used if APP_ENV is 'test' or 'development'.
-func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
+func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, listenerConn *pgx.Conn, err error) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.options.pgHost,
 		c.options.pgPort,
@@ -143,7 +144,7 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx
 		c.options.pgDatabase,
 	)
 
-	mainConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
+	mainConnPool, err = postgresdriver.NewCloudSQLPGXPool(ctx, connectionString)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -152,7 +153,7 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx
 		return nil, nil, err
 	}
 
-	return mainConn, listenerConn, nil
+	return mainConnPool, listenerConn, nil
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.

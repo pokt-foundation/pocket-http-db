@@ -85,6 +85,8 @@ github.com/jackc/pgx/v5 v5.4.1 h1:oKfB/FhuVtit1bBM3zNRRsZ925ZkMN3HXL+LgLUM9lE=
 github.com/jackc/pgx/v5 v5.4.1/go.mod h1:q6iHT8uDNXWiFNOlRqJzBTaSH3+2xCXkokxHZC5qWFY=
 github.com/jackc/pgxlisten v0.0.0-20230309145146-5d7f28456dce h1:fwMQxtdiAq8ORNuSI/lxwn0mcXY32NjXrdZZLiAwICI=
 github.com/jackc/pgxlisten v0.0.0-20230309145146-5d7f28456dce/go.mod h1:EqjCOzkITPCEI0My7BdE2xm3r0fZ7OZycVDP+ki1ASA=
+github.com/jackc/puddle/v2 v2.2.0 h1:RdcDk92EJBuBS55nQMMYFXTxwstHug4jkhT5pq8VxPk=
+github.com/jackc/puddle/v2 v2.2.0/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/joho/godotenv v1.4.0 h1:3l4+N6zfMWnkbPEXKng2o2/MR5mSwTrBih4ZEkkz1lg=
 github.com/joho/godotenv v1.4.0/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/kr/pretty v0.3.0 h1:WgNl7dwNpEZ6jJ9k1snq4pZsg7DOEN8hP9Xw0Tsjwk0=
@@ -98,8 +100,6 @@ github.com/pokt-foundation/db-client/v2 v2.1.2 h1:Kkhaozl9HBpoVErA2I2tzkRho2QUpr
 github.com/pokt-foundation/db-client/v2 v2.1.2/go.mod h1:vhtYyfeHqYF4hEgMIrtvFlpetmTh23lZQsn0QfJVGMI=
 github.com/pokt-foundation/portal-db v1.10.8 h1:YvTDrVc+P5NXk5NKk1zaoIHsWfsXsG1dWp3X5fa8K/A=
 github.com/pokt-foundation/portal-db v1.10.8/go.mod h1:Pf8IIeoj3mSIk0+eNdzssz3T7GvnWRkFKPwGsFT2D5w=
-github.com/pokt-foundation/portal-db/v2 v2.1.0 h1:K/irlhoqK8YwIolWyBcL4Wzm3mKUyfWQ4unkhZwU12U=
-github.com/pokt-foundation/portal-db/v2 v2.1.0/go.mod h1:XTrQSE/pTDeE9d+m6ZrtHoW4wezBQwp7f6gaEDLEFKs=
 github.com/pokt-foundation/utils-go v0.8.2 h1:WezPrBF5KlbIPsTfjD5jpn9Dt9y+/cKGZL3YAlcjx30=
 github.com/pokt-foundation/utils-go v0.8.2/go.mod h1:WYcDLD+oCeFu0Q2i11yWWpq1XKBCHeu5+nii6Mys8a8=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
@@ -158,6 +158,7 @@ golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.2.0 h1:PUR+T4wwASmuSTYdKjYHI5TD22Wy5ogLU5qZCOLxBrI=
+golang.org/x/sync v0.2.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
