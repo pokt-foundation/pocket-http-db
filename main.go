@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/pocket-http-db/router"
@@ -65,7 +64,7 @@ type (
 		logLevel int64
 	}
 	DBConfig interface {
-		GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, listenerConn *pgx.Conn, err error)
+		GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error)
 	}
 	CloudSQLConfig struct {
 		options
@@ -111,7 +110,7 @@ func gatherOptions() options {
 
 // CloudSQLConfig.GetConn connects to a GCP CloudSQL instance using the cloudsqlconn lib.
 // Intended for production use. Will be used if APP_ENV is 'production'.
-func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, listenerConn *pgx.Conn, err error) {
+func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error) {
 	driverConfig := postgresdriver.CloudSQLConfig{
 		DBUser:                 c.options.pgUser,
 		DBPassword:             c.options.pgPassword,
@@ -123,19 +122,15 @@ func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Poo
 
 	mainConnPool, err = postgresdriver.NewCloudSQLPGXPool(ctx, driverConfig)
 	if err != nil {
-		return nil, nil, err
-	}
-	listenerConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return mainConnPool, listenerConn, nil
+	return mainConnPool, nil
 }
 
 // TestDBConfig.GetConn connects to a Postgres database using standard connection string and user/PW.
 // Intended to be used for running tests on a local Docker container. Will be used if APP_ENV is 'test' or 'development'.
-func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, listenerConn *pgx.Conn, err error) {
+func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.options.pgHost,
 		c.options.pgPort,
@@ -144,16 +139,12 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 		c.options.pgDatabase,
 	)
 
-	mainConnPool, err = postgresdriver.NewCloudSQLPGXPool(ctx, connectionString)
+	mainConnPool, err = postgresdriver.NewPGXPool(ctx, connectionString)
 	if err != nil {
-		return nil, nil, err
-	}
-	listenerConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return mainConnPool, listenerConn, nil
+	return mainConnPool, nil
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
@@ -190,14 +181,13 @@ func main() {
 	}
 
 	// Connect to Postgres DB, initialize listener and instantiate driver
-	mainConn, listenerConn, err := dbConfig.GetConn(ctx)
+	mainConn, err := dbConfig.GetConn(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	notificationChannel := make(chan *types.Notification, 32)
-	listener := postgresdriver.NewPGXListener(listenerConn, notificationChannel)
-	driver, err := postgresdriver.NewPostgresDriver(mainConn, listener, notificationChannel)
+	driver, errChan, err := postgresdriver.NewPostgresDriver(mainConn, notificationChannel)
 	if err != nil {
 		panic(err)
 	}
@@ -223,6 +213,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// This goroutine continuously monitors the error channel and logs any errors that come in.
+	// You should replace this with whatever error handling is appropriate for your application.
+	go func() {
+		for err := range errChan {
+			log.Printf("error from listener: %v", err)
+		}
+	}()
 
 	// Start the HTTP server
 	var wg sync.WaitGroup
