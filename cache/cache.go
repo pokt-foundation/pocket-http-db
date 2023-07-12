@@ -4,6 +4,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -309,6 +310,8 @@ func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes tim
 		err := c.setCache(ctx)
 		if err != nil {
 			c.log.Error("err in cacheRefreshHandler: %w", err)
+
+			os.Exit(1) // Kill PHD if cache refresh fails to trigger pod restart
 		}
 	}
 }
