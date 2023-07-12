@@ -177,8 +177,17 @@ func (rt *Router) authorizationHandler(h http.Handler) http.Handler {
 }
 
 func (rt *Router) healthCheck(w http.ResponseWriter, r *http.Request) {
+	var msg string
+	if err := rt.writer.Ping(r.Context()); err == nil {
+		w.WriteHeader(http.StatusOK)
+		msg = fmt.Sprintf("DB Check Done. Pocket HTTP DB is up and running!\nImage Tag: %s", rt.imageTag)
+	} else {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		msg = fmt.Sprintf("could not connect to the db: %s", err.Error())
+	}
+
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(fmt.Sprintf("Pocket HTTP DB is up and running!\nImage Tag: %s", rt.imageTag)))
+	_, err := w.Write([]byte(msg))
 	if err != nil {
 		panic(err)
 	}
