@@ -64,7 +64,7 @@ type (
 		logLevel int64
 	}
 	DBConfig interface {
-		GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error)
+		GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, cleanup func() error, err error)
 	}
 	CloudSQLConfig struct {
 		options
@@ -110,7 +110,7 @@ func gatherOptions() options {
 
 // CloudSQLConfig.GetConn connects to a GCP CloudSQL instance using the cloudsqlconn lib.
 // Intended for production use. Will be used if APP_ENV is 'production'.
-func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error) {
+func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, cleanup func() error, err error) {
 	driverConfig := postgresdriver.CloudSQLConfig{
 		DBUser:                 c.options.pgUser,
 		DBPassword:             c.options.pgPassword,
@@ -120,17 +120,17 @@ func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Poo
 		PrivateIP:              c.options.dbPrivateIP,
 	}
 
-	mainConnPool, err = postgresdriver.NewCloudSQLPGXPool(ctx, driverConfig)
+	mainConnPool, cleanup, err = postgresdriver.NewCloudSQLPGXPool(driverConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return mainConnPool, nil
+	return mainConnPool, cleanup, nil
 }
 
 // TestDBConfig.GetConn connects to a Postgres database using standard connection string and user/PW.
 // Intended to be used for running tests on a local Docker container. Will be used if APP_ENV is 'test' or 'development'.
-func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error) {
+func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, cleanup func() error, err error) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.options.pgHost,
 		c.options.pgPort,
@@ -139,12 +139,12 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 		c.options.pgDatabase,
 	)
 
-	mainConnPool, err = postgresdriver.NewPGXPool(ctx, connectionString)
+	mainConnPool, cleanup, err = postgresdriver.NewPGXPool(connectionString)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return mainConnPool, nil
+	return mainConnPool, cleanup, nil
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
@@ -185,10 +185,15 @@ func main() {
 	}
 
 	// Connect to Postgres DB, initialize listener and instantiate driver
-	connPool, err := dbConfig.GetConn(ctx)
+	connPool, cleanup, err := dbConfig.GetConn(ctx)
 	if err != nil {
 		panic(err)
 	}
+	defer func() {
+		if err := cleanup(); err != nil {
+			log.Printf("Failed to clean up: %v", err)
+		}
+	}()
 
 	notificationChannel := make(chan *types.Notification, 32)
 
@@ -233,5 +238,4 @@ func main() {
 	wg.Add(1)
 	go httpHandler(router, options, log)
 	wg.Wait()
-
 }
