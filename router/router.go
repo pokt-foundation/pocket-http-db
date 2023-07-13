@@ -1199,7 +1199,7 @@ func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.R
 
 	updatedLB, err := rt.cache.CreateLegacyLoadBalancerIntegration(r.Context(), rt.writer, lbID, integrationsInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("writeLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
+		rt.logError(fmt.Errorf("CreateLegacyLoadBalancerIntegration in createLoadBalancerIntegration failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

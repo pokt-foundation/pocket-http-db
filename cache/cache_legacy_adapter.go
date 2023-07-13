@@ -446,26 +446,16 @@ func (c *Cache) CreateLegacyLoadBalancerIntegration(ctx context.Context, writer 
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	portalAppID := v2Types.PortalAppID(lbID)
-
-	portalApp := c.GetPortalApp(portalAppID)
-	if portalApp.ID == "" {
-		return v1Types.LoadBalancer{}, fmt.Errorf(ErrPortalAppNotFound.Error(), portalAppID)
-	}
-
 	accountIntegrations, err := writer.UpsertAccountIntegration(ctx, integrations)
 	if err != nil {
 		return v1Types.LoadBalancer{}, err
 	}
 
-	account := c.GetAccount(integrations.AccountID)
-	if account.ID == "" {
-		return v1Types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
-	}
-
-	account.Integrations = *accountIntegrations
-
-	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(portalApp, account), nil
+	return v1Types.LoadBalancer{
+		Integrations: v1Types.AccountIntegrations{
+			CovalentAPIKeyFree: accountIntegrations.CovalentAPIKeyFree,
+		},
+	}, nil
 }
 
 /* ---------- Update Methods ---------- */
