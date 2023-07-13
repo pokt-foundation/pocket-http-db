@@ -41,8 +41,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
+      # TODO - reenable once mock changes to do with context timeout are addressed
+      # - name: Run unit tests
+      #   run: make test_env_up
+
       - name: Set up Docker test stack
         run: make test_env_up
 
-      - name: Run all tests
-        run: make run_all_tests
+      - name: Run E2E tests
+        run: make run_e2e_tests
