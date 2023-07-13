@@ -6,9 +6,7 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
-	"os/signal"
-	"syscall"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -149,38 +147,10 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 	return mainConnPool, nil
 }
 
-// runServer starts the HTTP server and handles shutdown signals.
-func runServer(router *router.Router, options options, log *logrus.Logger) {
-	// Run HTTP server in a goroutine so that it doesn't block the shutdown signal listener.
-	server := &http.Server{
-		Addr:    ":" + options.port,
-		Handler: router.Router,
-	}
-
-	go func() {
-		log.Printf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
-		}
-	}()
-
-	// Create a channel to listen for an interrupt or termination signal from the system.
-	shutdown := make(chan os.Signal, 1)
-	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
-
-	// Block here until we receive the interrupt signal
-	<-shutdown
-
-	// The context is used to give the server a deadline for shutting down.
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
-	if err := server.Shutdown(ctxWithTimeout); err != nil {
-		log.Fatalf("Server shutdown failed:%+v", err)
-	}
-
-	defer cancel()
-
-	log.Println("Server stopped")
+// httpHandler starts the HTTP server for the application using the provided router, port, and logger.
+func httpHandler(router *router.Router, options options, log *logrus.Logger) {
+	log.Printf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port)
+	log.Fatal(http.ListenAndServe(":"+options.port, router.Router))
 }
 
 func main() {
@@ -258,6 +228,10 @@ func main() {
 		}
 	}()
 
-	// Run the server and handle its lifecycle (including graceful shutdown)
-	runServer(router, options, log)
+	// Start the HTTP server
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go httpHandler(router, options, log)
+	wg.Wait()
+
 }
