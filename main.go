@@ -150,7 +150,7 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 }
 
 // runServer starts the HTTP server and handles shutdown signals.
-func runServer(ctx context.Context, router *router.Router, options options, log *logrus.Logger) {
+func runServer(router *router.Router, options options, log *logrus.Logger) {
 	// Run HTTP server in a goroutine so that it doesn't block the shutdown signal listener.
 	server := &http.Server{
 		Addr:    ":" + options.port,
@@ -172,7 +172,7 @@ func runServer(ctx context.Context, router *router.Router, options options, log 
 	<-shutdown
 
 	// The context is used to give the server a deadline for shutting down.
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 
 	if err := server.Shutdown(ctxWithTimeout); err != nil {
 		log.Fatalf("Server shutdown failed:%+v", err)
@@ -259,5 +259,5 @@ func main() {
 	}()
 
 	// Run the server and handle its lifecycle (including graceful shutdown)
-	runServer(ctx, router, options, log)
+	runServer(router, options, log)
 }
