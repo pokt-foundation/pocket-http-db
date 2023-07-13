@@ -1,6 +1,6 @@
 module github.com/pokt-foundation/pocket-http-db
 
-go 1.19
+go 1.20
 
 require (
 	github.com/gorilla/mux v1.8.0
@@ -8,7 +8,7 @@ require (
 	github.com/pokt-foundation/db-client v1.11.0
 	github.com/pokt-foundation/db-client/v2 v2.1.2
 	github.com/pokt-foundation/portal-db v1.10.8
-	github.com/pokt-foundation/portal-db/v2 v2.1.0
+	github.com/pokt-foundation/portal-db/v2 v2.2.0
 	github.com/pokt-foundation/utils-go v0.8.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
@@ -28,6 +28,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgxlisten v0.0.0-20230309145146-5d7f28456dce // indirect
+	github.com/jackc/puddle/v2 v2.2.0 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
@@ -35,6 +36,7 @@ require (
 	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
+	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.3.0 // indirect

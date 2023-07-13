@@ -6,10 +6,12 @@ import (
 	"log"
 	"net/http"
 	_ "net/http/pprof"
-	"sync"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
@@ -64,7 +66,7 @@ type (
 		logLevel int64
 	}
 	DBConfig interface {
-		GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error)
+		GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error)
 	}
 	CloudSQLConfig struct {
 		options
@@ -110,7 +112,7 @@ func gatherOptions() options {
 
 // CloudSQLConfig.GetConn connects to a GCP CloudSQL instance using the cloudsqlconn lib.
 // Intended for production use. Will be used if APP_ENV is 'production'.
-func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
+func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error) {
 	driverConfig := postgresdriver.CloudSQLConfig{
 		DBUser:                 c.options.pgUser,
 		DBPassword:             c.options.pgPassword,
@@ -120,21 +122,17 @@ func (c *CloudSQLConfig) GetConn(ctx context.Context) (mainConn, listenerConn *p
 		PrivateIP:              c.options.dbPrivateIP,
 	}
 
-	mainConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
+	mainConnPool, err = postgresdriver.NewCloudSQLPGXPool(ctx, driverConfig)
 	if err != nil {
-		return nil, nil, err
-	}
-	listenerConn, err = postgresdriver.NewCloudSQLPGXConnection(ctx, driverConfig)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return mainConn, listenerConn, nil
+	return mainConnPool, nil
 }
 
 // TestDBConfig.GetConn connects to a Postgres database using standard connection string and user/PW.
 // Intended to be used for running tests on a local Docker container. Will be used if APP_ENV is 'test' or 'development'.
-func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx.Conn, err error) {
+func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, err error) {
 	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		c.options.pgHost,
 		c.options.pgPort,
@@ -143,32 +141,60 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConn, listenerConn *pgx
 		c.options.pgDatabase,
 	)
 
-	mainConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
+	mainConnPool, err = postgresdriver.NewPGXPool(ctx, connectionString)
 	if err != nil {
-		return nil, nil, err
-	}
-	listenerConn, err = postgresdriver.NewPGXConnection(ctx, connectionString)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return mainConn, listenerConn, nil
+	return mainConnPool, nil
 }
 
-// httpHandler starts the HTTP server for the application using the provided router, port, and logger.
-func httpHandler(router *router.Router, options options, log *logrus.Logger) {
-	log.Printf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port)
-	log.Fatal(http.ListenAndServe(":"+options.port, router.Router))
+// runServer starts the HTTP server and handles shutdown signals.
+func runServer(ctx context.Context, router *router.Router, options options, log *logrus.Logger) {
+	// Run HTTP server in a goroutine so that it doesn't block the shutdown signal listener.
+	server := &http.Server{
+		Addr:    ":" + options.port,
+		Handler: router.Router,
+	}
+
+	go func() {
+		log.Printf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	// Create a channel to listen for an interrupt or termination signal from the system.
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, os.Interrupt, syscall.SIGTERM)
+
+	// Block here until we receive the interrupt signal
+	<-shutdown
+
+	// The context is used to give the server a deadline for shutting down.
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+
+	if err := server.Shutdown(ctxWithTimeout); err != nil {
+		log.Fatalf("Server shutdown failed:%+v", err)
+	}
+
+	defer cancel()
+
+	log.Println("Server stopped")
 }
 
 func main() {
-	go func() {
-		log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
-	}()
 	ctx := context.Background()
 
 	// Gather env vars
 	options := gatherOptions()
+
+	// Start pprof server only if in development mode
+	if options.appEnv == types.AppEnvDevelopment {
+		go func() {
+			log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	// Configure logger
 	// TODO: use new logger
@@ -189,14 +215,16 @@ func main() {
 	}
 
 	// Connect to Postgres DB, initialize listener and instantiate driver
-	mainConn, listenerConn, err := dbConfig.GetConn(ctx)
+	connPool, err := dbConfig.GetConn(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	notificationChannel := make(chan *types.Notification, 32)
-	listener := postgresdriver.NewPGXListener(listenerConn, notificationChannel)
-	driver, err := postgresdriver.NewPostgresDriver(mainConn, listener, notificationChannel)
+
+	listener := postgresdriver.NewPGXPoolListener(connPool, notificationChannel)
+
+	driver, errChan, err := postgresdriver.NewPostgresDriver(connPool, listener, notificationChannel)
 	if err != nil {
 		panic(err)
 	}
@@ -223,9 +251,13 @@ func main() {
 		panic(err)
 	}
 
-	// Start the HTTP server
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go httpHandler(router, options, log)
-	wg.Wait()
+	// This goroutine continuously monitors the error channel and logs any errors that come in.
+	go func() {
+		for err := range errChan {
+			log.Printf("error from listener: %v", err)
+		}
+	}()
+
+	// Run the server and handle its lifecycle (including graceful shutdown)
+	runServer(ctx, router, options, log)
 }

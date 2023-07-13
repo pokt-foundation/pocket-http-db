@@ -10,6 +10,7 @@ test_env_up:
 	@echo "⏳ Waiting for test DB to be ready ..."
 	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🐘 Test Portal DB is up ..." || (echo "❌ Test Portal DB failed to start" && make test_env_down >/dev/null && exit 1)
+	@sleep 2;
 	@echo "⏳ Performing health check on pocket-http-db-1 ..."
 	@attempts=0; until curl -s http://localhost:8080/healthz >/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🖥️  pocket-http-db-1 is online ..." || (echo "❌ pocket-http-db-1 failed health check" && make test_env_down >/dev/null && exit 1)
@@ -31,9 +32,9 @@ test_env_down:
 
 # These targets run all variations of the test suite.
 run_e2e_tests:
-	-go test -run E2E -count=1
+	go test -run E2E -count=1
 run_all_tests:
-	-go test ./... -count=1
+	go test ./... -count=1
 test_unit:
 	go test ./...  -short -count=1
 test_e2e: test_env_up run_e2e_tests test_env_down

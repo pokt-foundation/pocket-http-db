@@ -56,13 +56,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:         "Should return status 200 and correct body on port 1",
 				url:          fmt.Sprintf("http://localhost:%s/healthz", phdPortOne),
-				expectedBody: "Pocket HTTP DB is up and running!\nImage Tag: test-image-tag-1",
+				expectedBody: "DB Check Done. Pocket HTTP DB is up and running!\nImage Tag: development",
 				expectedCode: http.StatusOK,
 			},
 			{
 				name:         "Should return status 200 and correct body on port 2",
 				url:          fmt.Sprintf("http://localhost:%s/healthz", phdPortTwo),
-				expectedBody: "Pocket HTTP DB is up and running!\nImage Tag: test-image-tag-2",
+				expectedBody: "DB Check Done. Pocket HTTP DB is up and running!\nImage Tag: development",
 				expectedCode: http.StatusOK,
 			},
 		}
