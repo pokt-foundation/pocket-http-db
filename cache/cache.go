@@ -127,6 +127,8 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 
 // setCache initializes the cache by setting user permissions, accounts and portal apps, chains, and plans.
 func (c *Cache) setCache(ctx context.Context) error {
+	t := NewRunTimer("setCache", c.log)
+	defer t.Stop()
 	// Perform all the database reads first without locking the mutex
 	userPermissions, userIDs, err := c.fetchUserData(ctx)
 	if err != nil {

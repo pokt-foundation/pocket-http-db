@@ -57,6 +57,25 @@ func (rt *Router) logError(err error) {
 	rt.log.WithFields(fields).Error(err)
 }
 
+func timingMiddleware(log *logrus.Logger) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.WithFields(logrus.Fields{
+				"uri": r.RequestURI,
+			}).Info("HTTP Request Starting")
+
+			startTime := time.Now()
+			next.ServeHTTP(w, r)
+			elapsed := time.Since(startTime)
+
+			log.WithFields(logrus.Fields{
+				"uri":          r.RequestURI,
+				"milliseconds": elapsed.Milliseconds(),
+			}).Info("HTTP Request Completed")
+		})
+	}
+}
+
 // NewRouter returns router instance
 func NewRouter(config Config) (*Router, error) {
 	rt := &Router{
@@ -67,6 +86,8 @@ func NewRouter(config Config) (*Router, error) {
 		log:      config.Log,
 		imageTag: config.ImageTag,
 	}
+
+	rt.Router.Use(timingMiddleware(rt.log))
 
 	rt.Router.HandleFunc("/healthz", rt.healthCheck).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/reset_cache", rt.resetCache).Methods(http.MethodPost)
@@ -1008,12 +1029,12 @@ func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request
 }
 
 func (rt *Router) getApplications(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getApplications method called")
 
 	applications := rt.cache.GetLegacyApplications(cache.Options{
 		IncludeDeleted: false,
 	})
 
+	rt.log.WithField("applications", len(applications)).Debug("getApplications method called")
 	jsonresponse.RespondWithJSON(w, http.StatusOK, applications)
 }
 
@@ -1040,7 +1061,9 @@ func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) getLoadBalancers(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getLoadBalancers method called")
+	rt.log.WithField(
+		"loadbalancers", len(rt.cache.GetLegacyLoadBalancers(r.Context())),
+	).Info("getLoadbalancers method called")
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyLoadBalancers(r.Context()))
 }

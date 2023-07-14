@@ -159,12 +159,15 @@ func main() {
 	// Gather env vars
 	options := gatherOptions()
 
+	go func() {
+		log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
+	}()
 	// Start pprof server only if in development mode
-	if options.appEnv == types.AppEnvDevelopment {
-		go func() {
-			log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
-		}()
-	}
+	// if options.appEnv == types.AppEnvDevelopment {
+	// 	go func() {
+	// 		log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
+	// 	}()
+	// }
 
 	// Configure logger
 	// TODO: use new logger
