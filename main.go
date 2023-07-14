@@ -47,6 +47,7 @@ const (
 	// TODO: add a map to take strings and converts to their logrus equivalent
 	// Valid Values are 0-6 going from fatal to trace
 	logLevel = "LOG_LEVEL"
+	profiler = "PROFILER"
 )
 
 type (
@@ -60,6 +61,8 @@ type (
 
 		cacheRefreshMinutes time.Duration
 		port, imageTag      string
+
+		profiler bool
 
 		logLevel int64
 	}
@@ -91,6 +94,7 @@ func gatherOptions() options {
 		port:                environment.GetString(port, defaultPort),
 		imageTag:            environment.GetString(imageTag, defaultImageTag),
 		logLevel:            environment.GetInt64(logLevel, 4), // defaults to INFO
+		profiler:            environment.GetBool(profiler, false),
 	}
 
 	switch appEnv {
@@ -159,15 +163,12 @@ func main() {
 	// Gather env vars
 	options := gatherOptions()
 
-	go func() {
-		log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
-	}()
-	// Start pprof server only if in development mode
-	// if options.appEnv == types.AppEnvDevelopment {
-	// 	go func() {
-	// 		log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
-	// 	}()
-	// }
+	// Start pprof server only if profiler flag set
+	if options.profiler {
+		go func() {
+			log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	// Configure logger
 	// TODO: use new logger
