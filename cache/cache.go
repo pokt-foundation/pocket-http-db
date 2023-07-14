@@ -13,6 +13,31 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type runTimer struct {
+	name      string
+	startTime time.Time
+	log       *logrus.Logger
+}
+
+func NewRunTimer(name string, log *logrus.Logger) *runTimer {
+
+	return &runTimer{
+		name:      name,
+		startTime: time.Now(),
+		log:       log,
+	}
+}
+
+func (t runTimer) Stop() {
+	elapsed := time.Since(t.startTime)
+	if elapsed > 0*time.Millisecond {
+		t.log.WithFields(logrus.Fields{
+			"name":         t.name,
+			"milliseconds": elapsed.Milliseconds(),
+		}).Info("RunTimer")
+	}
+}
+
 type (
 	/*
 		The Cache struct provides an in-memory cache for data used across the Portal API backend architecture.
@@ -127,6 +152,8 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 
 // setCache initializes the cache by setting user permissions, accounts and portal apps, chains, and plans.
 func (c *Cache) setCache(ctx context.Context) error {
+	t := NewRunTimer("setCache", c.log)
+	defer t.Stop()
 	// Perform all the database reads first without locking the mutex
 	userPermissions, userIDs, err := c.fetchUserData(ctx)
 	if err != nil {

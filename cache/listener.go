@@ -2,9 +2,11 @@ package cache
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/sirupsen/logrus"
 )
 
 func (c *Cache) listen() {
@@ -13,6 +15,11 @@ func (c *Cache) listen() {
 		if !ok {
 			c.log.Error(errors.New("notification channel closed, exiting PHD"))
 			os.Exit(1)
+		}
+
+		queueSize := len(c.reader.NotificationChannel())
+		if queueSize > 0 {
+			c.log.WithField("queue_size", queueSize).Info("Notification channel queue > 0")
 		}
 
 		if n == nil {
@@ -26,6 +33,13 @@ func (c *Cache) listen() {
 }
 
 func (c *Cache) parseNotification(n types.Notification) {
+	c.log.WithFields(logrus.Fields{
+		"action": n.Action,
+		"table":  n.Table,
+	}).Info("Starting parseNotification")
+	t := NewRunTimer(fmt.Sprintf("parseNotification %s %s", n.Action, n.Table), c.log)
+	defer t.Stop()
+
 	switch n.Table {
 	case types.TableAccounts:
 		c.parseAccountNotification(n)
