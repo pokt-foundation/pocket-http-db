@@ -81,19 +81,23 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 	switch {
 	case roleNameFilter == v1Types.RoleName(""):
 		for _, account := range accounts {
-			filteredAccounts[account.ID] = account
+			if !account.Deleted {
+				filteredAccounts[account.ID] = account
+			}
 		}
 
 	case roleNameFilter != v1Types.RoleName(""):
 		for _, account := range accounts {
-			if user, ok := account.Users[portalUserID]; ok {
-				if user.Accepted {
-					for _, roleName := range user.PortalAppRoles {
-						if roleName == v2Types.RoleName(roleNameFilter) {
-							if _, ok := filteredAccounts[account.ID]; ok {
-								continue
+			if !account.Deleted {
+				if user, ok := account.Users[portalUserID]; ok {
+					if user.Accepted {
+						for _, roleName := range user.PortalAppRoles {
+							if roleName == v2Types.RoleName(roleNameFilter) {
+								if _, ok := filteredAccounts[account.ID]; ok {
+									continue
+								}
+								filteredAccounts[account.ID] = account
 							}
-							filteredAccounts[account.ID] = account
 						}
 					}
 				}
@@ -103,9 +107,11 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 
 	for _, account := range filteredAccounts {
 		for _, portalApp := range account.PortalApps {
-			legacyLB := legacyadapters.ConvertPortalAppToLegacyLoadBalancer(*portalApp, account)
+			if !portalApp.Deleted {
+				legacyLB := legacyadapters.ConvertPortalAppToLegacyLoadBalancer(*portalApp, account)
 
-			loadBalancers = append(loadBalancers, legacyLB)
+				loadBalancers = append(loadBalancers, legacyLB)
+			}
 		}
 	}
 
@@ -167,12 +173,16 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 	accounts := c.GetAccountsByUserID(portalUserID)
 
 	for _, account := range accounts {
-		for _, portalApp := range account.PortalApps {
-			for _, aat := range portalApp.AATs {
-				if userID, err := account.GetOwnerID(); err == nil {
-					legacyApp := legacyadapters.ConvertPortalAppToLegacyApplication(*portalApp, string(userID), aat)
+		if !account.Deleted {
+			for _, portalApp := range account.PortalApps {
+				if !portalApp.Deleted {
+					for _, aat := range portalApp.AATs {
+						if userID, err := account.GetOwnerID(); err == nil {
+							legacyApp := legacyadapters.ConvertPortalAppToLegacyApplication(*portalApp, string(userID), aat)
 
-					applications = append(applications, legacyApp)
+							applications = append(applications, legacyApp)
+						}
+					}
 				}
 			}
 		}
