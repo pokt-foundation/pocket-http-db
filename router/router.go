@@ -1061,11 +1061,12 @@ func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) getLoadBalancers(w http.ResponseWriter, r *http.Request) {
+	lbs := rt.cache.GetLegacyLoadBalancers(r.Context())
 	rt.log.WithField(
-		"loadbalancers", len(rt.cache.GetLegacyLoadBalancers(r.Context())),
+		"loadbalancers", len(lbs),
 	).Info("getLoadbalancers method called")
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyLoadBalancers(r.Context()))
+	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
 }
 
 func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
