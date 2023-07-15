@@ -100,7 +100,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/chain", rt.createNewChainAndGigastakeApps).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.createNewGigastakeApp).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/v2/chain", rt.updateChain).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v2/chain/{id}", rt.updateChain).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/{id}/activate", rt.activateChain).Methods(http.MethodPut)
 
@@ -315,11 +315,20 @@ func (rt *Router) createNewGigastakeApp(w http.ResponseWriter, r *http.Request) 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, createdGigastakeApp)
 }
 
-// PUT /v2/chain - Updates an existing blockchain.
+// PUT /v2/chain/{id} - Updates an existing blockchain.
 func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("updateChain method called")
 
-	var chainUpdate types.Chain
+	vars := mux.Vars(r)
+	chainID := types.RelayChainID(vars["id"])
+	if chainID == "" {
+		err := fmt.Errorf("UpdateChain failed: chain ID must be provided")
+		rt.logError(err)
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	var chainUpdate types.UpdateChain
 
 	err := json.NewDecoder(r.Body).Decode(&chainUpdate)
 	if err != nil {
@@ -329,14 +338,21 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	err = rt.writer.UpdateChain(r.Context(), chainUpdate, time.Now())
+	chainUpdate.ID = chainID
+
+	updatedChain, err := rt.writer.UpdateChain(r.Context(), chainUpdate, time.Now())
 	if err != nil {
 		rt.logError(fmt.Errorf("UpdateChain failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, chainUpdate)
+	chainInCache := rt.cache.GetChain(chainID, cache.Options{})
+	if chainInCache.ID != "" {
+		updatedChain.GigastakeApps = chainInCache.GigastakeApps
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedChain)
 }
 
 // PUT /v2/chain/gigastake - Updates a Gigastake app.

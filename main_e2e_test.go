@@ -1234,7 +1234,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateChain", func() {
 		tests := []struct {
 			name        string
-			chainUpdate v2Types.Chain
+			chainUpdate types.UpdateChain
 			noSubtables bool
 			err         error
 		}{
@@ -1263,38 +1263,73 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.NotEmpty(chainUpdateResponse)
 
-					timestamp := chainUpdateResponse.CreatedAt
-
-					test.chainUpdate.CreatedAt = timestamp
-					test.chainUpdate.UpdatedAt = timestamp
-
-					ts.Equal(test.chainUpdate, *chainUpdateResponse)
-
-					updatedChainByID, err := ts.v2Client1.GetChainByID(testCtx, chainUpdateResponse.ID)
+					updatedChainByID1, err := ts.v2Client1.GetChainByID(testCtx, chainUpdateResponse.ID)
 					ts.NoError(err)
-					if test.noSubtables {
-						test.chainUpdate.Altruists = updatedChainByID.Altruists
-						test.chainUpdate.Checks = updatedChainByID.Checks
-						test.chainUpdate.AliasDomains = updatedChainByID.AliasDomains
-					}
-					updatedChainByID.CreatedAt = timestamp
-					updatedChainByID.UpdatedAt = timestamp
-					ts.NotEmpty(updatedChainByID.GigastakeApps, 1)
-					updatedChainByID.GigastakeApps = nil
-					ts.Equal(test.chainUpdate, *updatedChainByID)
-
-					updatedChainByID, err = ts.v2Client2.GetChainByID(testCtx, chainUpdateResponse.ID)
-					if test.noSubtables {
-						test.chainUpdate.Altruists = updatedChainByID.Altruists
-						test.chainUpdate.Checks = updatedChainByID.Checks
-						test.chainUpdate.AliasDomains = updatedChainByID.AliasDomains
-					}
+					updatedChainByID2, err := ts.v2Client2.GetChainByID(testCtx, chainUpdateResponse.ID)
 					ts.NoError(err)
-					updatedChainByID.CreatedAt = timestamp
-					updatedChainByID.UpdatedAt = timestamp
-					ts.NotEmpty(updatedChainByID.GigastakeApps, 1)
-					updatedChainByID.GigastakeApps = nil
-					ts.Equal(test.chainUpdate, *updatedChainByID)
+
+					updatedChains := []*types.Chain{updatedChainByID1, updatedChainByID2}
+
+					for _, updatedChain := range updatedChains {
+						ts.Equal(chainUpdateResponse, updatedChain)
+
+						expectedChain := &types.Chain{
+							GigastakeApps: chainUpdateResponse.GigastakeApps,
+						}
+
+						// Only compare the fields present in the update struct
+						if test.chainUpdate.Blockchain != nil {
+							expectedChain.Blockchain = *test.chainUpdate.Blockchain
+						}
+
+						if test.chainUpdate.Description != nil {
+							expectedChain.Description = *test.chainUpdate.Description
+						}
+
+						if test.chainUpdate.EnforceResult != nil {
+							expectedChain.EnforceResult = *test.chainUpdate.EnforceResult
+						}
+
+						if test.chainUpdate.Path != nil {
+							expectedChain.Path = *test.chainUpdate.Path
+						}
+
+						if test.chainUpdate.Ticker != nil {
+							expectedChain.Ticker = *test.chainUpdate.Ticker
+						}
+
+						if test.chainUpdate.AllowedMethods != nil {
+							expectedChain.AllowedMethods = test.chainUpdate.AllowedMethods
+						}
+
+						if test.chainUpdate.LogLimitBlocks != nil {
+							expectedChain.LogLimitBlocks = *test.chainUpdate.LogLimitBlocks
+						}
+
+						if test.chainUpdate.RequestTimeout != nil {
+							expectedChain.RequestTimeout = *test.chainUpdate.RequestTimeout
+						}
+
+						if test.chainUpdate.Active != nil {
+							expectedChain.Active = *test.chainUpdate.Active
+						}
+
+						if !test.noSubtables {
+							expectedChain.Altruists = *test.chainUpdate.Altruists
+							expectedChain.Checks = *test.chainUpdate.Checks
+							expectedChain.AliasDomains = *test.chainUpdate.AliasDomains
+						} else {
+							expectedChain.Altruists = updatedChain.Altruists
+							expectedChain.Checks = updatedChain.Checks
+							expectedChain.AliasDomains = updatedChain.AliasDomains
+						}
+
+						expectedChain.ID = updatedChain.ID
+						expectedChain.CreatedAt = updatedChain.CreatedAt
+						expectedChain.UpdatedAt = updatedChain.UpdatedAt
+
+						ts.Equal(expectedChain, updatedChain)
+					}
 				}
 			})
 		}
