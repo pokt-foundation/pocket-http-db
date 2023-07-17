@@ -290,45 +290,10 @@ func TestRouter_updateChain(t *testing.T) {
 			var chainResp *types.Chain
 			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
 			c.NoError(err)
-			c.Equal(test.expectedChain, chainResp)
 
 			// Assert that the fields in the updated chain match the expected values
-			// Only check the fields present in the update struct
-			if test.chainUpdate.Blockchain != nil {
-				c.Equal(*test.chainUpdate.Blockchain, chainResp.Blockchain)
-			}
-
-			if test.chainUpdate.Description != nil {
-				c.Equal(*test.chainUpdate.Description, chainResp.Description)
-			}
-
-			if test.chainUpdate.EnforceResult != nil {
-				c.Equal(*test.chainUpdate.EnforceResult, chainResp.EnforceResult)
-			}
-
-			if test.chainUpdate.Path != nil {
-				c.Equal(*test.chainUpdate.Path, chainResp.Path)
-			}
-
-			if test.chainUpdate.Ticker != nil {
-				c.Equal(*test.chainUpdate.Ticker, chainResp.Ticker)
-			}
-
-			if test.chainUpdate.AllowedMethods != nil {
-				c.Equal(test.chainUpdate.AllowedMethods, chainResp.AllowedMethods)
-			}
-
-			if test.chainUpdate.LogLimitBlocks != nil {
-				c.Equal(*test.chainUpdate.LogLimitBlocks, chainResp.LogLimitBlocks)
-			}
-
-			if test.chainUpdate.RequestTimeout != nil {
-				c.Equal(*test.chainUpdate.RequestTimeout, chainResp.RequestTimeout)
-			}
-
-			if test.chainUpdate.Active != nil {
-				c.Equal(*test.chainUpdate.Active, chainResp.Active)
-			}
+			// We compare the whole Chain object now instead of each field
+			c.Equal(test.expectedChain, chainResp)
 		})
 	}
 }
