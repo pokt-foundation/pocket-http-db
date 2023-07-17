@@ -528,7 +528,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 
 			if test.sideTableAction == types.ActionDelete {
 				storedPortalApp := cache.GetPortalApp(test.portalApp.ID)
-				ok := storedPortalApp.IsBlockchainWhitelisted(test.chain)
+				_, ok := storedPortalApp.Whitelists.Blockchains[test.chain]
 				c.True(ok, "Whitelist should be present in the PortalApp in cache before deletion")
 			}
 
@@ -537,7 +537,7 @@ func Test_parseWhitelistNotification(t *testing.T) {
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
 			storedPortalApp := cache.GetPortalApp(test.portalApp.ID)
-			ok := storedPortalApp.IsBlockchainWhitelisted(test.chain)
+			_, ok := storedPortalApp.Whitelists.Blockchains[test.chain]
 			if test.sideTableAction == types.ActionInsert {
 				c.True(ok, "Whitelist should be added to the PortalApp in cache")
 			} else if test.sideTableAction == types.ActionDelete {

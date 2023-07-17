@@ -186,7 +186,13 @@ func (c *Cache) fetchUserData(ctx context.Context) (map[types.UserID]*types.User
 
 // fetchPlansAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
-func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.PayPlanType]*types.Plan, map[types.AccountID]*types.Account, map[types.PortalAppID]*types.PortalApp, map[types.UserID]AccountsForUser, error) {
+func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (
+	map[types.PayPlanType]*types.Plan,
+	map[types.AccountID]*types.Account,
+	map[types.PortalAppID]*types.PortalApp,
+	map[types.UserID]AccountsForUser,
+	error,
+) {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
@@ -210,7 +216,7 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 		}
 	}
 
-	// Set pointers to Account PortalApps
+	// Set pointers to Account PortalApps and middleware portal apps map
 	for portalAppID, portalApp := range portalApps {
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			if account.PortalApps == nil {
@@ -613,6 +619,23 @@ func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	}
 
 	return portalAppsToReturn
+}
+
+// GetMiddlewarePortalApps returns all MiddlewarePortalApp in cache
+func (c *Cache) GetMiddlewarePortalApps() []types.MiddlewarePortalApp {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	var middlewarePortalAppsToReturn []types.MiddlewarePortalApp
+
+	for _, portalApp := range c.portalApps {
+		if !portalApp.Deleted {
+			middlewarePortalApp := portalApp.ConvertPortalAppToMiddlewarePortalApp()
+			middlewarePortalAppsToReturn = append(middlewarePortalAppsToReturn, *middlewarePortalApp)
+		}
+	}
+
+	return middlewarePortalAppsToReturn
 }
 
 // upsertPortalApp adds, updates or deletes PortalApp in cache

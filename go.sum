@@ -100,8 +100,6 @@ github.com/pokt-foundation/db-client/v2 v2.2.0 h1:BlAqhG29ZO2aZ1GaQyDjwHOgqyNt3L
 github.com/pokt-foundation/db-client/v2 v2.2.0/go.mod h1:NTTdH+SJb8h2ClnX/HjIMEulzVxt6K4UokZBvH1+ZWY=
 github.com/pokt-foundation/portal-db v1.10.8 h1:YvTDrVc+P5NXk5NKk1zaoIHsWfsXsG1dWp3X5fa8K/A=
 github.com/pokt-foundation/portal-db v1.10.8/go.mod h1:Pf8IIeoj3mSIk0+eNdzssz3T7GvnWRkFKPwGsFT2D5w=
-github.com/pokt-foundation/portal-db/v2 v2.3.0 h1:cB21LMbh2bA0Q2XTD67Or5Jw7vYKDLgEw2rx4+Adj60=
-github.com/pokt-foundation/portal-db/v2 v2.3.0/go.mod h1:aKQh2IyWjyXga4uiVvxUuDu+TA+lX5N7jr9rOQ2jT5k=
 github.com/pokt-foundation/utils-go v0.8.2 h1:WezPrBF5KlbIPsTfjD5jpn9Dt9y+/cKGZL3YAlcjx30=
 github.com/pokt-foundation/utils-go v0.8.2/go.mod h1:WYcDLD+oCeFu0Q2i11yWWpq1XKBCHeu5+nii6Mys8a8=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
