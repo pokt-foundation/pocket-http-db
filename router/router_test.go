@@ -237,15 +237,31 @@ func TestRouter_createNewGigastakeApp(t *testing.T) {
 func TestRouter_updateChain(t *testing.T) {
 	tests := []struct {
 		name           string
-		chainUpdate    types.Chain
+		chainID        types.RelayChainID
+		chainUpdate    types.UpdateChain
 		expectedStatus int
 		expectedChain  *types.Chain
 	}{
 		{
 			name:           "Should update a chain",
+			chainID:        "0001",
 			chainUpdate:    testdata.UpdateChainOne,
 			expectedStatus: http.StatusOK,
-			expectedChain:  &testdata.UpdateChainOne,
+			expectedChain: &types.Chain{
+				ID:             "0001",
+				Blockchain:     *testdata.UpdateChainOne.Blockchain,
+				Description:    *testdata.UpdateChainOne.Description,
+				EnforceResult:  *testdata.UpdateChainOne.EnforceResult,
+				Path:           *testdata.UpdateChainOne.Path,
+				Ticker:         *testdata.UpdateChainOne.Ticker,
+				AllowedMethods: testdata.UpdateChainOne.AllowedMethods,
+				Active:         *testdata.UpdateChainOne.Active,
+				Altruists:      *testdata.UpdateChainOne.Altruists,
+				Checks:         *testdata.UpdateChainOne.Checks,
+				AliasDomains:   *testdata.UpdateChainOne.AliasDomains,
+				CreatedAt:      testdata.MockTimestamp,
+				UpdatedAt:      testdata.MockTimestamp,
+			},
 		},
 	}
 
@@ -257,7 +273,7 @@ func TestRouter_updateChain(t *testing.T) {
 			c.NoError(err)
 
 			writerMock := driver.NewMockDriver(t)
-			writerMock.On("UpdateChain", mock.Anything, test.chainUpdate, mock.Anything).Return(nil).Once()
+			writerMock.On("UpdateChain", mock.Anything, test.chainUpdate, mock.Anything).Return(test.expectedChain, nil).Once()
 			router.writer = writerMock
 
 			rr := httptest.NewRecorder()
@@ -265,7 +281,7 @@ func TestRouter_updateChain(t *testing.T) {
 			chainUpdateBytes, err := json.Marshal(test.chainUpdate)
 			c.NoError(err)
 
-			req, err := http.NewRequest(http.MethodPut, "/v2/chain", bytes.NewBuffer(chainUpdateBytes))
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/chain/%s", test.chainID), bytes.NewBuffer(chainUpdateBytes))
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
@@ -274,6 +290,9 @@ func TestRouter_updateChain(t *testing.T) {
 			var chainResp *types.Chain
 			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
 			c.NoError(err)
+
+			// Assert that the fields in the updated chain match the expected values
+			// We compare the whole Chain object now instead of each field
 			c.Equal(test.expectedChain, chainResp)
 		})
 	}
