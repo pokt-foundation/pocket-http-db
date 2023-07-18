@@ -136,6 +136,8 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}/active", rt.updateBlockedContractActive).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}", rt.removeBlockedContract).Methods(http.MethodDelete)
 
+	rt.Router.HandleFunc("/v2/plan", rt.getPlans).Methods(http.MethodGet)
+
 	/* ----- V1 Endpoints ----- */
 	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
 
@@ -929,6 +931,14 @@ func (rt *Router) deleteUser(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
+/* ---------- V2 Plan Handler Methods ---------- */
+
+func (rt *Router) getPlans(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPlans method called")
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetPlans())
+}
+
 /* ---------- V2 Blocked Contracts Handler Methods ---------- */
 
 // GET /v2/blocked_contract - Get all Blocked contracts.
@@ -1130,7 +1140,7 @@ func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
 
 	plan, err := rt.cache.GetLegacyPayPlan(r.Context(), vars["type"])
 	if err != nil {
-		rt.logError(fmt.Errorf("getLegacyPayPlan inGetPayPlan failed: %w", err))
+		rt.logError(fmt.Errorf("GetLegacyPayPlan in getPayPlan failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}

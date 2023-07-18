@@ -1563,6 +1563,52 @@ func TestRouter_deleteUser(t *testing.T) {
 
 /* ---------- V2 Global Blocked Contracts Handler Method Unit Tests ---------- */
 
+func TestRouter_getPlans(t *testing.T) {
+	tests := []struct {
+		name           string
+		expectedStatus int
+		expectedPlans  map[types.PayPlanType]*types.Plan
+	}{
+		{
+			name:           "Should fetch all pay plans",
+			expectedStatus: http.StatusOK,
+			expectedPlans:  testdata.PayPlans,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/plan", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var plans []types.Plan
+			err = json.Unmarshal(rr.Body.Bytes(), &plans)
+			c.NoError(err)
+			expectedPlansMap := make(map[types.PayPlanType]types.Plan)
+			plansMap := make(map[types.PayPlanType]types.Plan)
+			for _, plan := range test.expectedPlans {
+				expectedPlansMap[plan.Type] = *plan
+			}
+			for _, plan := range plans {
+				plansMap[plan.Type] = plan
+			}
+			c.Equal(expectedPlansMap, plansMap)
+		})
+	}
+}
+
+/* ---------- V2 Global Blocked Contracts Handler Method Unit Tests ---------- */
+
 func TestRouter_getBlockedContracts(t *testing.T) {
 	tests := []struct {
 		name                string
