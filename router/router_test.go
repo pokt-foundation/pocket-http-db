@@ -719,8 +719,8 @@ func TestRouter_updatePortalAppFirstDateSurpassed(t *testing.T) {
 			name: "Should update PortalApp's FirstDateSurpassed field",
 			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
 				PortalAppIDs: []types.PortalAppID{
-					"test_app_1",
-					"test_app_2",
+					"test_protocol_app_1",
+					"test_protocol_app_2",
 				},
 				FirstDateSurpassed: testdata.MockTimestamp,
 			},

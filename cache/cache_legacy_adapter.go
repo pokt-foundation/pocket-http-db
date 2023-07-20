@@ -471,29 +471,36 @@ func (c *Cache) CreateLegacyLoadBalancerIntegration(ctx context.Context, writer 
 /* ---------- Update Methods ---------- */
 
 // UpdateLegacyApplicationsFirstDateSurpassed updates the first date surpassed for a list of application IDs
-func (c *Cache) UpdateLegacyApplicationsFirstDateSurpassed(ctx context.Context, writer driver.Writer, update v2Types.UpdateFirstDateSurpassed) ([]*v1Types.Application, error) {
+func (c *Cache) UpdateLegacyApplicationsFirstDateSurpassed(ctx context.Context, writer driver.Writer, update v1Types.UpdateFirstDateSurpassed) ([]*v1Types.Application, error) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	var portalAppsToUpdate []v2Types.PortalApp
 	var appsToUpdate []*v1Types.Application
 
-	if len(update.PortalAppIDs) == 0 {
-		return appsToUpdate, fmt.Errorf("no application IDs on input")
+	if len(update.ApplicationIDs) == 0 {
+		c.log.Warnf("no application IDs on input")
+		return appsToUpdate, nil
 	}
 
-	for _, appID := range update.PortalAppIDs {
-		portalAppID := v2Types.PortalAppID(appID)
+	v2Update := &v2Types.UpdateFirstDateSurpassed{
+		FirstDateSurpassed: update.FirstDateSurpassed,
+	}
 
-		portalApp := c.GetPortalApp(portalAppID)
+	for _, appID := range update.ApplicationIDs {
+		protocolAppID := v2Types.ProtocolAppID(appID)
+
+		portalApp := c.GetPortalAppByProtocolAppID(protocolAppID)
 		if portalApp.ID == "" {
-			return appsToUpdate, fmt.Errorf("UpdateFirstDateSurpassed failed: %s not found", portalAppID)
+			c.log.Errorf("UpdateFirstDateSurpassed failed: protocol app ID %s not found", protocolAppID)
+			continue
 		}
 
 		portalAppsToUpdate = append(portalAppsToUpdate, portalApp)
+		v2Update.PortalAppIDs = append(v2Update.PortalAppIDs, portalApp.ID)
 	}
 
-	err := writer.UpdatePortalAppsFirstDateSurpassed(ctx, &update)
+	err := writer.UpdatePortalAppsFirstDateSurpassed(ctx, v2Update)
 	if err != nil {
 		return appsToUpdate, fmt.Errorf("UpdateFirstDateSurpassed failed: %W", err)
 	}

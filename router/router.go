@@ -1323,7 +1323,7 @@ func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("updateFirstDateSurpassed method called")
 
-	var updateInput types.UpdateFirstDateSurpassed
+	var updateInput v1Types.UpdateFirstDateSurpassed
 
 	err := json.NewDecoder(r.Body).Decode(&updateInput)
 	if err != nil {
@@ -1335,7 +1335,7 @@ func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 	defer r.Body.Close()
 
 	rt.log.WithFields(logrus.Fields{
-		"applicationIDs":     updateInput.PortalAppIDs,
+		"applicationIDs":     updateInput.ApplicationIDs,
 		"firstDateSurpassed": updateInput.FirstDateSurpassed,
 	}).Info("Received UpdateFirstDateSurpassed request")
 

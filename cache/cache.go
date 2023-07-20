@@ -35,11 +35,12 @@ type (
 		pendingAccountUserAccess map[types.AccountID][]types.AccountUserAccess
 		pendingUsers             map[types.UserID]types.User
 
-		portalApps              map[types.PortalAppID]*types.PortalApp
-		pendingPortalAppAATs    map[types.PortalAppID]types.AAT
-		pendingSettings         map[types.PortalAppID]types.Settings
-		pendingAppNotifications map[types.PortalAppID]types.AppNotification
-		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
+		portalApps                map[types.PortalAppID]*types.PortalApp
+		portalAppsByProtocolAppID map[types.ProtocolAppID]*types.PortalApp
+		pendingPortalAppAATs      map[types.PortalAppID]types.AAT
+		pendingSettings           map[types.PortalAppID]types.Settings
+		pendingAppNotifications   map[types.PortalAppID]types.AppNotification
+		pendingWhitelists         map[types.PortalAppID][]types.Whitelist
 
 		gigastakeApps              map[types.GigastakeAppID]*types.GigastakeApp
 		pendingChainsGigastakeApps map[types.GigastakeAppID]types.ChainGigastakeApp
@@ -135,7 +136,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 		return err
 	}
 
-	plans, accounts, portalApps, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(ctx)
+	plans, accounts, portalApps, portalAppsByProtocolAppID, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(ctx)
 	if err != nil {
 		return err
 	}
@@ -162,6 +163,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.accounts = accounts
 	c.accountsByUserID = accountsByUserID
 	c.portalApps = portalApps
+	c.portalAppsByProtocolAppID = portalAppsByProtocolAppID
 	c.chains = chains
 	c.gigastakeApps = gigastakeApps
 	c.blockedContracts = blockedContracts
@@ -186,19 +188,19 @@ func (c *Cache) fetchUserData(ctx context.Context) (map[types.UserID]*types.User
 
 // fetchPlansAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
-func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.PayPlanType]*types.Plan, map[types.AccountID]*types.Account, map[types.PortalAppID]*types.PortalApp, map[types.UserID]AccountsForUser, error) {
+func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.PayPlanType]*types.Plan, map[types.AccountID]*types.Account, map[types.PortalAppID]*types.PortalApp, map[types.ProtocolAppID]*types.PortalApp, map[types.UserID]AccountsForUser, error) {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("ReadPlans - %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("ReadPlans - %w", err)
 	}
 	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("ReadAccounts - %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("ReadAccounts - %w", err)
 	}
 	portalApps, err := c.reader.ReadPortalApps(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("ReadPortalApps - %w", err)
+		return nil, nil, nil, nil, nil, fmt.Errorf("ReadPortalApps - %w", err)
 	}
 
 	// Set pointer to Account Plan
@@ -206,9 +208,11 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return nil, nil, nil, nil, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
+			return nil, nil, nil, nil, nil, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
 		}
 	}
+
+	portalAppsByProtocolAppID := make(map[types.ProtocolAppID]*types.PortalApp)
 
 	// Set pointers to Account PortalApps
 	for portalAppID, portalApp := range portalApps {
@@ -218,6 +222,8 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 			}
 			account.PortalApps[portalAppID] = portalApp
 		}
+
+		portalAppsByProtocolAppID[portalApp.AAT().ID] = portalApp
 	}
 
 	// Create map of Accounts by UserID for all Account team members
@@ -231,7 +237,7 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 		}
 	}
 
-	return plans, accounts, portalApps, accountsByUserID, nil
+	return plans, accounts, portalApps, portalAppsByProtocolAppID, accountsByUserID, nil
 }
 
 // fetchChainsAndGigastakeApps reads Chains and GigastakeApps from the database and returns them.
@@ -599,6 +605,19 @@ func (c *Cache) GetPortalApp(portalAppID types.PortalAppID) types.PortalApp {
 	return *portalApp
 }
 
+// GetPortalAppByProtocolAppID returns PortalApp from cache by protocolAppID
+func (c *Cache) GetPortalAppByProtocolAppID(protocolAppID types.ProtocolAppID) types.PortalApp {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	portalApp, ok := c.portalAppsByProtocolAppID[protocolAppID]
+	if !ok {
+		return types.PortalApp{}
+	}
+
+	return *portalApp
+}
+
 // GetPortalApps returns all PortalApps in cache
 func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	c.rwMutex.RLock()
@@ -629,6 +648,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	if portalApp.Deleted {
 		delete(c.portalApps, portalApp.ID)
+		delete(c.portalAppsByProtocolAppID, portalApp.AAT().ID)
 
 		if account, ok := c.accounts[portalApp.AccountID]; ok {
 			delete(account.PortalApps, portalApp.ID)
@@ -666,6 +686,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
+	c.portalAppsByProtocolAppID[portalApp.AAT().ID] = &portalApp
 
 	if account, ok := c.accounts[portalApp.AccountID]; ok {
 		// Assign new app to account's PortalApps map
