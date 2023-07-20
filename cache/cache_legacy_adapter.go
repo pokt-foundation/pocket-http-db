@@ -492,7 +492,7 @@ func (c *Cache) UpdateLegacyApplicationsFirstDateSurpassed(ctx context.Context, 
 
 		portalApp := c.GetPortalAppByProtocolAppID(protocolAppID)
 		if portalApp.ID == "" {
-			c.log.Errorf("UpdateFirstDateSurpassed failed: protocol app ID %s not found", protocolAppID)
+			c.log.Errorf("UpdateFirstDateSurpassed: protocol app ID %s not found", protocolAppID)
 			continue
 		}
 
@@ -507,11 +507,12 @@ func (c *Cache) UpdateLegacyApplicationsFirstDateSurpassed(ctx context.Context, 
 
 	for _, portalApp := range portalAppsToUpdate {
 		if account, ok := c.accounts[portalApp.AccountID]; ok {
-			if userID, err := account.GetOwnerID(); err != nil {
-				return appsToUpdate, err
-			} else {
-				appsToUpdate = append(appsToUpdate, legacyadapters.ConvertPortalAppToLegacyApplications(portalApp, string(userID))...)
+			var userID string
+			if ownerID, err := account.GetOwnerID(); err == nil {
+				userID = string(ownerID)
 			}
+
+			appsToUpdate = append(appsToUpdate, legacyadapters.ConvertPortalAppToLegacyApplications(portalApp, userID)...)
 		}
 	}
 
