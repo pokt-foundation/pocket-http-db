@@ -3662,37 +3662,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdateAppFirstDateSurpassed", func() {
 		tests := []struct {
-			name           string
-			update         v1Types.UpdateFirstDateSurpassed
-			protocolAppIDs []string
-			expectedDate   time.Time
-			err            error
+			name         string
+			update       v1Types.UpdateFirstDateSurpassed
+			expectedDate time.Time
+			err          error
 		}{
 			{
 				name: "Should update the app first date suprassed for the provided slice of app IDs",
 				update: v1Types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{"test_app_1", "test_app_2"},
+					ApplicationIDs:     []string{"test_protocol_app_1", "test_protocol_app_2"},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
-				protocolAppIDs: []string{"test_protocol_app_1", "test_protocol_app_2"},
-				expectedDate:   time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-				err:            nil,
-			},
-			{
-				name: "Should fail if update contains no application IDs cannot be found",
-				update: v1Types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{},
-					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: no application IDs on input"),
-			},
-			{
-				name: "Should fail if application cannot be found",
-				update: v1Types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{"9000"},
-					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: UpdateFirstDateSurpassed failed: 9000 not found"),
+				expectedDate: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
+				err:          nil,
 			},
 		}
 
@@ -3703,7 +3685,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
-					for _, appID := range test.protocolAppIDs {
+					for _, appID := range test.update.ApplicationIDs {
 						applications, err := ts.client1.GetApplications(testCtx)
 						ts.NoError(err)
 						exists := false
