@@ -26,7 +26,7 @@ type (
 		log     *logrus.Logger
 		rwMutex sync.RWMutex
 
-		// Cached Data
+		// Cached Data (including pending sub-table data maps)
 		userPermissions map[types.UserID]*types.UserPermissions
 		userIDs         map[types.ProviderUserID]types.UserID
 
@@ -68,6 +68,24 @@ type (
 		IncludeDeleted,
 		ExcludeChainGigastakeApps bool
 	}
+
+	userData struct {
+		userPermissions map[types.UserID]*types.UserPermissions
+		userIDs         map[types.ProviderUserID]types.UserID
+	}
+
+	appsData struct {
+		plans                     map[types.PayPlanType]*types.Plan
+		accounts                  map[types.AccountID]*types.Account
+		portalApps                map[types.PortalAppID]*types.PortalApp
+		portalAppsByProtocolAppID map[types.ProtocolAppID]*types.PortalApp
+		accountsByUserID          map[types.UserID]AccountsForUser
+	}
+
+	chainsData struct {
+		chains        map[types.RelayChainID]*types.Chain
+		gigastakeApps map[types.GigastakeAppID]*types.GigastakeApp
+	}
 )
 
 // NewCache returns cache instance from reader interface and starts the cache refresh handler and listener in separate goroutines
@@ -89,6 +107,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingGigastakeApps:       make(map[types.RelayChainID][]types.GigastakeApp),
 	}
 
+	// Perform initial cache data fetch and log time to fetch
 	startTime := time.Now()
 	err := cache.setCache(ctx)
 	elapsedTime := time.Since(startTime).Milliseconds()
@@ -104,8 +123,10 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		},
 	).Info("cache successfully set")
 
+	// Start cache refresh goroutine to refresh cache at regular interval
 	go cache.cacheRefreshHandler(ctx, config.CacheRefreshMinutes)
 
+	// Start listener goroutine for Postgres notifications
 	go cache.listen()
 
 	return cache, nil
@@ -130,23 +151,21 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 func (c *Cache) setCache(ctx context.Context) error {
 	t := NewRunTimer("setCache", c.log)
 	defer t.Stop()
+
 	// Perform all the database reads first without locking the mutex
-	userPermissions, userIDs, err := c.fetchUserData(ctx)
+	userData, err := c.fetchUserData(ctx)
 	if err != nil {
 		return err
 	}
-
-	plans, accounts, portalApps, portalAppsByProtocolAppID, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(ctx)
+	appsData, err := c.fetchAppsData(ctx)
 	if err != nil {
 		return err
 	}
-
-	chains, gigastakeApps, err := c.fetchChainsAndGigastakeApps(ctx)
+	chainsData, err := c.fetchChainsData(ctx)
 	if err != nil {
 		return err
 	}
-
-	blockedContracts, err := c.fetchBlockedContracts(ctx)
+	blockedContractsData, err := c.fetchBlockedContractsData(ctx)
 	if err != nil {
 		return err
 	}
@@ -157,50 +176,54 @@ func (c *Cache) setCache(ctx context.Context) error {
 	defer c.rwMutex.Unlock()
 
 	// Set the cache with the fetched data
-	c.userPermissions = userPermissions
-	c.userIDs = userIDs
-	c.plans = plans
-	c.accounts = accounts
-	c.accountsByUserID = accountsByUserID
-	c.portalApps = portalApps
-	c.portalAppsByProtocolAppID = portalAppsByProtocolAppID
-	c.chains = chains
-	c.gigastakeApps = gigastakeApps
-	c.blockedContracts = blockedContracts
+	c.userPermissions = userData.userPermissions
+	c.userIDs = userData.userIDs
+
+	c.plans = appsData.plans
+	c.accounts = appsData.accounts
+	c.accountsByUserID = appsData.accountsByUserID
+	c.portalApps = appsData.portalApps
+	c.portalAppsByProtocolAppID = appsData.portalAppsByProtocolAppID
+
+	c.chains = chainsData.chains
+	c.gigastakeApps = chainsData.gigastakeApps
+
+	c.blockedContracts = blockedContractsData
 
 	return nil
 }
 
 // fetchUserData reads UserPermissions from the database and returns them.
-func (c *Cache) fetchUserData(ctx context.Context) (map[types.UserID]*types.UserPermissions, map[types.ProviderUserID]types.UserID, error) {
+func (c *Cache) fetchUserData(ctx context.Context) (userData, error) {
 	userPermissions, err := c.reader.ReadUserPermissions(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadUserPermissions - %w", err)
+		return userData{}, fmt.Errorf("ReadUserPermissions - %w", err)
 	}
 
 	userIDs, err := c.reader.ReadUserIDsMap(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadUserIDsMap - %w", err)
+		return userData{}, fmt.Errorf("ReadUserIDsMap - %w", err)
 	}
 
-	return userPermissions, userIDs, nil
+	return userData{userPermissions, userIDs}, nil
 }
 
-// fetchPlansAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
+// fetchAppsData reads Plans, Accounts and PortalApps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
-func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.PayPlanType]*types.Plan, map[types.AccountID]*types.Account, map[types.PortalAppID]*types.PortalApp, map[types.ProtocolAppID]*types.PortalApp, map[types.UserID]AccountsForUser, error) {
+// also creates a map of PortalApps by ProtocolAppID
+func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("ReadPlans - %w", err)
+		return appsData{}, fmt.Errorf("ReadPlans - %w", err)
 	}
 	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("ReadAccounts - %w", err)
+		return appsData{}, fmt.Errorf("ReadAccounts - %w", err)
 	}
 	portalApps, err := c.reader.ReadPortalApps(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, nil, nil, nil, fmt.Errorf("ReadPortalApps - %w", err)
+		return appsData{}, fmt.Errorf("ReadPortalApps - %w", err)
 	}
 
 	// Set pointer to Account Plan
@@ -208,13 +231,13 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return nil, nil, nil, nil, nil, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
+			return appsData{}, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
 		}
 	}
 
 	portalAppsByProtocolAppID := make(map[types.ProtocolAppID]*types.PortalApp)
 
-	// Set pointers to Account PortalApps
+	// Set pointers to Account PortalApps and create map of PortalApps by ProtocolAppID
 	for portalAppID, portalApp := range portalApps {
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			if account.PortalApps == nil {
@@ -237,19 +260,25 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (map[types.
 		}
 	}
 
-	return plans, accounts, portalApps, portalAppsByProtocolAppID, accountsByUserID, nil
+	return appsData{
+		plans,
+		accounts,
+		portalApps,
+		portalAppsByProtocolAppID,
+		accountsByUserID,
+	}, nil
 }
 
-// fetchChainsAndGigastakeApps reads Chains and GigastakeApps from the database and returns them.
+// fetchChainsData reads Chains and GigastakeApps from the database and returns them.
 // It also sets pointers to GigastakeApps on Chains.
-func (c *Cache) fetchChainsAndGigastakeApps(ctx context.Context) (map[types.RelayChainID]*types.Chain, map[types.GigastakeAppID]*types.GigastakeApp, error) {
+func (c *Cache) fetchChainsData(ctx context.Context) (chainsData, error) {
 	chains, err := c.reader.ReadChains(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadChains - %w", err)
+		return chainsData{}, fmt.Errorf("ReadChains - %w", err)
 	}
 	gigastakeApps, err := c.reader.ReadGigastakeApps(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadGigastakeApps - %w", err)
+		return chainsData{}, fmt.Errorf("ReadGigastakeApps - %w", err)
 	}
 
 	// Set pointers to Chain GigastakeApps
@@ -265,11 +294,11 @@ func (c *Cache) fetchChainsAndGigastakeApps(ctx context.Context) (map[types.Rela
 		}
 	}
 
-	return chains, gigastakeApps, nil
+	return chainsData{chains, gigastakeApps}, nil
 }
 
-// fetchBlockedContracts reads BlockedContracts from the database and returns them.
-func (c *Cache) fetchBlockedContracts(ctx context.Context) (types.GlobalBlockedContracts, error) {
+// fetchBlockedContractsData reads BlockedContracts from the database and returns them.
+func (c *Cache) fetchBlockedContractsData(ctx context.Context) (types.GlobalBlockedContracts, error) {
 	blockedContracts, err := c.reader.ReadBlockedContracts(ctx)
 	if err != nil {
 		return types.GlobalBlockedContracts{}, fmt.Errorf("ReadBlockedContracts - %w", err)
