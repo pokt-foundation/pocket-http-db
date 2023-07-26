@@ -412,7 +412,8 @@ func (c *Cache) GetAccounts(options Options) []types.Account {
 	return accountsToReturn
 }
 
-// GetAccounts returns all Accounts for a given user
+// GetAccounts returns all Accounts for a given user. PortalApps for the
+// Account will be filtered to only include apps the user has permissions for.
 func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
@@ -420,10 +421,35 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
-		accountsToReturn = append(accountsToReturn, *account)
+		userAccess, ok := account.Users[userID]
+		if !ok {
+			continue
+		}
+
+		accountCopy := *account
+
+		if !userAccess.Owner {
+			accountCopy.PortalApps = filterPortalApps(account.PortalApps, userAccess.PortalAppRoles)
+		}
+
+		accountsToReturn = append(accountsToReturn, accountCopy)
 	}
 
 	return accountsToReturn
+}
+
+// filterPortalApps returns a new PortalApps map that only includes the portalApps
+// the user has permissions for, based on the user's PortalAppRoles.
+func filterPortalApps(portalApps map[types.PortalAppID]*types.PortalApp, portalAppRoles map[types.PortalAppID]types.RoleName) map[types.PortalAppID]*types.PortalApp {
+	filteredPortalApps := make(map[types.PortalAppID]*types.PortalApp)
+
+	for portalAppID, portalApp := range portalApps {
+		if _, ok := portalAppRoles[portalAppID]; ok {
+			filteredPortalApps[portalAppID] = portalApp
+		}
+	}
+
+	return filteredPortalApps
 }
 
 // upsertAccount adds, updates or deletes Account in cache
