@@ -153,6 +153,9 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
 func httpHandler(router *router.Router, options options, log *logrus.Logger) {
 	log.Printf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port)
+	if options.appEnv != types.AppEnvProduction {
+		log.Printf("Running in %s mode. Connected to DB at %s:%s", options.appEnv, options.pgHost, options.pgPort)
+	}
 	log.Fatal(http.ListenAndServe(":"+options.port, router.Router))
 }
 

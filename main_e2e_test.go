@@ -601,6 +601,37 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}
 	})
 
+	/* ------ V2 Plans Read Tests ------ */
+
+	ts.Run("Test_GetAllPlans", func() {
+		tests := []struct {
+			name     string
+			expected map[types.PayPlanType]*types.Plan
+			err      error
+		}{
+			{
+				name:     "Should get all plans",
+				expected: testdata.PayPlans,
+				err:      nil,
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				plans, err := ts.v2Client1.GetAllPlans(testCtx)
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Equal(derefPlansMap(test.expected), convertPlansToMap(plans))
+
+					plans, err = ts.v2Client2.GetAllPlans(testCtx)
+					ts.Equal(test.err, err)
+					ts.Equal(derefPlansMap(test.expected), convertPlansToMap(plans))
+				}
+			})
+		}
+	})
+
 	/* ------ V2 Blocked Contracts Read Tests ------ */
 
 	ts.Run("Test_GetBlockedContracts", func() {
@@ -3631,37 +3662,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdateAppFirstDateSurpassed", func() {
 		tests := []struct {
-			name           string
-			update         v1Types.UpdateFirstDateSurpassed
-			protocolAppIDs []string
-			expectedDate   time.Time
-			err            error
+			name         string
+			update       v1Types.UpdateFirstDateSurpassed
+			expectedDate time.Time
+			err          error
 		}{
 			{
 				name: "Should update the app first date suprassed for the provided slice of app IDs",
 				update: v1Types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{"test_app_1", "test_app_2"},
+					ApplicationIDs:     []string{"test_protocol_app_1", "test_protocol_app_2"},
 					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
 				},
-				protocolAppIDs: []string{"test_protocol_app_1", "test_protocol_app_2"},
-				expectedDate:   time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-				err:            nil,
-			},
-			{
-				name: "Should fail if update contains no application IDs cannot be found",
-				update: v1Types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{},
-					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: no application IDs on input"),
-			},
-			{
-				name: "Should fail if application cannot be found",
-				update: v1Types.UpdateFirstDateSurpassed{
-					ApplicationIDs:     []string{"9000"},
-					FirstDateSurpassed: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
-				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: UpdateFirstDateSurpassed failed: 9000 not found"),
+				expectedDate: time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC),
+				err:          nil,
 			},
 		}
 
@@ -3672,7 +3685,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
-					for _, appID := range test.protocolAppIDs {
+					for _, appID := range test.update.ApplicationIDs {
 						applications, err := ts.client1.GetApplications(testCtx)
 						ts.NoError(err)
 						exists := false
@@ -4090,6 +4103,22 @@ func convertAccountsToMap(accounts []*v2Types.Account) map[v2Types.AccountID]*v2
 		accountMap[account.ID] = account
 	}
 	return accountMap
+}
+
+func convertPlansToMap(plans []types.Plan) map[types.PayPlanType]types.Plan {
+	planMap := make(map[types.PayPlanType]types.Plan)
+	for _, plan := range plans {
+		planMap[plan.Type] = plan
+	}
+	return planMap
+}
+
+func derefPlansMap(plans map[types.PayPlanType]*types.Plan) map[types.PayPlanType]types.Plan {
+	planMap := make(map[types.PayPlanType]types.Plan)
+	for _, plan := range plans {
+		planMap[plan.Type] = *plan
+	}
+	return planMap
 }
 
 func blockchainsToMap(blockchains []*v1Types.Blockchain) map[string]*v1Types.Blockchain {

@@ -111,7 +111,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
 	rt.Router.HandleFunc("/v2/portal_app/first_date_surpassed", rt.updatePortalAppFirstDateSurpassed).Methods(http.MethodPost)
 
-	rt.Router.HandleFunc("/v2/middleware/portal_app", rt.getAllMiddlewarePortalApps).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/middleware/portal_app", rt.getAllPortalAppLites).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v2/account", rt.getAccounts).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccountByID).Methods(http.MethodGet)
@@ -137,6 +137,8 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/blocked_contract", rt.writeBlockedContract).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}/active", rt.updateBlockedContractActive).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}", rt.removeBlockedContract).Methods(http.MethodDelete)
+
+	rt.Router.HandleFunc("/v2/plan", rt.getPlans).Methods(http.MethodGet)
 
 	/* ----- V1 Endpoints ----- */
 	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
@@ -442,12 +444,12 @@ func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /v2/middleware/portal_app - Fetches all middleware portal applications.
-func (rt *Router) getAllMiddlewarePortalApps(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getAllMiddlewarePortalApps method called")
+func (rt *Router) getAllPortalAppLites(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getAllPortalAppLites method called")
 
-	middlewarePortalApps := rt.cache.GetMiddlewarePortalApps()
+	middlewarePortalApps := rt.cache.GetPortalAppLite()
 	if len(middlewarePortalApps) == 0 {
-		rt.logError(fmt.Errorf("getAllMiddlewarePortalApps failed: %w", errNoPortalAppsFound))
+		rt.logError(fmt.Errorf("getAllPortalAppLites failed: %w", errNoPortalAppsFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
 		return
 	}
@@ -945,6 +947,14 @@ func (rt *Router) deleteUser(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
+/* ---------- V2 Plan Handler Methods ---------- */
+
+func (rt *Router) getPlans(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPlans method called")
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetPlans())
+}
+
 /* ---------- V2 Blocked Contracts Handler Methods ---------- */
 
 // GET /v2/blocked_contract - Get all Blocked contracts.
@@ -1146,7 +1156,7 @@ func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
 
 	plan, err := rt.cache.GetLegacyPayPlan(r.Context(), vars["type"])
 	if err != nil {
-		rt.logError(fmt.Errorf("getLegacyPayPlan inGetPayPlan failed: %w", err))
+		rt.logError(fmt.Errorf("GetLegacyPayPlan in getPayPlan failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
 		return
 	}
@@ -1329,7 +1339,7 @@ func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("updateFirstDateSurpassed method called")
 
-	var updateInput types.UpdateFirstDateSurpassed
+	var updateInput v1Types.UpdateFirstDateSurpassed
 
 	err := json.NewDecoder(r.Body).Decode(&updateInput)
 	if err != nil {
@@ -1341,7 +1351,7 @@ func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 	defer r.Body.Close()
 
 	rt.log.WithFields(logrus.Fields{
-		"applicationIDs":     updateInput.PortalAppIDs,
+		"applicationIDs":     updateInput.ApplicationIDs,
 		"firstDateSurpassed": updateInput.FirstDateSurpassed,
 	}).Info("Received UpdateFirstDateSurpassed request")
 

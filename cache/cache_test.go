@@ -74,9 +74,9 @@ func Test_SetCache(t *testing.T) {
 			name:   "Should return accounts by user ID",
 			actual: accountsToMap(cache.GetAccountsByUserID("user_4")),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": testdata.Accounts["account_2"],
-				"account_4": testdata.Accounts["account_4"],
-				"account_5": testdata.Accounts["account_5"],
+				"account_2": modifiedAccountToTest()["account_2"],
+				"account_4": modifiedAccountToTest()["account_4"],
+				"account_5": modifiedAccountToTest()["account_5"],
 			},
 		},
 		{
@@ -372,11 +372,11 @@ func Test_upsertAccount(t *testing.T) {
 				ID:       "account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
 				Users: map[types.UserID]types.AccountUserAccess{
+					"user_7": testdata.AccountUserAccess[7],
 					"user_1": testdata.AccountUserAccess[1],
 					"user_2": testdata.AccountUserAccess[2],
 					"user_8": testdata.AccountUserAccess[8],
 					"user_3": testdata.AccountUserAccess[3],
-					"user_7": testdata.AccountUserAccess[7],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
@@ -420,7 +420,15 @@ func Test_upsertAccount(t *testing.T) {
 			cache := NewTestCache(t)
 
 			if len(test.pendingUsers) > 0 {
-				cache.pendingAccountUserAccess = test.pendingUsers
+				// Add current user to the app for the current test to avoid updating the seed
+				pendingUsers := test.pendingUsers
+				for _, pending := range pendingUsers {
+					for _, userPending := range pending {
+						userPending.PortalAppRoles["test_app_1"] = types.RoleMember
+					}
+				}
+				cache.pendingAccountUserAccess = pendingUsers
+
 			}
 
 			// Upsert account
@@ -1606,4 +1614,19 @@ func findChainInChains(chains []types.Chain, chainID types.RelayChainID) bool {
 		}
 	}
 	return false
+}
+
+// This function is needed because the cache alter the DB output
+func modifiedAccountToTest() map[types.AccountID]*types.Account {
+	portalAppsCopy := testdata.PortalApps
+	payPlanCopy := testdata.PayPlans
+	accCopy := testdata.Accounts
+	accCopy["account_1"].Plan = payPlanCopy["basic_plan"]
+	accCopy["account_2"].Plan = payPlanCopy["pro_plan"]
+	accCopy["account_2"].PortalApps["test_app_2"] = portalAppsCopy["test_app_2"]
+	accCopy["account_3"].Plan = payPlanCopy["startup_plan"]
+	accCopy["account_4"].Plan = payPlanCopy["enterprise_plan"]
+	accCopy["account_5"].Plan = payPlanCopy["basic_plan"]
+
+	return accCopy
 }

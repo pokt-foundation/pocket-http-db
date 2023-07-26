@@ -26,7 +26,7 @@ type (
 		log     *logrus.Logger
 		rwMutex sync.RWMutex
 
-		// Cached Data
+		// Cached Data (including pending sub-table data maps)
 		userPermissions map[types.UserID]*types.UserPermissions
 		userIDs         map[types.ProviderUserID]types.UserID
 
@@ -35,11 +35,12 @@ type (
 		pendingAccountUserAccess map[types.AccountID][]types.AccountUserAccess
 		pendingUsers             map[types.UserID]types.User
 
-		portalApps              map[types.PortalAppID]*types.PortalApp
-		pendingPortalAppAATs    map[types.PortalAppID]types.AAT
-		pendingSettings         map[types.PortalAppID]types.Settings
-		pendingAppNotifications map[types.PortalAppID]types.AppNotification
-		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
+		portalApps                map[types.PortalAppID]*types.PortalApp
+		portalAppsByProtocolAppID map[types.ProtocolAppID]*types.PortalApp
+		pendingPortalAppAATs      map[types.PortalAppID]types.AAT
+		pendingSettings           map[types.PortalAppID]types.Settings
+		pendingAppNotifications   map[types.PortalAppID]types.AppNotification
+		pendingWhitelists         map[types.PortalAppID][]types.Whitelist
 
 		gigastakeApps              map[types.GigastakeAppID]*types.GigastakeApp
 		pendingChainsGigastakeApps map[types.GigastakeAppID]types.ChainGigastakeApp
@@ -67,6 +68,24 @@ type (
 		IncludeDeleted,
 		ExcludeChainGigastakeApps bool
 	}
+
+	userData struct {
+		userPermissions map[types.UserID]*types.UserPermissions
+		userIDs         map[types.ProviderUserID]types.UserID
+	}
+
+	appsData struct {
+		plans                     map[types.PayPlanType]*types.Plan
+		accounts                  map[types.AccountID]*types.Account
+		portalApps                map[types.PortalAppID]*types.PortalApp
+		portalAppsByProtocolAppID map[types.ProtocolAppID]*types.PortalApp
+		accountsByUserID          map[types.UserID]AccountsForUser
+	}
+
+	chainsData struct {
+		chains        map[types.RelayChainID]*types.Chain
+		gigastakeApps map[types.GigastakeAppID]*types.GigastakeApp
+	}
 )
 
 // NewCache returns cache instance from reader interface and starts the cache refresh handler and listener in separate goroutines
@@ -88,6 +107,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingGigastakeApps:       make(map[types.RelayChainID][]types.GigastakeApp),
 	}
 
+	// Perform initial cache data fetch and log time to fetch
 	startTime := time.Now()
 	err := cache.setCache(ctx)
 	elapsedTime := time.Since(startTime).Milliseconds()
@@ -103,8 +123,10 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		},
 	).Info("cache successfully set")
 
+	// Start cache refresh goroutine to refresh cache at regular interval
 	go cache.cacheRefreshHandler(ctx, config.CacheRefreshMinutes)
 
+	// Start listener goroutine for Postgres notifications
 	go cache.listen()
 
 	return cache, nil
@@ -129,23 +151,21 @@ func (c *Cache) ResetCache(ctx context.Context) error {
 func (c *Cache) setCache(ctx context.Context) error {
 	t := NewRunTimer("setCache", c.log)
 	defer t.Stop()
+
 	// Perform all the database reads first without locking the mutex
-	userPermissions, userIDs, err := c.fetchUserData(ctx)
+	userData, err := c.fetchUserData(ctx)
 	if err != nil {
 		return err
 	}
-
-	plans, accounts, portalApps, accountsByUserID, err := c.fetchPlansAccountsAndPortalApps(ctx)
+	appsData, err := c.fetchAppsData(ctx)
 	if err != nil {
 		return err
 	}
-
-	chains, gigastakeApps, err := c.fetchChainsAndGigastakeApps(ctx)
+	chainsData, err := c.fetchChainsData(ctx)
 	if err != nil {
 		return err
 	}
-
-	blockedContracts, err := c.fetchBlockedContracts(ctx)
+	blockedContractsData, err := c.fetchBlockedContractsData(ctx)
 	if err != nil {
 		return err
 	}
@@ -156,55 +176,54 @@ func (c *Cache) setCache(ctx context.Context) error {
 	defer c.rwMutex.Unlock()
 
 	// Set the cache with the fetched data
-	c.userPermissions = userPermissions
-	c.userIDs = userIDs
-	c.plans = plans
-	c.accounts = accounts
-	c.accountsByUserID = accountsByUserID
-	c.portalApps = portalApps
-	c.chains = chains
-	c.gigastakeApps = gigastakeApps
-	c.blockedContracts = blockedContracts
+	c.userPermissions = userData.userPermissions
+	c.userIDs = userData.userIDs
+
+	c.plans = appsData.plans
+	c.accounts = appsData.accounts
+	c.accountsByUserID = appsData.accountsByUserID
+	c.portalApps = appsData.portalApps
+	c.portalAppsByProtocolAppID = appsData.portalAppsByProtocolAppID
+
+	c.chains = chainsData.chains
+	c.gigastakeApps = chainsData.gigastakeApps
+
+	c.blockedContracts = blockedContractsData
 
 	return nil
 }
 
 // fetchUserData reads UserPermissions from the database and returns them.
-func (c *Cache) fetchUserData(ctx context.Context) (map[types.UserID]*types.UserPermissions, map[types.ProviderUserID]types.UserID, error) {
+func (c *Cache) fetchUserData(ctx context.Context) (userData, error) {
 	userPermissions, err := c.reader.ReadUserPermissions(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadUserPermissions - %w", err)
+		return userData{}, fmt.Errorf("ReadUserPermissions - %w", err)
 	}
 
 	userIDs, err := c.reader.ReadUserIDsMap(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadUserIDsMap - %w", err)
+		return userData{}, fmt.Errorf("ReadUserIDsMap - %w", err)
 	}
 
-	return userPermissions, userIDs, nil
+	return userData{userPermissions, userIDs}, nil
 }
 
-// fetchPlansAccountsAndPortalApps reads Plans, Accounts and PortalApps from the database,
+// fetchAppsData reads Plans, Accounts and PortalApps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
-func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (
-	map[types.PayPlanType]*types.Plan,
-	map[types.AccountID]*types.Account,
-	map[types.PortalAppID]*types.PortalApp,
-	map[types.UserID]AccountsForUser,
-	error,
-) {
+// also creates a map of PortalApps by ProtocolAppID
+func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("ReadPlans - %w", err)
+		return appsData{}, fmt.Errorf("ReadPlans - %w", err)
 	}
 	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("ReadAccounts - %w", err)
+		return appsData{}, fmt.Errorf("ReadAccounts - %w", err)
 	}
 	portalApps, err := c.reader.ReadPortalApps(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, nil, nil, fmt.Errorf("ReadPortalApps - %w", err)
+		return appsData{}, fmt.Errorf("ReadPortalApps - %w", err)
 	}
 
 	// Set pointer to Account Plan
@@ -212,17 +231,23 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return nil, nil, nil, nil, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
+			return appsData{}, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
 		}
 	}
 
-	// Set pointers to Account PortalApps and middleware portal apps map
+	portalAppsByProtocolAppID := make(map[types.ProtocolAppID]*types.PortalApp)
+
+	// Set pointers to Account PortalApps and create map of PortalApps by ProtocolAppID
 	for portalAppID, portalApp := range portalApps {
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			if account.PortalApps == nil {
 				account.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
 			}
 			account.PortalApps[portalAppID] = portalApp
+		}
+
+		for aatID := range portalApp.AATs {
+			portalAppsByProtocolAppID[aatID] = portalApp
 		}
 	}
 
@@ -237,19 +262,25 @@ func (c *Cache) fetchPlansAccountsAndPortalApps(ctx context.Context) (
 		}
 	}
 
-	return plans, accounts, portalApps, accountsByUserID, nil
+	return appsData{
+		plans,
+		accounts,
+		portalApps,
+		portalAppsByProtocolAppID,
+		accountsByUserID,
+	}, nil
 }
 
-// fetchChainsAndGigastakeApps reads Chains and GigastakeApps from the database and returns them.
+// fetchChainsData reads Chains and GigastakeApps from the database and returns them.
 // It also sets pointers to GigastakeApps on Chains.
-func (c *Cache) fetchChainsAndGigastakeApps(ctx context.Context) (map[types.RelayChainID]*types.Chain, map[types.GigastakeAppID]*types.GigastakeApp, error) {
+func (c *Cache) fetchChainsData(ctx context.Context) (chainsData, error) {
 	chains, err := c.reader.ReadChains(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadChains - %w", err)
+		return chainsData{}, fmt.Errorf("ReadChains - %w", err)
 	}
 	gigastakeApps, err := c.reader.ReadGigastakeApps(ctx, types.DriverOptions{IncludeDeleted: true})
 	if err != nil {
-		return nil, nil, fmt.Errorf("ReadGigastakeApps - %w", err)
+		return chainsData{}, fmt.Errorf("ReadGigastakeApps - %w", err)
 	}
 
 	// Set pointers to Chain GigastakeApps
@@ -265,11 +296,11 @@ func (c *Cache) fetchChainsAndGigastakeApps(ctx context.Context) (map[types.Rela
 		}
 	}
 
-	return chains, gigastakeApps, nil
+	return chainsData{chains, gigastakeApps}, nil
 }
 
-// fetchBlockedContracts reads BlockedContracts from the database and returns them.
-func (c *Cache) fetchBlockedContracts(ctx context.Context) (types.GlobalBlockedContracts, error) {
+// fetchBlockedContractsData reads BlockedContracts from the database and returns them.
+func (c *Cache) fetchBlockedContractsData(ctx context.Context) (types.GlobalBlockedContracts, error) {
 	blockedContracts, err := c.reader.ReadBlockedContracts(ctx)
 	if err != nil {
 		return types.GlobalBlockedContracts{}, fmt.Errorf("ReadBlockedContracts - %w", err)
@@ -383,7 +414,8 @@ func (c *Cache) GetAccounts(options Options) []types.Account {
 	return accountsToReturn
 }
 
-// GetAccounts returns all Accounts for a given user
+// GetAccounts returns all Accounts for a given user. PortalApps for the
+// Account will be filtered to only include apps the user has permissions for.
 func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
@@ -391,10 +423,35 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
-		accountsToReturn = append(accountsToReturn, *account)
+		userAccess, ok := account.Users[userID]
+		if !ok {
+			continue
+		}
+
+		accountCopy := *account
+
+		if !userAccess.Owner {
+			accountCopy.PortalApps = filterPortalApps(account.PortalApps, userAccess.PortalAppRoles)
+		}
+
+		accountsToReturn = append(accountsToReturn, accountCopy)
 	}
 
 	return accountsToReturn
+}
+
+// filterPortalApps returns a new PortalApps map that only includes the portalApps
+// the user has permissions for, based on the user's PortalAppRoles.
+func filterPortalApps(portalApps map[types.PortalAppID]*types.PortalApp, portalAppRoles map[types.PortalAppID]types.RoleName) map[types.PortalAppID]*types.PortalApp {
+	filteredPortalApps := make(map[types.PortalAppID]*types.PortalApp)
+
+	for portalAppID, portalApp := range portalApps {
+		if _, ok := portalAppRoles[portalAppID]; ok {
+			filteredPortalApps[portalAppID] = portalApp
+		}
+	}
+
+	return filteredPortalApps
 }
 
 // upsertAccount adds, updates or deletes Account in cache
@@ -605,6 +662,19 @@ func (c *Cache) GetPortalApp(portalAppID types.PortalAppID) types.PortalApp {
 	return *portalApp
 }
 
+// GetPortalAppByProtocolAppID returns PortalApp from cache by protocolAppID
+func (c *Cache) GetPortalAppByProtocolAppID(protocolAppID types.ProtocolAppID) types.PortalApp {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	portalApp, ok := c.portalAppsByProtocolAppID[protocolAppID]
+	if !ok {
+		return types.PortalApp{}
+	}
+
+	return *portalApp
+}
+
 // GetPortalApps returns all PortalApps in cache
 func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	c.rwMutex.RLock()
@@ -621,17 +691,19 @@ func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	return portalAppsToReturn
 }
 
-// GetMiddlewarePortalApps returns all MiddlewarePortalApp in cache
-func (c *Cache) GetMiddlewarePortalApps() []types.MiddlewarePortalApp {
+// GetPortalAppLite returns all PortalAppLite in cache
+func (c *Cache) GetPortalAppLite() []types.PortalAppLite {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	var middlewarePortalAppsToReturn []types.MiddlewarePortalApp
+	var middlewarePortalAppsToReturn []types.PortalAppLite
 
 	for _, portalApp := range c.portalApps {
 		if !portalApp.Deleted {
-			middlewarePortalApp := portalApp.ConvertPortalAppToMiddlewarePortalApp()
-			middlewarePortalAppsToReturn = append(middlewarePortalAppsToReturn, *middlewarePortalApp)
+			middlewarePortalAppsToReturn = append(
+				middlewarePortalAppsToReturn,
+				portalApp.ConvertPortalAppToPortalAppLite(),
+			)
 		}
 	}
 
@@ -652,6 +724,9 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	if portalApp.Deleted {
 		delete(c.portalApps, portalApp.ID)
+		for aatID := range portalApp.AATs {
+			delete(c.portalAppsByProtocolAppID, aatID)
+		}
 
 		if account, ok := c.accounts[portalApp.AccountID]; ok {
 			delete(account.PortalApps, portalApp.ID)
@@ -689,6 +764,9 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
+	for aatID := range portalApp.AATs {
+		c.portalAppsByProtocolAppID[aatID] = &portalApp
+	}
 
 	if account, ok := c.accounts[portalApp.AccountID]; ok {
 		// Assign new app to account's PortalApps map
