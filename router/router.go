@@ -111,6 +111,8 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
 	rt.Router.HandleFunc("/v2/portal_app/first_date_surpassed", rt.updatePortalAppFirstDateSurpassed).Methods(http.MethodPost)
 
+	rt.Router.HandleFunc("/v2/middleware/portal_app", rt.getPortalAppsForMiddleware).Methods(http.MethodGet)
+
 	rt.Router.HandleFunc("/v2/account", rt.getAccounts).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccountByID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
@@ -441,6 +443,20 @@ func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, portalApps)
 }
 
+// GET /v2/middleware/portal_app - Fetches all middleware portal applications.
+func (rt *Router) getPortalAppsForMiddleware(w http.ResponseWriter, r *http.Request) {
+	rt.log.Debug("getPortalAppsForMiddleware method called")
+
+	middlewarePortalApps := rt.cache.GetPortalAppsForMiddleware()
+	if len(middlewarePortalApps) == 0 {
+		rt.logError(fmt.Errorf("getPortalAppsForMiddleware failed: %w", errNoPortalAppsFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, middlewarePortalApps)
+}
+
 // GET /v2/user/{userID}/portal_app - Fetches all portal applications.
 func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getPortalAppsByUser method called")
@@ -493,7 +509,14 @@ func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	createdPortalApp, err := rt.writer.WritePortalApp(r.Context(), portalAppInput, portalAppInput.AAT(), time.Now())
+	// portalAppInput.AATs only ever contains a single AAT
+	var aat types.AAT
+	for _, inputAAT := range portalAppInput.AATs {
+		aat = inputAAT
+		break
+	}
+
+	createdPortalApp, err := rt.writer.WritePortalApp(r.Context(), portalAppInput, aat, time.Now())
 	if err != nil {
 		rt.logError(fmt.Errorf("WritePortalApp failed: %w", err))
 		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())

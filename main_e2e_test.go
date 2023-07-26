@@ -302,6 +302,34 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}
 	})
 
+	ts.Run("Test_GetPortalAppsForMiddleware", func() {
+		tests := []struct {
+			name         string
+			expectedApps map[types.PortalAppID]*types.PortalAppLite
+			err          error
+		}{
+			{
+				name:         "Should get all portal app lites for middleware",
+				expectedApps: testdata.PortalAppLites,
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				portalAppLites, err := ts.v2Client1.GetPortalAppsForMiddleware(testCtx)
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Equal(test.expectedApps, portalAppLitesToMap(portalAppLites))
+
+					portalAppLites, err = ts.v2Client2.GetPortalAppsForMiddleware(testCtx)
+					ts.Equal(test.err, err)
+					ts.Equal(test.expectedApps, portalAppLitesToMap(portalAppLites))
+				}
+			})
+		}
+	})
+
 	/* ------ V2 Account Read Tests ------ */
 
 	ts.Run("Test_GetAccounts", func() {
@@ -1639,9 +1667,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdPortalApp.CreatedAt = timestamp
 					createdPortalApp.UpdatedAt = timestamp
 					aat := test.expected.AATs["test_protocol_app_5"]
-					aat.ID = createdPortalApp.AAT().ID
+					var testAATID types.ProtocolAppID
+					for aatID := range createdPortalApp.AATs {
+						testAATID = aatID
+						break
+					}
+					aat.ID = testAATID
 					aat.PrivateKey = ""
-					test.expected.AATs[createdPortalApp.AAT().ID] = aat
+					test.expected.AATs[testAATID] = aat
 					delete(test.expected.AATs, "test_protocol_app_5")
 
 					ts.Equal(test.expected, createdPortalApp)
@@ -4095,6 +4128,25 @@ func portalAppsToMap(apps []*v2Types.PortalApp) map[v2Types.PortalAppID]*v2Types
 		result[app.ID] = app
 	}
 	return result
+}
+
+func portalAppLitesToMap(portalAppLites []*types.PortalAppLite) map[types.PortalAppID]*types.PortalAppLite {
+	portalAppLitesMap := make(map[types.PortalAppID]*types.PortalAppLite)
+	for i := range portalAppLites {
+		strKeys := make([]string, len(portalAppLites[i].PublicKeys))
+		for j, key := range portalAppLites[i].PublicKeys {
+			strKeys[j] = string(key)
+		}
+
+		sort.Strings(strKeys)
+
+		for j, key := range strKeys {
+			portalAppLites[i].PublicKeys[j] = types.PortalAppPublicKey(key)
+		}
+
+		portalAppLitesMap[portalAppLites[i].ID] = portalAppLites[i]
+	}
+	return portalAppLitesMap
 }
 
 func convertAccountsToMap(accounts []*v2Types.Account) map[v2Types.AccountID]*v2Types.Account {

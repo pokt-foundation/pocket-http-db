@@ -246,7 +246,9 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 			account.PortalApps[portalAppID] = portalApp
 		}
 
-		portalAppsByProtocolAppID[portalApp.AAT().ID] = portalApp
+		for aatID := range portalApp.AATs {
+			portalAppsByProtocolAppID[aatID] = portalApp
+		}
 	}
 
 	// Create map of Accounts by UserID for all Account team members
@@ -689,6 +691,22 @@ func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	return portalAppsToReturn
 }
 
+// GetPortalAppsForMiddleware returns all PortalAppLites in cache
+func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	var portalAppLites []types.PortalAppLite
+
+	for _, portalApp := range c.portalApps {
+		if !portalApp.Deleted {
+			portalAppLites = append(portalAppLites, portalApp.ConvertPortalAppToPortalAppLite())
+		}
+	}
+
+	return portalAppLites
+}
+
 // upsertPortalApp adds, updates or deletes PortalApp in cache
 func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	c.rwMutex.Lock()
@@ -703,7 +721,9 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	if portalApp.Deleted {
 		delete(c.portalApps, portalApp.ID)
-		delete(c.portalAppsByProtocolAppID, portalApp.AAT().ID)
+		for aatID := range portalApp.AATs {
+			delete(c.portalAppsByProtocolAppID, aatID)
+		}
 
 		if account, ok := c.accounts[portalApp.AccountID]; ok {
 			delete(account.PortalApps, portalApp.ID)
@@ -741,7 +761,9 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
-	c.portalAppsByProtocolAppID[portalApp.AAT().ID] = &portalApp
+	for aatID := range portalApp.AATs {
+		c.portalAppsByProtocolAppID[aatID] = &portalApp
+	}
 
 	if account, ok := c.accounts[portalApp.AccountID]; ok {
 		// Assign new app to account's PortalApps map

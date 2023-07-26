@@ -476,6 +476,46 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 	}
 }
 
+func TestRouter_getPortalAppsForMiddleware(t *testing.T) {
+	tests := []struct {
+		name               string
+		expectedStatus     int
+		expectedPortalApps map[types.PortalAppID]*types.PortalAppLite
+	}{
+		{
+			name:               "Should fetch all portal applications for middleware",
+			expectedStatus:     http.StatusOK,
+			expectedPortalApps: testdata.PortalAppLites,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/middleware/portal_app", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var portalAppsResp []types.PortalAppLite
+			err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
+			c.NoError(err)
+			portalAppsRespMap := map[types.PortalAppID]*types.PortalAppLite{}
+			for i := range portalAppsResp {
+				portalAppsRespMap[portalAppsResp[i].ID] = &portalAppsResp[i]
+			}
+			c.Equal(test.expectedPortalApps, portalAppsRespMap)
+		})
+	}
+}
+
 func TestRouter_getPortalAppsByUser(t *testing.T) {
 	tests := []struct {
 		name               string

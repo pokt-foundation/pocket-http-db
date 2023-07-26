@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"errors"
+	"sort"
 	"testing"
 	"time"
 
@@ -88,6 +89,11 @@ func Test_SetCache(t *testing.T) {
 			name:     "Should return all portal apps",
 			actual:   portalAppsToMap(cache.GetPortalApps(Options{})),
 			expected: testdata.PortalApps,
+		},
+		{
+			name:     "Should return all portal app lites for middleware",
+			actual:   portalAppLitesToMap(cache.GetPortalAppsForMiddleware()),
+			expected: testdata.PortalAppLites,
 		},
 		{
 			name:     "Should return gigastake app by AAT ID",
@@ -1545,6 +1551,25 @@ func portalAppsToMap(portalApps []types.PortalApp) map[types.PortalAppID]*types.
 		portalAppsMap[portalApps[i].ID] = &portalApps[i]
 	}
 	return portalAppsMap
+}
+
+func portalAppLitesToMap(portalAppLites []types.PortalAppLite) map[types.PortalAppID]*types.PortalAppLite {
+	portalAppLitesMap := make(map[types.PortalAppID]*types.PortalAppLite)
+	for i := range portalAppLites {
+		strKeys := make([]string, len(portalAppLites[i].PublicKeys))
+		for j, key := range portalAppLites[i].PublicKeys {
+			strKeys[j] = string(key)
+		}
+
+		sort.Strings(strKeys)
+
+		for j, key := range strKeys {
+			portalAppLites[i].PublicKeys[j] = types.PortalAppPublicKey(key)
+		}
+
+		portalAppLitesMap[portalAppLites[i].ID] = &portalAppLites[i]
+	}
+	return portalAppLitesMap
 }
 
 func gigastakeAppsToMap(gigastakeApps []types.GigastakeApp) map[types.GigastakeAppID]*types.GigastakeApp {

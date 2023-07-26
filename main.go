@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"sync"
@@ -166,19 +165,19 @@ func main() {
 	// Gather env vars
 	options := gatherOptions()
 
-	// Start pprof server only if profiler flag set
-	if options.profiler {
-		go func() {
-			log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
-		}()
-	}
-
 	// Configure logger
 	// TODO: use new logger
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
 	log.SetLevel(logrus.Level(options.logLevel))
 	log.Printf("Pocket HTTP DB %s starting...", options.imageTag)
+
+	// Start pprof server only if profiler flag set
+	if options.profiler {
+		go func() {
+			log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	// Choose DB configuration based on APP_ENV
 	var dbConfig DBConfig
