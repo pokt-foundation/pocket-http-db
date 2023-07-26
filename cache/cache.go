@@ -691,23 +691,20 @@ func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	return portalAppsToReturn
 }
 
-// GetPortalAppLite returns all PortalAppLite in cache
-func (c *Cache) GetPortalAppLite() []types.PortalAppLite {
+// GetPortalAppsForMiddleware returns all PortalAppLites in cache
+func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	var middlewarePortalAppsToReturn []types.PortalAppLite
+	var portalAppLites []types.PortalAppLite
 
 	for _, portalApp := range c.portalApps {
 		if !portalApp.Deleted {
-			middlewarePortalAppsToReturn = append(
-				middlewarePortalAppsToReturn,
-				portalApp.ConvertPortalAppToPortalAppLite(),
-			)
+			portalAppLites = append(portalAppLites, portalApp.ConvertPortalAppToPortalAppLite())
 		}
 	}
 
-	return middlewarePortalAppsToReturn
+	return portalAppLites
 }
 
 // upsertPortalApp adds, updates or deletes PortalApp in cache
