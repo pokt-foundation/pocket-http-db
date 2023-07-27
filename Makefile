@@ -30,14 +30,20 @@ test_env_down:
 	@docker-compose -f ./testdata/docker-compose.test.yml down --remove-orphans >/dev/null
 	@echo "✅ Test environment is down."
 
-# These targets run all variations of the test suite.
-run_e2e_tests:
-	go test -run E2E -count=1
 run_all_tests:
 	go test ./... -count=1
+
+# These targets run all variations of the test suite.
+run_e2e_tests:
+	go test ./... -run E2E -count=1 || true
 test_unit:
-	go test ./...  -short -count=1
-test_e2e: test_env_up run_e2e_tests test_env_down
+	go test ./... -short || true
+
+# These targets run all variations of the test suite in CI.
+run_e2e_tests_ci:
+	go test ./... -run E2E -count=1
+test_unit_ci:
+	go test ./... -short
 
 # This target runs all tests, unit and E2E, which includes spinning up the Docker test env.
 # For local development see below for how to run the E2E tests locally without spinning up the test env each run.

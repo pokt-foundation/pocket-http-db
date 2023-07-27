@@ -1094,7 +1094,7 @@ func Test_upsertGigastakeApp(t *testing.T) {
 		},
 		{
 			name:                       "Should delete an existing GigastakeApp in cache",
-			gigastakeApp:               *testdata.GigastakeApps["test_gigastake_app_2"],
+			gigastakeApp:               *testdata.GigastakeApps["test_gigastake_app_3"],
 			pendingChainsGigastakeApps: nil,
 			update:                     false,
 			delete:                     true,
