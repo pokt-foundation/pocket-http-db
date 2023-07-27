@@ -135,14 +135,21 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetAllChains", func() {
 		tests := []struct {
 			name           string
-			expectedChains map[v2Types.RelayChainID]*v2Types.Chain
-			gigastakeApps  map[v2Types.GigastakeAppID]*v2Types.GigastakeApp
+			expectedChains map[types.RelayChainID]*types.Chain
+			gigastakeApps  map[types.GigastakeAppID]*types.GigastakeApp
+			options        v2DBClient.ChainsOptions
 			err            error
 		}{
 			{
-				name:           "Should get all chains",
+				name:           "Should get all active chains",
+				expectedChains: phdtestdata.FilterActiveChains(testdata.Chains),
+				gigastakeApps:  testdata.GigastakeApps,
+			},
+			{
+				name:           "Should get all chains including inactive",
 				expectedChains: testdata.Chains,
 				gigastakeApps:  testdata.GigastakeApps,
+				options:        v2DBClient.ChainsOptions{IncludeInactive: true},
 			},
 		}
 
@@ -153,20 +160,31 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					for chainID := range gigastakeApp.ChainIDs {
 						if chain, ok := test.expectedChains[chainID]; ok {
 							if chain.GigastakeApps == nil {
-								chain.GigastakeApps = make(map[v2Types.GigastakeAppID]*v2Types.GigastakeApp)
+								chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
 							}
 							chain.GigastakeApps[aatID] = gigastakeApp
 						}
 					}
 				}
 
-				chains, err := ts.v2Client1.GetAllChains(context.Background())
+				var chains []*types.Chain
+				var err error
+
+				if test.options.IncludeInactive {
+					chains, err = ts.v2Client1.GetAllChains(context.Background(), test.options)
+				} else {
+					chains, err = ts.v2Client1.GetAllChains(context.Background())
+				}
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
 
-					chains, err = ts.v2Client2.GetAllChains(context.Background())
+					if test.options.IncludeInactive {
+						chains, err = ts.v2Client2.GetAllChains(context.Background(), test.options)
+					} else {
+						chains, err = ts.v2Client2.GetAllChains(context.Background())
+					}
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
 				}
@@ -247,40 +265,39 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetPortalAppsByUser", func() {
 		tests := []struct {
 			name         string
-			userID       v2Types.UserID
-			roleFilter   v2Types.RoleName
-			expectedApps map[v2Types.PortalAppID]*v2Types.PortalApp
+			userID       types.UserID
+			options      v2DBClient.PortalAppsOptions
+			expectedApps map[types.PortalAppID]*types.PortalApp
 			err          error
 		}{
 			{
-				name:       "Should get all portal apps for user_4 with no role filter",
-				userID:     "user_4",
-				roleFilter: "",
-				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
+				name:   "Should get all portal apps for user_4 with no role filter",
+				userID: "user_4",
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 			},
 			{
-				name:       "Should get portal apps where user_1 is OWNER",
-				userID:     "user_1",
-				roleFilter: v2Types.RoleOwner,
-				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
+				name:    "Should get portal apps where user_1 is OWNER",
+				userID:  "user_1",
+				options: v2DBClient.PortalAppsOptions{RoleNameFilter: types.RoleOwner},
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
 				},
 			},
 			{
-				name:       "Should get portal apps where user_6 is ADMIN",
-				userID:     "user_6",
-				roleFilter: v2Types.RoleAdmin,
-				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
+				name:    "Should get portal apps where user_6 is ADMIN",
+				userID:  "user_6",
+				options: v2DBClient.PortalAppsOptions{RoleNameFilter: types.RoleAdmin},
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 			},
 			{
-				name:       "Should get portal apps where user_7 is MEMBER",
-				userID:     "user_7",
-				roleFilter: v2Types.RoleMember,
-				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
+				name:    "Should get portal apps where user_7 is MEMBER",
+				userID:  "user_7",
+				options: v2DBClient.PortalAppsOptions{RoleNameFilter: types.RoleMember},
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 			},
@@ -288,13 +305,24 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				portalApps, err := ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID, test.roleFilter)
+				var portalApps []*types.PortalApp
+				var err error
+
+				if test.options.RoleNameFilter != "" {
+					portalApps, err = ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID, test.options)
+				} else {
+					portalApps, err = ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID)
+				}
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
-					portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID, test.roleFilter)
+					if test.options.RoleNameFilter != "" {
+						portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID, test.options)
+					} else {
+						portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID)
+					}
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 				}
@@ -696,21 +724,28 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name                string
 			expectedBlockchains map[string]*v1Types.Blockchain
+			includeInactive     bool
 			err                 error
 		}{
 			{
-				name:                "Should fetch all blockchains in the database",
+				name:                "Should fetch all active blockchains in the database",
+				expectedBlockchains: phdtestdata.FilterActiveBlockchainPointers(phdtestdata.ExpectedLegacyBlockchains),
+				includeInactive:     false,
+			},
+			{
+				name:                "Should fetch all blockchains in the database including inactive",
 				expectedBlockchains: phdtestdata.ExpectedLegacyBlockchains,
+				includeInactive:     true,
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				blockchains, err := ts.client1.GetBlockchains(context.Background())
+				blockchains, err := ts.client1.GetBlockchains(context.Background(), test.includeInactive)
 				ts.ErrorIs(test.err, err)
 				ts.Equal(test.expectedBlockchains, phdtestdata.BlockchainPointersToMap(blockchains))
 
-				blockchains, err = ts.client2.GetBlockchains(context.Background())
+				blockchains, err = ts.client2.GetBlockchains(context.Background(), test.includeInactive)
 				ts.NoError(err)
 				ts.Equal(test.expectedBlockchains, phdtestdata.BlockchainPointersToMap(blockchains))
 			})

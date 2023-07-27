@@ -138,6 +138,18 @@ func FilterActiveChains(chains map[v2Types.RelayChainID]*v2Types.Chain) map[v2Ty
 	return activeChains
 }
 
+func FilterActiveBlockchainPointers(blockchains map[string]*v1Types.Blockchain) map[string]*v1Types.Blockchain {
+	activeBlockchains := make(map[string]*v1Types.Blockchain)
+
+	for id, blockchain := range blockchains {
+		if blockchain.Active {
+			activeBlockchains[id] = blockchain
+		}
+	}
+
+	return activeBlockchains
+}
+
 // This functIon is needed because the cache alter the DB output
 func ModifiedAccountToTest() map[v2Types.AccountID]*v2Types.Account {
 	portalAppsCopy := testdata.PortalApps
