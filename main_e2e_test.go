@@ -823,12 +823,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name: "Should fetch all load balancers in the database",
 				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
-					"test_app_1":  expectedLegacyLoadBalancers["test_app_1"],
-					"test_app_2":  expectedLegacyLoadBalancers["test_app_2"],
-					"test_app_3":  expectedLegacyLoadBalancers["test_app_3"],
-					"legacy_lb_1": expectedLegacyLoadBalancers["legacy_lb_1"],
-					"legacy_lb_2": expectedLegacyLoadBalancers["legacy_lb_2"],
-					"legacy_lb_3": expectedLegacyLoadBalancers["legacy_lb_3"],
+					"test_app_1":               expectedLegacyLoadBalancers["test_app_1"],
+					"test_app_2":               expectedLegacyLoadBalancers["test_app_2"],
+					"test_app_3":               expectedLegacyLoadBalancers["test_app_3"],
+					"0001-POKT-pokt-mainnet":   expectedLegacyLoadBalancers["0001-POKT-pokt-mainnet"],
+					"0040-HMY-harmony-0":       expectedLegacyLoadBalancers["0040-HMY-harmony-0"],
+					"0053-OP-optimism-mainnet": expectedLegacyLoadBalancers["0053-OP-optimism-mainnet"],
 				},
 			},
 		}
@@ -4544,8 +4544,8 @@ var (
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
 		},
-		"legacy_lb_1": {
-			ID:        "legacy_lb_1",
+		"0001-POKT-pokt-mainnet": {
+			ID:        "0001-POKT-pokt-mainnet",
 			Gigastake: true,
 			Applications: []*v1Types.Application{
 				{
@@ -4566,8 +4566,8 @@ var (
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
 		},
-		"legacy_lb_2": {
-			ID:        "legacy_lb_2",
+		"0053-OP-optimism-mainnet": {
+			ID:        "0053-OP-optimism-mainnet",
 			Gigastake: true,
 			Applications: []*v1Types.Application{
 				{
@@ -4588,8 +4588,8 @@ var (
 			CreatedAt: mockTimestamp,
 			UpdatedAt: mockTimestamp,
 		},
-		"legacy_lb_3": {
-			ID:        "legacy_lb_3",
+		"0040-HMY-harmony-0": {
+			ID:        "0040-HMY-harmony-0",
 			Gigastake: true,
 			Applications: []*v1Types.Application{
 				{
@@ -4638,7 +4638,7 @@ var (
 			BlockchainAliases: []string{"pokt-mainnet"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_1"},
+				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "0001-POKT-pokt-mainnet"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
@@ -4660,7 +4660,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: ""},
+				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "0021-ETH-eth-mainnet"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -4679,7 +4679,7 @@ var (
 			BlockchainAliases: []string{"harmony-0"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_3"},
+				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "0040-HMY-harmony-0"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
@@ -4700,7 +4700,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "legacy_lb_2"},
+				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "0053-OP-optimism-mainnet"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",

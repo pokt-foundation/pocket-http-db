@@ -42,10 +42,10 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Run unit tests
-        run: make test_env_up
+        run: make test_unit_ci
 
       - name: Set up Docker test stack
         run: make test_env_up
 
       - name: Run E2E tests
-        run: make run_e2e_tests
+        run: make run_e2e_tests_ci

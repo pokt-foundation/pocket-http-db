@@ -373,7 +373,6 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 				Version:         "0.0.1",
 				CreatedAt:       testdata.MockTimestamp,
 				UpdatedAt:       testdata.MockTimestamp,
-				LegacyLBID:      "legacy_lb_1",
 			},
 		},
 		{
@@ -392,7 +391,6 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 				Version:         "0.0.1",
 				CreatedAt:       testdata.MockTimestamp,
 				UpdatedAt:       testdata.MockTimestamp,
-				LegacyLBID:      "updated_legacy_lb_1",
 			},
 		},
 		{
