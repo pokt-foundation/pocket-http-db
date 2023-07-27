@@ -504,14 +504,10 @@ func TestRouter_getPortalAppsForMiddleware(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
-			var portalAppsResp []types.PortalAppLite
+			var portalAppsResp []*types.PortalAppLite
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
 			c.NoError(err)
-			portalAppsRespMap := map[types.PortalAppID]*types.PortalAppLite{}
-			for i := range portalAppsResp {
-				portalAppsRespMap[portalAppsResp[i].ID] = &portalAppsResp[i]
-			}
-			c.Equal(test.expectedPortalApps, portalAppsRespMap)
+			c.Equal(test.expectedPortalApps, portalAppLitesToMap(portalAppsResp))
 		})
 	}
 }
@@ -2830,6 +2826,25 @@ func convertPayPlansToMap(payPlans []v1Types.PayPlan) map[string]v1Types.PayPlan
 		payPlansMap[string(pp.Type)] = pp
 	}
 	return payPlansMap
+}
+
+func portalAppLitesToMap(portalAppLites []*types.PortalAppLite) map[types.PortalAppID]*types.PortalAppLite {
+	portalAppLitesMap := make(map[types.PortalAppID]*types.PortalAppLite)
+	for i := range portalAppLites {
+		strKeys := make([]string, len(portalAppLites[i].PublicKeys))
+		for j, key := range portalAppLites[i].PublicKeys {
+			strKeys[j] = string(key)
+		}
+
+		sort.Strings(strKeys)
+
+		for j, key := range strKeys {
+			portalAppLites[i].PublicKeys[j] = types.PortalAppPublicKey(key)
+		}
+
+		portalAppLitesMap[portalAppLites[i].ID] = portalAppLites[i]
+	}
+	return portalAppLitesMap
 }
 
 var (
