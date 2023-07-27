@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sort"
 	"testing"
 	"time"
 
 	dbclient "github.com/pokt-foundation/db-client/client"
 	v2DBClient "github.com/pokt-foundation/db-client/v2/client"
+	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
@@ -114,7 +114,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				chain, err := ts.v2Client1.GetChainByID(testCtx, test.chainID)
+				chain, err := ts.v2Client1.GetChainByID(context.Background(), test.chainID)
 				ts.Equal(test.err, err)
 
 				if err == nil {
@@ -122,7 +122,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 
-					chain, err = ts.v2Client2.GetChainByID(testCtx, test.chainID)
+					chain, err = ts.v2Client2.GetChainByID(context.Background(), test.chainID)
 					ts.Equal(test.err, err)
 					test.expectedChain.GigastakeApps = make(map[v2Types.GigastakeAppID]*v2Types.GigastakeApp)
 					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
@@ -160,15 +160,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					}
 				}
 
-				chains, err := ts.v2Client1.GetAllChains(testCtx)
+				chains, err := ts.v2Client1.GetAllChains(context.Background())
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
-					ts.Equal(test.expectedChains, chainsToMap(chains))
+					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
 
-					chains, err = ts.v2Client2.GetAllChains(testCtx)
+					chains, err = ts.v2Client2.GetAllChains(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedChains, chainsToMap(chains))
+					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
 				}
 			})
 		}
@@ -202,13 +202,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				portalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, test.portalAppID)
+				portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), test.portalAppID)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					ts.Equal(test.expectedApp, portalApp)
 
-					portalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, test.portalAppID)
+					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), test.portalAppID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedApp, portalApp)
 				}
@@ -230,15 +230,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				portalApps, err := ts.v2Client1.GetAllPortalApps(testCtx)
+				portalApps, err := ts.v2Client1.GetAllPortalApps(context.Background())
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					ts.Equal(test.expectedApps, portalAppsToMap(portalApps))
+					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
-					portalApps, err = ts.v2Client2.GetAllPortalApps(testCtx)
+					portalApps, err = ts.v2Client2.GetAllPortalApps(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedApps, portalAppsToMap(portalApps))
+					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 				}
 			})
 		}
@@ -288,15 +288,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				portalApps, err := ts.v2Client1.GetPortalAppsByUser(testCtx, test.userID, test.roleFilter)
+				portalApps, err := ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID, test.roleFilter)
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					ts.Equal(test.expectedApps, portalAppsToMap(portalApps))
+					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
-					portalApps, err = ts.v2Client2.GetPortalAppsByUser(testCtx, test.userID, test.roleFilter)
+					portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID, test.roleFilter)
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedApps, portalAppsToMap(portalApps))
+					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 				}
 			})
 		}
@@ -316,15 +316,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				portalAppLites, err := ts.v2Client1.GetPortalAppsForMiddleware(testCtx)
+				portalAppLites, err := ts.v2Client1.GetPortalAppsForMiddleware(context.Background())
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					ts.Equal(test.expectedApps, portalAppLitesToMap(portalAppLites))
+					ts.Equal(test.expectedApps, phdtestdata.PortalAppLitePointersToMap(portalAppLites))
 
-					portalAppLites, err = ts.v2Client2.GetPortalAppsForMiddleware(testCtx)
+					portalAppLites, err = ts.v2Client2.GetPortalAppsForMiddleware(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedApps, portalAppLitesToMap(portalAppLites))
+					ts.Equal(test.expectedApps, phdtestdata.PortalAppLitePointersToMap(portalAppLites))
 				}
 			})
 		}
@@ -346,13 +346,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				accounts, err := ts.v2Client1.GetAllAccounts(testCtx)
+				accounts, err := ts.v2Client1.GetAllAccounts(context.Background())
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					ts.Len(accounts, test.expectedAccNum)
 
-					accounts, err = ts.v2Client2.GetAllAccounts(testCtx)
+					accounts, err = ts.v2Client2.GetAllAccounts(context.Background())
 					ts.Equal(test.err, err)
 					ts.Len(accounts, test.expectedAccNum)
 				}
@@ -394,13 +394,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				}
 				test.expectedAcc.PortalApps[test.assignApp.ID] = test.assignApp
 
-				account, err := ts.v2Client1.GetAccountByID(testCtx, test.accountID)
+				account, err := ts.v2Client1.GetAccountByID(context.Background(), test.accountID)
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					ts.Equal(test.expectedAcc, account)
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, test.accountID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), test.accountID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedAcc, account)
 				}
@@ -467,11 +467,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				accounts, err := ts.v2Client1.GetAccountsByUser(testCtx, test.userID)
+				accounts, err := ts.v2Client1.GetAccountsByUser(context.Background(), test.userID)
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					accountMap := convertAccountsToMap(accounts)
+					accountMap := phdtestdata.ConvertAccountPointersToMap(accounts)
 					// Assign plans and portal apps to expected data
 					for id, account := range test.expectedAccs {
 						account.Plan = test.plans[id]
@@ -479,9 +479,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					}
 					ts.Equal(test.expectedAccs, accountMap)
 
-					accounts, err = ts.v2Client2.GetAccountsByUser(testCtx, test.userID)
+					accounts, err = ts.v2Client2.GetAccountsByUser(context.Background(), test.userID)
 					ts.Equal(test.err, err)
-					accountMap = convertAccountsToMap(accounts)
+					accountMap = phdtestdata.ConvertAccountPointersToMap(accounts)
 					for id, account := range test.expectedAccs {
 						account.Plan = test.plans[id]
 						account.PortalApps = test.portalApps[id]
@@ -545,13 +545,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				userPermissions, err := ts.v2Client1.GetUserPermissionByUserID(testCtx, test.providerUserID)
+				userPermissions, err := ts.v2Client1.GetUserPermissionByUserID(context.Background(), test.providerUserID)
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					ts.Equal(test.expectedPermissions, userPermissions)
 
-					userPermissions, err = ts.v2Client2.GetUserPermissionByUserID(testCtx, test.providerUserID)
+					userPermissions, err = ts.v2Client2.GetUserPermissionByUserID(context.Background(), test.providerUserID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedPermissions, userPermissions)
 				}
@@ -615,13 +615,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				portalUserID, err := ts.v2Client1.GetPortalUserIDFromProviderUserID(testCtx, test.providerUserID)
+				portalUserID, err := ts.v2Client1.GetPortalUserIDFromProviderUserID(context.Background(), test.providerUserID)
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					ts.Equal(test.expectedPortalUserID, portalUserID)
 
-					portalUserID, err = ts.v2Client2.GetPortalUserIDFromProviderUserID(testCtx, test.providerUserID)
+					portalUserID, err = ts.v2Client2.GetPortalUserIDFromProviderUserID(context.Background(), test.providerUserID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedPortalUserID, portalUserID)
 				}
@@ -646,15 +646,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				plans, err := ts.v2Client1.GetAllPlans(testCtx)
+				plans, err := ts.v2Client1.GetAllPlans(context.Background())
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					ts.Equal(derefPlansMap(test.expected), convertPlansToMap(plans))
+					ts.Equal(phdtestdata.DerefPlansMap(test.expected), phdtestdata.ConvertPlanPointersToMap(plans))
 
-					plans, err = ts.v2Client2.GetAllPlans(testCtx)
+					plans, err = ts.v2Client2.GetAllPlans(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(derefPlansMap(test.expected), convertPlansToMap(plans))
+					ts.Equal(phdtestdata.DerefPlansMap(test.expected), phdtestdata.ConvertPlanPointersToMap(plans))
 				}
 			})
 		}
@@ -676,13 +676,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				blockedContracts, err := ts.v2Client1.GetBlockedContracts(testCtx)
+				blockedContracts, err := ts.v2Client1.GetBlockedContracts(context.Background())
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					ts.Equal(test.expectedBlockedCon, blockedContracts)
 
-					blockedContracts, err = ts.v2Client2.GetBlockedContracts(testCtx)
+					blockedContracts, err = ts.v2Client2.GetBlockedContracts(context.Background())
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedBlockedCon, blockedContracts)
 				}
@@ -700,19 +700,19 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:                "Should fetch all blockchains in the database",
-				expectedBlockchains: expectedLegacyBlockchains,
+				expectedBlockchains: phdtestdata.ExpectedLegacyBlockchains,
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				blockchains, err := ts.client1.GetBlockchains(testCtx)
+				blockchains, err := ts.client1.GetBlockchains(context.Background())
 				ts.ErrorIs(test.err, err)
-				ts.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
+				ts.Equal(test.expectedBlockchains, phdtestdata.BlockchainPointersToMap(blockchains))
 
-				blockchains, err = ts.client2.GetBlockchains(testCtx)
+				blockchains, err = ts.client2.GetBlockchains(context.Background())
 				ts.NoError(err)
-				ts.Equal(test.expectedBlockchains, blockchainsToMap(blockchains))
+				ts.Equal(test.expectedBlockchains, phdtestdata.BlockchainPointersToMap(blockchains))
 			})
 
 		}
@@ -728,7 +728,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:               "Should fetch one blockchain by ID",
 				blockchainID:       "0021",
-				expectedBlockchain: expectedLegacyBlockchains["0021"],
+				expectedBlockchain: phdtestdata.ExpectedLegacyBlockchains["0021"],
 			},
 			{
 				name:         "Should fail if the blockchain does not exist in the DB",
@@ -739,11 +739,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				blockchain, err := ts.client1.GetBlockchainByID(testCtx, test.blockchainID)
+				blockchain, err := ts.client1.GetBlockchainByID(context.Background(), test.blockchainID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedBlockchain, blockchain)
 
-				blockchain, err = ts.client2.GetBlockchainByID(testCtx, test.blockchainID)
+				blockchain, err = ts.client2.GetBlockchainByID(context.Background(), test.blockchainID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedBlockchain, blockchain)
 			})
@@ -758,19 +758,19 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:                 "Should fetch all applications in the database",
-				expectedApplications: expectedLegacyApplications,
+				expectedApplications: phdtestdata.ExpectedLegacyApplications,
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				applications, err := ts.client1.GetApplications(testCtx)
+				applications, err := ts.client1.GetApplications(context.Background())
 				ts.Equal(test.err, err)
-				ts.Equal(test.expectedApplications, applicationsToMap(applications))
+				ts.Equal(test.expectedApplications, phdtestdata.ApplicationPointersToMap(applications))
 
-				applications, err = ts.client2.GetApplications(testCtx)
+				applications, err = ts.client2.GetApplications(context.Background())
 				ts.Equal(test.err, err)
-				ts.Equal(test.expectedApplications, applicationsToMap(applications))
+				ts.Equal(test.expectedApplications, phdtestdata.ApplicationPointersToMap(applications))
 			})
 		}
 	})
@@ -786,8 +786,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should fetch all applications for a single user ID",
 				userID: "auth0|chrisjen_avasarala",
 				expectedApplications: map[string]*v1Types.Application{
-					"test_protocol_app_3": expectedLegacyApplications["test_protocol_app_3"],
-					"test_protocol_app_4": expectedLegacyApplications["test_protocol_app_4"],
+					"test_protocol_app_3": phdtestdata.ExpectedLegacyApplications["test_protocol_app_3"],
+					"test_protocol_app_4": phdtestdata.ExpectedLegacyApplications["test_protocol_app_4"],
 				},
 			},
 			{
@@ -799,16 +799,16 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				applicationsByUserID, err := ts.client1.GetApplicationsByUserID(testCtx, test.userID)
+				applicationsByUserID, err := ts.client1.GetApplicationsByUserID(context.Background(), test.userID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					ts.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
+					ts.Equal(test.expectedApplications, phdtestdata.ApplicationPointersToMap(applicationsByUserID))
 				}
 
-				applicationsByUserID, err = ts.client2.GetApplicationsByUserID(testCtx, test.userID)
+				applicationsByUserID, err = ts.client2.GetApplicationsByUserID(context.Background(), test.userID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					ts.Equal(test.expectedApplications, applicationsToMap(applicationsByUserID))
+					ts.Equal(test.expectedApplications, phdtestdata.ApplicationPointersToMap(applicationsByUserID))
 				}
 			})
 		}
@@ -823,25 +823,25 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name: "Should fetch all load balancers in the database",
 				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
-					"test_app_1":               expectedLegacyLoadBalancers["test_app_1"],
-					"test_app_2":               expectedLegacyLoadBalancers["test_app_2"],
-					"test_app_3":               expectedLegacyLoadBalancers["test_app_3"],
-					"0001-POKT-pokt-mainnet":   expectedLegacyLoadBalancers["0001-POKT-pokt-mainnet"],
-					"0040-HMY-harmony-0":       expectedLegacyLoadBalancers["0040-HMY-harmony-0"],
-					"0053-OP-optimism-mainnet": expectedLegacyLoadBalancers["0053-OP-optimism-mainnet"],
+					"test_app_1":               phdtestdata.ExpectedLegacyLoadBalancers["test_app_1"],
+					"test_app_2":               phdtestdata.ExpectedLegacyLoadBalancers["test_app_2"],
+					"test_app_3":               phdtestdata.ExpectedLegacyLoadBalancers["test_app_3"],
+					"0001-POKT-pokt-mainnet":   phdtestdata.ExpectedLegacyLoadBalancers["0001-POKT-pokt-mainnet"],
+					"0040-HMY-harmony-0":       phdtestdata.ExpectedLegacyLoadBalancers["0040-HMY-harmony-0"],
+					"0053-OP-optimism-mainnet": phdtestdata.ExpectedLegacyLoadBalancers["0053-OP-optimism-mainnet"],
 				},
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				loadBalancers, err := ts.client1.GetLoadBalancers(testCtx)
+				loadBalancers, err := ts.client1.GetLoadBalancers(context.Background())
 				ts.Equal(test.err, err)
-				ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+				ts.Equal(test.expectedLoadBalancers, phdtestdata.LoadBalancerPointersToMap(loadBalancers))
 
-				loadBalancers, err = ts.client2.GetLoadBalancers(testCtx)
+				loadBalancers, err = ts.client2.GetLoadBalancers(context.Background())
 				ts.Equal(test.err, err)
-				ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+				ts.Equal(test.expectedLoadBalancers, phdtestdata.LoadBalancerPointersToMap(loadBalancers))
 			})
 		}
 	})
@@ -856,7 +856,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:                 "Should fetch one load balancer by ID",
 				loadBalancerID:       "test_app_1",
-				expectedLoadBalancer: expectedLegacyLoadBalancers["test_app_1"],
+				expectedLoadBalancer: phdtestdata.ExpectedLegacyLoadBalancers["test_app_1"],
 			},
 			{
 				name:           "Should fail if the load balancer does not exist in the DB",
@@ -867,11 +867,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				loadBalancerByID, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+				loadBalancerByID, err := ts.client1.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 
-				loadBalancerByID, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+				loadBalancerByID, err = ts.client2.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedLoadBalancer, loadBalancerByID)
 			})
@@ -890,7 +890,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should fetch all load balancers for a single user ID when no filter provided",
 				userID: "auth0|ulfric_stormcloak",
 				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
-					"test_app_2": expectedLegacyLoadBalancers["test_app_2"],
+					"test_app_2": phdtestdata.ExpectedLegacyLoadBalancers["test_app_2"],
 				},
 			},
 			{
@@ -898,7 +898,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				userID:         "auth0|amos_burton",
 				roleNameFilter: v1Types.RoleAdmin,
 				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
-					"test_app_3": expectedLegacyLoadBalancers["test_app_3"],
+					"test_app_3": phdtestdata.ExpectedLegacyLoadBalancers["test_app_3"],
 				},
 			},
 			{
@@ -926,16 +926,16 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					filter = nil
 				}
 
-				loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.userID, filter)
+				loadBalancers, err := ts.client1.GetLoadBalancersByUserID(context.Background(), test.userID, filter)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+					ts.Equal(test.expectedLoadBalancers, phdtestdata.LoadBalancerPointersToMap(loadBalancers))
 				}
 
-				loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.userID, filter)
+				loadBalancers, err = ts.client2.GetLoadBalancersByUserID(context.Background(), test.userID, filter)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(loadBalancers))
+					ts.Equal(test.expectedLoadBalancers, phdtestdata.LoadBalancerPointersToMap(loadBalancers))
 				}
 			})
 		}
@@ -949,19 +949,19 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:             "Should fetch all pay plans in the DB",
-				expectedPayPlans: expectedLegacyPayPlans,
+				expectedPayPlans: phdtestdata.ExpectedLegacyPayPlans,
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				payPlans, err := ts.client1.GetPayPlans(testCtx)
+				payPlans, err := ts.client1.GetPayPlans(context.Background())
 				ts.Equal(test.err, err)
-				ts.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
+				ts.Equal(test.expectedPayPlans, phdtestdata.PayPlanPointersToMap(payPlans))
 
-				payPlans, err = ts.client2.GetPayPlans(testCtx)
+				payPlans, err = ts.client2.GetPayPlans(context.Background())
 				ts.Equal(test.err, err)
-				ts.Equal(test.expectedPayPlans, payPlansToMap(payPlans))
+				ts.Equal(test.expectedPayPlans, phdtestdata.PayPlanPointersToMap(payPlans))
 			})
 		}
 	})
@@ -977,7 +977,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 				name:            "Should fetch a single pay plan by type",
 				payPlanType:     "pro_plan",
-				expectedPayPlan: expectedLegacyPayPlans["pro_plan"],
+				expectedPayPlan: phdtestdata.ExpectedLegacyPayPlans["pro_plan"],
 			},
 			{
 				name:        "Should fail if passed a pay plan type that is not in the DB",
@@ -988,11 +988,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				payPlanByType, err := ts.client1.GetPayPlanByType(testCtx, test.payPlanType)
+				payPlanByType, err := ts.client1.GetPayPlanByType(context.Background(), test.payPlanType)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedPayPlan, payPlanByType)
 
-				payPlanByType, err = ts.client2.GetPayPlanByType(testCtx, test.payPlanType)
+				payPlanByType, err = ts.client2.GetPayPlanByType(context.Background(), test.payPlanType)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedPayPlan, payPlanByType)
 			})
@@ -1048,11 +1048,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, test.userID)
+				permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(context.Background(), test.userID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedPermissions, permissionsByUserID)
 
-				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, test.userID)
+				permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(context.Background(), test.userID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedPermissions, permissionsByUserID)
 			})
@@ -1070,7 +1070,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:         "Should fetch all pending load balancers for a single portal user ID",
 				userPortalID: "user_10",
 				expectedLoadBalancers: map[string]*v1Types.LoadBalancer{
-					"test_app_3": expectedLegacyLoadBalancers["test_app_3"],
+					"test_app_3": phdtestdata.ExpectedLegacyLoadBalancers["test_app_3"],
 				},
 			},
 			{
@@ -1087,16 +1087,16 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				pendingLoadBalancersByPortalID, err := ts.client1.GetPendingLoadBalancersByUserID(testCtx, test.userPortalID)
+				pendingLoadBalancersByPortalID, err := ts.client1.GetPendingLoadBalancersByUserID(context.Background(), test.userPortalID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
+					ts.Equal(test.expectedLoadBalancers, phdtestdata.LoadBalancerPointersToMap(pendingLoadBalancersByPortalID))
 				}
 
-				pendingLoadBalancersByPortalID, err = ts.client2.GetPendingLoadBalancersByUserID(testCtx, test.userPortalID)
+				pendingLoadBalancersByPortalID, err = ts.client2.GetPendingLoadBalancersByUserID(context.Background(), test.userPortalID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
-					ts.Equal(test.expectedLoadBalancers, loadBalancersToMap(pendingLoadBalancersByPortalID))
+					ts.Equal(test.expectedLoadBalancers, phdtestdata.LoadBalancerPointersToMap(pendingLoadBalancersByPortalID))
 				}
 			})
 		}
@@ -1133,11 +1133,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				count, err := ts.client1.GetLoadBalancersCountByUserID(testCtx, test.portalUserID)
+				count, err := ts.client1.GetLoadBalancersCountByUserID(context.Background(), test.portalUserID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedCount, count)
 
-				count, err = ts.client2.GetLoadBalancersCountByUserID(testCtx, test.portalUserID)
+				count, err = ts.client2.GetLoadBalancersCountByUserID(context.Background(), test.portalUserID)
 				ts.Equal(test.err, err)
 				ts.Equal(test.expectedCount, count)
 			})
@@ -1177,7 +1177,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdChainResp, err := ts.v2Client1.CreateChainAndGigastakeApps(testCtx, test.newChainInput)
+				createdChainResp, err := ts.v2Client1.CreateChainAndGigastakeApps(context.Background(), test.newChainInput)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -1202,7 +1202,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.Equal(test.newChainInput.GigastakeApps, createdGigastakeApps)
 					}
 
-					createdChainByID, err := ts.v2Client1.GetChainByID(testCtx, createdChain.ID)
+					createdChainByID, err := ts.v2Client1.GetChainByID(context.Background(), createdChain.ID)
 					ts.NoError(err)
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
@@ -1210,7 +1210,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 
-					createdChainByID, err = ts.v2Client2.GetChainByID(testCtx, createdChain.ID)
+					createdChainByID, err = ts.v2Client2.GetChainByID(context.Background(), createdChain.ID)
 					ts.NoError(err)
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
@@ -1253,7 +1253,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdGigastakeApp, err := ts.v2Client1.CreateGigastakeApp(testCtx, test.gigastakeAppInput)
+				createdGigastakeApp, err := ts.v2Client1.CreateGigastakeApp(context.Background(), test.gigastakeAppInput)
 				ts.Equal(test.err, err)
 
 				if err == nil {
@@ -1273,13 +1273,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					// Check the GigastakeApp is included in each chain
 					for chainID := range test.gigastakeAppInput.ChainIDs {
-						chain, err := ts.v2Client1.GetChainByID(testCtx, chainID)
+						chain, err := ts.v2Client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
 						chain.GigastakeApps[test.expected.ID].CreatedAt = timestamp
 						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
 						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ID])
 
-						chain, err = ts.v2Client2.GetChainByID(testCtx, chainID)
+						chain, err = ts.v2Client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
 						chain.GigastakeApps[test.expected.ID].CreatedAt = timestamp
 						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
@@ -1314,7 +1314,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				chainUpdateResponse, err := ts.v2Client1.UpdateChain(testCtx, test.chainUpdate)
+				chainUpdateResponse, err := ts.v2Client1.UpdateChain(context.Background(), test.chainUpdate)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -1322,9 +1322,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.NotEmpty(chainUpdateResponse)
 
-					updatedChainByID1, err := ts.v2Client1.GetChainByID(testCtx, chainUpdateResponse.ID)
+					updatedChainByID1, err := ts.v2Client1.GetChainByID(context.Background(), chainUpdateResponse.ID)
 					ts.NoError(err)
-					updatedChainByID2, err := ts.v2Client2.GetChainByID(testCtx, chainUpdateResponse.ID)
+					updatedChainByID2, err := ts.v2Client2.GetChainByID(context.Background(), chainUpdateResponse.ID)
 					ts.NoError(err)
 
 					updatedChains := []*types.Chain{updatedChainByID1, updatedChainByID2}
@@ -1476,7 +1476,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				updatedGigastakeApp, err := ts.v2Client1.UpdateGigastakeApp(testCtx, test.gigastakeAppUpdate)
+				updatedGigastakeApp, err := ts.v2Client1.UpdateGigastakeApp(context.Background(), test.gigastakeAppUpdate)
 				ts.Equal(test.err, err)
 
 				if err == nil {
@@ -1487,12 +1487,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					// Check the GigastakeApp is included in each chain
 					for _, chainID := range test.gigastakeAppUpdate.ChainIDs {
-						chain, err := ts.v2Client1.GetChainByID(testCtx, chainID)
+						chain, err := ts.v2Client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
 						ts.Equal(test.gigastakeAppUpdate.Name, chain.GigastakeApps[updatedGigastakeApp.ID].Name)
 						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
 
-						chain, err = ts.v2Client2.GetChainByID(testCtx, chainID)
+						chain, err = ts.v2Client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
 						ts.Equal(test.gigastakeAppUpdate.Name, chain.GigastakeApps[updatedGigastakeApp.ID].Name)
 						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
@@ -1523,18 +1523,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				chainActive, err := ts.v2Client1.ActivateChain(testCtx, test.chainID, test.active)
+				chainActive, err := ts.v2Client1.ActivateChain(context.Background(), test.chainID, test.active)
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
 					ts.Equal(test.active, chainActive)
 
-					fetchedChain, err := ts.v2Client1.GetChainByID(testCtx, test.chainID)
+					fetchedChain, err := ts.v2Client1.GetChainByID(context.Background(), test.chainID)
 					ts.NoError(err)
 					ts.Equal(test.active, fetchedChain.Active)
 
-					fetchedChain, err = ts.v2Client2.GetChainByID(testCtx, test.chainID)
+					fetchedChain, err = ts.v2Client2.GetChainByID(context.Background(), test.chainID)
 					ts.NoError(err)
 					ts.Equal(test.active, fetchedChain.Active)
 				}
@@ -1652,7 +1652,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				test.portalAppInput.AATs = map[types.ProtocolAppID]types.AAT{
 					test.aatInput.ID: test.aatInput,
 				}
-				createdPortalApp, err := ts.v2Client1.CreatePortalApp(testCtx, *test.portalAppInput)
+				createdPortalApp, err := ts.v2Client1.CreatePortalApp(context.Background(), *test.portalAppInput)
 				ts.Equal(test.err, err)
 
 				if err == nil {
@@ -1679,13 +1679,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.Equal(test.expected, createdPortalApp)
 
-					portalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, createdPortalApp.ID)
+					portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.NoError(err)
 					portalApp.CreatedAt = timestamp
 					portalApp.UpdatedAt = timestamp
 					ts.Equal(test.expected, portalApp)
 
-					portalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, createdPortalApp.ID)
+					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.NoError(err)
 					portalApp.CreatedAt = timestamp
 					portalApp.UpdatedAt = timestamp
@@ -1938,11 +1938,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					updatedPortalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, createdPortalApp.ID)
+					updatedPortalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.NoError(err)
 					checkUpdatedPortalApp(updatedPortalApp)
 
-					updatedPortalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, createdPortalApp.ID)
+					updatedPortalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.NoError(err)
 					checkUpdatedPortalApp(updatedPortalApp)
 				}
@@ -1973,15 +1973,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			<-time.After(50 * time.Millisecond)
 
 			// Ensure the Portal App exists in both clients
-			portalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, createdPortalApp.ID)
+			portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 			ts.NoError(err)
 			ts.NotEmpty(portalApp)
-			portalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, createdPortalApp.ID)
+			portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 			ts.NoError(err)
 			ts.NotEmpty(portalApp)
 
 			ts.Run(test.name, func() {
-				response, err := ts.v2Client1.DeletePortalApp(testCtx, createdPortalApp.ID)
+				response, err := ts.v2Client1.DeletePortalApp(context.Background(), createdPortalApp.ID)
 				ts.NoError(err)
 
 				if err == nil {
@@ -1990,11 +1990,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 
 					// Ensure the Portal App is deleted for both clients
-					portalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, createdPortalApp.ID)
+					portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.Equal(test.err, err)
 					ts.Nil(portalApp)
 
-					portalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, createdPortalApp.ID)
+					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.Equal(test.err, err)
 					ts.Nil(portalApp)
 				}
@@ -2029,18 +2029,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				result, err := ts.v2Client1.UpdatePortalAppsFirstDateSurpassed(testCtx, test.firstDateSurpassedUpdate)
+				result, err := ts.v2Client1.UpdatePortalAppsFirstDateSurpassed(context.Background(), test.firstDateSurpassedUpdate)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					ts.Equal(test.expected, result)
 
 					for _, appID := range test.firstDateSurpassedUpdate.PortalAppIDs {
-						portalApp, err := ts.v2Client1.GetPortalAppByID(testCtx, appID)
+						portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), appID)
 						ts.NoError(err)
 						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
 
-						portalApp, err = ts.v2Client2.GetPortalAppByID(testCtx, appID)
+						portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), appID)
 						ts.NoError(err)
 						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
 					}
@@ -2115,7 +2115,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdAccount, err := ts.v2Client1.CreateAccount(testCtx, test.ownerID, *test.accountInput, time.Now())
+				createdAccount, err := ts.v2Client1.CreateAccount(context.Background(), test.ownerID, *test.accountInput, time.Now())
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -2133,13 +2133,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					expectedUsers.PortalAppRoles = map[v2Types.PortalAppID]v2Types.RoleName{}
 					test.expected.Users[test.ownerID] = expectedUsers
 
-					account, err := ts.v2Client1.GetAccountByID(testCtx, createdAccount.ID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), createdAccount.ID)
 					ts.NoError(err)
 					account.CreatedAt = testdata.MockTimestamp
 					account.UpdatedAt = testdata.MockTimestamp
 					ts.Equal(test.expected, account)
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, createdAccount.ID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), createdAccount.ID)
 					ts.NoError(err)
 					account.CreatedAt = testdata.MockTimestamp
 					account.UpdatedAt = testdata.MockTimestamp
@@ -2182,12 +2182,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		for _, test := range tests {
 			ts.Run(test.name, func() {
 				if test.err == nil {
-					accountBeforeUpdate, err := ts.v2Client1.GetAccountByID(testCtx, test.accountBeforeUpdate.ID)
+					accountBeforeUpdate, err := ts.v2Client1.GetAccountByID(context.Background(), test.accountBeforeUpdate.ID)
 					ts.NoError(err)
 					ts.Equal(test.accountBeforeUpdate.PlanType, accountBeforeUpdate.PlanType)
 				}
 
-				updatedAccount, err := ts.v2Client1.UpdateAccount(testCtx, test.update)
+				updatedAccount, err := ts.v2Client1.UpdateAccount(context.Background(), test.update)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -2195,7 +2195,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.Equal(test.expected.PlanType, updatedAccount.PlanType)
 
-					accountAfterUpdate, err := ts.v2Client1.GetAccountByID(testCtx, updatedAccount.ID)
+					accountAfterUpdate, err := ts.v2Client1.GetAccountByID(context.Background(), updatedAccount.ID)
 					ts.NoError(err)
 					ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
 				}
@@ -2226,7 +2226,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdAccountIntegration, err := ts.v2Client1.CreateAccountIntegration(testCtx, test.accountIntegrationInput.AccountID, *test.accountIntegrationInput)
+				createdAccountIntegration, err := ts.v2Client1.CreateAccountIntegration(context.Background(), test.accountIntegrationInput.AccountID, *test.accountIntegrationInput)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -2239,11 +2239,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.Equal(&test.expectedAccountIntegration, createdAccountIntegration)
 
-					account, err := ts.v2Client1.GetAccountByID(testCtx, createdAccountIntegration.AccountID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), createdAccountIntegration.AccountID)
 					ts.NoError(err)
 					ts.Equal(test.expectedAccountIntegration, account.Integrations)
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, createdAccountIntegration.AccountID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), createdAccountIntegration.AccountID)
 					ts.NoError(err)
 					ts.Equal(test.expectedAccountIntegration, account.Integrations)
 				}
@@ -2274,7 +2274,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				updatedAccountIntegration, err := ts.v2Client1.UpdateAccountIntegration(testCtx, test.accountIntegrationInput.AccountID, test.accountIntegrationInput)
+				updatedAccountIntegration, err := ts.v2Client1.UpdateAccountIntegration(context.Background(), test.accountIntegrationInput.AccountID, test.accountIntegrationInput)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -2284,11 +2284,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.expected.AccountID = updatedAccountIntegration.AccountID
 					ts.Equal(test.expected, updatedAccountIntegration)
 
-					account, err := ts.v2Client1.GetAccountByID(testCtx, updatedAccountIntegration.AccountID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), updatedAccountIntegration.AccountID)
 					ts.NoError(err)
 					ts.Equal(test.expected.CovalentAPIKeyFree, account.Integrations.CovalentAPIKeyFree)
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, updatedAccountIntegration.AccountID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), updatedAccountIntegration.AccountID)
 					ts.NoError(err)
 					ts.Equal(test.expected.CovalentAPIKeyFree, account.Integrations.CovalentAPIKeyFree)
 				}
@@ -2326,15 +2326,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			<-time.After(50 * time.Millisecond)
 
 			// Ensure the Account exists in both clients
-			account, err := ts.v2Client1.GetAccountByID(testCtx, createdAccount.ID)
+			account, err := ts.v2Client1.GetAccountByID(context.Background(), createdAccount.ID)
 			ts.NoError(err)
 			ts.NotEmpty(account)
-			account, err = ts.v2Client2.GetAccountByID(testCtx, createdAccount.ID)
+			account, err = ts.v2Client2.GetAccountByID(context.Background(), createdAccount.ID)
 			ts.NoError(err)
 			ts.NotEmpty(account)
 
 			ts.Run(test.name, func() {
-				response, err := ts.v2Client1.DeleteAccount(testCtx, createdAccount.ID)
+				response, err := ts.v2Client1.DeleteAccount(context.Background(), createdAccount.ID)
 				ts.NoError(err)
 
 				if err == nil {
@@ -2343,11 +2343,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 
 					// Ensure the Account is deleted for both clients
-					account, err := ts.v2Client1.GetAccountByID(testCtx, createdAccount.ID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), createdAccount.ID)
 					ts.Equal(test.err, err)
 					ts.Nil(account)
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, createdAccount.ID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), createdAccount.ID)
 					ts.Equal(test.err, err)
 					ts.Nil(account)
 				}
@@ -2470,7 +2470,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				userIDResp, err := ts.v2Client1.WriteAccountUser(testCtx, test.createAccountUserInput, testdata.MockTimestamp)
+				userIDResp, err := ts.v2Client1.WriteAccountUser(context.Background(), test.createAccountUserInput, testdata.MockTimestamp)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -2484,16 +2484,16 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						test.expected.UserID = userIDResp["userID"]
 					}
 
-					account, err := ts.v2Client1.GetAccountByID(testCtx, accountID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.Users[test.expected.UserID])
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, accountID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.Users[test.expected.UserID])
 
 					// Clean up created account user
-					_, err = ts.v2Client1.RemoveAccountUser(testCtx, types.UpdateRemoveAccountUser{
+					_, err = ts.v2Client1.RemoveAccountUser(context.Background(), types.UpdateRemoveAccountUser{
 						AccountID:   test.createAccountUserInput.AccountID,
 						PortalAppID: test.createAccountUserInput.PortalAppID,
 						UserID:      test.expected.UserID,
@@ -2717,7 +2717,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.v2Client1.SetAccountUserRole(testCtx, test.updateAccountUserRole, test.testCreatedTime)
+				_, err := ts.v2Client1.SetAccountUserRole(context.Background(), test.updateAccountUserRole, test.testCreatedTime)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -2725,11 +2725,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					accountID := test.updateAccountUserRole.AccountID
 
-					account, err := ts.v2Client1.GetAccountByID(testCtx, accountID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(test.accountUsersAfterUpdate, account.Users)
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, accountID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(test.accountUsersAfterUpdate, account.Users)
 				}
@@ -2817,7 +2817,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.v2Client1.UpdateAcceptAccountUser(testCtx, test.acceptAccountUserInput, testdata.MockTimestamp)
+				_, err := ts.v2Client1.UpdateAcceptAccountUser(context.Background(), test.acceptAccountUserInput, testdata.MockTimestamp)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -2826,11 +2826,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					accountID := test.accountID
 					test.expected.AccountID = ""
 
-					account, err := ts.v2Client1.GetAccountByID(testCtx, accountID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.Users[test.expected.UserID])
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, accountID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.Users[test.expected.UserID])
 				}
@@ -2917,7 +2917,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				var userID types.UserID
 
 				if test.updateRemoveAccountUser.UserID == types.UserID("") {
-					userIDResp, err := ts.v2Client1.WriteAccountUser(testCtx, test.createAccountUserInput, testdata.MockTimestamp)
+					userIDResp, err := ts.v2Client1.WriteAccountUser(context.Background(), test.createAccountUserInput, testdata.MockTimestamp)
 					ts.NoError(err)
 
 					<-time.After(50 * time.Millisecond)
@@ -2926,22 +2926,22 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					userID = userIDResp["userID"]
 
 					test.updateRemoveAccountUser.UserID = userID
-					account, err := ts.v2Client1.GetAccountByID(testCtx, test.createAccountUserInput.AccountID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), test.createAccountUserInput.AccountID)
 					ts.NoError(err)
 					ts.Contains(account.Users, userID)
 				}
 
-				_, err := ts.v2Client1.RemoveAccountUser(testCtx, test.updateRemoveAccountUser)
+				_, err := ts.v2Client1.RemoveAccountUser(context.Background(), test.updateRemoveAccountUser)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					account, err := ts.v2Client1.GetAccountByID(testCtx, test.createAccountUserInput.AccountID)
+					account, err := ts.v2Client1.GetAccountByID(context.Background(), test.createAccountUserInput.AccountID)
 					ts.NoError(err)
 					ts.NotContains(account.Users, userID)
 
-					account, err = ts.v2Client2.GetAccountByID(testCtx, test.createAccountUserInput.AccountID)
+					account, err = ts.v2Client2.GetAccountByID(context.Background(), test.createAccountUserInput.AccountID)
 					ts.NoError(err)
 					ts.NotContains(account.Users, userID)
 				}
@@ -3008,7 +3008,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdUser, err := ts.v2Client1.CreateUser(testCtx, test.userInput)
+				createdUser, err := ts.v2Client1.CreateUser(context.Background(), test.userInput)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -3023,11 +3023,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					// If the user was created, it should have permissions
 					providerID := createdUser.User.AuthProviders[v2Types.AuthTypeAuth0Username].ProviderUserID
-					permission, err := ts.v2Client1.GetUserPermissionByUserID(testCtx, providerID)
+					permission, err := ts.v2Client1.GetUserPermissionByUserID(context.Background(), providerID)
 					ts.NoError(err)
 					ts.NotNil(permission)
 
-					permission, err = ts.v2Client2.GetUserPermissionByUserID(testCtx, providerID)
+					permission, err = ts.v2Client2.GetUserPermissionByUserID(context.Background(), providerID)
 					ts.NoError(err)
 					ts.NotNil(permission)
 				}
@@ -3064,23 +3064,23 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.v2Client1.DeleteUser(testCtx, test.userID)
+				_, err := ts.v2Client1.DeleteUser(context.Background(), test.userID)
 				ts.Equal(test.expectedErr, err)
 
 				if test.expectedErr == nil {
-					accounts, err := ts.v2Client1.GetAccountsByUser(testCtx, test.userID)
+					accounts, err := ts.v2Client1.GetAccountsByUser(context.Background(), test.userID)
 					ts.Error(err)
 					ts.Nil(accounts)
 
-					userPermissions, err := ts.v2Client1.GetUserPermissionByUserID(testCtx, test.providerUserID)
+					userPermissions, err := ts.v2Client1.GetUserPermissionByUserID(context.Background(), test.providerUserID)
 					ts.NoError(err)
 					ts.Empty(userPermissions)
 
-					accounts, err = ts.v2Client2.GetAccountsByUser(testCtx, test.userID)
+					accounts, err = ts.v2Client2.GetAccountsByUser(context.Background(), test.userID)
 					ts.Error(err)
 					ts.Nil(accounts)
 
-					userPermissions, err = ts.v2Client2.GetUserPermissionByUserID(testCtx, test.providerUserID)
+					userPermissions, err = ts.v2Client2.GetUserPermissionByUserID(context.Background(), test.providerUserID)
 					ts.NoError(err)
 					ts.Empty(userPermissions)
 				}
@@ -3135,17 +3135,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.v2Client1.WriteBlockedContract(testCtx, test.blockedContract)
+				_, err := ts.v2Client1.WriteBlockedContract(context.Background(), test.blockedContract)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					globalBlockedContracts, err := ts.v2Client1.GetBlockedContracts(testCtx)
+					globalBlockedContracts, err := ts.v2Client1.GetBlockedContracts(context.Background())
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 
-					globalBlockedContracts, err = ts.v2Client2.GetBlockedContracts(testCtx)
+					globalBlockedContracts, err = ts.v2Client2.GetBlockedContracts(context.Background())
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 				}
@@ -3258,17 +3258,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.v2Client1.RemoveBlockedContract(testCtx, test.blockedAddress)
+				_, err := ts.v2Client1.RemoveBlockedContract(context.Background(), test.blockedAddress)
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					globalBlockedContracts, err := ts.v2Client1.GetBlockedContracts(testCtx)
+					globalBlockedContracts, err := ts.v2Client1.GetBlockedContracts(context.Background())
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 
-					globalBlockedContracts, err = ts.v2Client2.GetBlockedContracts(testCtx)
+					globalBlockedContracts, err = ts.v2Client2.GetBlockedContracts(context.Background())
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 				}
@@ -3327,7 +3327,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdUser, err := ts.client1.CreatePortalUser(testCtx, test.userInput)
+				createdUser, err := ts.client1.CreatePortalUser(context.Background(), test.userInput)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
@@ -3342,11 +3342,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					// If the user was created, it should have permissions
 					providerID := createdUser.User.AuthProviders[v2Types.AuthTypeAuth0Username].ProviderUserID
-					permission, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerID))
+					permission, err := ts.client1.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(providerID))
 					ts.NoError(err)
 					ts.NotNil(permission)
 
-					permission, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerID))
+					permission, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(providerID))
 					ts.NoError(err)
 					ts.NotNil(permission)
 				}
@@ -3364,7 +3364,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}{
 			{
 				name:                   "Should create a single loadBalancer in the DB",
-				loadBalancer:           createLegacyLoadBalancer,
+				loadBalancer:           phdtestdata.CreateLegacyLoadBalancer,
 				userID:                 "user_1",
 				providerUserID:         "auth0|james_holden",
 				expectedCovalentAPIKey: "covalent_api_key_1",
@@ -3373,7 +3373,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdLB, err := ts.client1.CreateLoadBalancer(testCtx, *test.loadBalancer)
+				createdLB, err := ts.client1.CreateLoadBalancer(context.Background(), *test.loadBalancer)
 				ts.Equal(test.err, err)
 
 				test.loadBalancer.Integrations.CovalentAPIKeyFree = test.expectedCovalentAPIKey
@@ -3382,29 +3382,29 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				test.loadBalancer.UserID = test.userID
 				test.loadBalancer.Applications[0].ID = createdLB.Applications[0].ID
 				test.loadBalancer.Applications[0].UserID = test.userID
-				clearTimeFields(createdLB)
+				phdtestdata.ClearTimeFields(createdLB)
 
 				ts.Equal(test.loadBalancer, createdLB)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), createdLB.ID)
 					ts.Equal(test.err, err)
-					clearTimeFields(loadBalancer)
+					phdtestdata.ClearTimeFields(loadBalancer)
 					ts.Equal(test.loadBalancer, loadBalancer)
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), createdLB.ID)
 					ts.Equal(test.err, err)
-					clearTimeFields(loadBalancer)
+					phdtestdata.ClearTimeFields(loadBalancer)
 					ts.Equal(test.loadBalancer, loadBalancer)
 
 					// If the loadBalancer was created, it should have permissions
-					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
+					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
 					ts.Equal(test.err, err)
 					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
 
-					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
+					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
 					ts.Equal(test.err, err)
 					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
 				}
@@ -3561,25 +3561,25 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.client1.UpdateLoadBalancerUserRole(testCtx, test.loadBalancerID, test.update)
+				_, err := ts.client1.UpdateLoadBalancerUserRole(context.Background(), test.loadBalancerID, test.update)
 				ts.Equal(test.err, err)
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					if len(test.userLBPermissions) > 0 {
 						for providerUserID, userLBPermissions := range test.userLBPermissions {
-							permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerUserID))
+							permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(providerUserID))
 							ts.Equal(test.err, err)
 							ts.Equal(userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
-							permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(providerUserID))
+							permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(providerUserID))
 							ts.Equal(test.err, err)
 							ts.Equal(userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 						}
@@ -3604,7 +3604,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Name: "test_update_portal_app_123",
 					GatewaySettings: &v1Types.UpdateGatewaySettings{
 						SecretKey:            "test_90210ac4bdd3423e24877d1ff92",
-						SecretKeyRequired:    boolToPointer(false),
+						SecretKeyRequired:    phdtestdata.BoolToPointer(false),
 						WhitelistOrigins:     []string{"https://portalgun.io", "https://subdomain.example.com", "https://www.example.com"},
 						WhitelistBlockchains: []string{"0001", "0002", "003E", "0056"},
 						WhitelistUserAgents:  []string{"Brave", "Google Chrome", "Mozilla Firefox", "Netscape Navigator", "Safari"},
@@ -3621,7 +3621,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							{BlockchainID: "0056", Methods: []string{"GET", "POST"}},
 						},
 					},
-					NotificationSettings: &v1Types.UpdateNotificationSettings{SignedUp: boolToPointer(true), Quarter: boolToPointer(true), Half: boolToPointer(false), ThreeQuarters: boolToPointer(true), Full: boolToPointer(false)},
+					NotificationSettings: &v1Types.UpdateNotificationSettings{
+						SignedUp:      phdtestdata.BoolToPointer(true),
+						Quarter:       phdtestdata.BoolToPointer(true),
+						Half:          phdtestdata.BoolToPointer(false),
+						ThreeQuarters: phdtestdata.BoolToPointer(true),
+						Full:          phdtestdata.BoolToPointer(false),
+					},
 				},
 				applicationAfterUpdate: v1Types.Application{
 					Name: "test_update_portal_app_123",
@@ -3669,20 +3675,20 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				createdLB, err := ts.client1.UpdateLoadBalancer(testCtx, test.loadBalancerID, test.applicationUpdate)
+				createdLB, err := ts.client1.UpdateLoadBalancer(context.Background(), test.loadBalancerID, test.applicationUpdate)
 				ts.Equal(test.err, err)
 
 				if err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, createdLB.ID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), createdLB.ID)
 					application := loadBalancer.Applications[0]
 					ts.NoError(err)
 					ts.Equal(test.applicationAfterUpdate.Name, application.Name)
 					ts.Equal(test.applicationAfterUpdate.GatewaySettings, application.GatewaySettings)
 					ts.Equal(test.applicationAfterUpdate.NotificationSettings, application.NotificationSettings)
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, createdLB.ID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), createdLB.ID)
 					application = loadBalancer.Applications[0]
 					ts.NoError(err)
 					ts.Equal(test.applicationAfterUpdate.Name, application.Name)
@@ -3713,13 +3719,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.client1.UpdateAppFirstDateSurpassed(testCtx, test.update)
+				_, err := ts.client1.UpdateAppFirstDateSurpassed(context.Background(), test.update)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 					for _, appID := range test.update.ApplicationIDs {
-						applications, err := ts.client1.GetApplications(testCtx)
+						applications, err := ts.client1.GetApplications(context.Background())
 						ts.NoError(err)
 						exists := false
 						for _, application := range applications {
@@ -3730,7 +3736,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						}
 						ts.True(exists)
 
-						applications, err = ts.client2.GetApplications(testCtx)
+						applications, err = ts.client2.GetApplications(context.Background())
 						ts.NoError(err)
 						exists = false
 						for _, application := range applications {
@@ -3791,31 +3797,31 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.client1.AcceptLoadBalancerUser(testCtx, test.loadBalancerID, test.providerUserID)
+				_, err := ts.client1.AcceptLoadBalancerUser(context.Background(), test.loadBalancerID, test.providerUserID)
 				ts.Equal(test.err, err)
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					if test.providerUserID != "" {
 						// user should have been added to the user permissions in the cache
-						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
+						permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
 						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
-						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.providerUserID))
+						permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
 						ts.Equal(test.err, err)
 						ts.Equal(test.userLBPermissions, permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(test.loadBalancerID)])
 
 						exists := false
-						loadBalancers, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
+						loadBalancers, err := ts.client1.GetLoadBalancersByUserID(context.Background(), test.providerUserID, nil)
 						ts.Equal(test.err, err)
 						for _, lb := range loadBalancers {
 							if lb.ID == test.loadBalancerID {
@@ -3826,7 +3832,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.True(exists)
 
 						exists = false
-						loadBalancers, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
+						loadBalancers, err = ts.client2.GetLoadBalancersByUserID(context.Background(), test.providerUserID, nil)
 						ts.Equal(test.err, err)
 						for _, lb := range loadBalancers {
 							if lb.ID == test.loadBalancerID {
@@ -3838,7 +3844,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 						// user should be removed from pending lb list
 						removed := true
-						pendingLoadBalancers, _ := ts.client1.GetPendingLoadBalancersByUserID(testCtx, test.providerUserID)
+						pendingLoadBalancers, _ := ts.client1.GetPendingLoadBalancersByUserID(context.Background(), test.providerUserID)
 						for _, lb := range pendingLoadBalancers {
 							if lb.ID == test.loadBalancerID {
 								removed = false
@@ -3848,7 +3854,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.True(removed)
 
 						removed = true
-						pendingLoadBalancers, _ = ts.client2.GetPendingLoadBalancersByUserID(testCtx, test.providerUserID)
+						pendingLoadBalancers, _ = ts.client2.GetPendingLoadBalancersByUserID(context.Background(), test.providerUserID)
 						for _, lb := range pendingLoadBalancers {
 							if lb.ID == test.loadBalancerID {
 								removed = false
@@ -3910,7 +3916,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				updatedLB, err := ts.client1.CreateLoadBalancerUser(testCtx, test.loadBalancerID, test.user)
+				updatedLB, err := ts.client1.CreateLoadBalancerUser(context.Background(), test.loadBalancerID, test.user)
 				ts.Equal(test.err, err)
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
@@ -3926,15 +3932,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							break
 						}
 					}
-					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(updatedLB.Users))
+					ts.Equal(test.loadBalancerUsers, phdtestdata.UserAccessSliceToMap(updatedLB.Users))
 
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, phdtestdata.UserAccessSliceToMap(loadBalancer.Users))
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
-					ts.Equal(test.loadBalancerUsers, userAccessSliceToMap(loadBalancer.Users))
+					ts.Equal(test.loadBalancerUsers, phdtestdata.UserAccessSliceToMap(loadBalancer.Users))
 				}
 			})
 		}
@@ -3984,33 +3990,33 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.client1.DeleteLoadBalancerUser(testCtx, test.loadBalancerID, test.userID)
+				_, err := ts.client1.DeleteLoadBalancerUser(context.Background(), test.loadBalancerID, test.userID)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.loadBalancerUsers, loadBalancer.Users)
 
 					// user should have been removed from the user permissions in the cache
-					_, err = ts.client1.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
+					_, err = ts.client1.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.userID))
 					ts.Equal(test.permissionsFetchError, err)
 
-					_, err = ts.client2.GetUserPermissionsByUserID(testCtx, v1Types.UserID(test.userID))
+					_, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.userID))
 					ts.Equal(test.permissionsFetchError, err)
 
 					// user's LB should have been removed from the user's LBs map in the cache
-					lbs, err := ts.client1.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
+					lbs, err := ts.client1.GetLoadBalancersByUserID(context.Background(), test.providerUserID, nil)
 					ts.NoError(err)
 					ts.Len(lbs, test.lbsAfterDelete)
 
-					lbs, err = ts.client2.GetLoadBalancersByUserID(testCtx, test.providerUserID, nil)
+					lbs, err = ts.client2.GetLoadBalancersByUserID(context.Background(), test.providerUserID, nil)
 					ts.NoError(err)
 					ts.Len(lbs, test.lbsAfterDelete)
 				}
@@ -4039,17 +4045,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.client1.RemoveLoadBalancer(testCtx, test.loadBalancerID)
+				_, err := ts.client1.RemoveLoadBalancer(context.Background(), test.loadBalancerID)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal("Response not OK. 404 Not Found: portal app not found for load balancer ID test_app_3", err.Error())
 					ts.Nil(loadBalancer)
 
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(testCtx, test.loadBalancerID)
+					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
 					ts.Equal("Response not OK. 404 Not Found: portal app not found for load balancer ID test_app_3", err.Error())
 					ts.Nil(loadBalancer)
 				}
@@ -4080,13 +4086,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				_, err := ts.client1.RemoveApplication(testCtx, test.applicationID)
+				_, err := ts.client1.RemoveApplication(context.Background(), test.applicationID)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					applications, err := ts.client1.GetApplications(testCtx)
+					applications, err := ts.client1.GetApplications(context.Background())
 					ts.NoError(err)
 					exists := false
 					for _, application := range applications {
@@ -4096,7 +4102,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					}
 					ts.False(exists)
 
-					applications, err = ts.client2.GetApplications(testCtx)
+					applications, err = ts.client2.GetApplications(context.Background())
 					ts.NoError(err)
 					exists = false
 					for _, application := range applications {
@@ -4111,655 +4117,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	})
 
 }
-
-// chainsToMap takes a slice of pointers to Chains and converts it into a map
-// with the Chain ID as the key and the Chain as the value.
-func chainsToMap(chains []*v2Types.Chain) map[v2Types.RelayChainID]*v2Types.Chain {
-	chainMap := make(map[v2Types.RelayChainID]*v2Types.Chain)
-	for _, chain := range chains {
-		chainMap[chain.ID] = chain
-	}
-	return chainMap
-}
-
-func portalAppsToMap(apps []*v2Types.PortalApp) map[v2Types.PortalAppID]*v2Types.PortalApp {
-	result := make(map[v2Types.PortalAppID]*v2Types.PortalApp)
-	for _, app := range apps {
-		result[app.ID] = app
-	}
-	return result
-}
-
-func portalAppLitesToMap(portalAppLites []*types.PortalAppLite) map[types.PortalAppID]*types.PortalAppLite {
-	portalAppLitesMap := make(map[types.PortalAppID]*types.PortalAppLite)
-	for i := range portalAppLites {
-		strKeys := make([]string, len(portalAppLites[i].PublicKeys))
-		for j, key := range portalAppLites[i].PublicKeys {
-			strKeys[j] = string(key)
-		}
-
-		sort.Strings(strKeys)
-
-		for j, key := range strKeys {
-			portalAppLites[i].PublicKeys[j] = types.PortalAppPublicKey(key)
-		}
-
-		portalAppLitesMap[portalAppLites[i].ID] = portalAppLites[i]
-	}
-	return portalAppLitesMap
-}
-
-func convertAccountsToMap(accounts []*v2Types.Account) map[v2Types.AccountID]*v2Types.Account {
-	accountMap := make(map[v2Types.AccountID]*v2Types.Account)
-	for _, account := range accounts {
-		accountMap[account.ID] = account
-	}
-	return accountMap
-}
-
-func convertPlansToMap(plans []types.Plan) map[types.PayPlanType]types.Plan {
-	planMap := make(map[types.PayPlanType]types.Plan)
-	for _, plan := range plans {
-		planMap[plan.Type] = plan
-	}
-	return planMap
-}
-
-func derefPlansMap(plans map[types.PayPlanType]*types.Plan) map[types.PayPlanType]types.Plan {
-	planMap := make(map[types.PayPlanType]types.Plan)
-	for _, plan := range plans {
-		planMap[plan.Type] = *plan
-	}
-	return planMap
-}
-
-func blockchainsToMap(blockchains []*v1Types.Blockchain) map[string]*v1Types.Blockchain {
-	expectedMap := make(map[string]*v1Types.Blockchain)
-	for _, b := range blockchains {
-		expectedMap[b.ID] = b
-	}
-	return expectedMap
-}
-
-func applicationsToMap(applications []*v1Types.Application) map[string]*v1Types.Application {
-	expectedMap := make(map[string]*v1Types.Application)
-	for _, a := range applications {
-		expectedMap[a.ID] = a
-	}
-	return expectedMap
-}
-
-func loadBalancersToMap(loadBalancers []*v1Types.LoadBalancer) map[string]*v1Types.LoadBalancer {
-	lbMap := make(map[string]*v1Types.LoadBalancer)
-	for _, lb := range loadBalancers {
-		sortUsersByRole(lb.Users)
-
-		// Sort Applications by ID
-		sort.Slice(lb.Applications, func(i, j int) bool {
-			return lb.Applications[i].ID < lb.Applications[j].ID
-		})
-
-		lbMap[lb.ID] = lb
-	}
-	return lbMap
-}
-
-func sortUsersByRole(users []v1Types.UserAccess) {
-	roleWeight := map[v1Types.RoleName]int{v1Types.RoleOwner: 0, v1Types.RoleAdmin: 1, v1Types.RoleMember: 2}
-
-	sort.Slice(users, func(i, j int) bool {
-		if roleWeight[users[i].RoleName] != roleWeight[users[j].RoleName] {
-			return roleWeight[users[i].RoleName] < roleWeight[users[j].RoleName]
-		}
-		return users[i].UserID < users[j].UserID
-	})
-}
-
-func payPlansToMap(payPlans []*v1Types.PayPlan) map[string]*v1Types.PayPlan {
-	payPlansMap := make(map[string]*v1Types.PayPlan)
-	for _, payPlan := range payPlans {
-		payPlansMap[string(payPlan.Type)] = payPlan
-	}
-	return payPlansMap
-}
-
-func userAccessSliceToMap(users []v1Types.UserAccess) map[string]v1Types.UserAccess {
-	userMap := make(map[string]v1Types.UserAccess)
-	for _, user := range users {
-		userMap[user.UserID] = user
-	}
-	return userMap
-}
-
-func clearTimeFields(lb *v1Types.LoadBalancer) {
-	lb.CreatedAt = time.Time{}
-	lb.UpdatedAt = time.Time{}
-	if len(lb.Applications) > 0 {
-		lb.Applications[0].CreatedAt = time.Time{}
-		lb.Applications[0].UpdatedAt = time.Time{}
-	}
-}
-
-func boolToPointer(value bool) *bool {
-	return &value
-}
-
-var (
-	mockTimestamp = time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC)
-
-	expectedLegacyApplications = map[string]*v1Types.Application{
-		"test_protocol_app_1": {
-			ID:     "test_protocol_app_1",
-			UserID: "user_1",
-			Name:   "pokt_app_123",
-			GatewayAAT: v1Types.GatewayAAT{
-				Address:              "test_34715cae753e67c75fbb340442e7de8e",
-				ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
-				ApplicationSignature: "test_1dc39a2e5a84a35bf030969a0b3231f7",
-				ClientPublicKey:      "test_89a3af6a587aec02cfade6f5000424c2",
-				PrivateKey:           "",
-				Version:              "0.0.1",
-			},
-			GatewaySettings: v1Types.GatewaySettings{
-				SecretKey:           "test_40f482d91a5ef2300ebb4e2308c",
-				SecretKeyRequired:   true,
-				WhitelistOrigins:    []string{"https://test.com"},
-				WhitelistUserAgents: []string{"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-				WhitelistContracts: []v1Types.WhitelistContracts{
-					{BlockchainID: "0001", Contracts: []string{"0x1234567890abcdef"}},
-				},
-				WhitelistMethods: []v1Types.WhitelistMethods{
-					{BlockchainID: "0001", Methods: []string{"GET"}},
-				},
-				WhitelistBlockchains: []string{"0053"},
-			},
-			Limit: v1Types.AppLimit{
-				PayPlan: v1Types.PayPlan{
-					Type:  v1Types.FreetierV0,
-					Limit: 250_000,
-				},
-			},
-			NotificationSettings: v1Types.NotificationSettings{
-				Quarter:       true,
-				ThreeQuarters: true,
-				Full:          true,
-			},
-			FirstDateSurpassed: mockTimestamp,
-			CreatedAt:          mockTimestamp,
-			UpdatedAt:          mockTimestamp,
-		},
-		"test_protocol_app_2": {
-			ID:     "test_protocol_app_2",
-			UserID: "user_3",
-			Name:   "pokt_app_456",
-			GatewayAAT: v1Types.GatewayAAT{
-				Address:              "test_8237c72345f12d1b1a8b64a1a7f66fa4",
-				ApplicationPublicKey: "test_8237c72345f12d1b1a8b64a1a7f66fa4",
-				ApplicationSignature: "test_f48d33b30ddaf60a1e5bb50d2ba8da5a",
-				ClientPublicKey:      "test_04c71d90a92f40416b6f1d7d8af17e02",
-				PrivateKey:           "",
-				Version:              "0.0.1",
-			},
-			Limit: v1Types.AppLimit{
-				PayPlan: v1Types.PayPlan{
-					Type:  v1Types.PayAsYouGoV0,
-					Limit: 0,
-				},
-			},
-			GatewaySettings: v1Types.GatewaySettings{
-				SecretKey:           "test_9c9e3b193cfba5348f93bb2f3e3fb794",
-				WhitelistOrigins:    []string{"https://example.com"},
-				WhitelistUserAgents: []string{"Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"},
-				WhitelistContracts: []v1Types.WhitelistContracts{
-					{BlockchainID: "0064", Contracts: []string{"0x0987654321abcdef"}},
-				},
-				WhitelistMethods: []v1Types.WhitelistMethods{
-					{BlockchainID: "0064", Methods: []string{"POST"}},
-				},
-				WhitelistBlockchains: []string{"0021"},
-			},
-			NotificationSettings: v1Types.NotificationSettings{
-				Half: true,
-				Full: true,
-			},
-			FirstDateSurpassed: mockTimestamp,
-			CreatedAt:          mockTimestamp,
-			UpdatedAt:          mockTimestamp,
-		},
-		"test_protocol_app_3": {
-			ID:     "test_protocol_app_3",
-			UserID: "user_5",
-			Name:   "pokt_app_789",
-			GatewayAAT: v1Types.GatewayAAT{
-				Address:              "test_b5e07928fc80083c13ad0201b81bae9b",
-				ApplicationPublicKey: "test_f608500e4fe3e09014fe2411b4a560b5",
-				ApplicationSignature: "test_c3cd8be16ba32e24dd49fdb0247fc9b8",
-				ClientPublicKey:      "test_328a9cf1b35085eeaa669aa858f6fba9",
-				PrivateKey:           "",
-				Version:              "0.0.1",
-			},
-			Limit: v1Types.AppLimit{
-				PayPlan: v1Types.PayPlan{
-					Type:  v1Types.Enterprise,
-					Limit: 0,
-				},
-				CustomLimit: 4_200_000,
-			},
-			GatewaySettings: v1Types.GatewaySettings{
-				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
-			},
-			FirstDateSurpassed: mockTimestamp,
-			CreatedAt:          mockTimestamp,
-			UpdatedAt:          mockTimestamp,
-		},
-		"test_protocol_app_4": {
-			ID:     "test_protocol_app_4",
-			UserID: "user_5",
-			Name:   "pokt_app_789",
-			GatewayAAT: v1Types.GatewayAAT{
-				Address:              "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
-				ApplicationPublicKey: "test_f6a5d8690ecb669865bd752b7796a920",
-				ApplicationSignature: "test_cf05cf9bb26111c548e88fb6157af708",
-				ClientPublicKey:      "test_6ee5ea553408f0895923fd1569dc5072",
-				PrivateKey:           "",
-				Version:              "0.0.1",
-			},
-			Limit: v1Types.AppLimit{
-				PayPlan: v1Types.PayPlan{
-					Type:  v1Types.Enterprise,
-					Limit: 0,
-				},
-				CustomLimit: 4200000,
-			},
-			GatewaySettings: v1Types.GatewaySettings{
-				SecretKey: "test_9f48b13e2bc5fd31ab367841f11495c1",
-			},
-			FirstDateSurpassed: mockTimestamp,
-			CreatedAt:          mockTimestamp,
-			UpdatedAt:          mockTimestamp,
-		},
-		"test_gigastake_app_1": {
-			ID:   "test_gigastake_app_1",
-			Name: "pokt_gigastake",
-			GatewayAAT: v1Types.GatewayAAT{
-				Address:              "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
-				ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
-				ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
-				ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
-				PrivateKey:           "",
-				Version:              "0.0.1",
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"test_gigastake_app_2": {
-			ID:   "test_gigastake_app_2",
-			Name: "optimism_gigastake",
-			GatewayAAT: v1Types.GatewayAAT{
-				Address:              "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
-				ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
-				ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
-				ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
-				PrivateKey:           "",
-				Version:              "0.0.1",
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"test_gigastake_app_3": {
-			ID:   "test_gigastake_app_3",
-			Name: "harmony_gigastake",
-			GatewayAAT: v1Types.GatewayAAT{
-				Address:              "test_e570c841d5cd4f6197e0428ed7c517fd",
-				ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
-				ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
-				ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
-				PrivateKey:           "",
-				Version:              "0.0.1",
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-	}
-
-	expectedLegacyLoadBalancers = map[string]*v1Types.LoadBalancer{
-		"test_app_1": {
-			ID:                "test_app_1",
-			AccountID:         "account_1",
-			Name:              "pokt_app_123",
-			UserID:            "user_1",
-			GigastakeRedirect: true,
-			RequestTimeout:    5_000,
-			Applications: []*v1Types.Application{
-				expectedLegacyApplications["test_protocol_app_1"],
-			},
-			Users: []v1Types.UserAccess{
-				{
-					UserID:   "user_1",
-					RoleName: "OWNER",
-					Email:    "james.holden123@test.com",
-					Accepted: true,
-				},
-				{
-					UserID:   "user_2",
-					RoleName: "ADMIN",
-					Email:    "paul.atreides456@test.com",
-					Accepted: true,
-				},
-				{
-					UserID:   "user_8",
-					RoleName: "ADMIN",
-					Email:    "rick.deckard456@test.com",
-					Accepted: false,
-				},
-			},
-			Integrations: v1Types.AccountIntegrations{
-				CovalentAPIKeyFree: "covalent_api_key_1",
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"test_app_2": {
-			ID:                "test_app_2",
-			AccountID:         "account_2",
-			Name:              "pokt_app_456",
-			UserID:            "user_3",
-			GigastakeRedirect: true,
-			RequestTimeout:    10_000,
-			Applications: []*v1Types.Application{
-				expectedLegacyApplications["test_protocol_app_2"],
-			},
-			Users: []v1Types.UserAccess{
-				{
-					UserID:   "user_3",
-					RoleName: "OWNER",
-					Email:    "ellen.ripley789@test.com",
-					Accepted: true,
-				},
-				{
-					UserID:   "user_2",
-					RoleName: "MEMBER",
-					Email:    "paul.atreides456@test.com",
-					Accepted: true,
-				},
-				{
-					UserID:   "user_4",
-					RoleName: "MEMBER",
-					Email:    "ulfric.stormcloak123@test.com",
-					Accepted: true,
-				},
-				{
-					UserID:   "user_9",
-					RoleName: "MEMBER",
-					Email:    "tyrion.lannister789@test.com",
-					Accepted: false,
-				},
-			},
-			Integrations: v1Types.AccountIntegrations{
-				CovalentAPIKeyFree: "covalent_api_key_2",
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"test_app_3": {
-			ID:                "test_app_3",
-			AccountID:         "account_3",
-			Name:              "pokt_app_789",
-			UserID:            "user_5",
-			GigastakeRedirect: true,
-			RequestTimeout:    10_000,
-			Applications: []*v1Types.Application{
-				expectedLegacyApplications["test_protocol_app_3"],
-				expectedLegacyApplications["test_protocol_app_4"],
-			},
-			Users: []v1Types.UserAccess{
-				{
-					UserID:   "user_5",
-					RoleName: "OWNER",
-					Email:    "chrisjen.avasarala1@test.com",
-					Accepted: true,
-				},
-				{
-					UserID:   "user_6",
-					RoleName: "ADMIN",
-					Email:    "amos.burton789@test.com",
-					Accepted: true,
-				},
-				{
-					UserID:   "user_10",
-					RoleName: "MEMBER",
-					Email:    "daenerys.targaryen123@test.com",
-					Accepted: false,
-				},
-				{
-					UserID:   "user_7",
-					RoleName: "MEMBER",
-					Email:    "frodo.baggins123@test.com",
-					Accepted: true,
-				},
-			},
-			Integrations: v1Types.AccountIntegrations{
-				CovalentAPIKeyFree: "covalent_api_key_3",
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"0001-POKT-pokt-mainnet": {
-			ID:        "0001-POKT-pokt-mainnet",
-			Gigastake: true,
-			Applications: []*v1Types.Application{
-				{
-					ID:   "test_gigastake_app_1",
-					Name: "pokt_gigastake",
-					GatewayAAT: v1Types.GatewayAAT{
-						Address:              "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
-						ApplicationPublicKey: "test_37a0e8437f5149dc98a9a5b207efc2d0",
-						ApplicationSignature: "test_f22651fb566346fca30b605e5f46e3ca",
-						ClientPublicKey:      "test_65c29f0cc82e418b81a528a0c0682a9f",
-						PrivateKey:           "",
-						Version:              "0.0.1",
-					},
-					CreatedAt: mockTimestamp,
-					UpdatedAt: mockTimestamp,
-				},
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"0053-OP-optimism-mainnet": {
-			ID:        "0053-OP-optimism-mainnet",
-			Gigastake: true,
-			Applications: []*v1Types.Application{
-				{
-					ID:   "test_gigastake_app_2",
-					Name: "optimism_gigastake",
-					GatewayAAT: v1Types.GatewayAAT{
-						Address:              "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
-						ApplicationPublicKey: "test_a7e28f8d716541a0a332a5dc6b7e4e6e",
-						ApplicationSignature: "test_52e991c26da841bc882ad3a3ee9ee964",
-						ClientPublicKey:      "test_ba4e53dada8f4f939048e56dc8f88f37",
-						PrivateKey:           "",
-						Version:              "0.0.1",
-					},
-					CreatedAt: mockTimestamp,
-					UpdatedAt: mockTimestamp,
-				},
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"0040-HMY-harmony-0": {
-			ID:        "0040-HMY-harmony-0",
-			Gigastake: true,
-			Applications: []*v1Types.Application{
-				{
-					ID:   "test_gigastake_app_3",
-					Name: "harmony_gigastake",
-					GatewayAAT: v1Types.GatewayAAT{
-						Address:              "test_e570c841d5cd4f6197e0428ed7c517fd",
-						ApplicationPublicKey: "test_4f805bbbf96c4a649efc3f4f95616f2e",
-						ApplicationSignature: "test_01eac46efc9242a2be73879f1d09f1dc",
-						ClientPublicKey:      "test_789f9d6adcc846f1a079bf68237b5f5c",
-						PrivateKey:           "",
-						Version:              "0.0.1",
-					},
-					CreatedAt: mockTimestamp,
-					UpdatedAt: mockTimestamp,
-				},
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-	}
-
-	expectedLegacyPayPlans = map[string]*v1Types.PayPlan{
-		"basic_plan":       {Type: "basic_plan", Limit: 1_000},
-		"developer_plan":   {Type: "developer_plan", Limit: 100},
-		"enterprise_plan":  {Type: "enterprise_plan", Limit: 10_000},
-		"pro_plan":         {Type: "pro_plan", Limit: 5_000},
-		"startup_plan":     {Type: "startup_plan", Limit: 500},
-		"ENTERPRISE":       {Type: "ENTERPRISE", Limit: 0},
-		"FREETIER_V0":      {Type: "FREETIER_V0", Limit: 250_000},
-		"PAY_AS_YOU_GO_V0": {Type: "PAY_AS_YOU_GO_V0", Limit: 0},
-		"TEST_PLAN_10K":    {Type: "TEST_PLAN_10K", Limit: 10_000},
-		"TEST_PLAN_90K":    {Type: "TEST_PLAN_90K", Limit: 90_000},
-		"TEST_PLAN_V0":     {Type: "TEST_PLAN_V0", Limit: 0},
-	}
-
-	expectedLegacyBlockchains = map[string]*v1Types.Blockchain{
-		"0001": {
-			ID:                "0001",
-			Altruist:          "https://test_pocket:auth123456@altruist-0001.com:1234", // pragma: allowlist secret
-			Blockchain:        "pokt-mainnet",
-			Description:       "Pocket Network Mainnet",
-			EnforceResult:     "JSON",
-			Path:              "/v1/query/height",
-			Ticker:            "POKT",
-			BlockchainAliases: []string{"pokt-mainnet"},
-			Active:            true,
-			Redirects: []v1Types.Redirect{
-				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "0001-POKT-pokt-mainnet"},
-			},
-			SyncCheckOptions: v1Types.SyncCheckOptions{
-				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
-				ResultKey: "result.sync_info", Allowance: 1,
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"0021": {
-			ID:                "0021",
-			Altruist:          "https://test_pocket:auth123456@altruist-0021.com:1234", // pragma: allowlist secret
-			Blockchain:        "eth-mainnet",
-			ChainID:           "1",
-			ChainIDCheck:      "{\"method\":\"eth_chainId\",\"id\":1,\"jsonrpc\":\"2.0\"}",
-			Description:       "Ethereum Mainnet",
-			EnforceResult:     "JSON",
-			Ticker:            "ETH",
-			BlockchainAliases: []string{"eth-mainnet"},
-			LogLimitBlocks:    100000,
-			Active:            true,
-			Redirects: []v1Types.Redirect{
-				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "0021-ETH-eth-mainnet"},
-			},
-			SyncCheckOptions: v1Types.SyncCheckOptions{
-				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
-				ResultKey: "result", Allowance: 5,
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"0040": {
-			ID:                "0040",
-			Altruist:          "https://test_pocket:auth123456@altruist-0040.com:1234", // pragma: allowlist secret
-			Blockchain:        "harmony-0",
-			Description:       "Harmony Shard 0",
-			EnforceResult:     "JSON",
-			Ticker:            "HMY",
-			BlockchainAliases: []string{"harmony-0"},
-			Active:            true,
-			Redirects: []v1Types.Redirect{
-				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "0040-HMY-harmony-0"},
-			},
-			SyncCheckOptions: v1Types.SyncCheckOptions{
-				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
-				ResultKey: "result",
-				Allowance: 8,
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"0053": {
-			ID:                "0053",
-			Altruist:          "https://test_pocket:auth123456@altruist-0053.com:1234", // pragma: allowlist secret
-			Blockchain:        "optimism-mainnet",
-			Description:       "Optimism Mainnet",
-			EnforceResult:     "JSON",
-			Ticker:            "OP",
-			BlockchainAliases: []string{"optimism-mainnet"},
-			LogLimitBlocks:    100000,
-			Active:            true,
-			Redirects: []v1Types.Redirect{
-				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "0053-OP-optimism-mainnet"},
-			},
-			SyncCheckOptions: v1Types.SyncCheckOptions{
-				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
-				ResultKey: "result",
-				Allowance: 2,
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-		"0064": {
-			ID:             "0064",
-			Altruist:       "https://test_pocket:auth123456@altruist-0064.com:1234", // pragma: allowlist secret
-			Blockchain:     "sui-testnet",
-			Description:    "Sui Testnet",
-			EnforceResult:  "JSON",
-			Ticker:         "SUI-TESTNET",
-			LogLimitBlocks: 100000,
-			RequestTimeout: 60000,
-			SyncCheckOptions: v1Types.SyncCheckOptions{
-				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"sui_blockNumber\",\"params\":[]}",
-				ResultKey: "result",
-				Allowance: 7,
-			},
-			CreatedAt: mockTimestamp,
-			UpdatedAt: mockTimestamp,
-		},
-	}
-
-	createLegacyLoadBalancer = &v1Types.LoadBalancer{
-		Name:              "new_pokt_app_777",
-		UserID:            "auth0|james_holden",
-		ApplicationIDs:    []string(nil),
-		RequestTimeout:    5000,
-		GigastakeRedirect: true,
-		Applications: []*v1Types.Application{
-			{
-				UserID: "auth0|james_holden",
-				Name:   "new_pokt_app_777",
-				GatewayAAT: v1Types.GatewayAAT{
-					Address:              "test_34715cae753e67c75fbb340442e7de8e",
-					ApplicationPublicKey: "test_34715cae753e67c75fbb340442e7de8e",
-					ApplicationSignature: "test_1dc39a2e5a84a35bf030969a0b3231f7",
-					ClientPublicKey:      "test_89a3af6a587aec02cfade6f5000424c2",
-					PrivateKey:           "test_11b8d394ca331d7c7a71ca1896d630f6",
-					Version:              "0.0.1",
-				},
-				GatewaySettings:      v1Types.GatewaySettings{SecretKey: "test_40f482d91a5ef2300ebb4e2308c"},
-				Limit:                v1Types.AppLimit{PayPlan: v1Types.PayPlan{Type: "FREETIER_V0", Limit: 250_000}, CustomLimit: 0},
-				NotificationSettings: v1Types.NotificationSettings{SignedUp: true, Quarter: false, Half: false, ThreeQuarters: true, Full: true},
-			},
-		},
-		Users: []v1Types.UserAccess{
-			{UserID: "user_1", RoleName: v1Types.RoleOwner, Email: "james.holden123@test.com", Accepted: true},
-		},
-		AccountID: "account_1",
-	}
-
-	testCtx = context.Background()
-)
 
 /* ---------- Test Suite Util Interfaces ---------- */
 type phdE2EReadTestSuite struct {

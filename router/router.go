@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -261,7 +262,20 @@ func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getAllChainByID method called")
 
-	chains := rt.cache.GetChains(cache.Options{})
+	includeInactiveParam := r.URL.Query().Get("include_inactive")
+	includeInactive := false
+	if includeInactiveParam != "" {
+		var err error
+		includeInactive, err = strconv.ParseBool(includeInactiveParam)
+		if err != nil {
+			err = fmt.Errorf("getBlockchains failed. include_inactive param should be a boolean: %w", err)
+			rt.logError(err)
+			jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+			return
+		}
+	}
+
+	chains := rt.cache.GetChains(cache.Options{IncludeInactiveChains: includeInactive})
 	if len(chains) == 0 {
 		rt.logError(fmt.Errorf("getAllChains failed: %w", errNoChainsFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoChainsFound.Error())
@@ -1136,7 +1150,20 @@ func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getBlockchains method called")
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyBlockchains(r.Context()))
+	includeInactiveParam := r.URL.Query().Get("include_inactive")
+	includeInactive := false
+	if includeInactiveParam != "" {
+		var err error
+		includeInactive, err = strconv.ParseBool(includeInactiveParam)
+		if err != nil {
+			err = fmt.Errorf("getBlockchains failed. include_inactive param should be a boolean: %w", err)
+			rt.logError(err)
+			jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+			return
+		}
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyBlockchains(r.Context(), includeInactive))
 }
 
 func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {

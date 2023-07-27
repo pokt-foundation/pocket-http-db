@@ -66,7 +66,8 @@ type (
 
 	Options struct {
 		IncludeDeleted,
-		ExcludeChainGigastakeApps bool
+		ExcludeChainGigastakeApps,
+		IncludeInactiveChains bool
 	}
 
 	userData struct {
@@ -1015,13 +1016,15 @@ func (c *Cache) GetChains(options Options) []types.Chain {
 
 	for _, chain := range c.chains {
 		if options.IncludeDeleted || !chain.Deleted {
-			chainToReturn := *chain
+			if options.IncludeInactiveChains || chain.Active {
+				chainToReturn := *chain
 
-			if options.ExcludeChainGigastakeApps {
-				chainToReturn = chainToReturn.ClearGigastakeApps()
+				if options.ExcludeChainGigastakeApps {
+					chainToReturn = chainToReturn.ClearGigastakeApps()
+				}
+
+				chainsToReturn = append(chainsToReturn, chainToReturn)
 			}
-
-			chainsToReturn = append(chainsToReturn, chainToReturn)
 		}
 	}
 

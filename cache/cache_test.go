@@ -3,7 +3,6 @@ package cache
 import (
 	"context"
 	"errors"
-	"sort"
 	"testing"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
 )
@@ -63,7 +63,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all accounts",
-			actual:   accountsToMap(cache.GetAccounts(Options{})),
+			actual:   phdtestdata.AccountsToMap(cache.GetAccounts(Options{})),
 			expected: testdata.Accounts,
 		},
 		{
@@ -73,11 +73,11 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:   "Should return accounts by user ID",
-			actual: accountsToMap(cache.GetAccountsByUserID("user_4")),
+			actual: phdtestdata.AccountsToMap(cache.GetAccountsByUserID("user_4")),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": modifiedAccountToTest()["account_2"],
-				"account_4": modifiedAccountToTest()["account_4"],
-				"account_5": modifiedAccountToTest()["account_5"],
+				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
+				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
+				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
 			},
 		},
 		{
@@ -87,12 +87,12 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all portal apps",
-			actual:   portalAppsToMap(cache.GetPortalApps(Options{})),
+			actual:   phdtestdata.PortalAppsToMap(cache.GetPortalApps(Options{})),
 			expected: testdata.PortalApps,
 		},
 		{
 			name:     "Should return all portal app lites for middleware",
-			actual:   portalAppLitesToMap(cache.GetPortalAppsForMiddleware()),
+			actual:   phdtestdata.PortalAppLitesToMap(cache.GetPortalAppsForMiddleware()),
 			expected: testdata.PortalAppLites,
 		},
 		{
@@ -102,7 +102,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all gigastake apps",
-			actual:   gigastakeAppsToMap(cache.GetGigastakeApps(Options{})),
+			actual:   phdtestdata.GigastakeAppsToMap(cache.GetGigastakeApps(Options{})),
 			expected: testdata.GigastakeApps,
 		},
 		{
@@ -111,8 +111,13 @@ func Test_SetCache(t *testing.T) {
 			expected: *testdata.Chains["0001"],
 		},
 		{
-			name:     "Should return all chains",
-			actual:   chainsToMap(cache.GetChains(Options{})),
+			name:     "Should return all active chains",
+			actual:   phdtestdata.ChainsToMap(cache.GetChains(Options{})),
+			expected: phdtestdata.FilterActiveChains(testdata.Chains),
+		},
+		{
+			name:     "Should return all chains inclouding inactive",
+			actual:   phdtestdata.ChainsToMap(cache.GetChains(Options{IncludeInactiveChains: true})),
 			expected: testdata.Chains,
 		},
 		{
@@ -122,7 +127,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all pay plans",
-			actual:   payPlansToMap(cache.GetPlans()),
+			actual:   phdtestdata.PayPlansToMap(cache.GetPlans()),
 			expected: testdata.PayPlans,
 		},
 		{
@@ -324,7 +329,7 @@ func Test_upsertAccountUser(t *testing.T) {
 			c.True(ok, "AccountUserAccess should be present in account Users map")
 			c.Equal(test.accountUser, accountUser, "AccountUserAccess should be added or updated in the cache")
 
-			accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
+			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
 			if test.accountUser.Accepted {
@@ -451,7 +456,7 @@ func Test_upsertAccount(t *testing.T) {
 				test.account.Plan = cache.plans[test.account.PlanType]
 				c.Equal(test.account, cache.GetAccount(test.account.ID))
 
-				accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
 				if test.account.Deleted {
 					c.False(accountFound, "Account should be removed from accounts map")
 				} else {
@@ -461,13 +466,13 @@ func Test_upsertAccount(t *testing.T) {
 				for _, user := range test.account.Users {
 					accountsForUser := cache.GetAccountsByUserID(user.UserID)
 
-					accountInUserAccounts := findAccountInAccounts(accountsForUser, accountID)
+					accountInUserAccounts := phdtestdata.FindAccountInAccounts(accountsForUser, accountID)
 
 					if test.account.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {
 						c.True(accountInUserAccounts, "Account should be present in accountsByUserID map")
-						c.Equal(test.account, getAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+						c.Equal(test.account, phdtestdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
 					}
 				}
 			}
@@ -505,7 +510,7 @@ func Test_deleteAccountUser(t *testing.T) {
 				_, ok := cache.GetAccount(test.accountID).Users[test.accountUser.UserID]
 				c.True(ok, "AccountUserAccess should be found in account Users map before deletion")
 
-				accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
 				userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
@@ -525,7 +530,7 @@ func Test_deleteAccountUser(t *testing.T) {
 			_, ok := account.Users[test.accountUser.UserID]
 			c.False(ok, "AccountUserAccess should be deleted from account Users map")
 
-			accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
+			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
 			userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
@@ -714,7 +719,7 @@ func Test_upsertPortalApp(t *testing.T) {
 			// Add, update or delete PortalApp
 			cache.upsertPortalApp(test.portalApp)
 
-			portalAppFound := findPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalApp.ID)
+			portalAppFound := phdtestdata.FindPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalApp.ID)
 			if test.delete {
 				c.False(portalAppFound, "PortalApp should be removed from portalApps map")
 			} else {
@@ -1127,7 +1132,7 @@ func Test_upsertGigastakeApp(t *testing.T) {
 			// Add, update, or delete GigastakeApp
 			cache.upsertGigastakeApp(test.gigastakeApp)
 
-			gigastakeAppFound := findGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.ID)
+			gigastakeAppFound := phdtestdata.FindGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.ID)
 			if test.delete {
 				c.False(gigastakeAppFound, "GigastakeApp should be removed from gigastakeApps map")
 			} else {
@@ -1317,7 +1322,7 @@ func Test_upsertChain(t *testing.T) {
 			// Add or update Chain
 			cache.upsertChain(chain)
 
-			chainFound := findChainInChains(cache.GetChains(Options{IncludeDeleted: false}), chain.ID)
+			chainFound := phdtestdata.FindChainInChains(cache.GetChains(Options{IncludeInactiveChains: true}), chain.ID)
 			if test.delete {
 				c.False(chainFound, "Chain should be removed from chains map")
 			} else {
@@ -1534,124 +1539,4 @@ func Test_addCheck(t *testing.T) {
 			}
 		})
 	}
-}
-
-/* ---------- Test Utils ---------- */
-func accountsToMap(accounts []types.Account) map[types.AccountID]*types.Account {
-	accountsMap := make(map[types.AccountID]*types.Account)
-	for i := range accounts {
-		accountsMap[accounts[i].ID] = &accounts[i]
-	}
-	return accountsMap
-}
-
-func portalAppsToMap(portalApps []types.PortalApp) map[types.PortalAppID]*types.PortalApp {
-	portalAppsMap := make(map[types.PortalAppID]*types.PortalApp)
-	for i := range portalApps {
-		portalAppsMap[portalApps[i].ID] = &portalApps[i]
-	}
-	return portalAppsMap
-}
-
-func portalAppLitesToMap(portalAppLites []types.PortalAppLite) map[types.PortalAppID]*types.PortalAppLite {
-	portalAppLitesMap := make(map[types.PortalAppID]*types.PortalAppLite)
-	for i := range portalAppLites {
-		strKeys := make([]string, len(portalAppLites[i].PublicKeys))
-		for j, key := range portalAppLites[i].PublicKeys {
-			strKeys[j] = string(key)
-		}
-
-		sort.Strings(strKeys)
-
-		for j, key := range strKeys {
-			portalAppLites[i].PublicKeys[j] = types.PortalAppPublicKey(key)
-		}
-
-		portalAppLitesMap[portalAppLites[i].ID] = &portalAppLites[i]
-	}
-	return portalAppLitesMap
-}
-
-func gigastakeAppsToMap(gigastakeApps []types.GigastakeApp) map[types.GigastakeAppID]*types.GigastakeApp {
-	gigastakeAppsMap := make(map[types.GigastakeAppID]*types.GigastakeApp)
-	for i := range gigastakeApps {
-		gigastakeAppsMap[gigastakeApps[i].ID] = &gigastakeApps[i]
-	}
-	return gigastakeAppsMap
-}
-
-func chainsToMap(chains []types.Chain) map[types.RelayChainID]*types.Chain {
-	chainsMap := make(map[types.RelayChainID]*types.Chain)
-	for i := range chains {
-		chainsMap[chains[i].ID] = &chains[i]
-	}
-	return chainsMap
-}
-
-func payPlansToMap(payPlans []types.Plan) map[types.PayPlanType]*types.Plan {
-	payPlansMap := make(map[types.PayPlanType]*types.Plan)
-	for i := range payPlans {
-		payPlansMap[payPlans[i].Type] = &payPlans[i]
-	}
-	return payPlansMap
-}
-
-func findAccountInAccounts(accounts []types.Account, accountID types.AccountID) bool {
-	for _, account := range accounts {
-		if account.ID == accountID {
-			return true
-		}
-	}
-	return false
-}
-
-func getAccountFromAccounts(accounts []types.Account, accountID types.AccountID) types.Account {
-	for _, account := range accounts {
-		if account.ID == accountID {
-			return account
-		}
-	}
-	return types.Account{}
-}
-
-func findPortalAppInPortalApps(portalApps []types.PortalApp, portalAppID types.PortalAppID) bool {
-	for _, portalApp := range portalApps {
-		if portalApp.ID == portalAppID {
-			return true
-		}
-	}
-	return false
-}
-
-func findGigastakeAppInGigastakeApps(gigastakeApps []types.GigastakeApp, gigastakeAppID types.GigastakeAppID) bool {
-	for _, app := range gigastakeApps {
-		if app.ID == gigastakeAppID {
-			return true
-		}
-	}
-	return false
-}
-
-func findChainInChains(chains []types.Chain, chainID types.RelayChainID) bool {
-	for _, chain := range chains {
-		if chain.ID == chainID {
-			return true
-		}
-	}
-	return false
-}
-
-// This function is needed because the cache alter the DB output
-func modifiedAccountToTest() map[types.AccountID]*types.Account {
-	portalAppsCopy := testdata.PortalApps
-	payPlanCopy := testdata.PayPlans
-	accCopy := testdata.Accounts
-	accCopy["account_1"].Plan = payPlanCopy["basic_plan"]
-	accCopy["account_2"].Plan = payPlanCopy["pro_plan"]
-	accCopy["account_2"].PortalApps["test_app_2"] = portalAppsCopy["test_app_2"]
-	accCopy["account_3"].Plan = payPlanCopy["startup_plan"]
-	accCopy["account_4"].Plan = payPlanCopy["enterprise_plan"]
-	accCopy["account_5"].Plan = payPlanCopy["basic_plan"]
-
-	return accCopy
 }

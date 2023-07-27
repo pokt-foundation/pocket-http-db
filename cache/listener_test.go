@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/sirupsen/logrus"
@@ -105,10 +106,10 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
 			if test.sideTableAction == types.ActionDelete {
-				accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
 				c.False(accountFound, "Account should be removed from accountsByUserID map")
 			} else {
-				accountFound := findAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map")
 			}
 		})
@@ -181,7 +182,7 @@ func Test_parseAccountNotification(t *testing.T) {
 				c.Equal(testAccount.PartnerAppLimit, account.PartnerAppLimit)
 			}
 
-			accountFound := findAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), test.accountID)
+			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), test.accountID)
 			if testAccount.Deleted {
 				c.False(accountFound, "Account should be removed from accounts map")
 			} else {
@@ -277,7 +278,7 @@ func Test_parsePortalAppNotification(t *testing.T) {
 				c.Equal(test.portalApp, cache.GetPortalApp(test.portalAppID))
 			}
 
-			portalAppFound := findPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalAppID)
+			portalAppFound := phdtestdata.FindPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalAppID)
 			if test.portalApp.Deleted {
 				c.False(portalAppFound, "PortalApp should be removed from portal apps map")
 			} else {
@@ -422,7 +423,7 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 				c.Equal(test.gigastakeApp, cache.GetGigastakeAppByID(test.gigastakeApp.ID))
 			}
 
-			gigastakeAppFound := findGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.ID)
+			gigastakeAppFound := phdtestdata.FindGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.ID)
 			if test.gigastakeApp.Deleted {
 				c.False(gigastakeAppFound, "GigastakeApp should be removed from gigastakeApps map")
 			} else {
