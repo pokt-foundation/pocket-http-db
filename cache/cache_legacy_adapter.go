@@ -206,13 +206,13 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 }
 
 // GetLegacyBlockchains returns all V1 Blockchains
-func (c *Cache) GetLegacyBlockchains(ctx context.Context) []v1Types.Blockchain {
+func (c *Cache) GetLegacyBlockchains(ctx context.Context, includeInactive bool) []v1Types.Blockchain {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	blockchains := []v1Types.Blockchain{}
 
-	chains := c.GetChains(Options{IncludeDeleted: false})
+	chains := c.GetChains(Options{IncludeDeleted: false, IncludeInactiveChains: includeInactive})
 
 	for _, chain := range chains {
 		blockchains = append(blockchains, legacyadapters.ConvertToLegacyBlockchain(chain))

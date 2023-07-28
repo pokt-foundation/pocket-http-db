@@ -13,7 +13,6 @@ type runTimer struct {
 }
 
 func NewRunTimer(name string, log *logrus.Logger) *runTimer {
-
 	return &runTimer{
 		name:      name,
 		startTime: time.Now(),
