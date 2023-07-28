@@ -26,6 +26,7 @@ var (
 	errUserNotFound             error = errors.New("user not found for provider user ID")
 
 	errBlockchainNotFound    error = errors.New("blockchain not found")
+	errNoBlockchainsFound    error = errors.New("no blockchains were found")
 	errInvalidRoleNameFilter error = errors.New("invalid role name filter")
 	errPermissionsNotFound   error = errors.New("no permissions found for given user ID")
 )
@@ -259,9 +260,32 @@ func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/chain - Fetches all blockchains.
 func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getAllChainByID method called")
+	rt.log.Debug("getAllChains method called")
 
-	chains := rt.cache.GetChains(cache.Options{})
+	expectedParams := map[string]queryParamDetail{
+		chainParams.IncludeInactive: {paramType: paramTypeBool, required: false},
+	}
+
+	params, err := paramProcessor(r.URL.Query(), expectedParams)
+	if err != nil {
+		err = fmt.Errorf("getAllChains failed. %w", err)
+		rt.logError(err)
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	includeInactive := false
+	if _, ok := params[chainParams.IncludeInactive]; ok {
+		includeInactive, err = parseBoolParam(params, chainParams.IncludeInactive)
+		if err != nil {
+			err = fmt.Errorf("getAllChains failed. Error parsing includeInactive: %w", err)
+			rt.logError(err)
+			jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
+	chains := rt.cache.GetChains(cache.Options{IncludeInactiveChains: includeInactive})
 	if len(chains) == 0 {
 		rt.logError(fmt.Errorf("getAllChains failed: %w", errNoChainsFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoChainsFound.Error())
@@ -1136,7 +1160,37 @@ func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getBlockchains method called")
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyBlockchains(r.Context()))
+	expectedParams := map[string]queryParamDetail{
+		chainParams.IncludeInactive: {paramType: paramTypeBool, required: false},
+	}
+
+	params, err := paramProcessor(r.URL.Query(), expectedParams)
+	if err != nil {
+		err = fmt.Errorf("getBlockchains failed. %w", err)
+		rt.logError(err)
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	includeInactive := false
+	if _, ok := params[chainParams.IncludeInactive]; ok {
+		includeInactive, err = parseBoolParam(params, chainParams.IncludeInactive)
+		if err != nil {
+			err = fmt.Errorf("getBlockchains failed. Error parsing includeInactive: %w", err)
+			rt.logError(err)
+			jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
+	blockchains := rt.cache.GetLegacyBlockchains(r.Context(), includeInactive)
+	if len(blockchains) == 0 {
+		rt.logError(fmt.Errorf("getBlockchains failed: %w", errNoBlockchainsFound))
+		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoBlockchainsFound.Error())
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, blockchains)
 }
 
 func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {

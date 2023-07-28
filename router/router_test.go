@@ -14,6 +14,7 @@ import (
 	v1Types "github.com/pokt-foundation/portal-db/types"
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
+	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
@@ -104,16 +105,25 @@ func TestRouter_getChainByID(t *testing.T) {
 
 func TestRouter_getAllChains(t *testing.T) {
 	tests := []struct {
-		name           string
-		chainID        types.RelayChainID
-		expectedStatus int
-		expectedChains map[types.RelayChainID]*types.Chain
+		name            string
+		chainID         types.RelayChainID
+		includeInactive string
+		expectedStatus  int
+		expectedChains  map[types.RelayChainID]*types.Chain
 	}{
 		{
-			name:           "Should fetch a single chain",
-			chainID:        "0001",
-			expectedStatus: http.StatusOK,
-			expectedChains: testdata.Chains,
+			name:            "Should fetch all active chains",
+			chainID:         "0001",
+			includeInactive: "false",
+			expectedStatus:  http.StatusOK,
+			expectedChains:  phdtestdata.FilterActiveChains(testdata.Chains),
+		},
+		{
+			name:            "Should fetch all chains including inactive",
+			chainID:         "0001",
+			includeInactive: "true",
+			expectedStatus:  http.StatusOK,
+			expectedChains:  testdata.Chains,
 		},
 	}
 
@@ -126,7 +136,9 @@ func TestRouter_getAllChains(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, "/v2/chain", nil)
+			// Add the includeInactive parameter to the URL
+			url := fmt.Sprintf("/v2/chain?include_inactive=%s", test.includeInactive)
+			req, err := http.NewRequest(http.MethodGet, url, nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
@@ -2130,14 +2142,22 @@ func TestRouter_getLoadBalancer(t *testing.T) {
 
 func TestRouter_getBlockchains(t *testing.T) {
 	tests := []struct {
-		name           string
-		expectedChains map[string]v1Types.Blockchain
-		expectedStatus int
+		name            string
+		includeInactive string
+		expectedChains  map[string]v1Types.Blockchain
+		expectedStatus  int
 	}{
 		{
-			name:           "Should fetch all blockchains",
-			expectedChains: testBlockchains,
-			expectedStatus: http.StatusOK,
+			name:            "Should fetch all active blockchains",
+			includeInactive: "false",
+			expectedChains:  phdtestdata.FilterActiveBlockchains(testBlockchains),
+			expectedStatus:  http.StatusOK,
+		},
+		{
+			name:            "Should fetch all blockchains including inactive",
+			includeInactive: "true",
+			expectedChains:  testBlockchains,
+			expectedStatus:  http.StatusOK,
 		},
 	}
 
@@ -2150,7 +2170,8 @@ func TestRouter_getBlockchains(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, "/v1/blockchain", nil)
+			url := fmt.Sprintf("/v1/blockchain?include_inactive=%s", test.includeInactive)
+			req, err := http.NewRequest(http.MethodGet, url, nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
