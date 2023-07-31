@@ -262,11 +262,12 @@ func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getAllChains method called")
 
-	expectedParams := map[string]queryParamDetail{
-		chainParams.IncludeInactive: {paramType: paramTypeBool, required: false},
+	queryParams := map[queryParam]queryParamDetail{
+		commonParams.includeDeleted: {required: false},
+		chainParams.includeInactive: {required: false},
 	}
 
-	params, err := paramProcessor(r.URL.Query(), expectedParams)
+	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
 		err = fmt.Errorf("getAllChains failed. %w", err)
 		rt.logError(err)
@@ -274,18 +275,7 @@ func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	includeInactive := false
-	if _, ok := params[chainParams.IncludeInactive]; ok {
-		includeInactive, err = parseBoolParam(params, chainParams.IncludeInactive)
-		if err != nil {
-			err = fmt.Errorf("getAllChains failed. Error parsing includeInactive: %w", err)
-			rt.logError(err)
-			jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-	}
-
-	chains := rt.cache.GetChains(cache.Options{IncludeInactiveChains: includeInactive})
+	chains := rt.cache.GetChains(options)
 	if len(chains) == 0 {
 		rt.logError(fmt.Errorf("getAllChains failed: %w", errNoChainsFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoChainsFound.Error())
@@ -457,7 +447,19 @@ func (rt *Router) getPortalAppByID(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getAllPortalApps method called")
 
-	portalApps := rt.cache.GetPortalApps(cache.Options{})
+	queryParams := map[queryParam]queryParamDetail{
+		commonParams.includeDeleted: {required: false},
+	}
+
+	options, err := paramProcessor(r.URL, queryParams)
+	if err != nil {
+		err = fmt.Errorf("getAllPortalApps failed. %w", err)
+		rt.logError(err)
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	portalApps := rt.cache.GetPortalApps(options)
 	if len(portalApps) == 0 {
 		rt.logError(fmt.Errorf("getAllPortalApps failed: %w", errNoPortalAppsFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
@@ -485,38 +487,29 @@ func (rt *Router) getPortalAppsForMiddleware(w http.ResponseWriter, r *http.Requ
 func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getPortalAppsByUser method called")
 
-	roleNameFilter := types.RoleName(r.URL.Query().Get("filter"))
-	if roleNameFilter != types.RoleName("") && !roleNameFilter.IsValid() {
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
-		return
-	}
-
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
 
-	userAccounts := rt.cache.GetAccountsByUserID(userID)
-
-	// If no role name filter prodided, will get all portal apps that user has any role for.
-	// If role name filter is provided will get only portal apps user has a specific role for.
-	filteredPortalApps := []types.PortalApp{}
-	for _, account := range userAccounts {
-		if user, ok := account.Users[userID]; ok && user.Accepted {
-			for portalAppID, roleName := range user.PortalAppRoles {
-				if roleNameFilter == "" || roleName == types.RoleName(roleNameFilter) {
-					if portalApp, ok := account.PortalApps[portalAppID]; ok {
-						filteredPortalApps = append(filteredPortalApps, *portalApp)
-					}
-				}
-			}
-		}
+	queryParams := map[queryParam]queryParamDetail{
+		portalAppParams.roleNameFilters: {required: false},
 	}
-	if len(filteredPortalApps) == 0 {
+
+	options, err := paramProcessor(r.URL, queryParams)
+	if err != nil {
+		err = fmt.Errorf("getAllChains failed. %w", err)
+		rt.logError(err)
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	portalAppsForUser := rt.cache.GetPortalAppsByUserID(userID, options)
+	if len(portalAppsForUser) == 0 {
 		rt.logError(fmt.Errorf("getPortalAppsByUser failed: %w", errNoPortalAppsFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, filteredPortalApps)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, portalAppsForUser)
 }
 
 // POST /v2/portal_app - Creates a new portal application.
@@ -629,7 +622,19 @@ func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *ht
 func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getAccounts method called")
 
-	accounts := rt.cache.GetAccounts(cache.Options{IncludeDeleted: true})
+	queryParams := map[queryParam]queryParamDetail{
+		commonParams.includeDeleted: {required: false},
+	}
+
+	options, err := paramProcessor(r.URL, queryParams)
+	if err != nil {
+		err = fmt.Errorf("getAccounts failed. %w", err)
+		rt.logError(err)
+		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	accounts := rt.cache.GetAccounts(options)
 	if len(accounts) == 0 {
 		rt.logError(fmt.Errorf("getAccounts failed: %w", errAccountNotFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errAccountNotFound.Error())
@@ -1160,11 +1165,11 @@ func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
 	rt.log.Debug("getBlockchains method called")
 
-	expectedParams := map[string]queryParamDetail{
-		chainParams.IncludeInactive: {paramType: paramTypeBool, required: false},
+	queryParams := map[queryParam]queryParamDetail{
+		chainParams.includeInactive: {required: false},
 	}
 
-	params, err := paramProcessor(r.URL.Query(), expectedParams)
+	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
 		err = fmt.Errorf("getBlockchains failed. %w", err)
 		rt.logError(err)
@@ -1172,18 +1177,7 @@ func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	includeInactive := false
-	if _, ok := params[chainParams.IncludeInactive]; ok {
-		includeInactive, err = parseBoolParam(params, chainParams.IncludeInactive)
-		if err != nil {
-			err = fmt.Errorf("getBlockchains failed. Error parsing includeInactive: %w", err)
-			rt.logError(err)
-			jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-	}
-
-	blockchains := rt.cache.GetLegacyBlockchains(r.Context(), includeInactive)
+	blockchains := rt.cache.GetLegacyBlockchains(r.Context(), options.IncludeInactiveChains)
 	if len(blockchains) == 0 {
 		rt.logError(fmt.Errorf("getBlockchains failed: %w", errNoBlockchainsFound))
 		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoBlockchainsFound.Error())

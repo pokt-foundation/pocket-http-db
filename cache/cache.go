@@ -65,9 +65,10 @@ type (
 	}
 
 	Options struct {
-		IncludeDeleted,
-		ExcludeChainGigastakeApps,
-		IncludeInactiveChains bool
+		IncludeDeleted            bool
+		IncludeInactiveChains     bool
+		ExcludeChainGigastakeApps bool
+		FilterPortalApps          []types.RoleName
 	}
 
 	userData struct {
@@ -415,7 +416,7 @@ func (c *Cache) GetAccounts(options Options) []types.Account {
 	return accountsToReturn
 }
 
-// GetAccounts returns all Accounts for a given user. PortalApps for the
+// GetAccountsByUserID returns all Accounts for a given user. PortalApps for the
 // Account will be filtered to only include apps the user has permissions for.
 func (c *Cache) GetAccountsByUserID(userID types.UserID) []types.Account {
 	c.rwMutex.RLock()
@@ -706,6 +707,55 @@ func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 	}
 
 	return portalAppLites
+}
+
+func (c *Cache) GetPortalAppsByUserID(userID types.UserID, options Options) []types.PortalApp {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	var portalAppsToReturn []types.PortalApp
+
+	for _, account := range c.GetAccountsByUserID(userID) {
+		userAccess, ok := account.Users[userID]
+		if !ok {
+			continue
+		}
+
+		var filteredPortalApps []types.PortalApp
+
+		if len(options.FilterPortalApps) > 0 {
+			filteredPortalApps = filterPortalAppsByRoleName(account.PortalApps, userAccess.PortalAppRoles, options.FilterPortalApps)
+		} else {
+			for _, app := range account.PortalApps {
+				filteredPortalApps = append(filteredPortalApps, *app)
+			}
+		}
+
+		portalAppsToReturn = append(portalAppsToReturn, filteredPortalApps...)
+	}
+
+	return portalAppsToReturn
+}
+
+// filterPortalAppsByRoleName filters the portal apps based on the provided role names
+func filterPortalAppsByRoleName(
+	portalApps map[types.PortalAppID]*types.PortalApp,
+	userRoles map[types.PortalAppID]types.RoleName,
+	filters []types.RoleName,
+) []types.PortalApp {
+	filteredPortalApps := []types.PortalApp{}
+
+	for appID, app := range portalApps {
+		if userRole, ok := userRoles[appID]; ok {
+			for _, filter := range filters {
+				if filter == userRole {
+					filteredPortalApps = append(filteredPortalApps, *app)
+				}
+			}
+		}
+	}
+
+	return filteredPortalApps
 }
 
 // upsertPortalApp adds, updates or deletes PortalApp in cache

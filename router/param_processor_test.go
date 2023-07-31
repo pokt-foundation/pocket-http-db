@@ -1,269 +1,329 @@
 package router
 
 import (
+	"fmt"
 	"net/url"
-	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pokt-foundation/pocket-http-db/cache"
+	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_paramProcessor(t *testing.T) {
-	expectedParams := map[string]queryParamDetail{
-		"include_inactive": {
-			paramType: paramTypeBool,
-			required:  false,
-		},
-		"age": {
-			paramType: paramTypeInt,
-			required:  true,
-		},
-		"name": {
-			paramType: paramTypeString,
-			required:  false,
-		},
+	expectedParams := map[queryParam]queryParamDetail{
+		commonParams.includeDeleted:      {required: false},
+		chainParams.includeInactive:      {required: false},
+		chainParams.excludeGigastakeApps: {required: false},
+		portalAppParams.roleNameFilters:  {required: false},
 	}
 
 	tests := []struct {
 		name          string
 		params        url.Values
-		expected      map[string]string
+		path          string
+		expected      cache.Options
 		expectedError string
 	}{
 		{
-			name: "Should process valid params correctly",
+			name: "Should process valid params correctly for common endpoint",
 			params: url.Values{
-				"include_inactive": []string{"true"},
-				"age":              []string{"22"},
-				"name":             []string{"John"},
+				string(commonParams.includeDeleted): []string{"true"},
 			},
-			expected: map[string]string{
-				"include_inactive": "true",
-				"age":              "22",
-				"name":             "John",
+			path: "/common_endpoint",
+			expected: cache.Options{
+				IncludeDeleted: true,
 			},
 		},
 		{
-			name: "Should return error for missing required int param",
+			name: "Should process valid params correctly for chain endpoint",
 			params: url.Values{
-				"include_inactive": []string{"true"},
-				"name":             []string{"John"},
+				string(chainParams.includeInactive):      []string{"true"},
+				string(chainParams.excludeGigastakeApps): []string{"false"},
 			},
-			expectedError: "required parameter age not found",
+			path: v2ChainEndpoint,
+			expected: cache.Options{
+				IncludeInactiveChains:     true,
+				ExcludeChainGigastakeApps: false,
+			},
+		},
+		{
+			name: "Should process valid params correctly for chain endpoint with include deleted",
+			params: url.Values{
+				string(chainParams.includeInactive):      []string{"true"},
+				string(chainParams.excludeGigastakeApps): []string{"false"},
+				string(commonParams.includeDeleted):      []string{"true"},
+			},
+			path: v2ChainEndpoint,
+			expected: cache.Options{
+				IncludeInactiveChains:     true,
+				ExcludeChainGigastakeApps: false,
+				IncludeDeleted:            true,
+			},
+		},
+		{
+			name: "Should process valid params correctly for portal_app endpoint",
+			params: url.Values{
+				string(portalAppParams.roleNameFilters): []string{"OWNER,ADMIN"},
+			},
+			path: v2PortalAppEndpoint,
+			expected: cache.Options{
+				FilterPortalApps: []types.RoleName{types.RoleOwner, types.RoleAdmin},
+			},
+		},
+		{
+			name: "Should return error for invalid boolean param in common endpoint",
+			params: url.Values{
+				string(commonParams.includeDeleted): []string{"not-a-bool"},
+			},
+			path:          "/common_endpoint",
+			expectedError: "failed to parse bool value",
+		},
+		{
+			name: "Should return error for invalid param for common endpoint",
+			params: url.Values{
+				string(chainParams.includeInactive): []string{"true"},
+			},
+			path:          "/common_endpoint",
+			expectedError: "invalid parameter",
+		},
+		{
+			name: "Should return error for invalid boolean param",
+			params: url.Values{
+				string(chainParams.includeInactive): []string{"not-a-bool"},
+			},
+			path:          v2ChainEndpoint,
+			expectedError: "failed to parse bool value",
+		},
+		{
+			name: "Should return error for invalid param for path",
+			params: url.Values{
+				string(portalAppParams.roleNameFilters): []string{"role1,role2"},
+			},
+			path:          v2ChainEndpoint,
+			expectedError: "invalid parameter",
+		},
+		{
+			name: "Should return error for invalid param for different path",
+			params: url.Values{
+				string(chainParams.includeInactive): []string{"true"},
+			},
+			path:          v2PortalAppEndpoint,
+			expectedError: fmt.Sprintf("invalid parameter %s for path %s", chainParams.includeInactive, v2PortalAppEndpoint),
+		},
+		{
+			name: "Should return error for parameter not expected for the path",
+			params: url.Values{
+				string(chainParams.includeInactive): []string{"true"},
+			},
+			path:          "/some_unexpected_endpoint",
+			expectedError: "invalid parameter include_inactive for path /some_unexpected_endpoint",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := paramProcessor(test.params, expectedParams)
+			c := require.New(t)
+			urlTest := &url.URL{
+				Scheme:   "https",
+				Host:     "test.phd.com",
+				RawQuery: test.params.Encode(),
+				Path:     test.path,
+			}
+			result, err := paramProcessor(urlTest, expectedParams)
 
 			if test.expectedError != "" {
-				assert.Error(t, err)
-				assert.True(t, strings.Contains(err.Error(), test.expectedError))
+				c.Error(err)
+				c.Contains(err.Error(), test.expectedError)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, test.expected, result)
+				c.NoError(err)
+				c.Equal(test.expected, result)
 			}
 		})
 	}
 }
 
-func Test_parseStringParam(t *testing.T) {
+func Test_pathMatcher(t *testing.T) {
 	tests := []struct {
-		name           string
-		params         map[string]string
-		key            string
-		expected       string
-		expectingError bool
+		name        string
+		input       string
+		expectedRes string
 	}{
 		{
-			name: "Parses valid string",
-			params: map[string]string{
-				"name": "John",
-			},
-			key:      "name",
-			expected: "John",
+			name:        "Should match v2ChainEndpoint",
+			input:       "/v2/chain/someextrapath",
+			expectedRes: v2ChainEndpoint,
 		},
 		{
-			name:           "Returns error when key is not found",
-			params:         map[string]string{},
-			key:            "name",
-			expectingError: true,
+			name:        "Should match v1BlockchainEndpoint",
+			input:       "/v1/blockchain/someextrapath",
+			expectedRes: v1BlockchainEndpoint,
+		},
+		{
+			name:        "Should match v2PortalAppEndpoint",
+			input:       "/v2/portal_app/someextrapath",
+			expectedRes: v2PortalAppEndpoint,
+		},
+		{
+			name:        "Should match user portal apps endpoint",
+			input:       "/v2/user/user_id_123/portal_app",
+			expectedRes: v2PortalAppEndpoint,
+		},
+		{
+			name:        "Should return empty for unmatched path",
+			input:       "/v3/unmatchedpath",
+			expectedRes: "",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := parseStringParam(test.params, test.key)
-			if test.expectingError {
-				assert.Error(t, err)
+			c := require.New(t)
+			c.Equal(test.expectedRes, pathMatcher(test.input))
+		})
+	}
+}
+
+func Test_QueryParamMethods(t *testing.T) {
+	tests := []struct {
+		name            string
+		param           queryParam
+		expectCommon    bool
+		expectChain     bool
+		expectPortalApp bool
+	}{
+		{
+			name:            "Test includeDeleted param",
+			param:           commonParams.includeDeleted,
+			expectCommon:    true,
+			expectChain:     false,
+			expectPortalApp: false,
+		},
+		{
+			name:            "Test includeInactive param",
+			param:           chainParams.includeInactive,
+			expectCommon:    false,
+			expectChain:     true,
+			expectPortalApp: false,
+		},
+		{
+			name:            "Test excludeGigastakeApps param",
+			param:           chainParams.excludeGigastakeApps,
+			expectCommon:    false,
+			expectChain:     true,
+			expectPortalApp: false,
+		},
+		{
+			name:            "Test roleNameFilters param",
+			param:           portalAppParams.roleNameFilters,
+			expectCommon:    false,
+			expectChain:     false,
+			expectPortalApp: true,
+		},
+		{
+			name:            "Test unknown param",
+			param:           "unknown_param",
+			expectCommon:    false,
+			expectChain:     false,
+			expectPortalApp: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+			c.Equal(test.expectCommon, test.param.isCommon())
+			c.Equal(test.expectChain, test.param.isChain())
+			c.Equal(test.expectPortalApp, test.param.isPortalApp())
+		})
+	}
+}
+
+func Test_parseBool(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		expected     bool
+		expectingErr bool
+	}{
+		{
+			name:         "Should correctly parse 'true'",
+			input:        "true",
+			expected:     true,
+			expectingErr: false,
+		},
+		{
+			name:         "Should correctly parse 'false'",
+			input:        "false",
+			expected:     false,
+			expectingErr: false,
+		},
+		{
+			name:         "Should return an error for invalid boolean input",
+			input:        "not_bool",
+			expectingErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			result, err := parseBool(test.input)
+
+			if test.expectingErr {
+				c.Error(err)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, test.expected, result)
+				c.NoError(err)
+				c.Equal(test.expected, result)
 			}
 		})
 	}
 }
 
-func Test_parseBoolParam(t *testing.T) {
+func Test_parseRoleNameList(t *testing.T) {
 	tests := []struct {
-		name           string
-		params         map[string]string
-		key            string
-		expected       bool
-		expectingError bool
+		name         string
+		input        string
+		expected     []types.RoleName
+		expectingErr bool
 	}{
 		{
-			name: "Parses valid bool",
-			params: map[string]string{
-				"active": "true",
-			},
-			key:      "active",
-			expected: true,
+			name:         "Should parse multiple valid role names",
+			input:        "OWNER,ADMIN",
+			expected:     []types.RoleName{types.RoleOwner, types.RoleAdmin},
+			expectingErr: false,
 		},
 		{
-			name:           "Returns error when key is not found",
-			params:         map[string]string{},
-			key:            "active",
-			expectingError: true,
+			name:         "Should parse single valid role name",
+			input:        "OWNER",
+			expected:     []types.RoleName{types.RoleOwner},
+			expectingErr: false,
 		},
 		{
-			name: "Returns error for invalid bool",
-			params: map[string]string{
-				"active": "invalid_bool",
-			},
-			key:            "active",
-			expectingError: true,
+			name:         "Should not parse invalid role name",
+			input:        "OWNER,GUEST",
+			expectingErr: true,
+		},
+		{
+			name:         "Should parse empty role name",
+			input:        "",
+			expected:     []types.RoleName{},
+			expectingErr: false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := parseBoolParam(test.params, test.key)
-			if test.expectingError {
-				assert.Error(t, err)
+			c := require.New(t)
+
+			result, err := parseRoleNameList(test.input)
+
+			if test.expectingErr {
+				c.Error(err)
 			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, test.expected, result)
-			}
-		})
-	}
-}
-
-func Test_parseIntParam(t *testing.T) {
-	tests := []struct {
-		name           string
-		params         map[string]string
-		key            string
-		expected       int
-		expectingError bool
-	}{
-		{
-			name: "Parses valid int",
-			params: map[string]string{
-				"age": "22",
-			},
-			key:      "age",
-			expected: 22,
-		},
-		{
-			name:           "Returns error when key is not found",
-			params:         map[string]string{},
-			key:            "age",
-			expectingError: true,
-		},
-		{
-			name: "Returns error for invalid int",
-			params: map[string]string{
-				"age": "invalid_int",
-			},
-			key:            "age",
-			expectingError: true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result, err := parseIntParam(test.params, test.key)
-			if test.expectingError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, test.expected, result)
-			}
-		})
-	}
-}
-
-func Test_paramProcessorAndParse(t *testing.T) {
-	expectedParams := map[string]queryParamDetail{
-		"include_inactive": {
-			paramType: paramTypeBool,
-			required:  false,
-		},
-		"age": {
-			paramType: paramTypeInt,
-			required:  true,
-		},
-		"name": {
-			paramType: paramTypeString,
-			required:  false,
-		},
-	}
-
-	tests := []struct {
-		name          string
-		params        url.Values
-		expected      map[string]interface{} // changed to interface{} to accommodate different types
-		expectedError string
-	}{
-		{
-			name: "Should process and parse valid bool, int, and string params correctly",
-			params: url.Values{
-				"include_inactive": []string{"true"},
-				"age":              []string{"22"},
-				"name":             []string{"John"},
-			},
-			expected: map[string]interface{}{
-				"include_inactive": true,   // parsed as bool
-				"age":              22,     // parsed as int
-				"name":             "John", // parsed as string
-			},
-		},
-		{
-			name: "Should return error for missing required int param",
-			params: url.Values{
-				"include_inactive": []string{"true"},
-				"name":             []string{"John"},
-			},
-			expectedError: "required parameter age not found",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			result, err := paramProcessor(test.params, expectedParams)
-			if err != nil {
-				assert.EqualError(t, err, test.expectedError)
-				return
-			}
-
-			// If no processing error, we check the parsing
-			for key, expectedValue := range test.expected {
-				switch expectedParams[key].paramType {
-				case paramTypeBool:
-					actual, err := parseBoolParam(result, key)
-					assert.NoError(t, err)
-					assert.Equal(t, expectedValue, actual)
-				case paramTypeInt:
-					actual, err := parseIntParam(result, key)
-					assert.NoError(t, err)
-					assert.Equal(t, expectedValue, actual)
-				case paramTypeString:
-					actual, err := parseStringParam(result, key)
-					assert.NoError(t, err)
-					assert.Equal(t, expectedValue, actual)
-				}
+				c.NoError(err)
+				c.Equal(test.expected, result)
 			}
 		})
 	}

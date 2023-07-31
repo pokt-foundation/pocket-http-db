@@ -137,7 +137,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			name           string
 			expectedChains map[types.RelayChainID]*types.Chain
 			gigastakeApps  map[types.GigastakeAppID]*types.GigastakeApp
-			options        v2DBClient.ChainsOptions
+			options        v2DBClient.ChainOptions
 			err            error
 		}{
 			{
@@ -149,7 +149,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:           "Should get all chains including inactive",
 				expectedChains: testdata.Chains,
 				gigastakeApps:  testdata.GigastakeApps,
-				options:        v2DBClient.ChainsOptions{IncludeInactive: true},
+				options: v2DBClient.ChainOptions{
+					IncludeInactive: true,
+				},
 			},
 		}
 
@@ -266,7 +268,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name         string
 			userID       types.UserID
-			options      v2DBClient.PortalAppsOptions
+			options      v2DBClient.PortalAppOptions
 			expectedApps map[types.PortalAppID]*types.PortalApp
 			err          error
 		}{
@@ -278,27 +280,53 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				},
 			},
 			{
-				name:    "Should get portal apps where user_1 is OWNER",
-				userID:  "user_1",
-				options: v2DBClient.PortalAppsOptions{RoleNameFilter: types.RoleOwner},
+				name:   "Should get portal apps where user_1 is OWNER",
+				userID: "user_1",
+				options: v2DBClient.PortalAppOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleOwner,
+					},
+				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
 				},
 			},
 			{
-				name:    "Should get portal apps where user_6 is ADMIN",
-				userID:  "user_6",
-				options: v2DBClient.PortalAppsOptions{RoleNameFilter: types.RoleAdmin},
+				name:   "Should get portal apps where user_6 is ADMIN",
+				userID: "user_6",
+				options: v2DBClient.PortalAppOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleAdmin,
+					},
+				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 			},
 			{
-				name:    "Should get portal apps where user_7 is MEMBER",
-				userID:  "user_7",
-				options: v2DBClient.PortalAppsOptions{RoleNameFilter: types.RoleMember},
+				name:   "Should get portal apps where user_7 is MEMBER",
+				userID: "user_7",
+				options: v2DBClient.PortalAppOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleMember,
+					},
+				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
+				},
+			},
+			{
+				name:   "Should get portal apps where user_2 is ADMIN or MEMBER",
+				userID: "user_2",
+				options: v2DBClient.PortalAppOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleAdmin,
+						types.RoleMember,
+					},
+				},
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_1": testdata.PortalApps["test_app_1"],
+					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 			},
 		}
@@ -308,7 +336,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				var portalApps []*types.PortalApp
 				var err error
 
-				if test.options.RoleNameFilter != "" {
+				if len(test.options.RoleNameFilters) > 0 {
 					portalApps, err = ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID, test.options)
 				} else {
 					portalApps, err = ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID)
@@ -318,7 +346,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if err == nil {
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
-					if test.options.RoleNameFilter != "" {
+					if len(test.options.RoleNameFilters) > 0 {
 						portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID, test.options)
 					} else {
 						portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID)

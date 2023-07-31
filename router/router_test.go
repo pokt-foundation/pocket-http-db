@@ -564,7 +564,12 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/portal_app?filter=%s", test.userID, test.roleFilter), nil)
+			endpoint := fmt.Sprintf("/v2/user/%s/portal_app", test.userID)
+			if test.roleFilter != "" {
+				endpoint += fmt.Sprintf("?filters=%s", test.roleFilter)
+			}
+
+			req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
