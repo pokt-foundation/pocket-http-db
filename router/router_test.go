@@ -343,7 +343,7 @@ func TestRouter_updateGigastakeApp(t *testing.T) {
 			gigastakeAppUpdateBytes, err := json.Marshal(test.gigastakeAppUpdate)
 			c.NoError(err)
 
-			req, err := http.NewRequest(http.MethodPut, "/v2/chain/gigastake", bytes.NewBuffer(gigastakeAppUpdateBytes))
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/chain/gigastake/%s", test.gigastakeAppUpdate.ID), bytes.NewBuffer(gigastakeAppUpdateBytes))
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
