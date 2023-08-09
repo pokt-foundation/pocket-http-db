@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -18,7 +19,6 @@ import (
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -41,11 +41,11 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUsers[types.UserID("usertest")], nil)
 
-	testLog := logrus.New()
+	logger := slog.Default()
 
 	cacheInstance, err := cache.NewCache(testCtx, cache.Config{
 		Reader:              readerMock,
-		Logger:              testLog,
+		Logger:              logger,
 		CacheRefreshMinutes: 5 * time.Minute,
 	})
 	c.NoError(err)
@@ -54,7 +54,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		Cache:   cacheInstance,
 		Writer:  nil, // mock set in tests
 		APIKeys: map[string]bool{"": true},
-		Log:     testLog,
+		Logger:  logger,
 	})
 }
 

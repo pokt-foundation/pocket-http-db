@@ -4,13 +4,13 @@ package cache
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
-	"github.com/sirupsen/logrus"
 )
 
 type (
@@ -23,7 +23,7 @@ type (
 	*/
 	Cache struct {
 		reader  driver.Reader
-		log     *logrus.Logger
+		logger  *slog.Logger
 		rwMutex sync.RWMutex
 
 		// Cached Data (including pending sub-table data maps)
@@ -60,7 +60,7 @@ type (
 
 	Config struct {
 		Reader              driver.Reader
-		Logger              *logrus.Logger
+		Logger              *slog.Logger
 		CacheRefreshMinutes time.Duration
 	}
 
@@ -94,7 +94,7 @@ type (
 func NewCache(ctx context.Context, config Config) (*Cache, error) {
 	cache := &Cache{
 		reader: config.Reader,
-		log:    config.Logger,
+		logger: config.Logger,
 
 		pendingAccountUserAccess:   make(map[types.AccountID][]types.AccountUserAccess),
 		pendingUsers:               make(map[types.UserID]types.User),
@@ -114,16 +114,14 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 	err := cache.setCache(ctx)
 	elapsedTime := time.Since(startTime).Milliseconds()
 	if err != nil {
-		cache.log.Error(fmt.Errorf("error in setCache: %w", err))
+		cache.logger.Error(fmt.Sprintf("error in setCache: %s", err))
 		return nil, err
 	}
 
-	cache.log.WithFields(
-		logrus.Fields{
-			"cache_refresh_minutes": config.CacheRefreshMinutes.Minutes(),
-			"db_time_to_fetch":      fmt.Sprintf("%dms", elapsedTime),
-		},
-	).Info("cache successfully set")
+	cache.logger.Info("cache successfully set",
+		slog.Float64("cache_refresh_minutes", config.CacheRefreshMinutes.Minutes()),
+		slog.String("db_time_to_fetch", fmt.Sprintf("%dms", elapsedTime)),
+	)
 
 	// Start cache refresh goroutine to refresh cache at regular interval
 	go cache.cacheRefreshHandler(ctx, config.CacheRefreshMinutes)
@@ -140,18 +138,18 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 func (c *Cache) ResetCache(ctx context.Context) error {
 	err := c.setCache(ctx)
 	if err != nil {
-		c.log.Error(fmt.Errorf("error in ResetCache - setCache: %w", err))
+		c.logger.Error(fmt.Sprintf("error in ResetCache - setCache: %s", err))
 		return err
 	}
 
-	c.log.Info("cache successfully manually reset")
+	c.logger.Info("cache successfully manually reset")
 
 	return nil
 }
 
 // setCache initializes the cache by setting user permissions, accounts and portal apps, chains, and plans.
 func (c *Cache) setCache(ctx context.Context) error {
-	t := NewRunTimer("setCache", c.log)
+	t := NewRunTimer("setCache", c.logger)
 	defer t.Stop()
 
 	// Perform all the database reads first without locking the mutex
@@ -318,7 +316,7 @@ func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes tim
 
 		err := c.setCache(ctx)
 		if err != nil {
-			c.log.Error("err in cacheRefreshHandler: %w", err)
+			c.logger.Error("err in cacheRefreshHandler: %w", err)
 
 			os.Exit(1) // Kill PHD if cache refresh fails to trigger pod restart
 		}

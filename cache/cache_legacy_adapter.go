@@ -500,7 +500,7 @@ func (c *Cache) UpdateLegacyApplicationsFirstDateSurpassed(ctx context.Context, 
 	var appsToUpdate []*v1Types.Application
 
 	if len(update.ApplicationIDs) == 0 {
-		c.log.Warnf("no application IDs on input")
+		c.logger.Warn("no application IDs on input")
 		return appsToUpdate, nil
 	}
 
@@ -513,7 +513,7 @@ func (c *Cache) UpdateLegacyApplicationsFirstDateSurpassed(ctx context.Context, 
 
 		portalApp := c.GetPortalAppByProtocolAppID(protocolAppID)
 		if portalApp.ID == "" {
-			c.log.Errorf("UpdateFirstDateSurpassed: protocol app ID %s not found", protocolAppID)
+			c.logger.Error(fmt.Sprintf("UpdateFirstDateSurpassed: protocol app ID %s not found", protocolAppID))
 			continue
 		}
 

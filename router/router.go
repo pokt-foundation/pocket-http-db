@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"time"
 
+	"log/slog"
+
 	"github.com/gorilla/mux"
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -38,41 +39,40 @@ type (
 		writer   driver.Writer
 		cache    *cache.Cache
 		apiKeys  map[string]bool
-		log      *logrus.Logger
+		logger   *slog.Logger
 		imageTag string
 	}
 	Config struct {
 		Cache    *cache.Cache
 		Writer   driver.Writer
 		APIKeys  map[string]bool
-		Log      *logrus.Logger
+		Logger   *slog.Logger
 		ImageTag string
 	}
 )
 
-func (rt *Router) logError(err error) {
-	fields := logrus.Fields{
-		"err": err.Error(),
-	}
-
-	rt.log.WithFields(fields).Error(err)
+func (rt *Router) handleError(w http.ResponseWriter, functionName string, errorCode int, err error) {
+	// Wrap error with function name
+	errorString := fmt.Sprintf("error in %s: %s", functionName, err.Error())
+	// Log error as JSON
+	rt.logger.Error(errorString)
+	// Return error string as JSON
+	jsonresponse.RespondWithError(w, errorCode, errorString)
 }
 
-func timingMiddleware(log *logrus.Logger) mux.MiddlewareFunc {
+func timingMiddleware(log *slog.Logger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.WithFields(logrus.Fields{
-				"uri": r.RequestURI,
-			}).Info("HTTP Request Starting")
+			log.Info("HTTP Request Starting", slog.String("uri", r.RequestURI))
 
 			startTime := time.Now()
 			next.ServeHTTP(w, r)
 			elapsed := time.Since(startTime)
 
-			log.WithFields(logrus.Fields{
-				"uri":          r.RequestURI,
-				"milliseconds": elapsed.Milliseconds(),
-			}).Info("HTTP Request Completed")
+			log.Info("HTTP Request Completed",
+				slog.String("uri", r.RequestURI),
+				slog.Int64("milliseconds", elapsed.Milliseconds()),
+			)
 		})
 	}
 }
@@ -84,11 +84,11 @@ func NewRouter(config Config) (*Router, error) {
 		writer:   config.Writer,
 		cache:    config.Cache,
 		apiKeys:  config.APIKeys,
-		log:      config.Log,
+		logger:   config.Logger,
 		imageTag: config.ImageTag,
 	}
 
-	rt.Router.Use(timingMiddleware(rt.log))
+	rt.Router.Use(timingMiddleware(rt.logger))
 
 	rt.Router.HandleFunc("/healthz", rt.healthCheck).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/reset_cache", rt.resetCache).Methods(http.MethodPost)
@@ -210,7 +210,7 @@ func (rt *Router) healthCheck(w http.ResponseWriter, r *http.Request) {
 		msg = fmt.Sprintf("DB Check Done. Pocket HTTP DB is up and running!\nImage Tag: %s", rt.imageTag)
 	} else {
 		statusCode = http.StatusServiceUnavailable
-		msg = fmt.Sprintf("could not connect to the db: %s", err.Error())
+		msg = fmt.Sprintf("Could not connect to the db: %s", err.Error())
 	}
 
 	w.WriteHeader(statusCode)
@@ -225,8 +225,7 @@ func (rt *Router) resetCache(w http.ResponseWriter, r *http.Request) {
 	err := rt.cache.ResetCache(r.Context())
 	elapsedTime := time.Since(startTime).Milliseconds()
 	if err != nil {
-		rt.logError(fmt.Errorf("resetCache failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "resetCache", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -234,8 +233,7 @@ func (rt *Router) resetCache(w http.ResponseWriter, r *http.Request) {
 	resp := fmt.Sprintf("cache manually reset successfully in %dms", elapsedTime)
 	_, err = w.Write([]byte(resp))
 	if err != nil {
-		rt.logError(fmt.Errorf("resetCache failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "resetCache", http.StatusInternalServerError, err)
 		return
 	}
 }
@@ -246,12 +244,10 @@ func (rt *Router) resetCache(w http.ResponseWriter, r *http.Request) {
 func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
-	rt.log.Debug("getChainByID method called")
 
 	chain := rt.cache.GetChain(chainID, cache.Options{})
 	if chain.ID == "" {
-		rt.logError(fmt.Errorf("getChainByID failed: %w", errChainNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errChainNotFound.Error())
+		rt.handleError(w, "getChainByID", http.StatusNotFound, errChainNotFound)
 		return
 	}
 
@@ -260,8 +256,6 @@ func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/chain - Fetches all blockchains.
 func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getAllChains method called")
-
 	queryParams := map[queryParam]queryParamDetail{
 		commonParams.includeDeleted: {required: false},
 		chainParams.includeInactive: {required: false},
@@ -269,16 +263,13 @@ func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
 
 	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
-		err = fmt.Errorf("getAllChains failed. %w", err)
-		rt.logError(err)
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "getAllChains", http.StatusBadRequest, err)
 		return
 	}
 
 	chains := rt.cache.GetChains(options)
 	if len(chains) == 0 {
-		rt.logError(fmt.Errorf("getAllChains failed: %w", errNoChainsFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoChainsFound.Error())
+		rt.handleError(w, "getAllChains", http.StatusNotFound, errNoChainsFound)
 		return
 	}
 
@@ -287,22 +278,18 @@ func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/chain - Creates a new blockchains and its Gigastake apps.
 func (rt *Router) createNewChainAndGigastakeApps(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getAllChainByID method called")
-
 	var newChainInput types.NewChainInput
 
 	err := json.NewDecoder(r.Body).Decode(&newChainInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("createNewChainAndGigastakeApps Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createNewChainAndGigastakeApps", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	createdChainAndGigastakeApps, err := rt.writer.WriteChainAndGigastakeApps(r.Context(), newChainInput, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteChainAndGigastakeApps failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createNewChainAndGigastakeApps", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -311,22 +298,18 @@ func (rt *Router) createNewChainAndGigastakeApps(w http.ResponseWriter, r *http.
 
 // POST /v2/chain/gigastake - Creates a new Gigastake app.
 func (rt *Router) createNewGigastakeApp(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createNewGigastakeApp method called")
-
 	var gigastakeAppInput types.GigastakeApp
 
 	err := json.NewDecoder(r.Body).Decode(&gigastakeAppInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("createNewGigastakeApp Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createNewGigastakeApp", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	createdGigastakeApp, err := rt.writer.WriteGigastakeApp(r.Context(), gigastakeAppInput, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteGigastakeApp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createNewGigastakeApp", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -335,14 +318,10 @@ func (rt *Router) createNewGigastakeApp(w http.ResponseWriter, r *http.Request) 
 
 // PUT /v2/chain/{id} - Updates an existing blockchain.
 func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateChain method called")
-
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
 	if chainID == "" {
-		err := fmt.Errorf("UpdateChain failed: chain ID must be provided")
-		rt.logError(err)
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateChain", http.StatusBadRequest, fmt.Errorf("chain ID must be provided"))
 		return
 	}
 
@@ -350,8 +329,7 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&chainUpdate)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateChain Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateChain", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
@@ -360,8 +338,7 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 
 	updatedChain, err := rt.writer.UpdateChain(r.Context(), chainUpdate, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateChain failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateChain", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -375,22 +352,23 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/chain/gigastake - Updates a Gigastake app.
 func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateGigastakeApp method called")
-
 	var gigastakeAppUpdate types.UpdateGigastakeApp
 
 	err := json.NewDecoder(r.Body).Decode(&gigastakeAppUpdate)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateGigastakeApp Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateGigastakeApp", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
+	if gigastakeAppUpdate.ID == "" {
+		rt.handleError(w, "updateGigastakeApp", http.StatusBadRequest, fmt.Errorf("gigastake app ID must be provided"))
+		return
+	}
+
 	err = rt.writer.UpdateGigastakeApp(r.Context(), gigastakeAppUpdate, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateGigastakeApp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateGigastakeApp", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -399,25 +377,26 @@ func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/chain/{id}/activate - Activates or deactivates a blockchain by ID.
 func (rt *Router) activateChain(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("activateChain method called")
 
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
+	if chainID == "" {
+		rt.handleError(w, "activateChain", http.StatusBadRequest, fmt.Errorf("chain ID must be provided"))
+		return
+	}
 
 	var active bool
 
 	err := json.NewDecoder(r.Body).Decode(&active)
 	if err != nil {
-		rt.logError(fmt.Errorf("activateChain decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "activateChain", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	activated, err := rt.writer.SetChainActiveStatus(r.Context(), chainID, active, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("SetChainActiveStatus in ActivateChain failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "activateChain", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -428,15 +407,15 @@ func (rt *Router) activateChain(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/portal_app/{id} - Fetches a single portal application by its PortalAppID.
 func (rt *Router) getPortalAppByID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getPortalAppByID method called")
-
 	vars := mux.Vars(r)
 	portalAppID := types.PortalAppID(vars["id"])
+	if portalAppID == "" {
+		rt.handleError(w, "getPortalAppByID", http.StatusBadRequest, fmt.Errorf("portal app ID must be provided"))
+	}
 
 	portalApp := rt.cache.GetPortalApp(portalAppID)
 	if portalApp.ID == "" {
-		rt.logError(fmt.Errorf("getPortalAppByID failed: %w", errPortalAppNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errPortalAppNotFound.Error())
+		rt.handleError(w, "getPortalAppByID", http.StatusNotFound, errPortalAppNotFound)
 		return
 	}
 
@@ -445,24 +424,19 @@ func (rt *Router) getPortalAppByID(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/portal_app - Fetches all portal applications.
 func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getAllPortalApps method called")
-
 	queryParams := map[queryParam]queryParamDetail{
 		commonParams.includeDeleted: {required: false},
 	}
 
 	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
-		err = fmt.Errorf("getAllPortalApps failed. %w", err)
-		rt.logError(err)
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "getAllPortalApps", http.StatusBadRequest, err)
 		return
 	}
 
 	portalApps := rt.cache.GetPortalApps(options)
 	if len(portalApps) == 0 {
-		rt.logError(fmt.Errorf("getAllPortalApps failed: %w", errNoPortalAppsFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
+		rt.handleError(w, "getAllPortalApps", http.StatusNotFound, errNoPortalAppsFound)
 		return
 	}
 
@@ -471,12 +445,9 @@ func (rt *Router) getAllPortalApps(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/middleware/portal_app - Fetches all middleware portal applications.
 func (rt *Router) getPortalAppsForMiddleware(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getPortalAppsForMiddleware method called")
-
 	middlewarePortalApps := rt.cache.GetPortalAppsForMiddleware()
 	if len(middlewarePortalApps) == 0 {
-		rt.logError(fmt.Errorf("getPortalAppsForMiddleware failed: %w", errNoPortalAppsFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
+		rt.handleError(w, "getPortalAppsForMiddleware", http.StatusNotFound, errNoPortalAppsFound)
 		return
 	}
 
@@ -485,10 +456,11 @@ func (rt *Router) getPortalAppsForMiddleware(w http.ResponseWriter, r *http.Requ
 
 // GET /v2/user/{userID}/portal_app - Fetches all portal applications.
 func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getPortalAppsByUser method called")
-
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
+	if userID == "" {
+		rt.handleError(w, "getPortalAppsByUser", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
+	}
 
 	queryParams := map[queryParam]queryParamDetail{
 		portalAppParams.roleNameFilters: {required: false},
@@ -496,16 +468,13 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 
 	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
-		err = fmt.Errorf("getAllChains failed. %w", err)
-		rt.logError(err)
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "getPortalAppsByUser", http.StatusBadRequest, err)
 		return
 	}
 
 	portalAppsForUser := rt.cache.GetPortalAppsByUserID(userID, options)
 	if len(portalAppsForUser) == 0 {
-		rt.logError(fmt.Errorf("getPortalAppsByUser failed: %w", errNoPortalAppsFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoPortalAppsFound.Error())
+		rt.handleError(w, "getPortalAppsByUser", http.StatusNotFound, errNoPortalAppsFound)
 		return
 	}
 
@@ -514,14 +483,11 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/portal_app - Creates a new portal application.
 func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createNewPortalApp method called")
-
 	var portalAppInput types.PortalApp
 
 	err := json.NewDecoder(r.Body).Decode(&portalAppInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("createNewPortalApp Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createNewPortalApp", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
@@ -535,8 +501,7 @@ func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
 
 	createdPortalApp, err := rt.writer.WritePortalApp(r.Context(), portalAppInput, aat, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("WritePortalApp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createNewPortalApp", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -545,14 +510,11 @@ func (rt *Router) createNewPortalApp(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/portal_app/{id} - Updates a portal application.
 func (rt *Router) updatePortalApp(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updatePortalApp method called")
-
 	var portalAppUpdate types.UpdatePortalApp
 
 	err := json.NewDecoder(r.Body).Decode(&portalAppUpdate)
 	if err != nil {
-		rt.logError(fmt.Errorf("updatePortalApp Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updatePortalApp", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
@@ -562,8 +524,7 @@ func (rt *Router) updatePortalApp(w http.ResponseWriter, r *http.Request) {
 
 	err = rt.writer.UpdatePortalApp(r.Context(), portalAppUpdate, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdatePortalApp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updatePortalApp", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -572,15 +533,15 @@ func (rt *Router) updatePortalApp(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /v2/portal_app/{id} - Deletes a portal application.
 func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("deletePortalApp method called")
-
 	vars := mux.Vars(r)
 	portalAppID := types.PortalAppID(vars["id"])
+	if portalAppID == "" {
+		rt.handleError(w, "deletePortalApp", http.StatusBadRequest, fmt.Errorf("portal app ID must be provided"))
+	}
 
 	err := rt.writer.SetPortalAppDeleted(r.Context(), portalAppID, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("SetPortalAppDeleted failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "deletePortalApp", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -589,27 +550,22 @@ func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/portal_app/first_date_surpassed - Updates one or more PortalApps' FirstDateSurpassed field.
 func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updatePortalAppFirstDateSurpassed method called")
-
 	var firstDateSurpassedUpdate *types.UpdateFirstDateSurpassed
 
 	err := json.NewDecoder(r.Body).Decode(&firstDateSurpassedUpdate)
 	if err != nil {
-		rt.logError(fmt.Errorf("updatePortalAppFirstDateSurpassed Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	if len(firstDateSurpassedUpdate.PortalAppIDs) == 0 {
-		rt.logError(fmt.Errorf("updatePortalAppFirstDateSurpassed failed: %w", errNoPortalAppsFound))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, errNoPortalAppsFound.Error())
+		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusBadRequest, fmt.Errorf("no portal app IDs provided"))
 	}
 
 	err = rt.writer.UpdatePortalAppsFirstDateSurpassed(r.Context(), firstDateSurpassedUpdate)
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdatePortalAppsFirstDateSurpassed failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -620,24 +576,19 @@ func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *ht
 
 // GET /v2/account - Get all Accounts.
 func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getAccounts method called")
-
 	queryParams := map[queryParam]queryParamDetail{
 		commonParams.includeDeleted: {required: false},
 	}
 
 	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
-		err = fmt.Errorf("getAccounts failed. %w", err)
-		rt.logError(err)
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "getAccounts", http.StatusBadRequest, err)
 		return
 	}
 
 	accounts := rt.cache.GetAccounts(options)
 	if len(accounts) == 0 {
-		rt.logError(fmt.Errorf("getAccounts failed: %w", errAccountNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errAccountNotFound.Error())
+		rt.handleError(w, "getAccounts", http.StatusNotFound, errAccountNotFound)
 		return
 	}
 
@@ -647,12 +598,14 @@ func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
 // GET /v2/account/{id} - Get one Account by account ID.
 func (rt *Router) getAccountByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	userID := types.AccountID(vars["id"])
+	accountID := types.AccountID(vars["id"])
+	if accountID == "" {
+		rt.handleError(w, "getAccountByID", http.StatusBadRequest, fmt.Errorf("account ID must be provided"))
+	}
 
-	account := rt.cache.GetAccount(userID)
+	account := rt.cache.GetAccount(accountID)
 	if account.ID == "" {
-		rt.logError(fmt.Errorf("getAccountByID failed: %w", errAccountNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errAccountNotFound.Error())
+		rt.handleError(w, "getAccountByID", http.StatusNotFound, errAccountNotFound)
 		return
 	}
 
@@ -661,16 +614,16 @@ func (rt *Router) getAccountByID(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/{userID}/account - Fetches all accounts for a given user ID.
 func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getAccountsByUser method called")
-
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
+	if userID == "" {
+		rt.handleError(w, "getAccountsByUser", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
+	}
 
 	accounts := rt.cache.GetAccountsByUserID(userID)
 
 	if len(accounts) == 0 {
-		rt.logError(fmt.Errorf("getAccountsByUser failed: %w", errNoAccountsFoundForUserID))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoAccountsFoundForUserID.Error())
+		rt.handleError(w, "getAccountsByUser", http.StatusNotFound, errNoAccountsFoundForUserID)
 		return
 	}
 
@@ -679,25 +632,24 @@ func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/{userID}/account - Creates an Account in the database for a single user.
 func (rt *Router) createAccount(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createAccount method called")
-
 	var account types.Account
 
 	err := json.NewDecoder(r.Body).Decode(&account)
 	if err != nil {
-		rt.logError(fmt.Errorf("writeAccount Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createAccount", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
+	if userID == "" {
+		rt.handleError(w, "createAccount", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
+	}
 
 	createdAccount, err := rt.writer.WriteAccount(r.Context(), userID, account, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteAccount failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createAccount", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -706,26 +658,26 @@ func (rt *Router) createAccount(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/account/{id} - Update an Account.
 func (rt *Router) updateAccount(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateAccount method called")
+	vars := mux.Vars(r)
+	accountID := types.AccountID(vars["id"])
+	if accountID == "" {
+		rt.handleError(w, "updateAccount", http.StatusBadRequest, fmt.Errorf("account ID must be provided"))
+	}
 
 	var update types.UpdateAccount
 
 	err := json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateAccount Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateAccount", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
-	vars := mux.Vars(r)
-	accountID := types.AccountID(vars["id"])
 	update.AccountID = accountID
 
 	updatedAccount, err := rt.writer.UpdateAccount(r.Context(), update, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateAccount failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateAccount", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -734,14 +686,11 @@ func (rt *Router) updateAccount(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/account/{id}/integration - Add the Account Integrations for a single Account.
 func (rt *Router) createAccountIntegration(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createAccountIntegration method called")
-
 	var integrations types.AccountIntegrations
 
 	err := json.NewDecoder(r.Body).Decode(&integrations)
 	if err != nil {
-		rt.logError(fmt.Errorf("createAccountIntegration Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createAccountIntegration", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
@@ -752,8 +701,7 @@ func (rt *Router) createAccountIntegration(w http.ResponseWriter, r *http.Reques
 
 	createdIntegration, err := rt.writer.UpsertAccountIntegration(r.Context(), integrations)
 	if err != nil {
-		rt.logError(fmt.Errorf("UpsertAccountIntegration failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createAccountIntegration", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -762,26 +710,26 @@ func (rt *Router) createAccountIntegration(w http.ResponseWriter, r *http.Reques
 
 // PUT /v2/account/{id}/integration - Updates the Account Integrations for a single Account.
 func (rt *Router) updateAccountIntegration(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateAccountIntegration method called")
+	vars := mux.Vars(r)
+	accountID := types.AccountID(vars["id"])
+	if accountID == "" {
+		rt.handleError(w, "updateAccountIntegration", http.StatusBadRequest, fmt.Errorf("account ID must be provided"))
+	}
 
 	var integrations types.AccountIntegrations
 
 	err := json.NewDecoder(r.Body).Decode(&integrations)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateAccountIntegration Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateAccountIntegration", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
-	vars := mux.Vars(r)
-	accountID := types.AccountID(vars["id"])
 	integrations.AccountID = accountID
 
 	updatedIntegration, err := rt.writer.UpsertAccountIntegration(r.Context(), integrations)
 	if err != nil {
-		rt.logError(fmt.Errorf("UpsertAccountIntegration failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateAccountIntegration", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -790,15 +738,15 @@ func (rt *Router) updateAccountIntegration(w http.ResponseWriter, r *http.Reques
 
 // DELETE /v2/account/{id} - Set the Account's Deleted field to true.
 func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("deleteAccount method called")
-
 	vars := mux.Vars(r)
 	accountID := types.AccountID(vars["id"])
+	if accountID == "" {
+		rt.handleError(w, "deleteAccount", http.StatusBadRequest, fmt.Errorf("account ID must be provided"))
+	}
 
 	err := rt.writer.SetAccountDeleted(r.Context(), accountID, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("SetAccountDeleted failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "deleteAccount", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -809,22 +757,18 @@ func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/account/user - Create a single Account User.
 func (rt *Router) writeAccountUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("writeAccountUser method called")
-
 	var createUser types.CreateAccountUserAccess
 
 	err := json.NewDecoder(r.Body).Decode(&createUser)
 	if err != nil {
-		rt.logError(fmt.Errorf("writeAccountUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "writeAccountUser", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	userID, err := rt.writer.WriteAccountUser(r.Context(), createUser, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteAccountUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "writeAccountUser", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -833,22 +777,18 @@ func (rt *Router) writeAccountUser(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/account/user/update_role - Update the role for a single Account User.
 func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateAccountUserRole method called")
-
 	var updateUser types.UpdateAccountUserRole
 
 	err := json.NewDecoder(r.Body).Decode(&updateUser)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateAccountUserRole Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateAccountUserRole", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	err = rt.writer.SetAccountUserRole(r.Context(), updateUser, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("SetAccountUserRole failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateAccountUserRole", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -857,22 +797,18 @@ func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) 
 
 // PUT /v2/account/user/accept - Accept an AccountUserAccess.
 func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("acceptAccountUser method called")
-
 	var acceptUser types.UpdateAcceptAccountUser
 
 	err := json.NewDecoder(r.Body).Decode(&acceptUser)
 	if err != nil {
-		rt.logError(fmt.Errorf("acceptAccountUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "acceptAccountUser", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	err = rt.writer.UpdateAcceptAccountUser(r.Context(), acceptUser, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateAcceptAccountUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "acceptAccountUser", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -881,22 +817,18 @@ func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/account/user/remove - Remove an AccountUserAccess.
 func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("removeAccountUser method called")
-
 	var removeUser types.UpdateRemoveAccountUser
 
 	err := json.NewDecoder(r.Body).Decode(&removeUser)
 	if err != nil {
-		rt.logError(fmt.Errorf("removeAccountUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "removeAccountUser", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	err = rt.writer.RemoveAccountUser(r.Context(), removeUser.UserID, removeUser.PortalAppID, removeUser.AccountID)
 	if err != nil {
-		rt.logError(fmt.Errorf("RemoveAccountUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "removeAccountUser", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -907,15 +839,13 @@ func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 
 // GET /v2/user/{userID}/permission - Gets all PortalApp permissions for a given provider user ID.
 func (rt *Router) getUserPermissionByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getUserPermissionByUserID method called")
-
 	vars := mux.Vars(r)
 	providerUserID := types.ProviderUserID(vars["userID"])
 
 	portalUserID := rt.cache.GetUserIDFromProviderUserID(providerUserID)
 	if portalUserID == "" {
-		rt.logError(fmt.Errorf("GetUserIDFromProviderUserID in getUserPermissionByUserID failed: %w", errUserNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errUserNotFound.Error())
+		rt.handleError(w, "getUserPermissionByUserID", http.StatusNotFound, errUserNotFound)
+		return
 	}
 
 	userPermissions := rt.cache.GetUserPermissionsByUserID(portalUserID)
@@ -925,15 +855,13 @@ func (rt *Router) getUserPermissionByUserID(w http.ResponseWriter, r *http.Reque
 
 // GET /v2/user/{userID} - Gets the Portal User ID for a given auth provider user ID.
 func (rt *Router) getPortalUserID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getPortalUserID method called")
-
 	vars := mux.Vars(r)
 	providerUserID := types.ProviderUserID(vars["userID"])
 
 	portalUserID := rt.cache.GetUserIDFromProviderUserID(providerUserID)
 	if portalUserID == "" {
-		rt.logError(fmt.Errorf("GetUserIDFromProviderUserID in getPortalUserIDFromProviderUserID failed: %w", errUserNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errUserNotFound.Error())
+		rt.handleError(w, "getPortalUserID", http.StatusNotFound, errUserNotFound)
+		return
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, portalUserID)
@@ -941,22 +869,18 @@ func (rt *Router) getPortalUserID(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/user - Creates a new User in the database. Called in response to a new user sign up.
 func (rt *Router) createUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createUser method called")
-
 	var user types.CreateUser
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		rt.logError(fmt.Errorf("createUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createUser", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	createdUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), user, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteUserNewSignUp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createUser", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -968,15 +892,12 @@ func (rt *Router) createUser(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /v2/user/{userID} - Deletes a User (WARNING: this will perform a hard delete in the database).
 func (rt *Router) deleteUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("deleteUser method called")
-
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
 
 	_, err := rt.writer.DeletePortalUser(r.Context(), userID)
 	if err != nil {
-		rt.logError(fmt.Errorf("DeletePortalUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "deleteUser", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -986,8 +907,6 @@ func (rt *Router) deleteUser(w http.ResponseWriter, r *http.Request) {
 /* ---------- V2 Plan Handler Methods ---------- */
 
 func (rt *Router) getPlans(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getPlans method called")
-
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetPlans())
 }
 
@@ -1002,22 +921,18 @@ func (rt *Router) getBlockedContracts(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/blocked_contract - Add a new blocked address to the global blocked contracts table.
 func (rt *Router) writeBlockedContract(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("writeBlockedContract method called")
-
 	var blockedContract types.BlockedContract
 
 	err := json.NewDecoder(r.Body).Decode(&blockedContract)
 	if err != nil {
-		rt.logError(fmt.Errorf("writeBlockedContract Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "writeBlockedContract", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	err = rt.writer.WriteBlockedContract(r.Context(), blockedContract.BlockedAddress, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("WriteBlockedContract failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "writeBlockedContract", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1026,14 +941,11 @@ func (rt *Router) writeBlockedContract(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/blocked_contract/{address}/active - Activate or deactivate a blocked address in the global blocked contracts table.
 func (rt *Router) updateBlockedContractActive(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateBlockedContractActive method called")
-
 	var blockedContract types.BlockedContract
 
 	err := json.NewDecoder(r.Body).Decode(&blockedContract)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateBlockedContractActive Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateBlockedContractActive", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
@@ -1043,8 +955,7 @@ func (rt *Router) updateBlockedContractActive(w http.ResponseWriter, r *http.Req
 
 	err = rt.writer.UpdateBlockedContractActive(r.Context(), blockedAddress, blockedContract.Active, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("UpdateBlockedContractActive failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateBlockedContractActive", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1053,15 +964,12 @@ func (rt *Router) updateBlockedContractActive(w http.ResponseWriter, r *http.Req
 
 // DELETE /v2/blocked_contract/{address} - Delete a blocked address from the global blocked contracts table.
 func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("removeBlockedContract method called")
-
 	vars := mux.Vars(r)
 	blockedAddress := types.BlockedAddress(vars["address"])
 
 	err := rt.writer.RemoveBlockedContract(r.Context(), blockedAddress)
 	if err != nil {
-		rt.logError(fmt.Errorf("RemoveBlockedContract failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "removeBlockedContract", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1071,20 +979,16 @@ func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) 
 /* ---------- V1 Read Methods ---------- */
 
 func (rt *Router) getUserPermissionsByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getUserPermissionsByUserID method called")
-
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
 	permissions, err := rt.cache.GetLegacyUserPermissionsByUserID(r.Context(), userID)
 	if err != nil {
-		rt.logError(fmt.Errorf("getUserPermissionsByUserID failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		rt.handleError(w, "getUserPermissionsByUserID", http.StatusNotFound, err)
 		return
 	}
 	if permissions.UserID == "" {
-		rt.logError(fmt.Errorf("getUserPermissionsByUserID failed: %w", errPermissionsNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errPermissionsNotFound.Error())
+		rt.handleError(w, "getUserPermissionsByUserID", http.StatusNotFound, errPermissionsNotFound)
 		return
 	}
 
@@ -1092,14 +996,11 @@ func (rt *Router) getUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 }
 
 func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getApplicationsByUserID method called")
-
 	vars := mux.Vars(r)
 
 	apps, err := rt.cache.GetLegacyApplicationsByUserID(r.Context(), vars["id"])
 	if err != nil {
-		rt.logError(fmt.Errorf("getApplicationsByUserID failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		rt.handleError(w, "getApplicationsByUserID", http.StatusNotFound, err)
 		return
 	}
 
@@ -1107,18 +1008,14 @@ func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request
 }
 
 func (rt *Router) getApplications(w http.ResponseWriter, r *http.Request) {
-
 	applications := rt.cache.GetLegacyApplications(cache.Options{
 		IncludeDeleted: false,
 	})
 
-	rt.log.WithField("applications", len(applications)).Debug("getApplications method called")
 	jsonresponse.RespondWithJSON(w, http.StatusOK, applications)
 }
 
 func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getLoadBalancersByUserID method called")
-
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
@@ -1130,8 +1027,7 @@ func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 
 	lbs, err := rt.cache.GetLegacyLoadBalancersByUserID(r.Context(), userID, roleNameFilter)
 	if err != nil {
-		rt.logError(fmt.Errorf("getLoadBalancersByUserID failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		rt.handleError(w, "getLoadBalancersByUserID", http.StatusNotFound, err)
 		return
 	}
 
@@ -1140,22 +1036,16 @@ func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 
 func (rt *Router) getLoadBalancers(w http.ResponseWriter, r *http.Request) {
 	lbs := rt.cache.GetLegacyLoadBalancers(r.Context())
-	rt.log.WithField(
-		"loadbalancers", len(lbs),
-	).Info("getLoadbalancers method called")
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
 }
 
 func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getLoadBalancer method called")
-
 	vars := mux.Vars(r)
 
 	lb, err := rt.cache.GetLegacyLoadBalancer(r.Context(), vars["id"])
 	if err != nil {
-		rt.logError(fmt.Errorf("getLoadBalancer failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		rt.handleError(w, "getLoadBalancer", http.StatusNotFound, err)
 		return
 	}
 
@@ -1163,24 +1053,19 @@ func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getBlockchains method called")
-
 	queryParams := map[queryParam]queryParamDetail{
 		chainParams.includeInactive: {required: false},
 	}
 
 	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
-		err = fmt.Errorf("getBlockchains failed. %w", err)
-		rt.logError(err)
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "getBlockchains", http.StatusBadRequest, err)
 		return
 	}
 
 	blockchains := rt.cache.GetLegacyBlockchains(r.Context(), options.IncludeInactiveChains)
 	if len(blockchains) == 0 {
-		rt.logError(fmt.Errorf("getBlockchains failed: %w", errNoBlockchainsFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errNoBlockchainsFound.Error())
+		rt.handleError(w, "getBlockchains", http.StatusNotFound, errNoBlockchainsFound)
 		return
 	}
 
@@ -1192,8 +1077,7 @@ func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {
 
 	blockchain := rt.cache.GetLegacyBlockchain(r.Context(), vars["id"])
 	if blockchain.ID == "" {
-		rt.logError(fmt.Errorf("getBlockchain failed: %w", errBlockchainNotFound))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, errBlockchainNotFound.Error())
+		rt.handleError(w, "getBlockchain", http.StatusNotFound, errBlockchainNotFound)
 		return
 	}
 
@@ -1201,8 +1085,6 @@ func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getPayPlans(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getPayPlans method called")
-
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyPayPlans(r.Context()))
 }
 
@@ -1211,8 +1093,7 @@ func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
 
 	plan, err := rt.cache.GetLegacyPayPlan(r.Context(), vars["type"])
 	if err != nil {
-		rt.logError(fmt.Errorf("GetLegacyPayPlan in getPayPlan failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		rt.handleError(w, "getPayPlan", http.StatusNotFound, err)
 		return
 	}
 
@@ -1221,15 +1102,12 @@ func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
 
 /* Returns all pending load balancers for a given portal user ID. */
 func (rt *Router) getPendingLoadBalancersByPortalID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getPendingLoadBalancersByPortalID method called")
-
 	vars := mux.Vars(r)
 	userPortalID := vars["portalID"]
 
 	lbs, err := rt.cache.GetLegacyPendingLoadBalancers(r.Context(), userPortalID)
 	if err != nil {
-		rt.logError(fmt.Errorf("getLegacyPendingLoadBalancers in GetPendingLoadBalancersByEmail failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		rt.handleError(w, "getPendingLoadBalancersByPortalID", http.StatusNotFound, err)
 		return
 	}
 
@@ -1238,8 +1116,6 @@ func (rt *Router) getPendingLoadBalancersByPortalID(w http.ResponseWriter, r *ht
 
 /* Returns the number of load balancers a given user owns, by portal ID */
 func (rt *Router) getLoadBalancersCountByPortalID(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("getLoadBalancersCountByPortalID method called")
-
 	vars := mux.Vars(r)
 	userPortalID := vars["portalID"]
 
@@ -1249,24 +1125,19 @@ func (rt *Router) getLoadBalancersCountByPortalID(w http.ResponseWriter, r *http
 }
 
 /* ---------- V1 Create Methods ---------- */
-
 func (rt *Router) createLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createLoadBalancer method called")
-
 	var lb v1Types.LoadBalancer
 
 	err := json.NewDecoder(r.Body).Decode(&lb)
 	if err != nil {
-		rt.logError(fmt.Errorf("createLoadBalancer Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createLoadBalancer", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	createdLB, err := rt.cache.CreateLegacyLoadBalancer(r.Context(), rt.writer, lb)
 	if err != nil {
-		rt.logError(fmt.Errorf("createLoadBalancer Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createLoadBalancer", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1274,26 +1145,21 @@ func (rt *Router) createLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) createLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createLoadBalancerUser method called")
-
 	vars := mux.Vars(r)
-
 	lbID := vars["id"]
 
 	var user v1Types.UserAccess
 
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		rt.logError(fmt.Errorf("createLoadBalancerUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createLoadBalancerUser", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	updatedLB, err := rt.cache.CreateLegacyLoadBalancerUser(r.Context(), rt.writer, lbID, user)
 	if err != nil {
-		rt.logError(fmt.Errorf("writeLoadBalancerUser in CreateLoadBalancerUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createLoadBalancerUser", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1301,27 +1167,21 @@ func (rt *Router) createLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createLoadBalancerIntegration method called")
-
 	vars := mux.Vars(r)
-
 	lbID := vars["id"]
 
 	var integrationsInput types.AccountIntegrations
 
 	err := json.NewDecoder(r.Body).Decode(&integrationsInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("createLoadBalancerUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createLoadBalancerIntegration", http.StatusBadRequest, err)
 		return
 	}
-
 	defer r.Body.Close()
 
 	updatedLB, err := rt.cache.CreateLegacyLoadBalancerIntegration(r.Context(), rt.writer, lbID, integrationsInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("CreateLegacyLoadBalancerIntegration in createLoadBalancerIntegration failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "createLoadBalancerIntegration", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1329,22 +1189,18 @@ func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.R
 }
 
 func (rt *Router) createPortalUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("createPortalUser method called")
-
 	var userInput types.CreateUser
 
 	err := json.NewDecoder(r.Body).Decode(&userInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("createPortalUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createPortalUser", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	newUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), userInput, time.Now())
 	if err != nil {
-		rt.logError(fmt.Errorf("writeUserNewSignUp failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "createPortalUser", http.StatusBadRequest, err)
 		return
 	}
 
@@ -1359,32 +1215,26 @@ func (rt *Router) createPortalUser(w http.ResponseWriter, r *http.Request) {
 /* ---------- V1 Update Methods ---------- */
 
 func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateLoadBalancer method called")
-
 	vars := mux.Vars(r)
-
 	lbID := vars["id"]
 
-	// Note: It is intended to use UpdateApplication here
 	var updateInput v1Types.UpdateApplication
 
 	err := json.NewDecoder(r.Body).Decode(&updateInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateLoadBalancer decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateLoadBalancer", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	loadBalancer, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, lbID, updateInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateLegacyLoadBalancer in UpdateLoadBalancer failed: %w", err))
-		if err.Error() == fmt.Errorf(cache.ErrPortalAppNotFound.Error(), lbID).Error() { // prevent a 500 when it should be a 404
-			jsonresponse.RespondWithError(w, http.StatusNotFound, err.Error())
+		if err.Error() == fmt.Errorf(cache.ErrPortalAppNotFound.Error(), lbID).Error() {
+			rt.handleError(w, "updateLoadBalancer", http.StatusNotFound, err)
 			return
 		}
 
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateLoadBalancer", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1392,28 +1242,19 @@ func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateFirstDateSurpassed method called")
-
 	var updateInput v1Types.UpdateFirstDateSurpassed
 
 	err := json.NewDecoder(r.Body).Decode(&updateInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateFirstDateSurpassed decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateFirstDateSurpassed", http.StatusBadRequest, err)
 		return
 	}
 
 	defer r.Body.Close()
 
-	rt.log.WithFields(logrus.Fields{
-		"applicationIDs":     updateInput.ApplicationIDs,
-		"firstDateSurpassed": updateInput.FirstDateSurpassed,
-	}).Info("Received UpdateFirstDateSurpassed request")
-
 	appsToUpdate, err := rt.cache.UpdateLegacyApplicationsFirstDateSurpassed(r.Context(), rt.writer, updateInput)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateLegacyApplicationsFirstDateSurpassed in UpdateFirstDateSurpassed failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateFirstDateSurpassed", http.StatusBadRequest, err)
 		return
 	}
 
@@ -1421,8 +1262,6 @@ func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("updateLoadBalancerUserRole method called")
-
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1430,8 +1269,7 @@ func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 
 	err := json.NewDecoder(r.Body).Decode(&updateUser)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateLoadBalancerUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "updateLoadBalancerUserRole", http.StatusBadRequest, err)
 		return
 	}
 
@@ -1439,8 +1277,7 @@ func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 
 	updatedLB, err := rt.cache.UpdateLegacyUserRole(r.Context(), rt.writer, lbID, updateUser)
 	if err != nil {
-		rt.logError(fmt.Errorf("updateLegacyUserRole for team member in UpdateLoadBalancerUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "updateLoadBalancerUserRole", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1448,8 +1285,6 @@ func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 }
 
 func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("acceptLoadBalancerUser method called")
-
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1457,16 +1292,14 @@ func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 
 	err := json.NewDecoder(r.Body).Decode(&acceptUserUpdate)
 	if err != nil {
-		rt.logError(fmt.Errorf("acceptLoadBalancerUser Decode failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, err.Error())
+		rt.handleError(w, "acceptLoadBalancerUser", http.StatusBadRequest, err)
 		return
 	}
 	defer r.Body.Close()
 
 	updatedLB, err := rt.cache.AcceptLegacyUser(r.Context(), rt.writer, lbID, acceptUserUpdate)
 	if err != nil {
-		rt.logError(fmt.Errorf("acceptLegacyUser in AcceptLoadBalancerUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "acceptLoadBalancerUser", http.StatusInternalServerError, err)
 		return
 	}
 
@@ -1474,14 +1307,11 @@ func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) deleteLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
-	rt.log.Debug("deleteLoadBalancerUser method called")
-
 	vars := mux.Vars(r)
 
 	lb, err := rt.cache.RemoveLegacyAccountUser(r.Context(), rt.writer, vars["userID"], vars["id"])
 	if err != nil {
-		rt.logError(fmt.Errorf("removeLegacyAccountUser in DeleteLoadBalancerUser failed: %w", err))
-		jsonresponse.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		rt.handleError(w, "deleteLoadBalancerUser", http.StatusInternalServerError, err)
 		return
 	}
 

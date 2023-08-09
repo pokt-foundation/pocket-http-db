@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"log/slog"
+
 	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +26,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
-		Logger:              logrus.New(),
+		Logger:              slog.Default(),
 		CacheRefreshMinutes: 5 * time.Minute,
 	})
 	c.NoError(err)
@@ -368,7 +369,6 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 				Name:            "pokt_gigastake",
 				Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
 				PublicKey:       "test_37a0e8437f5149dc98a9a5b207efc2d0",
-				PrivateKey:      "",
 				ClientPublicKey: "test_65c29f0cc82e418b81a528a0c0682a9f",
 				Signature:       "test_f22651fb566346fca30b605e5f46e3ca",
 				Version:         "0.0.1",
@@ -386,7 +386,6 @@ func Test_parseGigastakeAppNotification(t *testing.T) {
 				Name:            "updated_pokt_gigastake",
 				Address:         "test_updated_address",
 				PublicKey:       "test_updated_public_key",
-				PrivateKey:      "",
 				ClientPublicKey: "test_updated_client_public_key",
 				Signature:       "test_updated_signature",
 				Version:         "0.0.1",

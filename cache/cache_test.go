@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"log/slog"
+
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -34,7 +35,7 @@ func NewTestCache(t *testing.T) *Cache {
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
-		Logger:              logrus.New(),
+		Logger:              slog.Default(),
 		CacheRefreshMinutes: 5 * time.Minute,
 	})
 	c.NoError(err)
@@ -256,7 +257,7 @@ func TestCache_SetCache_Failure(t *testing.T) {
 
 			_, err := NewCache(testCtx, Config{
 				Reader:              readerMock,
-				Logger:              logrus.New(),
+				Logger:              slog.Default(),
 				CacheRefreshMinutes: 5 * time.Minute,
 			})
 			c.ErrorIs(err, test.err)

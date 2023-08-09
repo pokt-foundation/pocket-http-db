@@ -108,7 +108,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:    "Should return error if chain does not exist",
 				chainID: "9999",
-				err:     fmt.Errorf("Response not OK. 404 Not Found: chain not found"),
+				err:     fmt.Errorf("Response not OK. 404 Not Found: error in getChainByID: chain not found"),
 			},
 		}
 
@@ -216,7 +216,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:        "Should return error if app does not exist",
 				portalAppID: "9999",
-				err:         fmt.Errorf("Response not OK. 404 Not Found: portal app not found"),
+				err:         fmt.Errorf("Response not OK. 404 Not Found: error in getPortalAppByID: portal app not found"),
 			},
 		}
 
@@ -660,7 +660,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:           "Should error when user does not exist",
 				providerUserID: "facebook|ron_swanson",
-				err:            fmt.Errorf("Response not OK. 404 Not Found"),
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getPortalUserID: user not found for provider user ID"),
 			},
 			{
 				name:           "Should error when no user ID",
@@ -796,7 +796,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:         "Should fail if the blockchain does not exist in the DB",
 				blockchainID: "666",
-				err:          fmt.Errorf("Response not OK. 404 Not Found: blockchain not found"),
+				err:          fmt.Errorf("Response not OK. 404 Not Found: error in getBlockchain: blockchain not found"),
 			},
 		}
 
@@ -856,7 +856,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fail if the user does not have any applications in the DB",
 				userID: "test_not_real_user",
-				err:    fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID test_not_real_user"),
+				err:    fmt.Errorf("Response not OK. 404 Not Found: error in getApplicationsByUserID: user not found for provider user ID test_not_real_user"),
 			},
 		}
 
@@ -924,7 +924,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:           "Should fail if the load balancer does not exist in the DB",
 				loadBalancerID: "test_not_real_load_balancer",
-				err:            fmt.Errorf("Response not OK. 404 Not Found: portal app not found for load balancer ID test_not_real_load_balancer"),
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getLoadBalancer: portal app not found for load balancer ID test_not_real_load_balancer"),
 			},
 		}
 
@@ -978,7 +978,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fail if the user does not exist",
 				userID: "test_not_real_user",
-				err:    fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID test_not_real_user"),
+				err:    fmt.Errorf("Response not OK. 404 Not Found: error in getLoadBalancersByUserID: user not found for provider user ID test_not_real_user"),
 			},
 		}
 
@@ -1045,7 +1045,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:        "Should fail if passed a pay plan type that is not in the DB",
 				payPlanType: v1Types.PayPlanType("not_a_real_plan"),
-				err:         fmt.Errorf("Response not OK. 404 Not Found: plan not found for type not_a_real_plan"),
+				err:         fmt.Errorf("Response not OK. 404 Not Found: error in getPayPlan: plan not found for type not_a_real_plan"),
 			},
 		}
 
@@ -1105,7 +1105,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fail if the user does not have any permissions",
 				userID: "test_user_hey_who_am_i_wow",
-				err:    fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID test_user_hey_who_am_i_wow"),
+				err:    fmt.Errorf("Response not OK. 404 Not Found: error in getUserPermissionsByUserID: user not found for provider user ID test_user_hey_who_am_i_wow"),
 			},
 		}
 
@@ -1330,7 +1330,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.expected.ID = createdGigastakeApp.ID
 					test.expected.CreatedAt = timestamp
 					test.expected.UpdatedAt = timestamp
-					test.expected.PrivateKey = ""
 
 					ts.Equal(test.expected, createdGigastakeApp)
 
