@@ -1330,7 +1330,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.expected.ID = createdGigastakeApp.ID
 					test.expected.CreatedAt = timestamp
 					test.expected.UpdatedAt = timestamp
-					test.expected.PrivateKey = ""
 
 					ts.Equal(test.expected, createdGigastakeApp)
 
