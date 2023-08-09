@@ -2,13 +2,11 @@ module github.com/pokt-foundation/pocket-http-db
 
 go 1.21
 
-toolchain go1.21.0
-
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.4.1
 	github.com/pokt-foundation/db-client v1.11.1
-	github.com/pokt-foundation/db-client/v2 v2.5.0
+	github.com/pokt-foundation/db-client/v2 v2.7.0
 	github.com/pokt-foundation/portal-db v1.11.0
 	github.com/pokt-foundation/portal-db/v2 v2.6.0
 	github.com/pokt-foundation/utils-go v0.8.2
