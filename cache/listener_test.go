@@ -4,11 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"log/slog"
-
 	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/utils-go/logger"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +25,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
-		Logger:              slog.Default(),
+		Logger:              logger.New(),
 		CacheRefreshMinutes: 5 * time.Minute,
 	})
 	c.NoError(err)

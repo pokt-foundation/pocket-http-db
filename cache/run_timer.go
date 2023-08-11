@@ -4,15 +4,17 @@ import (
 	"time"
 
 	"log/slog"
+
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 type runTimer struct {
 	name      string
 	startTime time.Time
-	logger    *slog.Logger
+	logger    *logger.Logger
 }
 
-func NewRunTimer(name string, logger *slog.Logger) *runTimer {
+func NewRunTimer(name string, logger *logger.Logger) *runTimer {
 	return &runTimer{
 		name:      name,
 		startTime: time.Now(),

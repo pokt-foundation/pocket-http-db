@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"log/slog"
-
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 var testCtx = context.Background()
@@ -35,7 +34,7 @@ func NewTestCache(t *testing.T) *Cache {
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
-		Logger:              slog.Default(),
+		Logger:              logger.New(),
 		CacheRefreshMinutes: 5 * time.Minute,
 	})
 	c.NoError(err)
@@ -257,7 +256,7 @@ func TestCache_SetCache_Failure(t *testing.T) {
 
 			_, err := NewCache(testCtx, Config{
 				Reader:              readerMock,
-				Logger:              slog.Default(),
+				Logger:              logger.New(),
 				CacheRefreshMinutes: 5 * time.Minute,
 			})
 			c.ErrorIs(err, test.err)

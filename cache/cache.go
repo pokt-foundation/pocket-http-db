@@ -11,6 +11,7 @@ import (
 
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 type (
@@ -23,7 +24,7 @@ type (
 	*/
 	Cache struct {
 		reader  driver.Reader
-		logger  *slog.Logger
+		logger  *logger.Logger
 		rwMutex sync.RWMutex
 
 		// Cached Data (including pending sub-table data maps)
@@ -60,7 +61,7 @@ type (
 
 	Config struct {
 		Reader              driver.Reader
-		Logger              *slog.Logger
+		Logger              *logger.Logger
 		CacheRefreshMinutes time.Duration
 	}
 
@@ -231,7 +232,10 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return appsData{}, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
+			c.logger.Warn("error setting plan for account: plan type does not exist in cache",
+				slog.String("account_id", string(account.ID)),
+				slog.String("plan_type", string(account.PlanType)),
+			)
 		}
 	}
 
