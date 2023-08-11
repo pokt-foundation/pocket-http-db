@@ -100,7 +100,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/chain", rt.getAllChains).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/chain", rt.createNewChainAndGigastakeApps).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.createNewGigastakeApp).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
+	rt.Router.HandleFunc("/v2/chain/gigastake/{id}", rt.updateGigastakeApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/{id}", rt.updateChain).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.updateGigastakeApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/chain/{id}/activate", rt.activateChain).Methods(http.MethodPut)
@@ -350,8 +350,15 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedChain)
 }
 
-// PUT /v2/chain/gigastake - Updates a Gigastake app.
+// PUT /v2/chain/gigastake/{id} - Updates a Gigastake app by ID.
 func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	gigastakeAppID := types.GigastakeAppID(vars["id"])
+	if gigastakeAppID == "" {
+		rt.handleError(w, "updateGigastakeApp", http.StatusBadRequest, fmt.Errorf("gigastake app ID must be provided"))
+		return
+	}
+
 	var gigastakeAppUpdate types.UpdateGigastakeApp
 
 	err := json.NewDecoder(r.Body).Decode(&gigastakeAppUpdate)
@@ -361,10 +368,7 @@ func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if gigastakeAppUpdate.ID == "" {
-		rt.handleError(w, "updateGigastakeApp", http.StatusBadRequest, fmt.Errorf("gigastake app ID must be provided"))
-		return
-	}
+	gigastakeAppUpdate.ID = gigastakeAppID
 
 	err = rt.writer.UpdateGigastakeApp(r.Context(), gigastakeAppUpdate, time.Now())
 	if err != nil {
@@ -377,7 +381,6 @@ func (rt *Router) updateGigastakeApp(w http.ResponseWriter, r *http.Request) {
 
 // PUT /v2/chain/{id}/activate - Activates or deactivates a blockchain by ID.
 func (rt *Router) activateChain(w http.ResponseWriter, r *http.Request) {
-
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
 	if chainID == "" {
