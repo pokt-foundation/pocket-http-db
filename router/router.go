@@ -15,16 +15,20 @@ import (
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 var (
-	errNoChainsFound            error = errors.New("no chains were found")
-	errChainNotFound            error = errors.New("chain not found")
-	errNoPortalAppsFound        error = errors.New("no portal apps were found")
-	errPortalAppNotFound        error = errors.New("portal app not found")
-	errAccountNotFound          error = errors.New("account not found")
-	errNoAccountsFoundForUserID error = errors.New("no accounts were found for user ID")
-	errUserNotFound             error = errors.New("user not found for provider user ID")
+	errNoChainsFound                error = errors.New("no chains were found")
+	errNoGigastakeAppsFound         error = errors.New("no gigastake apps were found")
+	errNoGigastakeAppsFoundForChain error = errors.New("no gigastake apps were found for chain")
+	errChainNotFound                error = errors.New("chain not found")
+	errGigastakeAppNotFound         error = errors.New("gigastake app not found")
+	errNoPortalAppsFound            error = errors.New("no portal apps were found")
+	errPortalAppNotFound            error = errors.New("portal app not found")
+	errAccountNotFound              error = errors.New("account not found")
+	errNoAccountsFoundForUserID     error = errors.New("no accounts were found for user ID")
+	errUserNotFound                 error = errors.New("user not found for provider user ID")
 
 	errBlockchainNotFound    error = errors.New("blockchain not found")
 	errNoBlockchainsFound    error = errors.New("no blockchains were found")
@@ -39,14 +43,14 @@ type (
 		writer   driver.Writer
 		cache    *cache.Cache
 		apiKeys  map[string]bool
-		logger   *slog.Logger
+		logger   *logger.Logger
 		imageTag string
 	}
 	Config struct {
 		Cache    *cache.Cache
 		Writer   driver.Writer
 		APIKeys  map[string]bool
-		Logger   *slog.Logger
+		Logger   *logger.Logger
 		ImageTag string
 	}
 )
@@ -60,16 +64,16 @@ func (rt *Router) handleError(w http.ResponseWriter, functionName string, errorC
 	jsonresponse.RespondWithError(w, errorCode, errorString)
 }
 
-func timingMiddleware(log *slog.Logger) mux.MiddlewareFunc {
+func timingMiddleware(logger *logger.Logger) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Info("HTTP Request Starting", slog.String("uri", r.RequestURI))
+			logger.Info("HTTP Request Starting", slog.String("uri", r.RequestURI))
 
 			startTime := time.Now()
 			next.ServeHTTP(w, r)
 			elapsed := time.Since(startTime)
 
-			log.Info("HTTP Request Completed",
+			logger.Info("HTTP Request Completed",
 				slog.String("uri", r.RequestURI),
 				slog.Int64("milliseconds", elapsed.Milliseconds()),
 			)
@@ -97,7 +101,10 @@ func NewRouter(config Config) (*Router, error) {
 	// V2 endpoints are for the new DB schema and access the cache and V2 structs directly.
 
 	rt.Router.HandleFunc("/v2/chain/{id}", rt.getChainByID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/gigastake/{id}", rt.getGigastakeAppByID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/chain", rt.getAllChains).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/gigastake", rt.getAllGigastakeApps).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/chain/{id}/gigastake", rt.getAllGigastakeAppsByChain).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/chain", rt.createNewChainAndGigastakeApps).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake", rt.createNewGigastakeApp).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/chain/gigastake/{id}", rt.updateGigastakeApp).Methods(http.MethodPut)
@@ -240,10 +247,14 @@ func (rt *Router) resetCache(w http.ResponseWriter, r *http.Request) {
 
 /* ---------- V2 Chain Handler Methods ---------- */
 
-// GET /v2/chain/{id} - Fetches a single blockchains by its RelayChainID.
+// GET /v2/chain/{id} - Fetches a single blockchain by its RelayChainID.
 func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chainID := types.RelayChainID(vars["id"])
+	if chainID == "" {
+		rt.handleError(w, "getChainByID", http.StatusBadRequest, fmt.Errorf("chain ID must be provided"))
+		return
+	}
 
 	chain := rt.cache.GetChain(chainID, cache.Options{})
 	if chain.ID == "" {
@@ -252,6 +263,24 @@ func (rt *Router) getChainByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, chain)
+}
+
+// GET /v2/gigastake/{id} - Fetches a single gigastake app by its GigastakeAppID.
+func (rt *Router) getGigastakeAppByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	gigastakeAppID := types.GigastakeAppID(vars["id"])
+	if gigastakeAppID == "" {
+		rt.handleError(w, "getGigastakeAppByID", http.StatusBadRequest, fmt.Errorf("gigastake app ID must be provided"))
+		return
+	}
+
+	gigastakeApp := rt.cache.GetGigastakeAppByID(gigastakeAppID)
+	if gigastakeApp.ID == "" {
+		rt.handleError(w, "getGigastakeAppByID", http.StatusNotFound, errGigastakeAppNotFound)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, gigastakeApp)
 }
 
 // GET /v2/chain - Fetches all blockchains.
@@ -274,6 +303,55 @@ func (rt *Router) getAllChains(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, chains)
+}
+
+// GET /v2/gigastake - Fetches all gigastake apps.
+func (rt *Router) getAllGigastakeApps(w http.ResponseWriter, r *http.Request) {
+	queryParams := map[queryParam]queryParamDetail{
+		commonParams.includeDeleted: {required: false},
+	}
+
+	options, err := paramProcessor(r.URL, queryParams)
+	if err != nil {
+		rt.handleError(w, "getAllGigastakeApps", http.StatusBadRequest, err)
+		return
+	}
+
+	gigastakeApps := rt.cache.GetGigastakeApps(options)
+	if len(gigastakeApps) == 0 {
+		rt.handleError(w, "getAllGigastakeApps", http.StatusNotFound, errNoGigastakeAppsFound)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, gigastakeApps)
+}
+
+// GET /v2/chain/{id}/gigastake - Fetches all gigastake apps for a single chain ID.
+func (rt *Router) getAllGigastakeAppsByChain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := types.RelayChainID(vars["id"])
+	if chainID == "" {
+		rt.handleError(w, "getAllGigastakeAppsByChain", http.StatusBadRequest, fmt.Errorf("chain ID must be provided"))
+		return
+	}
+
+	chain := rt.cache.GetChain(chainID, cache.Options{})
+	if chain.ID == "" {
+		rt.handleError(w, "getAllGigastakeAppsByChain", http.StatusBadRequest, errChainNotFound)
+		return
+	}
+
+	gigastakeAppsByChain := []types.GigastakeApp{}
+	for _, gigastakeApp := range chain.GigastakeApps {
+		gigastakeAppsByChain = append(gigastakeAppsByChain, *gigastakeApp)
+	}
+
+	if len(gigastakeAppsByChain) == 0 {
+		rt.handleError(w, "getAllGigastakeAppsByChain", http.StatusNotFound, errNoGigastakeAppsFoundForChain)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, gigastakeAppsByChain)
 }
 
 // POST /v2/chain - Creates a new blockchains and its Gigastake apps.

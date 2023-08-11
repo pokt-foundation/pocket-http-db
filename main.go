@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"net/http"
 	_ "net/http/pprof"
-	"os"
 	"sync"
 	"time"
 
@@ -17,6 +15,7 @@ import (
 	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/pokt-foundation/utils-go/environment"
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 const (
@@ -43,8 +42,6 @@ const (
 	defaultPort                = "8080"
 	profiler                   = "PROFILER"
 	defaultProfiler            = false
-	logLevel                   = "LOG_LEVEL"
-	defaultLogLevel            = "info"
 	// Image tag used to return Docker image version in health check response body.
 	imageTag        = "IMAGE_TAG"
 	defaultImageTag = "development"
@@ -64,10 +61,7 @@ type (
 		apiKeys map[string]bool
 
 		cacheRefreshMinutes time.Duration
-
-		logLevel logLevelStr
 	}
-	logLevelStr string
 
 	// DB config structs
 	DBConfig interface {
@@ -81,33 +75,11 @@ type (
 	}
 )
 
-var logLevelMap = map[logLevelStr]slog.Level{
-	"debug": slog.LevelDebug,
-	"info":  slog.LevelInfo,
-	"warn":  slog.LevelWarn,
-	"error": slog.LevelError,
-}
-
-func (l logLevelStr) isValid() bool {
-	switch l {
-	case "debug", "info", "warn", "error":
-		return true
-	default:
-		return false
-	}
-}
-
 // gatherOptions collects and returns the required environment variables.
 func gatherOptions() options {
 	appEnv := types.AppEnv(environment.MustGetString(appEnv))
 	if !appEnv.IsValid() {
 		panic(fmt.Sprintf("invalid APP_ENV: %s", appEnv))
-	}
-
-	logLevel := logLevelStr(environment.GetString(logLevel, defaultLogLevel))
-	if !logLevel.isValid() {
-		log.Printf("invalid LOG_LEVEL: %s, using info level default", logLevel)
-		logLevel = defaultLogLevel
 	}
 
 	options := options{
@@ -120,7 +92,6 @@ func gatherOptions() options {
 		port:                environment.GetString(port, defaultPort),
 		imageTag:            environment.GetString(imageTag, defaultImageTag),
 		profiler:            environment.GetBool(profiler, defaultProfiler),
-		logLevel:            logLevel,
 	}
 
 	switch appEnv {
@@ -178,9 +149,9 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
-func httpHandler(router *router.Router, options options, logger *slog.Logger) {
+func httpHandler(router *router.Router, options options, logger *logger.Logger) {
 	logger.Info(fmt.Sprintf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port))
-	logger.Info(fmt.Sprintf("Log level is: %s (%d)", options.logLevel, logLevelMap[options.logLevel]))
+	logger.Info(fmt.Sprintf("Log level is: %s", logger.LogLevel()))
 	if options.appEnv != types.AppEnvProduction {
 		logger.Info(fmt.Sprintf("Running in %s mode. Connected to DB at %s:%s", options.appEnv, options.pgHost, options.pgPort))
 	}
@@ -189,23 +160,11 @@ func httpHandler(router *router.Router, options options, logger *slog.Logger) {
 }
 
 func main() {
-	ctx := context.Background()
-
 	// Gather env vars
 	options := gatherOptions()
 
-	// Configure logger - logs levels below the set level will be ignored (default is info)
-	programLevel := &slog.LevelVar{}
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: programLevel}))
-	logLevel := logLevelMap[options.logLevel]
-	programLevel.Set(logLevel)
-
-	// Start pprof server only if profiler flag set
-	if options.profiler {
-		go func() {
-			logger.Info("pprof:", http.ListenAndServe("localhost:6060", nil))
-		}()
-	}
+	// Instantiate logger
+	logger := logger.New()
 
 	// Choose DB configuration based on APP_ENV
 	var dbConfig DBConfig
@@ -219,7 +178,7 @@ func main() {
 	}
 
 	// Connect to Postgres DB, initialize listener and instantiate driver
-	connPool, cleanup, err := dbConfig.GetConn(ctx)
+	connPool, cleanup, err := dbConfig.GetConn(context.Background())
 	if err != nil {
 		panic(err)
 	}
@@ -230,16 +189,14 @@ func main() {
 	}()
 
 	notificationChannel := make(chan *types.Notification, 32)
-
 	listener := postgresdriver.NewPGXPoolListener(connPool, notificationChannel)
-
 	driver, errChan, err := postgresdriver.NewPostgresDriver(connPool, listener, notificationChannel)
 	if err != nil {
 		panic(err)
 	}
 
 	// Pass DB reader to cache and instantiate
-	cache, err := cache.NewCache(ctx, cache.Config{
+	cache, err := cache.NewCache(context.Background(), cache.Config{
 		Reader:              driver,
 		Logger:              logger,
 		CacheRefreshMinutes: options.cacheRefreshMinutes,
@@ -266,6 +223,13 @@ func main() {
 			logger.Error(fmt.Sprintf("error from listener: %v", err))
 		}
 	}()
+
+	// Start pprof server only if profiler flag set
+	if options.profiler {
+		go func() {
+			logger.Info("pprof:", http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	// Start the HTTP server
 	var wg sync.WaitGroup

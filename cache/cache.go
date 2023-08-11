@@ -11,6 +11,7 @@ import (
 
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 type (
@@ -23,7 +24,7 @@ type (
 	*/
 	Cache struct {
 		reader  driver.Reader
-		logger  *slog.Logger
+		logger  *logger.Logger
 		rwMutex sync.RWMutex
 
 		// Cached Data (including pending sub-table data maps)
@@ -60,7 +61,7 @@ type (
 
 	Config struct {
 		Reader              driver.Reader
-		Logger              *slog.Logger
+		Logger              *logger.Logger
 		CacheRefreshMinutes time.Duration
 	}
 

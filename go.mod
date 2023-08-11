@@ -9,7 +9,7 @@ require (
 	github.com/pokt-foundation/db-client/v2 v2.8.0
 	github.com/pokt-foundation/portal-db v1.11.0
 	github.com/pokt-foundation/portal-db/v2 v2.6.1
-	github.com/pokt-foundation/utils-go v0.8.2
+	github.com/pokt-foundation/utils-go v0.9.0
 	github.com/stretchr/testify v1.8.1
 )
 
