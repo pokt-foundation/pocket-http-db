@@ -232,7 +232,10 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 		if plan, ok := plans[account.PlanType]; ok {
 			account.Plan = plan
 		} else {
-			return appsData{}, fmt.Errorf("error setting account plan for account. plan type %s does not exist in cache", account.PlanType)
+			c.logger.Warn("error setting plan for account: plan type does not exist in cache",
+				slog.String("account_id", string(account.ID)),
+				slog.String("plan_type", string(account.PlanType)),
+			)
 		}
 	}
 
