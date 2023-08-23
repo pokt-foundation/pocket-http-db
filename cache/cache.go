@@ -48,7 +48,7 @@ type (
 
 		chains               map[types.RelayChainID]*types.Chain
 		pendingAltruists     map[types.RelayChainID][]types.Altruist
-		pendingAliasDomains  map[types.RelayChainID][]types.AliasDomains
+		pendingAliasDomains  map[types.RelayChainID][]types.Alias
 		pendingChecks        map[types.RelayChainID][]types.Check
 		pendingGigastakeApps map[types.RelayChainID][]types.GigastakeApp
 
@@ -105,7 +105,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingWhitelists:          make(map[types.PortalAppID][]types.Whitelist),
 		pendingAltruists:           make(map[types.RelayChainID][]types.Altruist),
 		pendingChainsGigastakeApps: make(map[types.GigastakeAppID]types.ChainGigastakeApp),
-		pendingAliasDomains:        make(map[types.RelayChainID][]types.AliasDomains),
+		pendingAliasDomains:        make(map[types.RelayChainID][]types.Alias),
 		pendingChecks:              make(map[types.RelayChainID][]types.Check),
 		pendingGigastakeApps:       make(map[types.RelayChainID][]types.GigastakeApp),
 	}
@@ -1090,7 +1090,7 @@ func (c *Cache) upsertChain(chain types.Chain) {
 
 	if existingChain, ok := c.chains[chain.ID]; ok {
 		chain.Altruists = existingChain.Altruists
-		chain.AliasDomains = existingChain.AliasDomains
+		chain.Aliases = existingChain.Aliases
 		chain.Checks = existingChain.Checks
 		chain.GigastakeApps = existingChain.GigastakeApps
 	}
@@ -1116,11 +1116,11 @@ func (c *Cache) upsertChain(chain types.Chain) {
 	}
 
 	if pendingAliasDomains, ok := c.pendingAliasDomains[chain.ID]; ok {
-		if chain.AliasDomains == nil {
-			chain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
+		if chain.Aliases == nil {
+			chain.Aliases = make(map[types.ChainAlias]struct{})
 		}
 		for _, aliasDomain := range pendingAliasDomains {
-			chain.AliasDomains[aliasDomain.Alias] = aliasDomain.Domains
+			chain.Aliases[aliasDomain.Alias] = struct{}{}
 		}
 		delete(c.pendingAliasDomains, chain.ID)
 	}
@@ -1136,16 +1136,6 @@ func (c *Cache) upsertChain(chain types.Chain) {
 	}
 
 	c.chains[chain.ID] = &chain
-}
-
-// containsDomain is a helper func that checks if a domain is already in a list of domains
-func containsDomain(domains []types.ChainDomain, domain types.ChainDomain) bool {
-	for _, d := range domains {
-		if d == domain {
-			return true
-		}
-	}
-	return false
 }
 
 // addAltruist adds or updates Altruist saved in cache
@@ -1167,40 +1157,20 @@ func (c *Cache) addAltruist(altruist types.Altruist) {
 	c.pendingAltruists[chainID] = append(c.pendingAltruists[chainID], altruist)
 }
 
-// addAliasDomains adds or updates AliasDomains saved in cache
-func (c *Cache) addAliasDomains(aliasDomains types.AliasDomains) {
+// addAliases adds or updates AliasDomains saved in cache
+func (c *Cache) addAlias(alias types.Alias) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	chainID := aliasDomains.ChainID
-	aliasDomains.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
-
-	domainExists := func(aliasDomainsMap map[types.ChainAlias][]types.ChainDomain, newAliasDomains types.AliasDomains) bool {
-		existingDomains, ok := aliasDomainsMap[newAliasDomains.Alias]
-		if !ok {
-			return false
-		}
-
-		for _, newDomain := range newAliasDomains.Domains {
-			if !containsDomain(existingDomains, newDomain) {
-				aliasDomainsMap[newAliasDomains.Alias] = append(aliasDomainsMap[newAliasDomains.Alias], newDomain)
-				return true
-			}
-		}
-		return false
-	}
+	chainID := alias.ChainID
+	alias.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	if chain, ok := c.chains[chainID]; ok {
-		if !domainExists(chain.AliasDomains, aliasDomains) {
-			if chain.AliasDomains == nil {
-				chain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
-			}
-			chain.AliasDomains[aliasDomains.Alias] = aliasDomains.Domains
-		}
+		chain.Aliases[alias.Alias] = struct{}{}
 		return
 	}
 
-	c.pendingAliasDomains[chainID] = append(c.pendingAliasDomains[chainID], aliasDomains)
+	c.pendingAliasDomains[chainID] = append(c.pendingAliasDomains[chainID], alias)
 }
 
 // deleteAltruist removes an Altruist from cache
@@ -1228,14 +1198,14 @@ func (c *Cache) deleteCheck(check types.Check) {
 }
 
 // deleteAliasDomains removes AliasDomains from cache
-func (c *Cache) deleteAliasDomains(aliasDomains types.AliasDomains) {
+func (c *Cache) deleteAliasDomains(alias types.Alias) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	chainID := aliasDomains.ChainID
+	chainID := alias.ChainID
 
 	if chain, ok := c.chains[chainID]; ok {
-		delete(chain.AliasDomains, aliasDomains.Alias)
+		delete(chain.Aliases, alias.Alias)
 	}
 }
 

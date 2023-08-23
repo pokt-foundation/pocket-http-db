@@ -1507,10 +1507,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						}
 
 						// Only compare the fields present in the update struct
-						if test.chainUpdate.Blockchain != nil {
-							expectedChain.Blockchain = *test.chainUpdate.Blockchain
-						}
-
 						if test.chainUpdate.Description != nil {
 							expectedChain.Description = *test.chainUpdate.Description
 						}
@@ -1546,11 +1542,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						if !test.noSubtables {
 							expectedChain.Altruists = *test.chainUpdate.Altruists
 							expectedChain.Checks = *test.chainUpdate.Checks
-							expectedChain.AliasDomains = *test.chainUpdate.AliasDomains
+							expectedChain.Aliases = *test.chainUpdate.Aliases
 						} else {
 							expectedChain.Altruists = updatedChain.Altruists
 							expectedChain.Checks = updatedChain.Checks
-							expectedChain.AliasDomains = updatedChain.AliasDomains
+							expectedChain.Aliases = updatedChain.Aliases
 						}
 
 						expectedChain.ID = updatedChain.ID

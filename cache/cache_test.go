@@ -1156,7 +1156,7 @@ func Test_upsertChain(t *testing.T) {
 		name                string
 		chain               types.Chain
 		pendingAltruists    map[types.RelayChainID][]types.Altruist
-		pendingAliasDomains map[types.RelayChainID][]types.AliasDomains
+		pendingAliasDomains map[types.RelayChainID][]types.Alias
 		pendingChecks       map[types.RelayChainID][]types.Check
 		update, delete      bool
 	}{
@@ -1164,7 +1164,6 @@ func Test_upsertChain(t *testing.T) {
 			name: "Should add a new Chain to cache with no pending side table data",
 			chain: types.Chain{
 				ID:          "0100",
-				Blockchain:  "mango-mainnet",
 				Description: "Mango Chain",
 			},
 		},
@@ -1172,7 +1171,6 @@ func Test_upsertChain(t *testing.T) {
 			name: "Should add a new Chain to cache with pending Altruists",
 			chain: types.Chain{
 				ID:          "0016",
-				Blockchain:  "greg-mainnet",
 				Description: "Greg Chain",
 			},
 			pendingAltruists: map[types.RelayChainID][]types.Altruist{
@@ -1193,18 +1191,16 @@ func Test_upsertChain(t *testing.T) {
 			},
 		},
 		{
-			name: "Should add a new Chain to cache with pending AliasDomains",
+			name: "Should add a new Chain to cache with pending Aliases",
 			chain: types.Chain{
 				ID:          "0017",
-				Blockchain:  "neptune-mainnet",
 				Description: "Neptune Chain",
 			},
-			pendingAliasDomains: map[types.RelayChainID][]types.AliasDomains{
+			pendingAliasDomains: map[types.RelayChainID][]types.Alias{
 				"0017": {
 					{
 						ChainID: "0017",
 						Alias:   "neptune-mainnet",
-						Domains: []types.ChainDomain{"nep-rpc.gateway.pokt.network"},
 					},
 				},
 			},
@@ -1213,7 +1209,6 @@ func Test_upsertChain(t *testing.T) {
 			name: "Should add a new Chain to cache with pending Checks",
 			chain: types.Chain{
 				ID:          "0018",
-				Blockchain:  "mercury-mainnet",
 				Description: "Mercury Chain",
 			},
 			pendingChecks: map[types.RelayChainID][]types.Check{
@@ -1241,12 +1236,11 @@ func Test_upsertChain(t *testing.T) {
 					},
 				},
 			},
-			pendingAliasDomains: map[types.RelayChainID][]types.AliasDomains{
+			pendingAliasDomains: map[types.RelayChainID][]types.Alias{
 				"0021": {
 					{
 						ChainID: "0021",
 						Alias:   "eth-wow",
-						Domains: []types.ChainDomain{"new-eth-rpc.gateway.pokt.network"},
 					},
 				},
 			},
@@ -1300,11 +1294,11 @@ func Test_upsertChain(t *testing.T) {
 				}
 			}
 			if aliasDomains, ok := test.pendingAliasDomains[chain.ID]; ok {
-				if expectedChain.AliasDomains == nil {
-					expectedChain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
+				if expectedChain.Aliases == nil {
+					expectedChain.Aliases = make(map[types.ChainAlias]struct{})
 				}
 				for _, aliasDomain := range aliasDomains {
-					expectedChain.AliasDomains[aliasDomain.Alias] = aliasDomain.Domains
+					expectedChain.Aliases[aliasDomain.Alias] = struct{}{}
 				}
 			}
 			if checks, ok := test.pendingChecks[chain.ID]; ok {
@@ -1336,7 +1330,7 @@ func Test_upsertChain(t *testing.T) {
 			_, ok := cache.pendingAltruists[chain.ID]
 			c.False(ok, "Pending Altruists should be removed from cache")
 			_, ok = cache.pendingAliasDomains[chain.ID]
-			c.False(ok, "Pending AliasDomains should be removed from cache")
+			c.False(ok, "Pending Aliases should be removed from cache")
 			_, ok = cache.pendingChecks[chain.ID]
 			c.False(ok, "Pending Checks should be removed from cache")
 		})
@@ -1404,44 +1398,30 @@ func Test_addAltruist(t *testing.T) {
 	}
 }
 
-func Test_addAliasDomains(t *testing.T) {
+func Test_addAlias(t *testing.T) {
 	tests := []struct {
 		name          string
-		aliasDomains  types.AliasDomains
+		aliasDomains  types.Alias
 		chainID       types.RelayChainID
 		existingChain bool
 	}{
 		{
-			name: "Should add AliasDomains to an existing Chain in cache",
-			aliasDomains: types.AliasDomains{
+			name: "Should add Aliases to an existing Chain in cache",
+			aliasDomains: types.Alias{
 				ChainID: "0053",
 				Alias:   "altruist-0053",
-				Domains: []types.ChainDomain{"op-rpc-2.gateway.pokt.network"},
 			},
 			chainID:       "0053",
 			existingChain: true,
 		},
 		{
-			name: "Should store AliasDomains in pendingAliasDomains map if Chain not in cache",
-			aliasDomains: types.AliasDomains{
+			name: "Should store Aliases in pendingAliasDomains map if Chain not in cache",
+			aliasDomains: types.Alias{
 				ChainID: "0981",
 				Alias:   "altruist-0981",
-				Domains: []types.ChainDomain{"nope-rpc.gateway.pokt.network"},
 			},
 			chainID: "0981",
 		},
-	}
-
-	domainSliceEqual := func(a, b []types.ChainDomain) bool {
-		if len(a) != len(b) {
-			return false
-		}
-		for i, v := range a {
-			if v != b[i] {
-				return false
-			}
-		}
-		return true
 	}
 
 	for _, test := range tests {
@@ -1450,30 +1430,30 @@ func Test_addAliasDomains(t *testing.T) {
 
 			cache := NewTestCache(t)
 
-			cache.addAliasDomains(test.aliasDomains)
+			cache.addAlias(test.aliasDomains)
 
 			if test.existingChain {
 				storedChain := cache.GetChain(test.chainID, Options{})
 				found := false
-				for alias, domains := range storedChain.AliasDomains {
-					if alias == test.aliasDomains.Alias && domainSliceEqual(domains, test.aliasDomains.Domains) {
+				for alias := range storedChain.Aliases {
+					if alias == test.aliasDomains.Alias {
 						found = true
 						break
 					}
 				}
-				c.True(found, "AliasDomains should be added to the Chain in cache")
+				c.True(found, "Aliases should be added to the Chain in cache")
 			} else {
 				storedAliasDomains, ok := cache.pendingAliasDomains[test.chainID]
-				c.True(ok, "AliasDomains should be stored in pendingAliasDomains map")
+				c.True(ok, "Aliases should be stored in pendingAliasDomains map")
 
 				found := false
 				for _, storedAliasDomain := range storedAliasDomains {
-					if storedAliasDomain.Alias == test.aliasDomains.Alias && domainSliceEqual(storedAliasDomain.Domains, test.aliasDomains.Domains) {
+					if storedAliasDomain.Alias == test.aliasDomains.Alias {
 						found = true
 						break
 					}
 				}
-				c.True(found, "AliasDomains should be added to the pending AliasDomains")
+				c.True(found, "Aliases should be added to the pending Aliases")
 			}
 		})
 	}

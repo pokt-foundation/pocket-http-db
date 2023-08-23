@@ -557,7 +557,6 @@ func Test_parseChainNotification(t *testing.T) {
 			sideTablesAction: types.ActionInsert,
 			chain: types.Chain{
 				ID:            "0008",
-				Blockchain:    "boba-mainnet",
 				Description:   "Boba",
 				EnforceResult: "JSON",
 				Ticker:        "BOBA",
@@ -576,9 +575,9 @@ func Test_parseChainNotification(t *testing.T) {
 						Allowance: 2,
 					},
 				},
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"boba-mainnet":   {"boba-rpc.gateway.pokt.network"},
-					"boba-mainnet-2": {"boba-rpc-2.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"boba-mainnet":   {},
+					"boba-mainnet-2": {},
 				},
 				CreatedAt: testdata.MockTimestamp,
 				UpdatedAt: testdata.MockTimestamp,
@@ -590,7 +589,6 @@ func Test_parseChainNotification(t *testing.T) {
 			sideTablesAction: types.ActionUpdate,
 			chain: types.Chain{
 				ID:             "0064",
-				Blockchain:     "sui-testnet",
 				Description:    "Sui Testnet",
 				EnforceResult:  "JSON",
 				Ticker:         "SUI-TESTNET-123",
@@ -617,9 +615,9 @@ func Test_parseChainNotification(t *testing.T) {
 						Allowance: 7,
 					},
 				},
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"sui-testnet":   {"sui-rpc.gateway.pokt.network"},
-					"sui-testnet-2": {"sui-rpc-2.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"sui-testnet":   {},
+					"sui-testnet-2": {},
 				},
 			},
 		},
@@ -722,8 +720,8 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"solana-mainnet": {"sol-rpc.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"solana-mainnet": {},
 				},
 			},
 		},
@@ -733,8 +731,8 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"updated-solana-mainnet": {},
 				},
 			},
 		},
@@ -744,8 +742,8 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network", "sol-rpc-123.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"updated-solana-mainnet": {},
 				},
 			},
 		},
@@ -755,8 +753,8 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"updated-solana-mainnet": {},
 				},
 			},
 		},
@@ -780,21 +778,21 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 
 			if test.sideTableAction != types.ActionDelete {
 				// Merge any additional keys from chain.AliasDomains into test.chain.AliasDomains before checking for equality
-				for key, value := range chain.AliasDomains {
-					if _, exists := test.chain.AliasDomains[key]; !exists {
-						test.chain.AliasDomains[key] = value
+				for key, value := range chain.Aliases {
+					if _, exists := test.chain.Aliases[key]; !exists {
+						test.chain.Aliases[key] = value
 					}
 				}
-				c.Equal(test.chain.AliasDomains, chain.AliasDomains, "Chain alias domains should match expected")
+				c.Equal(test.chain.Aliases, chain.Aliases, "Chain alias domains should match expected")
 			} else {
-				// For deletion, just check that the alias does not exist in chain.AliasDomains
+				// For deletion, just check that the alias does not exist in chain.Aliases
 				var aliasKey types.ChainAlias
-				for key := range test.chain.AliasDomains {
+				for key := range test.chain.Aliases {
 					aliasKey = key
 					break
 				}
 				c.NotEmpty(aliasKey)
-				_, exists := chain.AliasDomains[aliasKey]
+				_, exists := chain.Aliases[aliasKey]
 				c.False(exists, "Alias should not exist after delete operation")
 			}
 		})

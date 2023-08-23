@@ -386,7 +386,6 @@ func TestRouter_updateChain(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedChain: &types.Chain{
 				ID:             "0001",
-				Blockchain:     *testdata.UpdateChainOne.Blockchain,
 				Description:    *testdata.UpdateChainOne.Description,
 				EnforceResult:  *testdata.UpdateChainOne.EnforceResult,
 				Path:           *testdata.UpdateChainOne.Path,
@@ -395,7 +394,7 @@ func TestRouter_updateChain(t *testing.T) {
 				Active:         *testdata.UpdateChainOne.Active,
 				Altruists:      *testdata.UpdateChainOne.Altruists,
 				Checks:         *testdata.UpdateChainOne.Checks,
-				AliasDomains:   *testdata.UpdateChainOne.AliasDomains,
+				Aliases:        *testdata.UpdateChainOne.Aliases,
 				CreatedAt:      testdata.MockTimestamp,
 				UpdatedAt:      testdata.MockTimestamp,
 			},
@@ -3368,7 +3367,6 @@ var (
 		"0001": {
 			ID:                "0001",
 			Altruist:          "https://test_pocket:auth123456@altruist-0001.com:1234", // pragma: allowlist secret
-			Blockchain:        "pokt-mainnet",
 			Description:       "Pocket Network Mainnet",
 			EnforceResult:     "JSON",
 			Path:              "/v1/query/height",
@@ -3376,7 +3374,7 @@ var (
 			BlockchainAliases: []string{"pokt-mainnet"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "pokt-mainnet", Domain: "pokt-rpc.gateway.pokt.network", LoadBalancerID: "0001-POKT-pokt-mainnet"},
+				{Alias: "pokt-mainnet", Domain: "canbe.whatever.com", LoadBalancerID: "0001-POKT"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"query\"}",
@@ -3388,7 +3386,6 @@ var (
 		"0021": {
 			ID:                "0021",
 			Altruist:          "https://test_pocket:auth123456@altruist-0021.com:1234", // pragma: allowlist secret
-			Blockchain:        "eth-mainnet",
 			ChainID:           "1",
 			ChainIDCheck:      "{\"method\":\"eth_chainId\",\"id\":1,\"jsonrpc\":\"2.0\"}",
 			Description:       "Ethereum Mainnet",
@@ -3398,7 +3395,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "eth-mainnet", Domain: "eth-rpc.gateway.pokt.network", LoadBalancerID: "0021-ETH-eth-mainnet"},
+				{Alias: "eth-mainnet", Domain: "canbe.whatever.com", LoadBalancerID: "0021-ETH"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -3410,14 +3407,13 @@ var (
 		"0040": {
 			ID:                "0040",
 			Altruist:          "https://test_pocket:auth123456@altruist-0040.com:1234", // pragma: allowlist secret
-			Blockchain:        "harmony-0",
 			Description:       "Harmony Shard 0",
 			EnforceResult:     "JSON",
 			Ticker:            "HMY",
 			BlockchainAliases: []string{"harmony-0"},
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "harmony-0", Domain: "hmy-rpc.gateway.pokt.network", LoadBalancerID: "0040-HMY-harmony-0"},
+				{Alias: "harmony-0", Domain: "canbe.whatever.com", LoadBalancerID: "0040-HMY"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"hmy_blockNumber\",\"params\":[]}",
@@ -3430,7 +3426,6 @@ var (
 		"0053": {
 			ID:                "0053",
 			Altruist:          "https://test_pocket:auth123456@altruist-0053.com:1234", // pragma: allowlist secret
-			Blockchain:        "optimism-mainnet",
 			Description:       "Optimism Mainnet",
 			EnforceResult:     "JSON",
 			Ticker:            "OP",
@@ -3438,7 +3433,7 @@ var (
 			LogLimitBlocks:    100000,
 			Active:            true,
 			Redirects: []v1Types.Redirect{
-				{Alias: "optimism-mainnet", Domain: "op-rpc.gateway.pokt.network", LoadBalancerID: "0053-OP-optimism-mainnet"},
+				{Alias: "optimism-mainnet", Domain: "canbe.whatever.com", LoadBalancerID: "0053-OP"},
 			},
 			SyncCheckOptions: v1Types.SyncCheckOptions{
 				Body:      "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[]}",
@@ -3451,7 +3446,6 @@ var (
 		"0064": {
 			ID:             "0064",
 			Altruist:       "https://test_pocket:auth123456@altruist-0064.com:1234", // pragma: allowlist secret
-			Blockchain:     "sui-testnet",
 			Description:    "Sui Testnet",
 			EnforceResult:  "JSON",
 			Ticker:         "SUI-TESTNET",
