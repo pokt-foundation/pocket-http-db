@@ -55,11 +55,13 @@ type (
 	}
 )
 
-func (rt *Router) handleError(w http.ResponseWriter, functionName string, errorCode int, err error) {
-	// Wrap error with function name
-	errorString := fmt.Sprintf("error in %s: %s", functionName, err.Error())
+func (rt *Router) handleError(w http.ResponseWriter, methodName string, errorCode int, err error) {
+	// Create error label containing method name
+	errorMethod := fmt.Sprintf("error in %s", methodName)
 	// Log error as JSON
-	rt.logger.Error(errorString)
+	rt.logger.Error(errorMethod, slog.String("error", err.Error()))
+	// Wrap error with method name
+	errorString := fmt.Sprintf("%s: %s", errorMethod, err.Error())
 	// Return error string as JSON
 	jsonresponse.RespondWithError(w, errorCode, errorString)
 }
