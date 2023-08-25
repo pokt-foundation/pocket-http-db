@@ -6,6 +6,7 @@ import (
 
 	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
+	"github.com/pokt-foundation/portal-db/v2/types"
 	v2Types "github.com/pokt-foundation/portal-db/v2/types"
 )
 
@@ -173,6 +174,14 @@ func ChainPointersToMap(chains []*v2Types.Chain) map[v2Types.RelayChainID]*v2Typ
 		chainMap[chain.ID] = chain
 	}
 	return chainMap
+}
+
+func GigastakeAppPointersToMap(apps []*types.GigastakeApp) map[types.GigastakeAppID]*types.GigastakeApp {
+	appMap := make(map[types.GigastakeAppID]*types.GigastakeApp)
+	for _, app := range apps {
+		appMap[app.ID] = app
+	}
+	return appMap
 }
 
 func PortalAppPointersToMap(apps []*v2Types.PortalApp) map[v2Types.PortalAppID]*v2Types.PortalApp {
