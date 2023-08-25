@@ -13,7 +13,6 @@ import (
 	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
-	"github.com/pokt-foundation/portal-db/v2/types"
 	v2Types "github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/stretchr/testify/suite"
 )
@@ -132,11 +131,50 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}
 	})
 
+	ts.Run("Test_GetGigastakeAppByID", func() {
+		tests := []struct {
+			name           string
+			gigastakeAppID v2Types.GigastakeAppID
+			err            error
+			expectedApp    *v2Types.GigastakeApp
+		}{
+			{
+				name:           "Should get GigastakeApp by ID",
+				gigastakeAppID: "test_gigastake_app_1",
+				expectedApp:    testdata.GigastakeApps["test_gigastake_app_1"],
+			},
+			{
+				name:           "Should return error if GigastakeApp ID is empty",
+				gigastakeAppID: "",
+				err:            fmt.Errorf("no gigastake app ID"),
+			},
+			{
+				name:           "Should return error if GigastakeApp does not exist",
+				gigastakeAppID: "9999",
+				err:            fmt.Errorf("Response not OK. 404 Not Found: gigastake app not found"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				app, err := ts.v2Client1.GetGigastakeAppByID(context.Background(), test.gigastakeAppID)
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Equal(test.expectedApp, app)
+					app, err = ts.v2Client2.GetGigastakeAppByID(context.Background(), test.gigastakeAppID)
+					ts.Equal(test.err, err)
+					ts.Equal(test.expectedApp, app)
+				}
+			})
+		}
+	})
+
 	ts.Run("Test_GetAllChains", func() {
 		tests := []struct {
 			name           string
-			expectedChains map[types.RelayChainID]*types.Chain
-			gigastakeApps  map[types.GigastakeAppID]*types.GigastakeApp
+			expectedChains map[v2Types.RelayChainID]*v2Types.Chain
+			gigastakeApps  map[v2Types.GigastakeAppID]*v2Types.GigastakeApp
 			options        v2DBClient.ChainOptions
 			err            error
 		}{
@@ -162,14 +200,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					for chainID := range gigastakeApp.ChainIDs {
 						if chain, ok := test.expectedChains[chainID]; ok {
 							if chain.GigastakeApps == nil {
-								chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
+								chain.GigastakeApps = make(map[v2Types.GigastakeAppID]*v2Types.GigastakeApp)
 							}
 							chain.GigastakeApps[aatID] = gigastakeApp
 						}
 					}
 				}
 
-				var chains []*types.Chain
+				var chains []*v2Types.Chain
 				var err error
 
 				if test.options.IncludeInactive {
@@ -189,6 +227,76 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					}
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
+				}
+			})
+		}
+	})
+
+	ts.Run("Test_GetAllGigastakeApps", func() {
+		tests := []struct {
+			name         string
+			expectedApps map[v2Types.GigastakeAppID]*v2Types.GigastakeApp
+			err          error
+		}{
+			{
+				name:         "Should get all GigastakeApps",
+				expectedApps: testdata.GigastakeApps,
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				gigastakeApps, err := ts.v2Client1.GetAllGigastakeApps(context.Background())
+				ts.Equal(test.err, err)
+
+				if test.err == nil {
+					ts.Equal(test.expectedApps, phdtestdata.GigastakeAppPointersToMap(gigastakeApps))
+
+					gigastakeApps, err = ts.v2Client2.GetAllGigastakeApps(context.Background())
+					ts.Equal(test.err, err)
+					ts.Equal(test.expectedApps, phdtestdata.GigastakeAppPointersToMap(gigastakeApps))
+				}
+			})
+		}
+	})
+
+	ts.Run("Test_GetAllGigastakeAppsByChain", func() {
+		tests := []struct {
+			name         string
+			chainID      v2Types.RelayChainID
+			err          error
+			expectedApps []*v2Types.GigastakeApp
+		}{
+			{
+				name:    "Should get all GigastakeApps by chain ID",
+				chainID: "0001",
+				expectedApps: []*v2Types.GigastakeApp{
+					testdata.GigastakeApps["test_gigastake_app_1"],
+				},
+			},
+			{
+				name:    "Should return error if chain ID is empty",
+				chainID: "",
+				err:     fmt.Errorf("no chain ID"),
+			},
+			{
+				name:    "Should return error if chain does not exist",
+				chainID: "9999",
+				err:     fmt.Errorf("Response not OK. 404 Not Found: chain not found"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				apps, err := ts.v2Client1.GetAllGigastakeAppsByChain(context.Background(), test.chainID)
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Equal(test.expectedApps, apps)
+
+					apps, err = ts.v2Client2.GetAllGigastakeAppsByChain(context.Background(), test.chainID)
+					ts.Equal(test.err, err)
+					ts.Equal(test.expectedApps, apps)
 				}
 			})
 		}
@@ -267,15 +375,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetPortalAppsByUser", func() {
 		tests := []struct {
 			name         string
-			userID       types.UserID
+			userID       v2Types.UserID
 			options      v2DBClient.PortalAppOptions
-			expectedApps map[types.PortalAppID]*types.PortalApp
+			expectedApps map[v2Types.PortalAppID]*v2Types.PortalApp
 			err          error
 		}{
 			{
 				name:   "Should get all portal apps for user_4 with no role filter",
 				userID: "user_4",
-				expectedApps: map[types.PortalAppID]*types.PortalApp{
+				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 			},
@@ -283,11 +391,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should get portal apps where user_1 is OWNER",
 				userID: "user_1",
 				options: v2DBClient.PortalAppOptions{
-					RoleNameFilters: []types.RoleName{
-						types.RoleOwner,
+					RoleNameFilters: []v2Types.RoleName{
+						v2Types.RoleOwner,
 					},
 				},
-				expectedApps: map[types.PortalAppID]*types.PortalApp{
+				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
 				},
 			},
@@ -295,11 +403,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should get portal apps where user_6 is ADMIN",
 				userID: "user_6",
 				options: v2DBClient.PortalAppOptions{
-					RoleNameFilters: []types.RoleName{
-						types.RoleAdmin,
+					RoleNameFilters: []v2Types.RoleName{
+						v2Types.RoleAdmin,
 					},
 				},
-				expectedApps: map[types.PortalAppID]*types.PortalApp{
+				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 			},
@@ -307,11 +415,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should get portal apps where user_7 is MEMBER",
 				userID: "user_7",
 				options: v2DBClient.PortalAppOptions{
-					RoleNameFilters: []types.RoleName{
-						types.RoleMember,
+					RoleNameFilters: []v2Types.RoleName{
+						v2Types.RoleMember,
 					},
 				},
-				expectedApps: map[types.PortalAppID]*types.PortalApp{
+				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 			},
@@ -319,12 +427,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should get portal apps where user_2 is ADMIN or MEMBER",
 				userID: "user_2",
 				options: v2DBClient.PortalAppOptions{
-					RoleNameFilters: []types.RoleName{
-						types.RoleAdmin,
-						types.RoleMember,
+					RoleNameFilters: []v2Types.RoleName{
+						v2Types.RoleAdmin,
+						v2Types.RoleMember,
 					},
 				},
-				expectedApps: map[types.PortalAppID]*types.PortalApp{
+				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
@@ -333,7 +441,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				var portalApps []*types.PortalApp
+				var portalApps []*v2Types.PortalApp
 				var err error
 
 				if len(test.options.RoleNameFilters) > 0 {
@@ -361,7 +469,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetPortalAppsForMiddleware", func() {
 		tests := []struct {
 			name         string
-			expectedApps map[types.PortalAppID]*types.PortalAppLite
+			expectedApps map[v2Types.PortalAppID]*v2Types.PortalAppLite
 			err          error
 		}{
 			{
@@ -553,8 +661,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetUserPermissionByUserID", func() {
 		tests := []struct {
 			name                string
-			providerUserID      types.ProviderUserID
-			expectedPermissions *types.UserPermissions
+			providerUserID      v2Types.ProviderUserID
+			expectedPermissions *v2Types.UserPermissions
 			err                 error
 		}{
 			{
@@ -618,8 +726,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetPortalUserIDFromProviderUserID", func() {
 		tests := []struct {
 			name                 string
-			providerUserID       types.ProviderUserID
-			expectedPortalUserID types.UserID
+			providerUserID       v2Types.ProviderUserID
+			expectedPortalUserID v2Types.UserID
 			err                  error
 		}{
 			{
@@ -690,7 +798,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetAllPlans", func() {
 		tests := []struct {
 			name     string
-			expected map[types.PayPlanType]*types.Plan
+			expected map[v2Types.PayPlanType]*v2Types.Plan
 			err      error
 		}{
 			{
@@ -721,7 +829,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 	ts.Run("Test_GetBlockedContracts", func() {
 		tests := []struct {
 			name               string
-			expectedBlockedCon types.GlobalBlockedContracts
+			expectedBlockedCon v2Types.GlobalBlockedContracts
 			err                error
 		}{
 			{
@@ -1330,7 +1438,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.expected.ID = createdGigastakeApp.ID
 					test.expected.CreatedAt = timestamp
 					test.expected.UpdatedAt = timestamp
-					test.expected.PrivateKey = ""
 
 					ts.Equal(test.expected, createdGigastakeApp)
 
@@ -1356,7 +1463,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateChain", func() {
 		tests := []struct {
 			name        string
-			chainUpdate types.UpdateChain
+			chainUpdate v2Types.UpdateChain
 			noSubtables bool
 			err         error
 		}{
@@ -1390,12 +1497,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					updatedChainByID2, err := ts.v2Client2.GetChainByID(context.Background(), chainUpdateResponse.ID)
 					ts.NoError(err)
 
-					updatedChains := []*types.Chain{updatedChainByID1, updatedChainByID2}
+					updatedChains := []*v2Types.Chain{updatedChainByID1, updatedChainByID2}
 
 					for _, updatedChain := range updatedChains {
 						ts.Equal(chainUpdateResponse, updatedChain)
 
-						expectedChain := &types.Chain{
+						expectedChain := &v2Types.Chain{
 							GigastakeApps: chainUpdateResponse.GigastakeApps,
 						}
 
@@ -1460,14 +1567,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateGigastakeApp", func() {
 		tests := []struct {
 			name               string
+			gigastakeAppID     v2Types.GigastakeAppID
 			gigastakeAppUpdate v2Types.UpdateGigastakeApp
 			err                error
 			expected           *v2Types.UpdateGigastakeApp
 		}{
 			{
-				name: "Should update GigastakeApp ChainIDs in the database",
+				name:           "Should update GigastakeApp ChainIDs in the database",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: v2Types.UpdateGigastakeApp{
-					ID:       "test_gigastake_app_1",
 					Name:     "pokt_gigastake",
 					ChainIDs: []v2Types.RelayChainID{"0001", "0040"},
 				},
@@ -1479,7 +1587,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name: "Should update both GigastakeApp name and ChainIDs in the database",
+				name:           "Should update both GigastakeApp name and ChainIDs in the database",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: v2Types.UpdateGigastakeApp{
 					ID:       "test_gigastake_app_1",
 					Name:     "pokt_gigastake_updated",
@@ -1493,9 +1602,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name: "Should update both GigastakeApp name and ChainIDs in the database back to original values",
+				name:           "Should update both GigastakeApp name and ChainIDs in the database back to original values",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: v2Types.UpdateGigastakeApp{
-					ID:       "test_gigastake_app_1",
 					Name:     "pokt_gigastake",
 					ChainIDs: []v2Types.RelayChainID{"0001"},
 				},
@@ -1507,18 +1616,24 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name: "Should return an error if the GigastakeApp name is empty",
+				name:           "Should return an error if the GigastakeApp ID is empty",
+				gigastakeAppID: "",
+				err:            fmt.Errorf("no gigastake app ID"),
+				expected:       nil,
+			},
+			{
+				name:           "Should return an error if the GigastakeApp name is empty",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: v2Types.UpdateGigastakeApp{
-					ID:   "test_gigastake_app_1",
 					Name: "",
 				},
 				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: gigastake app name cannot be empty"),
 				expected: nil,
 			},
 			{
-				name: "Should return an error if the GigastakeApp ChainIDs is empty",
+				name:           "Should return an error if the GigastakeApp ChainIDs is empty",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: v2Types.UpdateGigastakeApp{
-					ID:       "test_gigastake_app_1",
 					Name:     "whatever",
 					ChainIDs: []v2Types.RelayChainID{},
 				},
@@ -1526,9 +1641,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				expected: nil,
 			},
 			{
-				name: "Should return an error if the chain doesn't exist",
+				name:           "Should return an error if the chain doesn't exist",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: v2Types.UpdateGigastakeApp{
-					ID:       "test_gigastake_app_1",
 					Name:     "whatever",
 					ChainIDs: []v2Types.RelayChainID{"0666"},
 				},
@@ -1539,7 +1654,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				updatedGigastakeApp, err := ts.v2Client1.UpdateGigastakeApp(context.Background(), test.gigastakeAppUpdate)
+				updatedGigastakeApp, err := ts.v2Client1.UpdateGigastakeApp(context.Background(), test.gigastakeAppID, test.gigastakeAppUpdate)
 				ts.Equal(test.err, err)
 
 				if err == nil {
@@ -1610,43 +1725,43 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_CreatePortalApp", func() {
 		tests := []struct {
 			name           string
-			portalAppInput *types.PortalApp
-			aatInput       types.AAT
+			portalAppInput *v2Types.PortalApp
+			aatInput       v2Types.AAT
 			err            error
-			expected       *types.PortalApp
+			expected       *v2Types.PortalApp
 		}{
 			{
 				name:           "Should create a new Portal app in the DB",
 				portalAppInput: testdata.TestCreatePortalApp,
 				aatInput:       testdata.TestCreatePortalAppAAT,
-				expected: &types.PortalApp{
+				expected: &v2Types.PortalApp{
 					Name:      "create_pokt_app_1",
 					AccountID: "account_4",
-					Settings: types.Settings{
+					Settings: v2Types.Settings{
 						Environment:       "production",
 						SecretKey:         "test_3e3fb7949c9e3b193cfba5348f93bb2f",
 						SecretKeyRequired: true,
 					},
-					AATs: map[types.ProtocolAppID]types.AAT{
+					AATs: map[v2Types.ProtocolAppID]v2Types.AAT{
 						"test_protocol_app_5": testdata.TestCreatePortalAppAAT,
 					},
-					Notifications: map[types.NotificationType]types.AppNotification{
-						types.NotificationTypeEmail: {
-							Type:        types.NotificationTypeEmail,
+					Notifications: map[v2Types.NotificationType]v2Types.AppNotification{
+						v2Types.NotificationTypeEmail: {
+							Type:        v2Types.NotificationTypeEmail,
 							Active:      true,
 							Destination: "ulfric.stormcloak123@test.com",
-							Events: map[types.NotificationEvent]bool{
-								types.NotificationEventFull:          true,
-								types.NotificationEventSignedUp:      true,
-								types.NotificationEventThreeQuarters: true,
+							Events: map[v2Types.NotificationEvent]bool{
+								v2Types.NotificationEventFull:          true,
+								v2Types.NotificationEventSignedUp:      true,
+								v2Types.NotificationEventThreeQuarters: true,
 							},
 						},
 					},
 					FirstDateSurpassed: testdata.MockTimestamp,
 					CreatedAt:          testdata.MockTimestamp,
 					UpdatedAt:          testdata.MockTimestamp,
-					LegacyFields: types.LegacyFields{
-						PlanType:       types.FreetierV0,
+					LegacyFields: v2Types.LegacyFields{
+						PlanType:       v2Types.FreetierV0,
 						DailyLimit:     250_000,
 						RequestTimeout: 15_000,
 					},
@@ -1654,13 +1769,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should return an error if no name provided",
-				portalAppInput: &types.PortalApp{
+				portalAppInput: &v2Types.PortalApp{
 					Name:      "",
 					AccountID: "account_4",
-					LegacyFields: types.LegacyFields{
+					LegacyFields: v2Types.LegacyFields{
 						PlanType: "basic_plan",
 					},
-					Settings: types.Settings{
+					Settings: v2Types.Settings{
 						Environment: "production",
 					},
 				},
@@ -1668,13 +1783,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should return an error if invalid environment provided",
-				portalAppInput: &types.PortalApp{
+				portalAppInput: &v2Types.PortalApp{
 					Name:      "Test App",
 					AccountID: "account_4",
-					LegacyFields: types.LegacyFields{
+					LegacyFields: v2Types.LegacyFields{
 						PlanType: "basic_plan",
 					},
-					Settings: types.Settings{
+					Settings: v2Types.Settings{
 						Environment: "cascadia",
 					},
 				},
@@ -1682,13 +1797,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should return an error for non-existent account ID",
-				portalAppInput: &types.PortalApp{
+				portalAppInput: &v2Types.PortalApp{
 					Name:      "Test App",
 					AccountID: "non_existing_account_id",
-					LegacyFields: types.LegacyFields{
+					LegacyFields: v2Types.LegacyFields{
 						PlanType: "basic_plan",
 					},
-					Settings: types.Settings{
+					Settings: v2Types.Settings{
 						Environment: "production",
 					},
 				},
@@ -1696,13 +1811,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should return an error for non-existent plan",
-				portalAppInput: &types.PortalApp{
+				portalAppInput: &v2Types.PortalApp{
 					Name:      "Test App",
 					AccountID: "account_4",
-					LegacyFields: types.LegacyFields{
+					LegacyFields: v2Types.LegacyFields{
 						PlanType: "non_existing_plan",
 					},
-					Settings: types.Settings{
+					Settings: v2Types.Settings{
 						Environment: "production",
 					},
 				},
@@ -1712,7 +1827,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				test.portalAppInput.AATs = map[types.ProtocolAppID]types.AAT{
+				test.portalAppInput.AATs = map[v2Types.ProtocolAppID]v2Types.AAT{
 					test.aatInput.ID: test.aatInput,
 				}
 				createdPortalApp, err := ts.v2Client1.CreatePortalApp(context.Background(), *test.portalAppInput)
@@ -1730,7 +1845,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdPortalApp.CreatedAt = timestamp
 					createdPortalApp.UpdatedAt = timestamp
 					aat := test.expected.AATs["test_protocol_app_5"]
-					var testAATID types.ProtocolAppID
+					var testAATID v2Types.ProtocolAppID
 					for aatID := range createdPortalApp.AATs {
 						testAATID = aatID
 						break
@@ -1761,18 +1876,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdatePortalApp", func() {
 		tests := []struct {
 			name                     string
-			updatePortalApp          types.UpdatePortalApp
+			updatePortalApp          v2Types.UpdatePortalApp
 			testUpdateTime           time.Time
 			testUpdatedName          string
-			testUpdatedSettings      types.Settings
-			testUpdatedNotifications map[types.NotificationType]types.AppNotification
-			testUpdatedWhitelists    types.Whitelists
-			testUpdatedLegacyFields  types.LegacyFields
+			testUpdatedSettings      v2Types.Settings
+			testUpdatedNotifications map[v2Types.NotificationType]v2Types.AppNotification
+			testUpdatedWhitelists    v2Types.Whitelists
+			testUpdatedLegacyFields  v2Types.LegacyFields
 			err                      error
 		}{
 			{
 				name: "Should update a new PortalApp in the database with all fields",
-				updatePortalApp: types.UpdatePortalApp{
+				updatePortalApp: v2Types.UpdatePortalApp{
 					Name:          testdata.UpdatePortalAppName,
 					Settings:      testdata.UpdatePortalAppSettings,
 					Notifications: testdata.UpdatePortalAppNotifications,
@@ -1782,64 +1897,64 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				testUpdateTime:  testdata.MockTimestamp,
 				testUpdatedName: "portal-app-updated",
-				testUpdatedSettings: types.Settings{
-					Environment:       types.EnvironmentProduction,
+				testUpdatedSettings: v2Types.Settings{
+					Environment:       v2Types.EnvironmentProduction,
 					SecretKey:         "test_9d07c8a96ad53e7c288b0e86f37c5680",
 					SecretKeyRequired: true,
 					MonthlyRelayLimit: 2_500_000,
-					FavoritedChainIDs: map[types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
+					FavoritedChainIDs: map[v2Types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
 				},
-				testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-					types.NotificationTypeEmail: {
-						Type:        types.NotificationTypeEmail,
+				testUpdatedNotifications: map[v2Types.NotificationType]v2Types.AppNotification{
+					v2Types.NotificationTypeEmail: {
+						Type:        v2Types.NotificationTypeEmail,
 						Active:      true,
 						Destination: "user@example.com",
 						Trigger:     "daily",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventSignedUp:      true,
-							types.NotificationEventHalf:          true,
-							types.NotificationEventQuarter:       true,
-							types.NotificationEventThreeQuarters: true,
-							types.NotificationEventFull:          true,
+						Events: map[v2Types.NotificationEvent]bool{
+							v2Types.NotificationEventSignedUp:      true,
+							v2Types.NotificationEventHalf:          true,
+							v2Types.NotificationEventQuarter:       true,
+							v2Types.NotificationEventThreeQuarters: true,
+							v2Types.NotificationEventFull:          true,
 						},
 					},
-					types.NotificationTypeWebhook: {
-						Type:        types.NotificationTypeWebhook,
+					v2Types.NotificationTypeWebhook: {
+						Type:        v2Types.NotificationTypeWebhook,
 						Active:      true,
 						Destination: "https://example.com/webhook",
 						Trigger:     "hourly",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventHalf: true,
-							types.NotificationEventFull: true,
+						Events: map[v2Types.NotificationEvent]bool{
+							v2Types.NotificationEventHalf: true,
+							v2Types.NotificationEventFull: true,
 						},
 					},
 				},
-				testUpdatedWhitelists: types.Whitelists{
-					Origins:     map[types.Origin]struct{}{"https://portalgun.io": {}, "https://subdomain.example.com": {}, "https://www.example.com": {}},
-					UserAgents:  map[types.UserAgent]struct{}{"Brave": {}, "Google Chrome": {}, "Mozilla Firefox": {}, "Netscape Navigator": {}, "Safari": {}},
-					Blockchains: map[types.RelayChainID]struct{}{"0001": {}, "0002": {}, "003E": {}, "0056": {}},
-					Contracts: map[types.RelayChainID]map[types.Contract]struct{}{
+				testUpdatedWhitelists: v2Types.Whitelists{
+					Origins:     map[v2Types.Origin]struct{}{"https://portalgun.io": {}, "https://subdomain.example.com": {}, "https://www.example.com": {}},
+					UserAgents:  map[v2Types.UserAgent]struct{}{"Brave": {}, "Google Chrome": {}, "Mozilla Firefox": {}, "Netscape Navigator": {}, "Safari": {}},
+					Blockchains: map[v2Types.RelayChainID]struct{}{"0001": {}, "0002": {}, "003E": {}, "0056": {}},
+					Contracts: map[v2Types.RelayChainID]map[v2Types.Contract]struct{}{
 						"0001": {"0xtest_2f78db6436527729929aaf6c616361de0f7": {}, "0xtest_5fbfe3e9af3971dd833d26ba9b5c936f0be": {}},
 						"0002": {"0xtest_1111117dc0aa78b770fa6a738034120c302": {}, "0xtest_a39b223fe8d0a0e5c4f27ead9083c756cc2": {}},
 						"003E": {"0xtest_0a85d5af5bf1d1762f925bdaddc4201f984": {}, "0xtest_f958d2ee523a2206206994597c13d831ec7": {}},
 						"0056": {"0xtest_00000f279d81a1d3cc75430faa017fa5a2e": {}, "0xtest_5068778dd592e39a122f4f5a5cf09c90fe2": {}},
 					},
-					Methods: map[types.RelayChainID]map[types.Method]struct{}{
+					Methods: map[v2Types.RelayChainID]map[v2Types.Method]struct{}{
 						"0001": {"GET": {}, "POST": {}, "PUT": {}},
 						"0002": {"DELETE": {}, "GET": {}, "POST": {}, "PUT": {}},
 						"003E": {"GET": {}},
 						"0056": {"GET": {}, "POST": {}},
 					},
 				},
-				testUpdatedLegacyFields: types.LegacyFields{
-					PlanType:   types.PayAsYouGoV0,
+				testUpdatedLegacyFields: v2Types.LegacyFields{
+					PlanType:   v2Types.PayAsYouGoV0,
 					DailyLimit: 0,
 				},
 				err: nil,
 			},
 			{
 				name: "Should update a new PortalApp in the database with only a new Name",
-				updatePortalApp: types.UpdatePortalApp{
+				updatePortalApp: v2Types.UpdatePortalApp{
 					Name: testdata.UpdatePortalAppName,
 				},
 				testUpdateTime:  testdata.MockTimestamp,
@@ -1848,47 +1963,47 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should update a new PortalApp in the database with only new Settings",
-				updatePortalApp: types.UpdatePortalApp{
+				updatePortalApp: v2Types.UpdatePortalApp{
 					Settings: testdata.UpdatePortalAppSettings,
 				},
 				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedSettings: types.Settings{
-					Environment:       types.EnvironmentProduction,
+				testUpdatedSettings: v2Types.Settings{
+					Environment:       v2Types.EnvironmentProduction,
 					SecretKey:         "test_9d07c8a96ad53e7c288b0e86f37c5680",
 					SecretKeyRequired: true,
 					MonthlyRelayLimit: 2_500_000,
-					FavoritedChainIDs: map[types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
+					FavoritedChainIDs: map[v2Types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
 				},
 				err: nil,
 			},
 			{
 				name: "Should update a new PortalApp in the database with only new Notifications",
-				updatePortalApp: types.UpdatePortalApp{
+				updatePortalApp: v2Types.UpdatePortalApp{
 					Notifications: testdata.UpdatePortalAppNotifications,
 				},
 				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-					types.NotificationTypeEmail: {
-						Type:        types.NotificationTypeEmail,
+				testUpdatedNotifications: map[v2Types.NotificationType]v2Types.AppNotification{
+					v2Types.NotificationTypeEmail: {
+						Type:        v2Types.NotificationTypeEmail,
 						Active:      true,
 						Destination: "user@example.com",
 						Trigger:     "daily",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventSignedUp:      true,
-							types.NotificationEventHalf:          true,
-							types.NotificationEventQuarter:       true,
-							types.NotificationEventThreeQuarters: true,
-							types.NotificationEventFull:          true,
+						Events: map[v2Types.NotificationEvent]bool{
+							v2Types.NotificationEventSignedUp:      true,
+							v2Types.NotificationEventHalf:          true,
+							v2Types.NotificationEventQuarter:       true,
+							v2Types.NotificationEventThreeQuarters: true,
+							v2Types.NotificationEventFull:          true,
 						},
 					},
-					types.NotificationTypeWebhook: {
-						Type:        types.NotificationTypeWebhook,
+					v2Types.NotificationTypeWebhook: {
+						Type:        v2Types.NotificationTypeWebhook,
 						Active:      true,
 						Destination: "https://example.com/webhook",
 						Trigger:     "hourly",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventHalf: true,
-							types.NotificationEventFull: true,
+						Events: map[v2Types.NotificationEvent]bool{
+							v2Types.NotificationEventHalf: true,
+							v2Types.NotificationEventFull: true,
 						},
 					},
 				},
@@ -1896,21 +2011,21 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should update a new PortalApp in the database with only new Whitelists",
-				updatePortalApp: types.UpdatePortalApp{
+				updatePortalApp: v2Types.UpdatePortalApp{
 					Whitelists: testdata.UpdatePortalAppWhitelists,
 				},
 				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedWhitelists: types.Whitelists{
-					Origins:     map[types.Origin]struct{}{"https://portalgun.io": {}, "https://subdomain.example.com": {}, "https://www.example.com": {}},
-					UserAgents:  map[types.UserAgent]struct{}{"Brave": {}, "Google Chrome": {}, "Mozilla Firefox": {}, "Netscape Navigator": {}, "Safari": {}},
-					Blockchains: map[types.RelayChainID]struct{}{"0001": {}, "0002": {}, "003E": {}, "0056": {}},
-					Contracts: map[types.RelayChainID]map[types.Contract]struct{}{
+				testUpdatedWhitelists: v2Types.Whitelists{
+					Origins:     map[v2Types.Origin]struct{}{"https://portalgun.io": {}, "https://subdomain.example.com": {}, "https://www.example.com": {}},
+					UserAgents:  map[v2Types.UserAgent]struct{}{"Brave": {}, "Google Chrome": {}, "Mozilla Firefox": {}, "Netscape Navigator": {}, "Safari": {}},
+					Blockchains: map[v2Types.RelayChainID]struct{}{"0001": {}, "0002": {}, "003E": {}, "0056": {}},
+					Contracts: map[v2Types.RelayChainID]map[v2Types.Contract]struct{}{
 						"0001": {"0xtest_2f78db6436527729929aaf6c616361de0f7": {}, "0xtest_5fbfe3e9af3971dd833d26ba9b5c936f0be": {}},
 						"0002": {"0xtest_1111117dc0aa78b770fa6a738034120c302": {}, "0xtest_a39b223fe8d0a0e5c4f27ead9083c756cc2": {}},
 						"003E": {"0xtest_0a85d5af5bf1d1762f925bdaddc4201f984": {}, "0xtest_f958d2ee523a2206206994597c13d831ec7": {}},
 						"0056": {"0xtest_00000f279d81a1d3cc75430faa017fa5a2e": {}, "0xtest_5068778dd592e39a122f4f5a5cf09c90fe2": {}},
 					},
-					Methods: map[types.RelayChainID]map[types.Method]struct{}{
+					Methods: map[v2Types.RelayChainID]map[v2Types.Method]struct{}{
 						"0001": {"GET": {}, "POST": {}, "PUT": {}},
 						"0002": {"DELETE": {}, "GET": {}, "POST": {}, "PUT": {}},
 						"003E": {"GET": {}},
@@ -1921,26 +2036,26 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should update a new PortalApp in the database with a new plan",
-				updatePortalApp: types.UpdatePortalApp{
+				updatePortalApp: v2Types.UpdatePortalApp{
 					PlanType:   testdata.UpdatePortalAppPlan.PlanType,
 					DailyLimit: testdata.UpdatePortalAppPlan.DailyLimit,
 				},
 				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedLegacyFields: types.LegacyFields{
-					PlanType:   types.PayAsYouGoV0,
+				testUpdatedLegacyFields: v2Types.LegacyFields{
+					PlanType:   v2Types.PayAsYouGoV0,
 					DailyLimit: 0,
 				},
 				err: nil,
 			},
 			{
 				name: "Should update a new PortalApp in the database with an Enterprise plan",
-				updatePortalApp: types.UpdatePortalApp{
+				updatePortalApp: v2Types.UpdatePortalApp{
 					PlanType:   testdata.UpdatePortalAppEnterprisePlan.PlanType,
 					DailyLimit: testdata.UpdatePortalAppEnterprisePlan.DailyLimit,
 				},
 				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedLegacyFields: types.LegacyFields{
-					PlanType:    types.Enterprise,
+				testUpdatedLegacyFields: v2Types.LegacyFields{
+					PlanType:    v2Types.Enterprise,
 					CustomLimit: 5_600_000,
 				},
 				err: nil,
@@ -2068,22 +2183,22 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdatePortalAppsFirstDateSurpassed", func() {
 		tests := []struct {
 			name                     string
-			firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
+			firstDateSurpassedUpdate v2Types.UpdateFirstDateSurpassed
 			err                      error
 			expected                 map[string]string
 		}{
 			{
 				name: "Should update FirstDateSurpassed field for a given list of Portal apps in the DB",
-				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-					PortalAppIDs:       []types.PortalAppID{"test_app_1", "test_app_2"},
+				firstDateSurpassedUpdate: v2Types.UpdateFirstDateSurpassed{
+					PortalAppIDs:       []v2Types.PortalAppID{"test_app_1", "test_app_2"},
 					FirstDateSurpassed: testdata.MockTimestamp,
 				},
 				expected: map[string]string{"status": "updated"},
 			},
 			{
 				name: "Should return an error if no app IDs provided",
-				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-					PortalAppIDs:       []types.PortalAppID{},
+				firstDateSurpassedUpdate: v2Types.UpdateFirstDateSurpassed{
+					PortalAppIDs:       []v2Types.PortalAppID{},
 					FirstDateSurpassed: testdata.MockTimestamp,
 				},
 				err: fmt.Errorf("Response not OK. 400 Bad Request"),
@@ -2117,21 +2232,21 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_CreateAccount", func() {
 		tests := []struct {
 			name         string
-			ownerID      types.UserID
-			accountInput *types.Account
+			ownerID      v2Types.UserID
+			accountInput *v2Types.Account
 			err          error
-			expected     *types.Account
-			expectedPlan *types.Plan
+			expected     *v2Types.Account
+			expectedPlan *v2Types.Plan
 		}{
 			{
 				name:         "Should create a new Account in the DB",
 				ownerID:      "user_1",
 				accountInput: testdata.TestCreateAccount,
-				expected: &types.Account{
-					PlanType:  types.PayPlanType("developer_plan"),
+				expected: &v2Types.Account{
+					PlanType:  v2Types.PayPlanType("developer_plan"),
 					CreatedAt: testdata.MockTimestamp,
 					UpdatedAt: testdata.MockTimestamp,
-					Users: map[types.UserID]types.AccountUserAccess{
+					Users: map[v2Types.UserID]v2Types.AccountUserAccess{
 						"user_1": {
 							UserID:   "user_1",
 							Email:    "james.holden123@test.com",
@@ -2140,9 +2255,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						},
 					},
 				},
-				expectedPlan: &types.Plan{
-					Type:              types.PayPlanType("developer_plan"),
-					ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
+				expectedPlan: &v2Types.Plan{
+					Type:              v2Types.PayPlanType("developer_plan"),
+					ChainIDs:          map[v2Types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
 					MonthlyRelayLimit: 500_000,
 					ThroughputLimit:   500,
 					AppLimit:          1,
@@ -2153,25 +2268,25 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:         "Should fail if input does not have a User ID set",
 				ownerID:      "",
-				accountInput: &types.Account{},
+				accountInput: &v2Types.Account{},
 				err:          fmt.Errorf("no user ID"),
 			},
 			{
 				name:         "Should fail if input Account does not have a PayPlanType set",
 				ownerID:      "user_1",
-				accountInput: &types.Account{PlanType: ""},
+				accountInput: &v2Types.Account{PlanType: ""},
 				err:          fmt.Errorf("no plan type set"),
 			},
 			{
 				name:         "Should fail if input Account has an invalid plan type",
 				ownerID:      "user_1",
-				accountInput: &types.Account{PlanType: types.PayPlanType("turbo_ultra_mega_plan")},
+				accountInput: &v2Types.Account{PlanType: v2Types.PayPlanType("turbo_ultra_mega_plan")},
 				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: error pay plan 'turbo_ultra_mega_plan' does not exist"),
 			},
 			{
 				name:         "Should fail if input User does not exist in the db",
 				ownerID:      "user_451",
-				accountInput: testdata.Accounts[types.AccountID("account_5")],
+				accountInput: testdata.Accounts[v2Types.AccountID("account_5")],
 				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: error user does not exist for portal ID 'user_451'"),
 			},
 		}
@@ -2215,28 +2330,28 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateAccount", func() {
 		tests := []struct {
 			name                string
-			accountBeforeUpdate *types.Account
-			update              types.UpdateAccount
+			accountBeforeUpdate *v2Types.Account
+			update              v2Types.UpdateAccount
 			err                 error
-			expected            *types.Account
+			expected            *v2Types.Account
 		}{
 			{
 				name:                "Should update the account's PlanType field",
 				accountBeforeUpdate: testdata.Accounts["account_1"],
-				update: types.UpdateAccount{
+				update: v2Types.UpdateAccount{
 					AccountID: "account_1",
-					PlanType:  types.Enterprise,
+					PlanType:  v2Types.Enterprise,
 				},
-				expected: &types.Account{
+				expected: &v2Types.Account{
 					ID:       "account_1",
-					PlanType: types.Enterprise,
+					PlanType: v2Types.Enterprise,
 				},
 			},
 			{
 				name: "Should fail if an invalid account ID is provided",
-				update: types.UpdateAccount{
+				update: v2Types.UpdateAccount{
 					AccountID: "account_8823",
-					PlanType:  types.Enterprise,
+					PlanType:  v2Types.Enterprise,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error account does not exist for account ID 'account_8823'"),
 			},
@@ -2269,17 +2384,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_CreateAccountIntegration", func() {
 		tests := []struct {
 			name                       string
-			accountIntegrationInput    *types.AccountIntegrations
-			expectedAccountIntegration types.AccountIntegrations
+			accountIntegrationInput    *v2Types.AccountIntegrations
+			expectedAccountIntegration v2Types.AccountIntegrations
 			err                        error
 		}{
 			{
 				name: "Should create a new account integration",
-				accountIntegrationInput: &types.AccountIntegrations{
+				accountIntegrationInput: &v2Types.AccountIntegrations{
 					AccountID:          "account_5",
 					CovalentAPIKeyFree: "created_covalent_api_key_1",
 				},
-				expectedAccountIntegration: types.AccountIntegrations{
+				expectedAccountIntegration: v2Types.AccountIntegrations{
 					AccountID:          "account_5",
 					CovalentAPIKeyFree: "created_covalent_api_key_1",
 				},
@@ -2317,18 +2432,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateAccountIntegration", func() {
 		tests := []struct {
 			name                    string
-			accountIntegrationInput types.AccountIntegrations
+			accountIntegrationInput v2Types.AccountIntegrations
 			err                     error
-			expected                *types.AccountIntegrations
+			expected                *v2Types.AccountIntegrations
 		}{
 			{
 				name: "Should update existing Account integration in the DB",
-				accountIntegrationInput: types.AccountIntegrations{
+				accountIntegrationInput: v2Types.AccountIntegrations{
 					AccountID:          "account_5",
 					CovalentAPIKeyFree: "updated_covalent_api_key_1",
 				},
 				err: nil,
-				expected: &types.AccountIntegrations{
+				expected: &v2Types.AccountIntegrations{
 					AccountID:          "account_5",
 					CovalentAPIKeyFree: "updated_covalent_api_key_1",
 				},
@@ -2362,7 +2477,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_DeleteAccount", func() {
 		tests := []struct {
 			name     string
-			ownerID  types.UserID
+			ownerID  v2Types.UserID
 			expected map[string]string
 			err      error
 		}{
@@ -2376,10 +2491,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for i, test := range tests {
 			// Create new account for test case
-			createAcc := types.Account{
-				ID:                     types.AccountID(fmt.Sprintf("test-delete-account-%d", i+1)),
-				PlanType:               types.FreetierV0,
-				PartnerChainIDs:        map[types.RelayChainID]struct{}{"chain_1": {}},
+			createAcc := v2Types.Account{
+				ID:                     v2Types.AccountID(fmt.Sprintf("test-delete-account-%d", i+1)),
+				PlanType:               v2Types.FreetierV0,
+				PartnerChainIDs:        map[v2Types.RelayChainID]struct{}{"chain_1": {}},
 				PartnerThroughputLimit: 1000,
 				PartnerAppLimit:        5,
 			}
@@ -2423,109 +2538,109 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_WriteAccountUser", func() {
 		tests := []struct {
 			name                   string
-			createAccountUserInput types.CreateAccountUserAccess
-			expected               *types.AccountUserAccess
+			createAccountUserInput v2Types.CreateAccountUserAccess
+			expected               *v2Types.AccountUserAccess
 			err                    error
 		}{
 			{
 				name: "Should create a new AccountUserAccess in the DB",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_4",
 					PortalAppID: "test_app_1",
 					Email:       "bernard.marx@test.com",
-					RoleName:    types.RoleMember,
+					RoleName:    v2Types.RoleMember,
 				},
-				expected: &types.AccountUserAccess{
+				expected: &v2Types.AccountUserAccess{
 					AccountID:      "account_4",
 					UserID:         "user_11",
 					Email:          "bernard.marx@test.com",
 					Accepted:       false,
-					PortalAppRoles: map[types.PortalAppID]types.RoleName{"test_app_1": types.RoleMember},
+					PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{"test_app_1": v2Types.RoleMember},
 				},
 			},
 			{
 				name: "Should create a new AccountUserAccess in the DB for a user that hasn't signed up yet",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
 					Email:       "winston.smith@test.com",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
-				expected: &types.AccountUserAccess{
+				expected: &v2Types.AccountUserAccess{
 					AccountID:      "account_3",
 					UserID:         "", // UserID created when user created
 					Email:          "winston.smith@test.com",
 					Accepted:       false,
-					PortalAppRoles: map[types.PortalAppID]types.RoleName{"test_app_3": types.RoleAdmin},
+					PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{"test_app_3": v2Types.RoleAdmin},
 				},
 			},
 			{
 				name: "Should fail if an invalid email provided",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_4",
 					PortalAppID: "test_app_3",
 					Email:       "winston.smith",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error email input is not a valid email address 'winston.smith'"),
 			},
 			{
 				name: "Should fail if account does not exist",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_674",
 					PortalAppID: "test_app_222",
 					Email:       "winston.smith@test.com",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error account does not exist for account ID 'account_674'"),
 			},
 			{
 				name: "Should fail if an empty email string is provided",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_1",
 					PortalAppID: "test_app_3",
 					Email:       "",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				err: fmt.Errorf("no email"),
 			},
 			{
 				name: "Should fail if an empty PortalAppID string is provided",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_1",
 					PortalAppID: "",
 					Email:       "valid.email@test.com",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				err: fmt.Errorf("no portal app ID"),
 			},
 			{
 				name: "Should fail if an empty AccountID string is provided",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "",
 					PortalAppID: "test_app_1",
 					Email:       "valid.email@test.com",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				err: fmt.Errorf("no account ID"),
 			},
 			{
 				name: "Should fail if the AccountID provided does not exist",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "non_existent_account",
 					PortalAppID: "test_app_1",
 					Email:       "valid.email@test.com",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error account does not exist for account ID 'non_existent_account'"),
 			},
 			{
 				name: "Should fail if the PortalAppID provided does not exist",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_1",
 					PortalAppID: "non_existent_app",
 					Email:       "valid.email@test.com",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error portal app does not exist for ID 'non_existent_app'"),
 			},
@@ -2556,7 +2671,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.Equal(*test.expected, account.Users[test.expected.UserID])
 
 					// Clean up created account user
-					_, err = ts.v2Client1.RemoveAccountUser(context.Background(), types.UpdateRemoveAccountUser{
+					_, err = ts.v2Client1.RemoveAccountUser(context.Background(), v2Types.UpdateRemoveAccountUser{
 						AccountID:   test.createAccountUserInput.AccountID,
 						PortalAppID: test.createAccountUserInput.PortalAppID,
 						UserID:      test.expected.UserID,
@@ -2571,20 +2686,20 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_SetAccountUserRole", func() {
 		tests := []struct {
 			name                    string
-			updateAccountUserRole   types.UpdateAccountUserRole
-			accountUsersAfterUpdate map[types.UserID]types.AccountUserAccess
+			updateAccountUserRole   v2Types.UpdateAccountUserRole
+			accountUsersAfterUpdate map[v2Types.UserID]v2Types.AccountUserAccess
 			testCreatedTime         time.Time
 			err                     error
 		}{
 			{
 				name: "Should update an existing AccountUserAccess row's role to non-OWNER role",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					PortalAppID: "test_app_3",
 					AccountID:   "account_3",
 					UserID:      "user_7",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
+				accountUsersAfterUpdate: map[v2Types.UserID]v2Types.AccountUserAccess{
 					"user_5":  testdata.AccountUserAccess[5],
 					"user_6":  testdata.AccountUserAccess[6],
 					"user_10": testdata.AccountUserAccess[12],
@@ -2592,8 +2707,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						UserID:   "user_7",
 						Email:    "frodo.baggins123@test.com",
 						Accepted: true,
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_3": types.RoleAdmin,
+						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
+							"test_app_3": v2Types.RoleAdmin,
 						},
 					},
 				},
@@ -2602,13 +2717,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should update an existing AccountUserAccess row's role back to original role",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					PortalAppID: "test_app_3",
 					AccountID:   "account_3",
 					UserID:      "user_7",
-					RoleName:    types.RoleMember,
+					RoleName:    v2Types.RoleMember,
 				},
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
+				accountUsersAfterUpdate: map[v2Types.UserID]v2Types.AccountUserAccess{
 					"user_5":  testdata.AccountUserAccess[5],
 					"user_6":  testdata.AccountUserAccess[6],
 					"user_10": testdata.AccountUserAccess[12],
@@ -2616,8 +2731,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						UserID:   "user_7",
 						Email:    "frodo.baggins123@test.com",
 						Accepted: true,
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_3": types.RoleMember,
+						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
+							"test_app_3": v2Types.RoleMember,
 						},
 					},
 				},
@@ -2626,21 +2741,21 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should transfer the OWNER of an Account",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					AccountID:   "account_2",
 					PortalAppID: "test_app_2",
 					UserID:      "user_4",
-					RoleName:    types.RoleOwner,
+					RoleName:    v2Types.RoleOwner,
 				},
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
+				accountUsersAfterUpdate: map[v2Types.UserID]v2Types.AccountUserAccess{
 					"user_9": testdata.AccountUserAccess[9],
 					"user_2": testdata.AccountUserAccess[10],
 					"user_3": {
 						UserID:   "user_3",
 						Email:    "ellen.ripley789@test.com",
 						Accepted: true,
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_2": types.RoleAdmin,
+						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
+							"test_app_2": v2Types.RoleAdmin,
 						},
 					},
 					"user_4": {
@@ -2648,8 +2763,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						UserID:   "user_4",
 						Email:    "ulfric.stormcloak123@test.com",
 						Accepted: true,
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_2": types.RoleOwner,
+						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
+							"test_app_2": v2Types.RoleOwner,
 						},
 					},
 				},
@@ -2658,21 +2773,21 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should revert the transfer of the OWNER of an Account",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					AccountID:   "account_2",
 					PortalAppID: "test_app_2",
 					UserID:      "user_3",
-					RoleName:    types.RoleOwner,
+					RoleName:    v2Types.RoleOwner,
 				},
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
+				accountUsersAfterUpdate: map[v2Types.UserID]v2Types.AccountUserAccess{
 					"user_9": testdata.AccountUserAccess[9],
 					"user_2": testdata.AccountUserAccess[10],
 					"user_4": {
 						UserID:   "user_4",
 						Email:    "ulfric.stormcloak123@test.com",
 						Accepted: true,
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_2": types.RoleAdmin,
+						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
+							"test_app_2": v2Types.RoleAdmin,
 						},
 					},
 					"user_3": {
@@ -2680,8 +2795,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						UserID:   "user_3",
 						Email:    "ellen.ripley789@test.com",
 						Accepted: true,
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_2": types.RoleOwner,
+						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
+							"test_app_2": v2Types.RoleOwner,
 						},
 					},
 				},
@@ -2690,29 +2805,29 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if attempting to transfer ownership to user that has not accepted their invite yet",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
 					UserID:      "user_10",
-					RoleName:    types.RoleOwner,
+					RoleName:    v2Types.RoleOwner,
 				},
 				testCreatedTime: testdata.MockTimestamp,
 				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot transfer ownership to user ID 'user_10' for account ID 'account_3' because the user has not accepted their invite"),
 			},
 			{
 				name: "Should fail if User is not a member of an Account",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					AccountID:   "account_2",
 					PortalAppID: "test_app_2",
 					UserID:      "user_512",
-					RoleName:    types.RoleMember,
+					RoleName:    v2Types.RoleMember,
 				},
 				testCreatedTime: testdata.MockTimestamp,
 				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'user_512' does not exist for portal app ID 'account_2'"),
 			},
 			{
 				name: "Should fail if RoleName is empty",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					PortalAppID: "test_app_3",
 					AccountID:   "account_3",
 					UserID:      "user_7",
@@ -2723,7 +2838,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if RoleName is invalid",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					PortalAppID: "test_app_3",
 					AccountID:   "account_3",
 					UserID:      "user_7",
@@ -2734,44 +2849,44 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if PortalAppID is empty",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					PortalAppID: "",
 					AccountID:   "account_3",
 					UserID:      "user_7",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				testCreatedTime: testdata.MockTimestamp,
 				err:             fmt.Errorf("no portal app ID"),
 			},
 			{
 				name: "Should fail if AccountID is empty",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					PortalAppID: "test_app_3",
 					AccountID:   "",
 					UserID:      "user_7",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				testCreatedTime: testdata.MockTimestamp,
 				err:             fmt.Errorf("no account ID"),
 			},
 			{
 				name: "Should fail if PortalAppID does not exist",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					PortalAppID: "non_existent_app",
 					AccountID:   "account_3",
 					UserID:      "user_7",
-					RoleName:    types.RoleAdmin,
+					RoleName:    v2Types.RoleAdmin,
 				},
 				testCreatedTime: testdata.MockTimestamp,
 				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error portal app does not exist for ID 'non_existent_app'"),
 			},
 			{
 				name: "Should fail if User is not a member of an Account",
-				updateAccountUserRole: types.UpdateAccountUserRole{
+				updateAccountUserRole: v2Types.UpdateAccountUserRole{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
 					UserID:      "non_member_user",
-					RoleName:    types.RoleMember,
+					RoleName:    v2Types.RoleMember,
 				},
 				testCreatedTime: testdata.MockTimestamp,
 				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'non_member_user' does not exist for portal app ID 'account_3'"),
@@ -2804,53 +2919,53 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateAcceptAccountUser", func() {
 		tests := []struct {
 			name                   string
-			accountID              types.AccountID
+			accountID              v2Types.AccountID
 			userID                 string
-			acceptAccountUserInput types.UpdateAcceptAccountUser
-			expected               *types.AccountUserAccess
+			acceptAccountUserInput v2Types.UpdateAcceptAccountUser
+			expected               *v2Types.AccountUserAccess
 			err                    error
 		}{
 			{
 				name:      "Should create a new UserAuthProvider for an existing user in the DB",
 				accountID: "account_3",
 				userID:    "user_10",
-				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+				acceptAccountUserInput: v2Types.UpdateAcceptAccountUser{
 					PortalAppID:      "test_app_3",
 					UserID:           "user_10",
-					AuthProviderType: types.AuthTypeAuth0Username,
+					AuthProviderType: v2Types.AuthTypeAuth0Username,
 					ProviderUserID:   "auth0|daenerys_targaryen",
 				},
-				expected: &types.AccountUserAccess{
+				expected: &v2Types.AccountUserAccess{
 					AccountID:      "account_3",
 					UserID:         "user_10",
 					Email:          "daenerys.targaryen123@test.com",
 					Accepted:       true,
-					PortalAppRoles: map[types.PortalAppID]types.RoleName{"test_app_3": types.RoleMember},
+					PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{"test_app_3": v2Types.RoleMember},
 				},
 				err: nil,
 			},
 			{
 				name: "Should fail if no provider user ID provided",
-				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+				acceptAccountUserInput: v2Types.UpdateAcceptAccountUser{
 					PortalAppID:      "account_3",
 					UserID:           "user_10",
-					AuthProviderType: types.AuthType("ask_jeeves"),
+					AuthProviderType: v2Types.AuthType("ask_jeeves"),
 				},
 				err: fmt.Errorf("no provider user ID"),
 			},
 			{
 				name: "Should fail if an invalid auth provider type provided",
-				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+				acceptAccountUserInput: v2Types.UpdateAcceptAccountUser{
 					PortalAppID:      "account_3",
 					UserID:           "user_10",
-					AuthProviderType: types.AuthType("ask_jeeves"),
+					AuthProviderType: v2Types.AuthType("ask_jeeves"),
 					ProviderUserID:   "auth0|daenerys_targaryen",
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error invalid auth provider type 'ask_jeeves'"),
 			},
 			{
 				name: "Should fail if AuthProviderType is not provided",
-				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+				acceptAccountUserInput: v2Types.UpdateAcceptAccountUser{
 					PortalAppID:      "account_3",
 					UserID:           "user_10",
 					AuthProviderType: "",
@@ -2859,19 +2974,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if PortalAppID is not provided",
-				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+				acceptAccountUserInput: v2Types.UpdateAcceptAccountUser{
 					PortalAppID:      "",
 					UserID:           "user_10",
-					AuthProviderType: types.AuthTypeAuth0Username,
+					AuthProviderType: v2Types.AuthTypeAuth0Username,
 				},
 				err: fmt.Errorf("no portal app ID"),
 			},
 			{
 				name: "Should fail if user does not exist",
-				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+				acceptAccountUserInput: v2Types.UpdateAcceptAccountUser{
 					PortalAppID:      "account_3",
 					UserID:           "user_123",
-					AuthProviderType: types.AuthTypeAuth0Username,
+					AuthProviderType: v2Types.AuthTypeAuth0Username,
 					ProviderUserID:   "auth0|who_dis",
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'user_123' does not exist for portal app ID 'account_3'"),
@@ -2904,24 +3019,24 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_RemoveAccountUser", func() {
 		tests := []struct {
 			name                    string
-			createAccountUserInput  types.CreateAccountUserAccess
-			updateRemoveAccountUser types.UpdateRemoveAccountUser
-			accountUsersAfterDelete map[types.UserID]types.AccountUserAccess
+			createAccountUserInput  v2Types.CreateAccountUserAccess
+			updateRemoveAccountUser v2Types.UpdateRemoveAccountUser
+			accountUsersAfterDelete map[v2Types.UserID]v2Types.AccountUserAccess
 			err                     error
 		}{
 			{
 				name: "Should delete a single AccountUserAccess row",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
 					Email:       "user_5@test.com",
-					RoleName:    types.RoleMember,
+					RoleName:    v2Types.RoleMember,
 				},
-				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
+				updateRemoveAccountUser: v2Types.UpdateRemoveAccountUser{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
 				},
-				accountUsersAfterDelete: map[types.UserID]types.AccountUserAccess{
+				accountUsersAfterDelete: map[v2Types.UserID]v2Types.AccountUserAccess{
 					"user_1": testdata.AccountUserAccess[1],
 					"user_2": testdata.AccountUserAccess[2],
 					"user_8": testdata.AccountUserAccess[8],
@@ -2930,13 +3045,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if provided a UserID that doesn't exist for the Account",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
 					Email:       "nonexistent_user@test.com",
-					RoleName:    types.RoleMember,
+					RoleName:    v2Types.RoleMember,
 				},
-				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
+				updateRemoveAccountUser: v2Types.UpdateRemoveAccountUser{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
 					UserID:      "user_789",
@@ -2945,13 +3060,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if attempting to delete the current Account OWNER",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_1",
 					PortalAppID: "test_app_1",
 					Email:       "user_1@test.com",
-					RoleName:    types.RoleOwner,
+					RoleName:    v2Types.RoleOwner,
 				},
-				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
+				updateRemoveAccountUser: v2Types.UpdateRemoveAccountUser{
 					AccountID:   "account_1",
 					PortalAppID: "test_app_1",
 					UserID:      "user_1",
@@ -2960,13 +3075,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if provided a UserID that doesn't exist for the Account",
-				createAccountUserInput: types.CreateAccountUserAccess{
+				createAccountUserInput: v2Types.CreateAccountUserAccess{
 					AccountID:   "account_1",
 					PortalAppID: "test_app_1",
 					Email:       "nonexistent_user@test.com",
-					RoleName:    types.RoleMember,
+					RoleName:    v2Types.RoleMember,
 				},
-				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
+				updateRemoveAccountUser: v2Types.UpdateRemoveAccountUser{
 					AccountID:   "account_1",
 					PortalAppID: "test_app_1",
 					UserID:      "user_nonexistent",
@@ -2977,9 +3092,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				var userID types.UserID
+				var userID v2Types.UserID
 
-				if test.updateRemoveAccountUser.UserID == types.UserID("") {
+				if test.updateRemoveAccountUser.UserID == v2Types.UserID("") {
 					userIDResp, err := ts.v2Client1.WriteAccountUser(context.Background(), test.createAccountUserInput, testdata.MockTimestamp)
 					ts.NoError(err)
 
@@ -3101,8 +3216,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_DeleteUser", func() {
 		tests := []struct {
 			name           string
-			userID         types.UserID
-			providerUserID types.ProviderUserID
+			userID         v2Types.UserID
+			providerUserID v2Types.ProviderUserID
 			expectedErr    error
 		}{
 			{
@@ -3156,18 +3271,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_WriteBlockedContract", func() {
 		tests := []struct {
 			name                     string
-			blockedContract          types.BlockedContract
-			expectedBlockedContracts types.GlobalBlockedContracts
+			blockedContract          v2Types.BlockedContract
+			expectedBlockedContracts v2Types.GlobalBlockedContracts
 			err                      error
 		}{
 			{
 				name: "Should add a new blocked address to the global blocked contracts table",
-				blockedContract: types.BlockedContract{
+				blockedContract: v2Types.BlockedContract{
 					BlockedAddress: "0xtest_newabcdef0123456789abcdef01234567",
 					Active:         true,
 				},
-				expectedBlockedContracts: types.GlobalBlockedContracts{
-					BlockedAddresses: map[types.BlockedAddress]struct{}{
+				expectedBlockedContracts: v2Types.GlobalBlockedContracts{
+					BlockedAddresses: map[v2Types.BlockedAddress]struct{}{
 						"0xtest_6789abcdef0123456789abcdef01234567":   {},
 						"0xtest_f0123456789abcdef0123456789abcdef01":  {},
 						"0xtest_cdef0123456789abcdef0123456789abcdef": {},
@@ -3180,7 +3295,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should return an error if the address is empty",
-				blockedContract: types.BlockedContract{
+				blockedContract: v2Types.BlockedContract{
 					BlockedAddress: "",
 					Active:         true,
 				},
@@ -3188,7 +3303,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should return an error if the address is a duplicate",
-				blockedContract: types.BlockedContract{
+				blockedContract: v2Types.BlockedContract{
 					BlockedAddress: "0xtest_cdef0123456789abcdef0123456789abcdef",
 					Active:         true,
 				},
@@ -3219,17 +3334,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateBlockedContractActive", func() {
 		tests := []struct {
 			name                     string
-			blockedAddress           types.BlockedAddress
+			blockedAddress           v2Types.BlockedAddress
 			active                   bool
-			expectedBlockedContracts types.GlobalBlockedContracts
+			expectedBlockedContracts v2Types.GlobalBlockedContracts
 			err                      error
 		}{
 			{
 				name:           "Should deactivate a blocked address in the global blocked contracts table",
 				blockedAddress: "0xtest_cdef0123456789abcdef0123456789abcdef",
 				active:         false,
-				expectedBlockedContracts: types.GlobalBlockedContracts{
-					BlockedAddresses: map[types.BlockedAddress]struct{}{
+				expectedBlockedContracts: v2Types.GlobalBlockedContracts{
+					BlockedAddresses: map[v2Types.BlockedAddress]struct{}{
 						"0xtest_6789abcdef0123456789abcdef01234567":  {},
 						"0xtest_f0123456789abcdef0123456789abcdef01": {},
 						"0xtest_56789abcdef0123456789abcdef01234567": {},
@@ -3243,8 +3358,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:           "Should reactivate a blocked address in the global blocked contracts table",
 				blockedAddress: "0xtest_cdef0123456789abcdef0123456789abcdef",
 				active:         true,
-				expectedBlockedContracts: types.GlobalBlockedContracts{
-					BlockedAddresses: map[types.BlockedAddress]struct{}{
+				expectedBlockedContracts: v2Types.GlobalBlockedContracts{
+					BlockedAddresses: map[v2Types.BlockedAddress]struct{}{
 						"0xtest_6789abcdef0123456789abcdef01234567":   {},
 						"0xtest_f0123456789abcdef0123456789abcdef01":  {},
 						"0xtest_cdef0123456789abcdef0123456789abcdef": {},
@@ -3289,15 +3404,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_RemoveBlockedContract", func() {
 		tests := []struct {
 			name                     string
-			blockedAddress           types.BlockedAddress
-			expectedBlockedContracts types.GlobalBlockedContracts
+			blockedAddress           v2Types.BlockedAddress
+			expectedBlockedContracts v2Types.GlobalBlockedContracts
 			err                      error
 		}{
 			{
 				name:           "Should delete a blocked address in the global blocked contracts table",
 				blockedAddress: "0xtest_789abcdef0123456789abcdef0123456789",
-				expectedBlockedContracts: types.GlobalBlockedContracts{
-					BlockedAddresses: map[types.BlockedAddress]struct{}{
+				expectedBlockedContracts: v2Types.GlobalBlockedContracts{
+					BlockedAddresses: map[v2Types.BlockedAddress]struct{}{
 						"0xtest_6789abcdef0123456789abcdef01234567":   {},
 						"0xtest_f0123456789abcdef0123456789abcdef01":  {},
 						"0xtest_cdef0123456789abcdef0123456789abcdef": {},

@@ -1,14 +1,14 @@
 module github.com/pokt-foundation/pocket-http-db
 
-go 1.20
+go 1.21
 
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.4.1
 	github.com/pokt-foundation/db-client v1.11.1
-	github.com/pokt-foundation/db-client/v2 v2.5.0
+	github.com/pokt-foundation/db-client/v2 v2.8.0
 	github.com/pokt-foundation/portal-db v1.11.0
-	github.com/pokt-foundation/portal-db/v2 v2.5.2
+	github.com/pokt-foundation/portal-db/v2 v2.7.0
 	github.com/pokt-foundation/utils-go v0.8.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.1
@@ -47,5 +47,3 @@ require (
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/pokt-foundation/portal-db/v2 => ../portal-db

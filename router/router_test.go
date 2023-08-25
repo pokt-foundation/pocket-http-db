@@ -103,6 +103,45 @@ func TestRouter_getChainByID(t *testing.T) {
 	}
 }
 
+func TestRouter_getGigastakeAppByID(t *testing.T) {
+	tests := []struct {
+		name                 string
+		gigastakeAppID       types.GigastakeAppID
+		expectedStatus       int
+		expectedGigastakeApp types.GigastakeApp
+	}{
+		{
+			name:                 "Should fetch a single gigastake app",
+			gigastakeAppID:       "test_gigastake_app_1",
+			expectedStatus:       http.StatusOK,
+			expectedGigastakeApp: *testdata.GigastakeApps["test_gigastake_app_1"],
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/gigastake/%s", test.gigastakeAppID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var gigastakeAppResp types.GigastakeApp
+			err = json.Unmarshal(rr.Body.Bytes(), &gigastakeAppResp)
+			c.NoError(err)
+
+			c.Equal(test.expectedGigastakeApp, gigastakeAppResp)
+		})
+	}
+}
+
 func TestRouter_getAllChains(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -152,6 +191,92 @@ func TestRouter_getAllChains(t *testing.T) {
 				chainsRespMap[chainsResp[i].ID] = &chainsResp[i]
 			}
 			c.Equal(test.expectedChains, chainsRespMap)
+		})
+	}
+}
+
+func TestRouter_getAllGigastakeApps(t *testing.T) {
+	tests := []struct {
+		name           string
+		includeDeleted bool
+		expectedStatus int
+		expectedApps   map[types.GigastakeAppID]*types.GigastakeApp
+	}{
+		{
+			name:           "Should fetch all gigastake apps",
+			includeDeleted: false,
+			expectedStatus: http.StatusOK,
+			expectedApps:   testdata.GigastakeApps,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/gigastake", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var gigastakeAppsResp []types.GigastakeApp
+			err = json.Unmarshal(rr.Body.Bytes(), &gigastakeAppsResp)
+			c.NoError(err)
+			gigastakeApps := map[types.GigastakeAppID]*types.GigastakeApp{}
+			for i := range gigastakeAppsResp {
+				gigastakeApps[gigastakeAppsResp[i].ID] = &gigastakeAppsResp[i]
+			}
+			c.Equal(test.expectedApps, gigastakeApps)
+		})
+	}
+}
+
+func TestRouter_getAllGigastakeAppsByChain(t *testing.T) {
+	tests := []struct {
+		name           string
+		chainID        types.RelayChainID
+		expectedStatus int
+		expectedApps   map[types.GigastakeAppID]*types.GigastakeApp
+	}{
+		{
+			name:           "Should fetch all gigastake apps for a single chain ID",
+			chainID:        "0001",
+			expectedStatus: http.StatusOK,
+			expectedApps: map[types.GigastakeAppID]*types.GigastakeApp{
+				"test_gigastake_app_1": testdata.GigastakeApps["test_gigastake_app_1"],
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/chain/%s/gigastake", test.chainID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var gigastakeAppsByChainResp []types.GigastakeApp
+			err = json.Unmarshal(rr.Body.Bytes(), &gigastakeAppsByChainResp)
+			c.NoError(err)
+			gigastakeAppsByChain := map[types.GigastakeAppID]*types.GigastakeApp{}
+			for i := range gigastakeAppsByChainResp {
+				gigastakeAppsByChain[gigastakeAppsByChainResp[i].ID] = &gigastakeAppsByChainResp[i]
+			}
+			c.Equal(test.expectedApps, gigastakeAppsByChain)
 		})
 	}
 }
@@ -343,7 +468,7 @@ func TestRouter_updateGigastakeApp(t *testing.T) {
 			gigastakeAppUpdateBytes, err := json.Marshal(test.gigastakeAppUpdate)
 			c.NoError(err)
 
-			req, err := http.NewRequest(http.MethodPut, "/v2/chain/gigastake", bytes.NewBuffer(gigastakeAppUpdateBytes))
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/chain/gigastake/%s", test.gigastakeAppUpdate.ID), bytes.NewBuffer(gigastakeAppUpdateBytes))
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
