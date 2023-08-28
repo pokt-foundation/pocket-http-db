@@ -1062,6 +1062,8 @@ func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) 
 /* ---------- V1 Read Methods ---------- */
 
 func (rt *Router) getUserPermissionsByUserID(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getUserPermissionsByUserID")
+
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
@@ -1079,6 +1081,8 @@ func (rt *Router) getUserPermissionsByUserID(w http.ResponseWriter, r *http.Requ
 }
 
 func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getApplicationsByUserID")
+
 	vars := mux.Vars(r)
 
 	apps, err := rt.cache.GetLegacyApplicationsByUserID(r.Context(), vars["id"])
@@ -1091,6 +1095,8 @@ func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request
 }
 
 func (rt *Router) getApplications(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getApplications")
+
 	applications := rt.cache.GetLegacyApplications(cache.Options{
 		IncludeDeleted: false,
 	})
@@ -1099,6 +1105,8 @@ func (rt *Router) getApplications(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getLoadBalancersByUserID")
+
 	vars := mux.Vars(r)
 	userID := vars["id"]
 
@@ -1118,12 +1126,16 @@ func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) getLoadBalancers(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getLoadBalancers")
+
 	lbs := rt.cache.GetLegacyLoadBalancers(r.Context())
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
 }
 
 func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getLoadBalancer")
+
 	vars := mux.Vars(r)
 
 	lb, err := rt.cache.GetLegacyLoadBalancer(r.Context(), vars["id"])
@@ -1136,6 +1148,8 @@ func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getBlockchains")
+
 	queryParams := map[queryParam]queryParamDetail{
 		chainParams.includeInactive: {required: false},
 	}
@@ -1156,6 +1170,8 @@ func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getBlockchain")
+
 	vars := mux.Vars(r)
 
 	blockchain := rt.cache.GetLegacyBlockchain(r.Context(), vars["id"])
@@ -1168,10 +1184,14 @@ func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) getPayPlans(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getPayPlans")
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyPayPlans(r.Context()))
 }
 
 func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getPayPlan")
+
 	vars := mux.Vars(r)
 
 	plan, err := rt.cache.GetLegacyPayPlan(r.Context(), vars["type"])
@@ -1185,6 +1205,8 @@ func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
 
 /* Returns all pending load balancers for a given portal user ID. */
 func (rt *Router) getPendingLoadBalancersByPortalID(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getPendingLoadBalancersByPortalID")
+
 	vars := mux.Vars(r)
 	userPortalID := vars["portalID"]
 
@@ -1199,6 +1221,8 @@ func (rt *Router) getPendingLoadBalancersByPortalID(w http.ResponseWriter, r *ht
 
 /* Returns the number of load balancers a given user owns, by portal ID */
 func (rt *Router) getLoadBalancersCountByPortalID(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - getLoadBalancersCountByPortalID")
+
 	vars := mux.Vars(r)
 	userPortalID := vars["portalID"]
 
@@ -1209,6 +1233,8 @@ func (rt *Router) getLoadBalancersCountByPortalID(w http.ResponseWriter, r *http
 
 /* ---------- V1 Create Methods ---------- */
 func (rt *Router) createLoadBalancer(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - createLoadBalancer")
+
 	var lb v1Types.LoadBalancer
 
 	err := json.NewDecoder(r.Body).Decode(&lb)
@@ -1228,6 +1254,8 @@ func (rt *Router) createLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) createLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - createLoadBalancerUser")
+
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1250,6 +1278,8 @@ func (rt *Router) createLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - createLoadBalancerIntegration")
+
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1272,6 +1302,8 @@ func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.R
 }
 
 func (rt *Router) createPortalUser(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - createPortalUser")
+
 	var userInput types.CreateUser
 
 	err := json.NewDecoder(r.Body).Decode(&userInput)
@@ -1298,6 +1330,8 @@ func (rt *Router) createPortalUser(w http.ResponseWriter, r *http.Request) {
 /* ---------- V1 Update Methods ---------- */
 
 func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - updateLoadBalancer")
+
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1325,6 +1359,8 @@ func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - updateFirstDateSurpassed")
+
 	var updateInput v1Types.UpdateFirstDateSurpassed
 
 	err := json.NewDecoder(r.Body).Decode(&updateInput)
@@ -1345,6 +1381,8 @@ func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Reques
 }
 
 func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - updateLoadBalancerUserRole")
+
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1368,6 +1406,8 @@ func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Requ
 }
 
 func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - acceptLoadBalancerUser")
+
 	vars := mux.Vars(r)
 	lbID := vars["id"]
 
@@ -1390,6 +1430,8 @@ func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request)
 }
 
 func (rt *Router) deleteLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
+	rt.logger.Info("V1 endpoint hit - deleteLoadBalancerUser")
+
 	vars := mux.Vars(r)
 
 	lb, err := rt.cache.RemoveLegacyAccountUser(r.Context(), rt.writer, vars["userID"], vars["id"])
