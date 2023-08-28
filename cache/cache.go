@@ -704,7 +704,22 @@ func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 
 	for _, portalApp := range c.portalApps {
 		if !portalApp.Deleted {
-			portalAppLites = append(portalAppLites, portalApp.ConvertPortalAppToPortalAppLite())
+			var plan *types.Plan
+
+			// Direct apps have no plan associated with them
+			if !portalApp.IsDirectApp() {
+				account, ok := c.accounts[portalApp.AccountID]
+				if !ok {
+					c.logger.Warn("error in GetPortalAppsForMiddleware: cannot find account for portal app",
+						slog.String("portal_app_id", string(portalApp.ID)),
+						slog.String("account_id", string(portalApp.AccountID)),
+					)
+					continue
+				}
+				plan = account.Plan
+			}
+
+			portalAppLites = append(portalAppLites, portalApp.ConvertPortalAppToPortalAppLite(plan))
 		}
 	}
 
