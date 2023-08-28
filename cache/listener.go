@@ -1,30 +1,32 @@
 package cache
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
+	"log/slog"
+
 	"github.com/pokt-foundation/portal-db/v2/types"
-	"github.com/sirupsen/logrus"
 )
 
 func (c *Cache) listen() {
 	for {
 		n, ok := <-c.reader.NotificationChannel()
 		if !ok {
-			c.log.Error(errors.New("notification channel closed, exiting PHD"))
+			c.logger.Error("notification channel closed, exiting PHD")
 			os.Exit(1)
 		}
 
 		queueSize := len(c.reader.NotificationChannel())
 		if queueSize > 0 {
-			c.log.WithField("queue_size", queueSize).Info("Notification channel queue > 0")
+			c.logger.Info("Notification channel queue > 0",
+				slog.Int("queue_size", queueSize),
+			)
 		}
 
 		if n == nil {
 			// Temporary fix until proper reconnection logic is in place.
-			c.log.Error(errors.New("got a nil value from notification listener"))
+			c.logger.Error("got a nil value from notification listener")
 			continue
 		}
 
@@ -33,11 +35,12 @@ func (c *Cache) listen() {
 }
 
 func (c *Cache) parseNotification(n types.Notification) {
-	c.log.WithFields(logrus.Fields{
-		"action": n.Action,
-		"table":  n.Table,
-	}).Info("Starting parseNotification")
-	t := NewRunTimer(fmt.Sprintf("parseNotification %s %s", n.Action, n.Table), c.log)
+	c.logger.Info("Starting parseNotification",
+		slog.String("action", string(n.Action)),
+		slog.String("table", string(n.Table)),
+	)
+
+	t := NewRunTimer(fmt.Sprintf("parseNotification %s %s", n.Action, n.Table), c.logger)
 	defer t.Stop()
 
 	switch n.Table {
@@ -89,7 +92,7 @@ func (c *Cache) parseNotification(n types.Notification) {
 func (c *Cache) parseAccountNotification(n types.Notification) {
 	account, ok := n.Data.(*types.Account)
 	if !ok {
-		c.log.Error("parseAccountNotification failed")
+		c.logger.Error("parseAccountNotification failed")
 		return
 	}
 
@@ -101,7 +104,7 @@ func (c *Cache) parseAccountNotification(n types.Notification) {
 func (c *Cache) parseAccountUserAccessNotification(n types.Notification) {
 	accountUserAccess, ok := n.Data.(*types.AccountUserAccess)
 	if !ok {
-		c.log.Error("parseAccountUserAccessNotification failed")
+		c.logger.Error("parseAccountUserAccessNotification failed")
 		return
 	}
 
@@ -116,7 +119,7 @@ func (c *Cache) parseAccountUserAccessNotification(n types.Notification) {
 func (c *Cache) parseAccountIntegrationsNotification(n types.Notification) {
 	accountIntegrations, ok := n.Data.(*types.AccountIntegrations)
 	if !ok {
-		c.log.Error("parseAccountIntegrationsNotification failed")
+		c.logger.Error("parseAccountIntegrationsNotification failed")
 		return
 	}
 
@@ -130,7 +133,7 @@ func (c *Cache) parseAccountIntegrationsNotification(n types.Notification) {
 func (c *Cache) parsePortalAppNotification(n types.Notification) {
 	portalApp, ok := n.Data.(*types.PortalApp)
 	if !ok {
-		c.log.Error("parsePortalAppNotification failed")
+		c.logger.Error("parsePortalAppNotification failed")
 		return
 	}
 
@@ -142,7 +145,7 @@ func (c *Cache) parsePortalAppNotification(n types.Notification) {
 func (c *Cache) parseSettingsNotification(n types.Notification) {
 	appSettings, ok := n.Data.(*types.Settings)
 	if !ok {
-		c.log.Error("parseSettingsNotification failed")
+		c.logger.Error("parseSettingsNotification failed")
 		return
 	}
 
@@ -154,7 +157,7 @@ func (c *Cache) parseSettingsNotification(n types.Notification) {
 func (c *Cache) parseWhitelistNotification(n types.Notification) {
 	appWhitelist, ok := n.Data.(*types.Whitelist)
 	if !ok {
-		c.log.Error("parseWhitelistNotification failed")
+		c.logger.Error("parseWhitelistNotification failed")
 		return
 	}
 
@@ -168,7 +171,7 @@ func (c *Cache) parseWhitelistNotification(n types.Notification) {
 func (c *Cache) parseAppNotificationNotification(n types.Notification) {
 	appNotification, ok := n.Data.(*types.AppNotification)
 	if !ok {
-		c.log.Error("parseAppNotificationNotification failed")
+		c.logger.Error("parseAppNotificationNotification failed")
 		return
 	}
 
@@ -180,7 +183,7 @@ func (c *Cache) parseAppNotificationNotification(n types.Notification) {
 func (c *Cache) parsePortalAppAATNotification(n types.Notification) {
 	appAAT, ok := n.Data.(*types.AAT)
 	if !ok {
-		c.log.Error("parsePortalAppAATNotification failed")
+		c.logger.Error("parsePortalAppAATNotification failed")
 		return
 	}
 
@@ -194,7 +197,7 @@ func (c *Cache) parsePortalAppAATNotification(n types.Notification) {
 func (c *Cache) parseGigastakeAppNotification(n types.Notification) {
 	gigastakeApp, ok := n.Data.(*types.GigastakeApp)
 	if !ok {
-		c.log.Error("parseGigastakeAppsNotification failed")
+		c.logger.Error("parseGigastakeAppsNotification failed")
 		return
 	}
 
@@ -206,7 +209,7 @@ func (c *Cache) parseGigastakeAppNotification(n types.Notification) {
 func (c *Cache) parseChainGigastakeAppNotification(n types.Notification) {
 	chainGigastakeApp, ok := n.Data.(*types.ChainGigastakeApp)
 	if !ok {
-		c.log.Error("parseChainGigastakeAppNotification failed")
+		c.logger.Error("parseChainGigastakeAppNotification failed")
 		return
 	}
 
@@ -220,7 +223,7 @@ func (c *Cache) parseChainGigastakeAppNotification(n types.Notification) {
 func (c *Cache) parseChainNotification(n types.Notification) {
 	chain, ok := n.Data.(*types.Chain)
 	if !ok {
-		c.log.Error("parseChainNotification failed")
+		c.logger.Error("parseChainNotification failed")
 		return
 	}
 
@@ -232,7 +235,7 @@ func (c *Cache) parseChainNotification(n types.Notification) {
 func (c *Cache) parseChainAltruistNotification(n types.Notification) {
 	chainAltruist, ok := n.Data.(*types.Altruist)
 	if !ok {
-		c.log.Error("parseChainAltruistNotification failed")
+		c.logger.Error("parseChainAltruistNotification failed")
 		return
 	}
 
@@ -247,7 +250,7 @@ func (c *Cache) parseChainAltruistNotification(n types.Notification) {
 func (c *Cache) parseChainCheckNotification(n types.Notification) {
 	chainCheck, ok := n.Data.(*types.Check)
 	if !ok {
-		c.log.Error("parseChainCheckNotification failed")
+		c.logger.Error("parseChainCheckNotification failed")
 		return
 	}
 
@@ -262,7 +265,7 @@ func (c *Cache) parseChainCheckNotification(n types.Notification) {
 func (c *Cache) parseChainAliasDomainsNotification(n types.Notification) {
 	aliasDomains, ok := n.Data.(*types.AliasDomains)
 	if !ok {
-		c.log.Error("parseChainAliasDomainsNotification failed")
+		c.logger.Error("parseChainAliasDomainsNotification failed")
 		return
 	}
 
@@ -279,7 +282,7 @@ func (c *Cache) parseChainAliasDomainsNotification(n types.Notification) {
 func (c *Cache) parseUsersNotification(n types.Notification) {
 	user, ok := n.Data.(*types.User)
 	if !ok {
-		c.log.Error("parseUsersNotification failed")
+		c.logger.Error("parseUsersNotification failed")
 		return
 	}
 
@@ -291,7 +294,7 @@ func (c *Cache) parseUsersNotification(n types.Notification) {
 func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
 	authProvider, ok := n.Data.(*types.UserAuthProvider)
 	if !ok {
-		c.log.Error("parseUserAuthProviderNotification failed")
+		c.logger.Error("parseUserAuthProviderNotification failed")
 		return
 	}
 
@@ -305,7 +308,7 @@ func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {
 func (c *Cache) parseGlobalBlockedContractsNotification(n types.Notification) {
 	blockedContract, ok := n.Data.(*types.BlockedContract)
 	if !ok {
-		c.log.Error("parseGlobalBlockedContractsNotification failed")
+		c.logger.Error("parseGlobalBlockedContractsNotification failed")
 		return
 	}
 

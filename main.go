@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"sync"
@@ -14,7 +15,7 @@ import (
 	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/pokt-foundation/utils-go/environment"
-	"github.com/sirupsen/logrus"
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 const (
@@ -39,32 +40,30 @@ const (
 	defaultCacheRefreshMinutes = 5
 	port                       = "PORT"
 	defaultPort                = "8080"
+	profiler                   = "PROFILER"
+	defaultProfiler            = false
 	// Image tag used to return Docker image version in health check response body.
 	imageTag        = "IMAGE_TAG"
 	defaultImageTag = "development"
-
-	// TODO: add a map to take strings and converts to their logrus equivalent
-	// Valid Values are 0-6 going from fatal to trace
-	logLevel = "LOG_LEVEL"
-	profiler = "PROFILER"
 )
 
 type (
+	// Environment Options
 	options struct {
 		appEnv types.AppEnv
 
 		pgHost, pgPort, pgUser, pgPassword, pgDatabase,
-		dbInstanceConnectionName, dbPublicIP, dbPrivateIP string
+		dbInstanceConnectionName, dbPublicIP, dbPrivateIP,
+		port, imageTag string
+
+		profiler bool
 
 		apiKeys map[string]bool
 
 		cacheRefreshMinutes time.Duration
-		port, imageTag      string
-
-		profiler bool
-
-		logLevel int64
 	}
+
+	// DB config structs
 	DBConfig interface {
 		GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool, cleanup func() error, err error)
 	}
@@ -92,8 +91,7 @@ func gatherOptions() options {
 		cacheRefreshMinutes: time.Duration(environment.GetInt64(cacheRefresh, defaultCacheRefreshMinutes)) * time.Minute,
 		port:                environment.GetString(port, defaultPort),
 		imageTag:            environment.GetString(imageTag, defaultImageTag),
-		logLevel:            environment.GetInt64(logLevel, 4), // defaults to INFO
-		profiler:            environment.GetBool(profiler, false),
+		profiler:            environment.GetBool(profiler, defaultProfiler),
 	}
 
 	switch appEnv {
@@ -151,33 +149,22 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 }
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
-func httpHandler(router *router.Router, options options, log *logrus.Logger) {
-	log.Printf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port)
+func httpHandler(router *router.Router, options options, logger *logger.Logger) {
+	logger.Info(fmt.Sprintf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port))
+	logger.Info(fmt.Sprintf("Log level is: %s", logger.LogLevel()))
 	if options.appEnv != types.AppEnvProduction {
-		log.Printf("Running in %s mode. Connected to DB at %s:%s", options.appEnv, options.pgHost, options.pgPort)
+		logger.Info(fmt.Sprintf("Running in %s mode. Connected to DB at %s:%s", options.appEnv, options.pgHost, options.pgPort))
 	}
+	// Run the HTTP server
 	log.Fatal(http.ListenAndServe(":"+options.port, router.Router))
 }
 
 func main() {
-	ctx := context.Background()
-
 	// Gather env vars
 	options := gatherOptions()
 
-	// Configure logger
-	// TODO: use new logger
-	log := logrus.New()
-	log.SetFormatter(&logrus.JSONFormatter{})
-	log.SetLevel(logrus.Level(options.logLevel))
-	log.Printf("Pocket HTTP DB %s starting...", options.imageTag)
-
-	// Start pprof server only if profiler flag set
-	if options.profiler {
-		go func() {
-			log.Println("pprof:", http.ListenAndServe("localhost:6060", nil))
-		}()
-	}
+	// Instantiate logger
+	logger := logger.New()
 
 	// Choose DB configuration based on APP_ENV
 	var dbConfig DBConfig
@@ -191,29 +178,27 @@ func main() {
 	}
 
 	// Connect to Postgres DB, initialize listener and instantiate driver
-	connPool, cleanup, err := dbConfig.GetConn(ctx)
+	connPool, cleanup, err := dbConfig.GetConn(context.Background())
 	if err != nil {
 		panic(err)
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
-			log.Printf("Failed to clean up: %v", err)
+			logger.Error("Failed to clean up: %v", err)
 		}
 	}()
 
 	notificationChannel := make(chan *types.Notification, 32)
-
 	listener := postgresdriver.NewPGXPoolListener(connPool, notificationChannel)
-
 	driver, errChan, err := postgresdriver.NewPostgresDriver(connPool, listener, notificationChannel)
 	if err != nil {
 		panic(err)
 	}
 
 	// Pass DB reader to cache and instantiate
-	cache, err := cache.NewCache(ctx, cache.Config{
+	cache, err := cache.NewCache(context.Background(), cache.Config{
 		Reader:              driver,
-		Logger:              log,
+		Logger:              logger,
 		CacheRefreshMinutes: options.cacheRefreshMinutes,
 	})
 	if err != nil {
@@ -225,7 +210,7 @@ func main() {
 		Cache:    cache,
 		Writer:   driver,
 		APIKeys:  options.apiKeys,
-		Log:      log,
+		Logger:   logger,
 		ImageTag: options.imageTag,
 	})
 	if err != nil {
@@ -235,13 +220,20 @@ func main() {
 	// This goroutine continuously monitors the error channel and logs any errors that come in.
 	go func() {
 		for err := range errChan {
-			log.Printf("error from listener: %v", err)
+			logger.Error(fmt.Sprintf("error from listener: %v", err))
 		}
 	}()
+
+	// Start pprof server only if profiler flag set
+	if options.profiler {
+		go func() {
+			logger.Info("pprof:", http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	// Start the HTTP server
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go httpHandler(router, options, log)
+	go httpHandler(router, options, logger)
 	wg.Wait()
 }

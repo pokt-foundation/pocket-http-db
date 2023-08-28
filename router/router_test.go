@@ -12,13 +12,13 @@ import (
 	"time"
 
 	v1Types "github.com/pokt-foundation/portal-db/types"
+	"github.com/pokt-foundation/utils-go/logger"
 
 	"github.com/pokt-foundation/pocket-http-db/cache"
 	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -41,11 +41,11 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUsers[types.UserID("usertest")], nil)
 
-	testLog := logrus.New()
+	logger := logger.New()
 
 	cacheInstance, err := cache.NewCache(testCtx, cache.Config{
 		Reader:              readerMock,
-		Logger:              testLog,
+		Logger:              logger,
 		CacheRefreshMinutes: 5 * time.Minute,
 	})
 	c.NoError(err)
@@ -54,7 +54,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 		Cache:   cacheInstance,
 		Writer:  nil, // mock set in tests
 		APIKeys: map[string]bool{"": true},
-		Log:     testLog,
+		Logger:  logger,
 	})
 }
 

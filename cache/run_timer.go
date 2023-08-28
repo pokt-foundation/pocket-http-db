@@ -3,29 +3,31 @@ package cache
 import (
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"log/slog"
+
+	"github.com/pokt-foundation/utils-go/logger"
 )
 
 type runTimer struct {
 	name      string
 	startTime time.Time
-	log       *logrus.Logger
+	logger    *logger.Logger
 }
 
-func NewRunTimer(name string, log *logrus.Logger) *runTimer {
+func NewRunTimer(name string, logger *logger.Logger) *runTimer {
 	return &runTimer{
 		name:      name,
 		startTime: time.Now(),
-		log:       log,
+		logger:    logger,
 	}
 }
 
 func (t runTimer) Stop() {
 	elapsed := time.Since(t.startTime)
 	if elapsed > 0*time.Millisecond {
-		t.log.WithFields(logrus.Fields{
-			"name":         t.name,
-			"milliseconds": elapsed.Milliseconds(),
-		}).Info("RunTimer")
+		t.logger.Info("RunTimer",
+			slog.String("name", t.name),
+			slog.Int64("milliseconds", elapsed.Milliseconds()),
+		)
 	}
 }

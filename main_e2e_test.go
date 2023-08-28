@@ -107,7 +107,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:    "Should return error if chain does not exist",
 				chainID: "9999",
-				err:     fmt.Errorf("Response not OK. 404 Not Found: chain not found"),
+				err:     fmt.Errorf("Response not OK. 404 Not Found: error in getChainByID: chain not found"),
 			},
 		}
 
@@ -151,7 +151,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:           "Should return error if GigastakeApp does not exist",
 				gigastakeAppID: "9999",
-				err:            fmt.Errorf("Response not OK. 404 Not Found: gigastake app not found"),
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getGigastakeAppByID: gigastake app not found"),
 			},
 		}
 
@@ -282,7 +282,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:    "Should return error if chain does not exist",
 				chainID: "9999",
-				err:     fmt.Errorf("Response not OK. 404 Not Found: chain not found"),
+				err:     fmt.Errorf("Response not OK. 400 Bad Request: error in getAllGigastakeAppsByChain: chain not found"),
 			},
 		}
 
@@ -324,7 +324,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:        "Should return error if app does not exist",
 				portalAppID: "9999",
-				err:         fmt.Errorf("Response not OK. 404 Not Found: portal app not found"),
+				err:         fmt.Errorf("Response not OK. 404 Not Found: error in getPortalAppByID: portal app not found"),
 			},
 		}
 
@@ -768,7 +768,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:           "Should error when user does not exist",
 				providerUserID: "facebook|ron_swanson",
-				err:            fmt.Errorf("Response not OK. 404 Not Found"),
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getPortalUserID: user not found for provider user ID"),
 			},
 			{
 				name:           "Should error when no user ID",
@@ -904,7 +904,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:         "Should fail if the blockchain does not exist in the DB",
 				blockchainID: "666",
-				err:          fmt.Errorf("Response not OK. 404 Not Found: blockchain not found"),
+				err:          fmt.Errorf("Response not OK. 404 Not Found: error in getBlockchain: blockchain not found"),
 			},
 		}
 
@@ -964,7 +964,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fail if the user does not have any applications in the DB",
 				userID: "test_not_real_user",
-				err:    fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID test_not_real_user"),
+				err:    fmt.Errorf("Response not OK. 404 Not Found: error in getApplicationsByUserID: user not found for provider user ID test_not_real_user"),
 			},
 		}
 
@@ -1032,7 +1032,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:           "Should fail if the load balancer does not exist in the DB",
 				loadBalancerID: "test_not_real_load_balancer",
-				err:            fmt.Errorf("Response not OK. 404 Not Found: portal app not found for load balancer ID test_not_real_load_balancer"),
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getLoadBalancer: portal app not found for load balancer ID test_not_real_load_balancer"),
 			},
 		}
 
@@ -1086,7 +1086,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fail if the user does not exist",
 				userID: "test_not_real_user",
-				err:    fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID test_not_real_user"),
+				err:    fmt.Errorf("Response not OK. 404 Not Found: error in getLoadBalancersByUserID: user not found for provider user ID test_not_real_user"),
 			},
 		}
 
@@ -1153,7 +1153,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:        "Should fail if passed a pay plan type that is not in the DB",
 				payPlanType: v1Types.PayPlanType("not_a_real_plan"),
-				err:         fmt.Errorf("Response not OK. 404 Not Found: plan not found for type not_a_real_plan"),
+				err:         fmt.Errorf("Response not OK. 404 Not Found: error in getPayPlan: plan not found for type not_a_real_plan"),
 			},
 		}
 
@@ -1213,7 +1213,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:   "Should fail if the user does not have any permissions",
 				userID: "test_user_hey_who_am_i_wow",
-				err:    fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID test_user_hey_who_am_i_wow"),
+				err:    fmt.Errorf("Response not OK. 404 Not Found: error in getUserPermissionsByUserID: user not found for provider user ID test_user_hey_who_am_i_wow"),
 			},
 		}
 
@@ -1335,14 +1335,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:          "Should fail if Chain is missing",
 				newChainInput: v2Types.NewChainInput{},
-				err:           fmt.Errorf("Response not OK. 400 Bad Request: error chain cannot be nil"),
+				err:           fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewChainAndGigastakeApps: error chain cannot be nil"),
 			},
 			{
 				name: "Should fail if GigastakeApp is missing",
 				newChainInput: v2Types.NewChainInput{
 					Chain: &v2Types.Chain{ID: "1234"},
 				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: error gigastakeApps slice cannot be empty"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewChainAndGigastakeApps: error gigastakeApps slice cannot be empty"),
 			},
 		}
 
@@ -1410,7 +1410,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				gigastakeAppInput: v2Types.GigastakeApp{
 					Name: "",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: gigastake app name cannot be empty"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewGigastakeApp: gigastake app name cannot be empty"),
 			},
 			{
 				name: "Should return an error for non-existent chain ID",
@@ -1418,7 +1418,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Name:     "whatever",
 					ChainIDs: map[v2Types.RelayChainID]struct{}{"0666": {}},
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error chain does not exist for chain ID '0666'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewGigastakeApp: error chain does not exist for chain ID '0666'"),
 			},
 		}
 
@@ -1627,7 +1627,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				gigastakeAppUpdate: v2Types.UpdateGigastakeApp{
 					Name: "",
 				},
-				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: gigastake app name cannot be empty"),
+				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGigastakeApp: gigastake app name cannot be empty"),
 				expected: nil,
 			},
 			{
@@ -1637,7 +1637,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Name:     "whatever",
 					ChainIDs: []v2Types.RelayChainID{},
 				},
-				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: chainIDs cannot be empty for gigastake app update"),
+				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGigastakeApp: chainIDs cannot be empty for gigastake app update"),
 				expected: nil,
 			},
 			{
@@ -1647,7 +1647,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Name:     "whatever",
 					ChainIDs: []v2Types.RelayChainID{"0666"},
 				},
-				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error chain does not exist for chain ID '0666'"),
+				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGigastakeApp: error chain does not exist for chain ID '0666'"),
 				expected: nil,
 			},
 		}
@@ -1779,7 +1779,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						Environment: "production",
 					},
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: portal app name cannot be empty"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: portal app name cannot be empty"),
 			},
 			{
 				name: "Should return an error if invalid environment provided",
@@ -1793,7 +1793,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						Environment: "cascadia",
 					},
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: invalid portal app environment provided: cascadia"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: invalid portal app environment provided: cascadia"),
 			},
 			{
 				name: "Should return an error for non-existent account ID",
@@ -1807,7 +1807,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						Environment: "production",
 					},
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error account does not exist for account ID 'non_existing_account_id'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: error account does not exist for account ID 'non_existing_account_id'"),
 			},
 			{
 				name: "Should return an error for non-existent plan",
@@ -1821,7 +1821,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						Environment: "production",
 					},
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error pay plan 'non_existing_plan' does not exist"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: error pay plan 'non_existing_plan' does not exist"),
 			},
 		}
 
@@ -2137,7 +2137,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:     "Should delete the Portal App in the DB",
 				expected: map[string]string{"status": "deleted"},
-				err:      fmt.Errorf("Response not OK. 404 Not Found: portal app not found"),
+				err:      fmt.Errorf("Response not OK. 404 Not Found: error in getPortalAppByID: portal app not found"),
 			},
 		}
 
@@ -2281,13 +2281,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:         "Should fail if input Account has an invalid plan type",
 				ownerID:      "user_1",
 				accountInput: &v2Types.Account{PlanType: v2Types.PayPlanType("turbo_ultra_mega_plan")},
-				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: error pay plan 'turbo_ultra_mega_plan' does not exist"),
+				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: error in createAccount: error pay plan 'turbo_ultra_mega_plan' does not exist"),
 			},
 			{
 				name:         "Should fail if input User does not exist in the db",
 				ownerID:      "user_451",
 				accountInput: testdata.Accounts[v2Types.AccountID("account_5")],
-				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: error user does not exist for portal ID 'user_451'"),
+				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: error in createAccount: error user does not exist for portal ID 'user_451'"),
 			},
 		}
 
@@ -2353,7 +2353,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AccountID: "account_8823",
 					PlanType:  v2Types.Enterprise,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error account does not exist for account ID 'account_8823'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error account does not exist for account ID 'account_8823'"),
 			},
 		}
 
@@ -2485,7 +2485,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:     "Should delete the Account in the DB",
 				ownerID:  "user_7",
 				expected: map[string]string{"status": "deleted"},
-				err:      fmt.Errorf("Response not OK. 404 Not Found: account not found"),
+				err:      fmt.Errorf("Response not OK. 404 Not Found: error in getAccountByID: account not found"),
 			},
 		}
 
@@ -2582,7 +2582,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:       "winston.smith",
 					RoleName:    v2Types.RoleAdmin,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error email input is not a valid email address 'winston.smith'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in writeAccountUser: error email input is not a valid email address 'winston.smith'"),
 			},
 			{
 				name: "Should fail if account does not exist",
@@ -2592,7 +2592,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:       "winston.smith@test.com",
 					RoleName:    v2Types.RoleAdmin,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error account does not exist for account ID 'account_674'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in writeAccountUser: error account does not exist for account ID 'account_674'"),
 			},
 			{
 				name: "Should fail if an empty email string is provided",
@@ -2632,7 +2632,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:       "valid.email@test.com",
 					RoleName:    v2Types.RoleAdmin,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error account does not exist for account ID 'non_existent_account'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in writeAccountUser: error account does not exist for account ID 'non_existent_account'"),
 			},
 			{
 				name: "Should fail if the PortalAppID provided does not exist",
@@ -2642,7 +2642,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:       "valid.email@test.com",
 					RoleName:    v2Types.RoleAdmin,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error portal app does not exist for ID 'non_existent_app'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in writeAccountUser: error portal app does not exist for ID 'non_existent_app'"),
 			},
 		}
 
@@ -2812,7 +2812,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    v2Types.RoleOwner,
 				},
 				testCreatedTime: testdata.MockTimestamp,
-				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot transfer ownership to user ID 'user_10' for account ID 'account_3' because the user has not accepted their invite"),
+				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error cannot transfer ownership to user ID 'user_10' for account ID 'account_3' because the user has not accepted their invite"),
 			},
 			{
 				name: "Should fail if User is not a member of an Account",
@@ -2823,7 +2823,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    v2Types.RoleMember,
 				},
 				testCreatedTime: testdata.MockTimestamp,
-				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'user_512' does not exist for portal app ID 'account_2'"),
+				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error user ID 'user_512' does not exist for portal app ID 'account_2'"),
 			},
 			{
 				name: "Should fail if RoleName is empty",
@@ -2845,7 +2845,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    "INVALID_ROLE_NAME",
 				},
 				testCreatedTime: testdata.MockTimestamp,
-				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error invalid role name set"),
+				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error invalid role name set"),
 			},
 			{
 				name: "Should fail if PortalAppID is empty",
@@ -2878,7 +2878,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    v2Types.RoleAdmin,
 				},
 				testCreatedTime: testdata.MockTimestamp,
-				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error portal app does not exist for ID 'non_existent_app'"),
+				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error portal app does not exist for ID 'non_existent_app'"),
 			},
 			{
 				name: "Should fail if User is not a member of an Account",
@@ -2889,7 +2889,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    v2Types.RoleMember,
 				},
 				testCreatedTime: testdata.MockTimestamp,
-				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'non_member_user' does not exist for portal app ID 'account_3'"),
+				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error user ID 'non_member_user' does not exist for portal app ID 'account_3'"),
 			},
 		}
 
@@ -2961,7 +2961,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AuthProviderType: v2Types.AuthType("ask_jeeves"),
 					ProviderUserID:   "auth0|daenerys_targaryen",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error invalid auth provider type 'ask_jeeves'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in acceptAccountUser: error invalid auth provider type 'ask_jeeves'"),
 			},
 			{
 				name: "Should fail if AuthProviderType is not provided",
@@ -2989,7 +2989,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AuthProviderType: v2Types.AuthTypeAuth0Username,
 					ProviderUserID:   "auth0|who_dis",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'user_123' does not exist for portal app ID 'account_3'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in acceptAccountUser: error user ID 'user_123' does not exist for portal app ID 'account_3'"),
 			},
 		}
 
@@ -3056,7 +3056,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					PortalAppID: "test_app_3",
 					UserID:      "user_789",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'user_789' does not exist for portal app ID 'test_app_3'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeAccountUser: error user ID 'user_789' does not exist for portal app ID 'test_app_3'"),
 			},
 			{
 				name: "Should fail if attempting to delete the current Account OWNER",
@@ -3071,7 +3071,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					PortalAppID: "test_app_1",
 					UserID:      "user_1",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot delete user ID 'user_1' for account ID 'account_1' because this user is the current account owner"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeAccountUser: error cannot delete user ID 'user_1' for account ID 'account_1' because this user is the current account owner"),
 			},
 			{
 				name: "Should fail if provided a UserID that doesn't exist for the Account",
@@ -3086,7 +3086,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					PortalAppID: "test_app_1",
 					UserID:      "user_nonexistent",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error user ID 'user_nonexistent' does not exist for portal app ID 'test_app_1'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeAccountUser: error user ID 'user_nonexistent' does not exist for portal app ID 'test_app_1'"),
 			},
 		}
 
@@ -3172,7 +3172,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:          "jiminy.cricket",
 					ProviderUserID: "auth0|test",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error email input is not a valid email address 'jiminy.cricket'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createUser: error email input is not a valid email address 'jiminy.cricket'"),
 			},
 			{
 				name: "Should fail if there's no provider type",
@@ -3180,7 +3180,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:          "email@test.com",
 					ProviderUserID: "wtf|test",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error invalid auth provider type 'wtf'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createUser: error invalid auth provider type 'wtf'"),
 			},
 		}
 
@@ -3230,13 +3230,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:           "Should fail to delete a User if they are on the team of any accounts",
 				userID:         "user_1",
 				providerUserID: "auth0|james_holden",
-				expectedErr:    fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot delete user because they are still on an account team"),
+				expectedErr:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in deleteUser: error cannot delete user because they are still on an account team"),
 			},
 			{
 				name:           "Should fail if the user does not exist in the database",
 				userID:         "user_42",
 				providerUserID: "auth0|gengelspiel",
-				expectedErr:    fmt.Errorf("Response not OK. 500 Internal Server Error: error user does not exist for portal ID 'user_42'"),
+				expectedErr:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in deleteUser: error user does not exist for portal ID 'user_42'"),
 			},
 		}
 
@@ -3299,7 +3299,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					BlockedAddress: "",
 					Active:         true,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error blockchain address must be provided"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in writeBlockedContract: error blockchain address must be provided"),
 			},
 			{
 				name: "Should return an error if the address is a duplicate",
@@ -3307,7 +3307,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					BlockedAddress: "0xtest_cdef0123456789abcdef0123456789abcdef",
 					Active:         true,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error blockchain address 0xtest_cdef0123456789abcdef0123456789abcdef is already blocked"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in writeBlockedContract: error blockchain address 0xtest_cdef0123456789abcdef0123456789abcdef is already blocked"),
 			},
 		}
 
@@ -3378,7 +3378,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:           "Should return an error if the address doesn't exist in the database",
 				blockedAddress: "0xtest_34095u439fh49fh30fj239ru923kf3f09823fk",
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error blockchain address 0xtest_34095u439fh49fh30fj239ru923kf3f09823fk does not exist"),
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateBlockedContractActive: error blockchain address 0xtest_34095u439fh49fh30fj239ru923kf3f09823fk does not exist"),
 			},
 		}
 
@@ -3430,7 +3430,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:           "Should return an error if the address doesn't exist in the database",
 				blockedAddress: "0xtest_34095u439fh49fh30fj239ru923kf3f09823fk",
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error blockchain address 0xtest_34095u439fh49fh30fj239ru923kf3f09823fk does not exist"),
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeBlockedContract: error blockchain address 0xtest_34095u439fh49fh30fj239ru923kf3f09823fk does not exist"),
 			},
 		}
 
@@ -3491,7 +3491,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				userInput: v2Types.CreateUser{
 					ProviderUserID: "auth0|test",
 				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: error email input is not a valid email address ''"),
+				err: fmt.Errorf("Response not OK. 400 Bad Request: error in createPortalUser: error email input is not a valid email address ''"),
 			},
 			{
 				name: "Should fail if there's no provider type",
@@ -3499,7 +3499,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:          "email@test.com",
 					ProviderUserID: "wtf|test",
 				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request: error invalid auth provider type 'wtf'"),
+				err: fmt.Errorf("Response not OK. 400 Bad Request: error in createPortalUser: error invalid auth provider type 'wtf'"),
 			},
 		}
 
@@ -3710,7 +3710,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					UserID:   "user_8",
 					RoleName: v1Types.RoleOwner,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error cannot transfer ownership to user ID 'user_8' for account ID 'account_1' because the user has not accepted their invite"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateLoadBalancerUserRole: error cannot transfer ownership to user ID 'user_8' for account ID 'account_1' because the user has not accepted their invite"),
 			},
 			{
 				name:           "Should fail if load balancer ID not provided",
@@ -3733,7 +3733,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					UserID:   "user_8",
 					RoleName: v1Types.RoleMember,
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID im_not_here"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateLoadBalancerUserRole: portal app not found for load balancer ID im_not_here"),
 			},
 		}
 
@@ -3847,7 +3847,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:           "Should fail if application cannot be found",
 				loadBalancerID: "9000",
-				err:            fmt.Errorf("Response not OK. 404 Not Found: portal app not found for load balancer ID 9000"),
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in updateLoadBalancer: portal app not found for load balancer ID 9000"),
 			},
 		}
 
@@ -3969,7 +3969,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:           "Should fail if load balancer cannot be found",
 				providerUserID: "auth0|rick_deckard",
 				loadBalancerID: "im_not_here",
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID im_not_here"),
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error in acceptLoadBalancerUser: portal app not found for load balancer ID im_not_here"),
 			},
 		}
 
@@ -4088,7 +4088,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "sir_not_appearing_in_this_film",
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID sir_not_appearing_in_this_film"),
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error in createLoadBalancerUser: portal app not found for load balancer ID sir_not_appearing_in_this_film"),
 			},
 		}
 
@@ -4144,13 +4144,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					{RoleName: v1Types.RoleMember, UserID: "user_10", Email: "daenerys.targaryen123@test.com", Accepted: true},
 				},
 				lbsAfterDelete:        1,
-				permissionsFetchError: fmt.Errorf("Response not OK. 404 Not Found: user not found for provider user ID user_7"),
+				permissionsFetchError: fmt.Errorf("Response not OK. 404 Not Found: error in getUserPermissionsByUserID: user not found for provider user ID user_7"),
 			},
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "why_am_i_not_a_load_balancer",
 				userID:         "user_9",
-				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: portal app not found for load balancer ID why_am_i_not_a_load_balancer"),
+				err:            fmt.Errorf("Response not OK. 500 Internal Server Error: error in deleteLoadBalancerUser: portal app not found for load balancer ID why_am_i_not_a_load_balancer"),
 			},
 			{
 				name:           "Should fail if load balancer ID not provided",
@@ -4217,7 +4217,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:           "Should fail if load balancer cannot be found",
 				loadBalancerID: "9000",
-				err:            fmt.Errorf("Response not OK. 404 Not Found: portal app not found for load balancer ID 9000"),
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in updateLoadBalancer: portal app not found for load balancer ID 9000"),
 			},
 		}
 
@@ -4230,11 +4230,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					<-time.After(50 * time.Millisecond)
 
 					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
-					ts.Equal("Response not OK. 404 Not Found: portal app not found for load balancer ID test_app_3", err.Error())
+					ts.Equal("Response not OK. 404 Not Found: error in getLoadBalancer: portal app not found for load balancer ID test_app_3", err.Error())
 					ts.Nil(loadBalancer)
 
 					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), test.loadBalancerID)
-					ts.Equal("Response not OK. 404 Not Found: portal app not found for load balancer ID test_app_3", err.Error())
+					ts.Equal("Response not OK. 404 Not Found: error in getLoadBalancer: portal app not found for load balancer ID test_app_3", err.Error())
 					ts.Nil(loadBalancer)
 				}
 			})
@@ -4258,7 +4258,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:          "Should fail if application cannot be found",
 				applicationID: "2348",
-				err:           fmt.Errorf("Response not OK. 404 Not Found: portal app not found for load balancer ID 2348"),
+				err:           fmt.Errorf("Response not OK. 404 Not Found: error in updateLoadBalancer: portal app not found for load balancer ID 2348"),
 			},
 		}
 
