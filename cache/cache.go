@@ -702,7 +702,19 @@ func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 
 	for _, portalApp := range c.portalApps {
 		if !portalApp.Deleted {
-			portalAppLites = append(portalAppLites, portalApp.ConvertPortalAppToPortalAppLite())
+			var plan *types.Plan
+
+			// Direct apps have no plan associated with them
+			if !portalApp.IsDirectApp() {
+				account, ok := c.accounts[portalApp.AccountID]
+				if !ok {
+					c.log.Warn(fmt.Errorf("error getting account %s for portal app %s", portalApp.AccountID, portalApp.ID))
+					continue
+				}
+				plan = account.Plan
+			}
+
+			portalAppLites = append(portalAppLites, portalApp.ConvertPortalAppToPortalAppLite(plan))
 		}
 	}
 
