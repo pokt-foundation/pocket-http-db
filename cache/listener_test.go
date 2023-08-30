@@ -576,9 +576,9 @@ func Test_parseChainNotification(t *testing.T) {
 						Allowance: 2,
 					},
 				},
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"boba-mainnet":   {"boba-rpc.gateway.pokt.network"},
-					"boba-mainnet-2": {"boba-rpc-2.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"boba-testnet":   {},
+					"boba-testnet-2": {},
 				},
 				CreatedAt: testdata.MockTimestamp,
 				UpdatedAt: testdata.MockTimestamp,
@@ -617,9 +617,9 @@ func Test_parseChainNotification(t *testing.T) {
 						Allowance: 7,
 					},
 				},
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"sui-testnet":   {"sui-rpc.gateway.pokt.network"},
-					"sui-testnet-2": {"sui-rpc-2.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"sui-testnet":   {},
+					"sui-testnet-2": {},
 				},
 			},
 		},
@@ -709,7 +709,7 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 	}
 }
 
-func Test_parseAliasDomainsNotification(t *testing.T) {
+func Test_parseAliasNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
@@ -717,46 +717,46 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 		chain           types.Chain
 	}{
 		{
-			name:            "Should add AliasDomains to Chain in cache when receiving an insert notification",
+			name:            "Should add Aliases to Chain in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"solana-mainnet": {"sol-rpc.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"solana-mainnet": {},
 				},
 			},
 		},
 		{
-			name:            "Should update AliasDomains in Chain in cache when receiving an update notification",
+			name:            "Should update Aliases in Chain in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"updated-solana-mainnet": {},
 				},
 			},
 		},
 		{
-			name:            "Should update AliasDomains with a longer slice in Chain in cache when receiving an update notification",
+			name:            "Should update Aliases with a longer slice in Chain in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network", "sol-rpc-123.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"updated-solana-mainnet": {},
 				},
 			},
 		},
 		{
-			name:            "Should delete AliasDomains in Chain in cache when receiving a delete notification",
+			name:            "Should delete Aliases in Chain in cache when receiving a delete notification",
 			sideTableAction: types.ActionDelete,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
-					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
+				Aliases: map[types.ChainAlias]struct{}{
+					"updated-solana-mainnet": {},
 				},
 			},
 		},
@@ -779,22 +779,22 @@ func Test_parseAliasDomainsNotification(t *testing.T) {
 			chain := cache.GetChain(test.chainID, Options{})
 
 			if test.sideTableAction != types.ActionDelete {
-				// Merge any additional keys from chain.AliasDomains into test.chain.AliasDomains before checking for equality
-				for key, value := range chain.AliasDomains {
-					if _, exists := test.chain.AliasDomains[key]; !exists {
-						test.chain.AliasDomains[key] = value
+				// Merge any additional keys from chain.Aliases into test.chain.Aliases before checking for equality
+				for key, value := range chain.Aliases {
+					if _, exists := test.chain.Aliases[key]; !exists {
+						test.chain.Aliases[key] = value
 					}
 				}
-				c.Equal(test.chain.AliasDomains, chain.AliasDomains, "Chain alias domains should match expected")
+				c.Equal(test.chain.Aliases, chain.Aliases, "Chain aliases should match expected")
 			} else {
-				// For deletion, just check that the alias does not exist in chain.AliasDomains
+				// For deletion, just check that the alias does not exist in chain.Aliases
 				var aliasKey types.ChainAlias
-				for key := range test.chain.AliasDomains {
+				for key := range test.chain.Aliases {
 					aliasKey = key
 					break
 				}
 				c.NotEmpty(aliasKey)
-				_, exists := chain.AliasDomains[aliasKey]
+				_, exists := chain.Aliases[aliasKey]
 				c.False(exists, "Alias should not exist after delete operation")
 			}
 		})

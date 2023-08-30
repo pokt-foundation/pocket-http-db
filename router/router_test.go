@@ -395,7 +395,7 @@ func TestRouter_updateChain(t *testing.T) {
 				Active:         *testdata.UpdateChainOne.Active,
 				Altruists:      *testdata.UpdateChainOne.Altruists,
 				Checks:         *testdata.UpdateChainOne.Checks,
-				AliasDomains:   *testdata.UpdateChainOne.AliasDomains,
+				Aliases:        *testdata.UpdateChainOne.Aliases,
 				CreatedAt:      testdata.MockTimestamp,
 				UpdatedAt:      testdata.MockTimestamp,
 			},

@@ -46,8 +46,10 @@ type (
 		gigastakeApps              map[types.GigastakeAppID]*types.GigastakeApp
 		pendingChainsGigastakeApps map[types.GigastakeAppID]types.ChainGigastakeApp
 
-		chains               map[types.RelayChainID]*types.Chain
-		pendingAltruists     map[types.RelayChainID][]types.Altruist
+		chains           map[types.RelayChainID]*types.Chain
+		pendingAltruists map[types.RelayChainID][]types.Altruist
+		pendingAliases   map[types.RelayChainID][]types.ChainAlias
+		// DEPRECATED - TODO remove when move to only store aliases is complete
 		pendingAliasDomains  map[types.RelayChainID][]types.AliasDomains
 		pendingChecks        map[types.RelayChainID][]types.Check
 		pendingGigastakeApps map[types.RelayChainID][]types.GigastakeApp
@@ -105,9 +107,11 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		pendingWhitelists:          make(map[types.PortalAppID][]types.Whitelist),
 		pendingAltruists:           make(map[types.RelayChainID][]types.Altruist),
 		pendingChainsGigastakeApps: make(map[types.GigastakeAppID]types.ChainGigastakeApp),
-		pendingAliasDomains:        make(map[types.RelayChainID][]types.AliasDomains),
-		pendingChecks:              make(map[types.RelayChainID][]types.Check),
-		pendingGigastakeApps:       make(map[types.RelayChainID][]types.GigastakeApp),
+		pendingAliases:             make(map[types.RelayChainID][]types.ChainAlias),
+		// DEPRECATED - TODO remove when move to only store aliases is complete
+		pendingAliasDomains:  make(map[types.RelayChainID][]types.AliasDomains),
+		pendingChecks:        make(map[types.RelayChainID][]types.Check),
+		pendingGigastakeApps: make(map[types.RelayChainID][]types.GigastakeApp),
 	}
 
 	// Perform initial cache data fetch and log time to fetch
@@ -1105,9 +1109,11 @@ func (c *Cache) upsertChain(chain types.Chain) {
 
 	if existingChain, ok := c.chains[chain.ID]; ok {
 		chain.Altruists = existingChain.Altruists
-		chain.AliasDomains = existingChain.AliasDomains
+		chain.Aliases = existingChain.Aliases
 		chain.Checks = existingChain.Checks
 		chain.GigastakeApps = existingChain.GigastakeApps
+		// DEPRECATED - TODO remove when move to only store aliases is complete
+		chain.AliasDomains = existingChain.AliasDomains
 	}
 
 	if pendingAltruists, ok := c.pendingAltruists[chain.ID]; ok {
@@ -1130,6 +1136,17 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		delete(c.pendingChecks, chain.ID)
 	}
 
+	if pendingAliases, ok := c.pendingAliases[chain.ID]; ok {
+		if chain.Aliases == nil {
+			chain.Aliases = make(map[types.ChainAlias]struct{})
+		}
+		for _, alias := range pendingAliases {
+			chain.Aliases[alias] = struct{}{}
+		}
+		delete(c.pendingAliasDomains, chain.ID)
+	}
+
+	// DEPRECATED - TODO remove when move to only store aliases is complete
 	if pendingAliasDomains, ok := c.pendingAliasDomains[chain.ID]; ok {
 		if chain.AliasDomains == nil {
 			chain.AliasDomains = make(map[types.ChainAlias][]types.ChainDomain)
@@ -1182,6 +1199,26 @@ func (c *Cache) addAltruist(altruist types.Altruist) {
 	c.pendingAltruists[chainID] = append(c.pendingAltruists[chainID], altruist)
 }
 
+// addAliasDomains adds or updates Alias saved in cache
+func (c *Cache) addAlias(alias types.Alias) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	chainID := alias.ChainID
+	alias.ChainID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
+	if chain, ok := c.chains[chainID]; ok {
+		if chain.Aliases == nil {
+			chain.Aliases = make(map[types.ChainAlias]struct{})
+		}
+		chain.Aliases[alias.Alias] = struct{}{}
+		return
+	}
+
+	c.pendingAliases[chainID] = append(c.pendingAliases[chainID], alias.Alias)
+}
+
+// DEPRECATED - TODO remove when move to only store aliases is complete
 // addAliasDomains adds or updates AliasDomains saved in cache
 func (c *Cache) addAliasDomains(aliasDomains types.AliasDomains) {
 	c.rwMutex.Lock()
@@ -1242,6 +1279,19 @@ func (c *Cache) deleteCheck(check types.Check) {
 	}
 }
 
+// deleteAliasDomains removes AliasDomains from cache
+func (c *Cache) deleteAlias(alias types.Alias) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	chainID := alias.ChainID
+
+	if chain, ok := c.chains[chainID]; ok {
+		delete(chain.Aliases, alias.Alias)
+	}
+}
+
+// DEPRECATED - TODO remove when move to only store aliases is complete
 // deleteAliasDomains removes AliasDomains from cache
 func (c *Cache) deleteAliasDomains(aliasDomains types.AliasDomains) {
 	c.rwMutex.Lock()
