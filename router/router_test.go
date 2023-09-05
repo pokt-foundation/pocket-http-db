@@ -798,8 +798,7 @@ func TestRouter_updatePortalApp(t *testing.T) {
 			name:        "Should update PortalApp plan only",
 			portalAppID: "test_app_1",
 			portalAppUpdate: types.UpdatePortalApp{
-				PlanType:   testdata.UpdatePortalAppPlan.PlanType,
-				DailyLimit: testdata.UpdatePortalAppPlan.DailyLimit,
+				PlanType: testdata.UpdatePortalAppPlan.PlanType,
 			},
 			expectedStatus: http.StatusOK,
 		},

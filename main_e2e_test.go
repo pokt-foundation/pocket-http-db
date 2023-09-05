@@ -188,7 +188,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				expectedChains: testdata.Chains,
 				gigastakeApps:  testdata.GigastakeApps,
 				options: v2DBClient.ChainOptions{
-					IncludeInactive: true,
+					IncludeInactive: v2DBClient.BoolPtr(true),
 				},
 			},
 		}
@@ -210,7 +210,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				var chains []*v2Types.Chain
 				var err error
 
-				if test.options.IncludeInactive {
+				if test.options.IncludeInactive != nil && *test.options.IncludeInactive {
 					chains, err = ts.v2Client1.GetAllChains(context.Background(), test.options)
 				} else {
 					chains, err = ts.v2Client1.GetAllChains(context.Background())
@@ -220,7 +220,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if test.err == nil {
 					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
 
-					if test.options.IncludeInactive {
+					if test.options.IncludeInactive != nil && *test.options.IncludeInactive {
 						chains, err = ts.v2Client2.GetAllChains(context.Background(), test.options)
 					} else {
 						chains, err = ts.v2Client2.GetAllChains(context.Background())
@@ -1897,7 +1897,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Notifications: testdata.UpdatePortalAppNotifications,
 					Whitelists:    testdata.UpdatePortalAppWhitelists,
 					PlanType:      testdata.UpdatePortalAppPlan.PlanType,
-					DailyLimit:    testdata.UpdatePortalAppPlan.DailyLimit,
 				},
 				testUpdateTime:  testdata.MockTimestamp,
 				testUpdatedName: "portal-app-updated",
@@ -1951,8 +1950,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					},
 				},
 				testUpdatedLegacyFields: v2Types.LegacyFields{
-					PlanType:   v2Types.PayAsYouGoV0,
-					DailyLimit: 0,
+					PlanType:   v2Types.FreetierV0,
+					DailyLimit: 250_000,
 				},
 				err: nil,
 			},
@@ -2041,21 +2040,31 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should update a new PortalApp in the database with a new plan",
 				updatePortalApp: v2Types.UpdatePortalApp{
-					PlanType:   testdata.UpdatePortalAppPlan.PlanType,
-					DailyLimit: testdata.UpdatePortalAppPlan.DailyLimit,
+					PlanType: testdata.UpdatePortalAppPlan.PlanType,
 				},
 				testUpdateTime: testdata.MockTimestamp,
 				testUpdatedLegacyFields: v2Types.LegacyFields{
-					PlanType:   v2Types.PayAsYouGoV0,
-					DailyLimit: 0,
+					PlanType:   v2Types.FreetierV0,
+					DailyLimit: 250_000,
+				},
+				err: nil,
+			},
+			{
+				name: "Should update a new PortalApp in the database with another new plan",
+				updatePortalApp: v2Types.UpdatePortalApp{
+					PlanType: testdata.UpdatePortalAppPlanTwo.PlanType,
+				},
+				testUpdateTime: testdata.MockTimestamp,
+				testUpdatedLegacyFields: v2Types.LegacyFields{
+					PlanType:   v2Types.TestPlan90k,
+					DailyLimit: 90_000,
 				},
 				err: nil,
 			},
 			{
 				name: "Should update a new PortalApp in the database with an Enterprise plan",
 				updatePortalApp: v2Types.UpdatePortalApp{
-					PlanType:   testdata.UpdatePortalAppEnterprisePlan.PlanType,
-					DailyLimit: testdata.UpdatePortalAppEnterprisePlan.DailyLimit,
+					PlanType: testdata.UpdatePortalAppEnterprisePlan.PlanType,
 				},
 				testUpdateTime: testdata.MockTimestamp,
 				testUpdatedLegacyFields: v2Types.LegacyFields{
@@ -2063,6 +2072,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					CustomLimit: 5_600_000,
 				},
 				err: nil,
+			},
+			{
+				name: "Should fail if an invalid plan type provided",
+				updatePortalApp: v2Types.UpdatePortalApp{
+					PlanType: v2Types.PayPlanType("what_am_i_doing"),
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updatePortalApp: error pay plan 'what_am_i_doing' does not exist"),
 			},
 		}
 
@@ -2102,9 +2118,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					if test.updatePortalApp.PlanType != "" {
 						ts.Equal(test.testUpdatedLegacyFields.PlanType, updatedPortalApp.LegacyFields.PlanType)
-					}
-					if test.updatePortalApp.DailyLimit != 0 {
-						ts.Equal(test.testUpdatedLegacyFields.DailyLimit, updatedPortalApp.LegacyFields.DailyLimit)
+						if test.updatePortalApp.PlanType != v2Types.Enterprise {
+							ts.Equal(test.testUpdatedLegacyFields.DailyLimit, updatedPortalApp.DailyLimit())
+						}
 					}
 					if test.updatePortalApp.CustomLimit != 0 {
 						ts.Equal(test.testUpdatedLegacyFields.CustomLimit, updatedPortalApp.LegacyFields.CustomLimit)
