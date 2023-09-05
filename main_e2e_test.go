@@ -188,7 +188,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				expectedChains: testdata.Chains,
 				gigastakeApps:  testdata.GigastakeApps,
 				options: v2DBClient.ChainOptions{
-					IncludeInactive: true,
+					IncludeInactive: v2DBClient.BoolPtr(true),
 				},
 			},
 		}
@@ -210,7 +210,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				var chains []*v2Types.Chain
 				var err error
 
-				if test.options.IncludeInactive {
+				if test.options.IncludeInactive != nil && *test.options.IncludeInactive {
 					chains, err = ts.v2Client1.GetAllChains(context.Background(), test.options)
 				} else {
 					chains, err = ts.v2Client1.GetAllChains(context.Background())
@@ -220,7 +220,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if test.err == nil {
 					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
 
-					if test.options.IncludeInactive {
+					if test.options.IncludeInactive != nil && *test.options.IncludeInactive {
 						chains, err = ts.v2Client2.GetAllChains(context.Background(), test.options)
 					} else {
 						chains, err = ts.v2Client2.GetAllChains(context.Background())
@@ -2068,6 +2068,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					CustomLimit: 5_600_000,
 				},
 				err: nil,
+			},
+			{
+				name: "Should fail if an invalid plan type provided",
+				updatePortalApp: v2Types.UpdatePortalApp{
+					PlanType: v2Types.PayPlanType("what_am_i_doing"),
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updatePortalApp: error pay plan 'what_am_i_doing' does not exist"),
 			},
 		}
 
