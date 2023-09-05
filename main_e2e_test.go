@@ -1547,10 +1547,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							expectedChain.Altruists = *test.chainUpdate.Altruists
 							expectedChain.Checks = *test.chainUpdate.Checks
 							expectedChain.Aliases = *test.chainUpdate.Aliases
+							// DEPRECATED - TODO remove when move to only store aliases is complete
+							expectedChain.AliasDomains = updatedChain.AliasDomains
 						} else {
 							expectedChain.Altruists = updatedChain.Altruists
 							expectedChain.Checks = updatedChain.Checks
 							expectedChain.Aliases = updatedChain.Aliases
+							// DEPRECATED - TODO remove when move to only store aliases is complete
+							expectedChain.AliasDomains = updatedChain.AliasDomains
 						}
 
 						expectedChain.ID = updatedChain.ID
@@ -2115,7 +2119,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					if test.updatePortalApp.PlanType != "" {
 						ts.Equal(test.testUpdatedLegacyFields.PlanType, updatedPortalApp.LegacyFields.PlanType)
 						if test.updatePortalApp.PlanType != v2Types.Enterprise {
-							ts.Equal(test.testUpdatedLegacyFields.DailyLimit, updatedPortalApp.DailyLimit)
+							ts.Equal(test.testUpdatedLegacyFields.DailyLimit, updatedPortalApp.DailyLimit())
 						}
 					}
 					if test.updatePortalApp.CustomLimit != 0 {

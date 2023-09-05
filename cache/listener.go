@@ -72,6 +72,9 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseChainNotification(n)
 	case types.TableChainAltruists:
 		c.parseChainAltruistNotification(n)
+	case types.TableChainAliases:
+		c.parseChainAliasNotification(n)
+	// DEPRECATED - TODO remove when move to only store aliases is complete
 	case types.TableChainAliasDomains:
 		c.parseChainAliasDomainsNotification(n)
 	case types.TableChainChecks:
@@ -262,6 +265,22 @@ func (c *Cache) parseChainCheckNotification(n types.Notification) {
 	}
 }
 
+func (c *Cache) parseChainAliasNotification(n types.Notification) {
+	aliasDomains, ok := n.Data.(*types.Alias)
+	if !ok {
+		c.logger.Error("parseChainAliasNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.addAlias(*aliasDomains)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteAlias(*aliasDomains)
+	}
+}
+
+// DEPRECATED - TODO remove when move to only store aliases is complete
 func (c *Cache) parseChainAliasDomainsNotification(n types.Notification) {
 	aliasDomains, ok := n.Data.(*types.AliasDomains)
 	if !ok {
