@@ -395,7 +395,7 @@ func TestRouter_updateChain(t *testing.T) {
 				Active:         *testdata.UpdateChainOne.Active,
 				Altruists:      *testdata.UpdateChainOne.Altruists,
 				Checks:         *testdata.UpdateChainOne.Checks,
-				AliasDomains:   *testdata.UpdateChainOne.AliasDomains,
+				Aliases:        *testdata.UpdateChainOne.Aliases,
 				CreatedAt:      testdata.MockTimestamp,
 				UpdatedAt:      testdata.MockTimestamp,
 			},
@@ -798,8 +798,7 @@ func TestRouter_updatePortalApp(t *testing.T) {
 			name:        "Should update PortalApp plan only",
 			portalAppID: "test_app_1",
 			portalAppUpdate: types.UpdatePortalApp{
-				PlanType:   testdata.UpdatePortalAppPlan.PlanType,
-				DailyLimit: testdata.UpdatePortalAppPlan.DailyLimit,
+				PlanType: testdata.UpdatePortalAppPlan.PlanType,
 			},
 			expectedStatus: http.StatusOK,
 		},
