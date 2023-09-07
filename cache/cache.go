@@ -711,6 +711,7 @@ func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 			var plan *types.Plan
 
 			// Direct apps have no plan associated with them
+			// TODO: REVIEW APPS WITHOUT PLANS
 			if !portalApp.IsDirectApp() {
 				if legacyPlan, ok := c.plans[portalApp.LegacyFields.PlanType]; ok {
 					plan = legacyPlan
