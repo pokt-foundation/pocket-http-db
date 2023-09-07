@@ -712,21 +712,9 @@ func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 
 			// Direct apps have no plan associated with them
 			if !portalApp.IsDirectApp() {
-				// TODO - replace with fetching the plan from the account when move to account-based plans is complete
-				if portalApp.LegacyFields.PlanType == "" {
-					continue
+				if legacyPlan, ok := c.plans[portalApp.LegacyFields.PlanType]; ok {
+					plan = legacyPlan
 				}
-
-				legacyPlan, ok := c.plans[portalApp.LegacyFields.PlanType]
-				if !ok {
-					c.logger.Warn("warning in GetPortalAppsForMiddleware: cannot find legacy plan for portal app",
-						slog.String("portal_app_id", string(portalApp.ID)),
-						slog.String("legacy_plan_type", string(portalApp.LegacyFields.PlanType)),
-					)
-					continue
-				}
-
-				plan = legacyPlan
 			}
 
 			portalAppLites = append(portalAppLites, portalApp.ConvertPortalAppToPortalAppLite(plan))
