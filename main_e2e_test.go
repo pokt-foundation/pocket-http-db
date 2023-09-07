@@ -1507,8 +1507,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						}
 
 						// Only compare the fields present in the update struct
+						// DEPRECATED - TODO remove when move to only store aliases is complete
 						if test.chainUpdate.Blockchain != nil {
 							expectedChain.Blockchain = *test.chainUpdate.Blockchain
+						}
+
+						if test.chainUpdate.IconURL != nil {
+							expectedChain.IconURL = *test.chainUpdate.IconURL
 						}
 
 						if test.chainUpdate.Description != nil {
@@ -1739,8 +1744,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				portalAppInput: testdata.TestCreatePortalApp,
 				aatInput:       testdata.TestCreatePortalAppAAT,
 				expected: &v2Types.PortalApp{
-					Name:      "create_pokt_app_1",
-					AccountID: "account_4",
+					Name:        "create_pokt_app_1",
+					AppEmoji:    "💍",
+					Description: "Embark on a journey across the enchanting realm of Middle-earth.",
+					AccountID:   "account_4",
 					Settings: v2Types.Settings{
 						Environment:       "production",
 						SecretKey:         "test_3e3fb7949c9e3b193cfba5348f93bb2f",
@@ -1772,9 +1779,24 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name: "Should return an error if no app emoji provided",
+				portalAppInput: &v2Types.PortalApp{
+					AppEmoji:  "",
+					AccountID: "account_4",
+					LegacyFields: v2Types.LegacyFields{
+						PlanType: "basic_plan",
+					},
+					Settings: v2Types.Settings{
+						Environment: "production",
+					},
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: provided app emoji field is not an emoji"),
+			},
+			{
 				name: "Should return an error if no name provided",
 				portalAppInput: &v2Types.PortalApp{
 					Name:      "",
+					AppEmoji:  "💀",
 					AccountID: "account_4",
 					LegacyFields: v2Types.LegacyFields{
 						PlanType: "basic_plan",
@@ -2264,19 +2286,26 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				accountInput: testdata.TestCreateAccount,
 				expected: &v2Types.Account{
 					PlanType:  v2Types.PayPlanType("developer_plan"),
+					Name:      "Protogen Corp",
+					IconURL:   "https://picsum.photos/200",
 					CreatedAt: testdata.MockTimestamp,
 					UpdatedAt: testdata.MockTimestamp,
 					Users: map[v2Types.UserID]v2Types.AccountUserAccess{
 						"user_1": {
-							UserID:   "user_1",
-							Email:    "james.holden123@test.com",
-							Owner:    true,
-							Accepted: true,
+							UserID:         "user_1",
+							Email:          "james.holden123@test.com",
+							Owner:          true,
+							Accepted:       true,
+							IconURL:        "https://picsum.photos/200",
+							UpdatesProduct: true,
+							BetaTester:     true,
 						},
 					},
 				},
 				expectedPlan: &v2Types.Plan{
 					Type:              v2Types.PayPlanType("developer_plan"),
+					Name:              "Developer Plan",
+					Description:       "Developer plan for testing purposes",
 					ChainIDs:          map[v2Types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
 					MonthlyRelayLimit: 500_000,
 					ThroughputLimit:   500,
@@ -3547,64 +3576,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					permission, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(providerID))
 					ts.NoError(err)
 					ts.NotNil(permission)
-				}
-			})
-		}
-	})
-
-	ts.Run("Test_CreateLoadBalancer", func() {
-		tests := []struct {
-			name                   string
-			loadBalancer           *v1Types.LoadBalancer
-			userID, providerUserID string
-			expectedCovalentAPIKey string
-			err                    error
-		}{
-			{
-				name:                   "Should create a single loadBalancer in the DB",
-				loadBalancer:           phdtestdata.CreateLegacyLoadBalancer,
-				userID:                 "user_1",
-				providerUserID:         "auth0|james_holden",
-				expectedCovalentAPIKey: "covalent_api_key_1",
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				createdLB, err := ts.client1.CreateLoadBalancer(context.Background(), *test.loadBalancer)
-				ts.Equal(test.err, err)
-
-				test.loadBalancer.Integrations.CovalentAPIKeyFree = test.expectedCovalentAPIKey
-				test.loadBalancer.Applications[0].GatewayAAT.PrivateKey = ""
-				test.loadBalancer.ID = createdLB.ID
-				test.loadBalancer.UserID = test.userID
-				test.loadBalancer.Applications[0].ID = createdLB.Applications[0].ID
-				test.loadBalancer.Applications[0].UserID = test.userID
-				phdtestdata.ClearTimeFields(createdLB)
-
-				ts.Equal(test.loadBalancer, createdLB)
-
-				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), createdLB.ID)
-					ts.Equal(test.err, err)
-					phdtestdata.ClearTimeFields(loadBalancer)
-					ts.Equal(test.loadBalancer, loadBalancer)
-
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), createdLB.ID)
-					ts.Equal(test.err, err)
-					phdtestdata.ClearTimeFields(loadBalancer)
-					ts.Equal(test.loadBalancer, loadBalancer)
-
-					// If the loadBalancer was created, it should have permissions
-					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
-					ts.Equal(test.err, err)
-					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
-
-					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
-					ts.Equal(test.err, err)
-					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
 				}
 			})
 		}
