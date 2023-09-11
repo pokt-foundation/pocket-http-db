@@ -30,8 +30,8 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 	readerMock, _ := cache.NewReaderMock(t)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
 	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
+	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadAccounts", mock.Anything, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
@@ -1528,78 +1528,47 @@ func TestRouter_removeAccountUser(t *testing.T) {
 
 /* ---------- V2 User Handler Method Unit Tests ---------- */
 
-func TestRouter_getUserPermissionByUserID(t *testing.T) {
-	tests := []struct {
-		name                   string
-		userID                 types.ProviderUserID
-		expectedUserPermission *types.UserPermissions
-		expectedStatus         int
-	}{
-		{
-			name:   "Should fetch user permissions for a given user ID",
-			userID: "auth0|ellen_ripley",
-			expectedUserPermission: &types.UserPermissions{
-				UserID: "user_3",
-				PortalApps: map[types.PortalAppID]types.PortalAppPermissions{
-					"test_app_2": {
-						RoleName: types.RoleOwner,
-						Permissions: []types.Permissions{
-							"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint",
-						},
-					},
-				},
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:                   "Should return 404 status for non-existent user ID",
-			userID:                 "auth0|sir_robin",
-			expectedUserPermission: nil,
-			expectedStatus:         http.StatusNotFound,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			router, err := newTestRouter(t)
-			c.NoError(err)
-
-			rr := httptest.NewRecorder()
-
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/permission", test.userID), nil)
-			c.NoError(err)
-
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
-
-			if test.expectedUserPermission != nil {
-				var userPermissionResp *types.UserPermissions
-				err = json.Unmarshal(rr.Body.Bytes(), &userPermissionResp)
-				c.NoError(err)
-				c.Equal(test.expectedUserPermission, userPermissionResp)
-			}
-		})
-	}
-}
-
-func TestRouter_getPortalUserIDFromProviderUserID(t *testing.T) {
+func TestRouter_getPortalUser(t *testing.T) {
 	tests := []struct {
 		name           string
-		userID         types.ProviderUserID
+		providerUserID types.ProviderUserID
+		portalUserID   types.UserID
+		expectedUser   types.User
 		expectedUserID types.UserID
+		fullDetails    bool
 		expectedStatus int
 	}{
 		{
-			name:           "Should fetch Portal User ID for a given auth provider user ID",
-			userID:         "auth0|ellen_ripley",
+			name:           "Should fetch Portal User for a given auth provider user ID if `full_details` is true",
+			providerUserID: "auth0|ellen_ripley",
+			expectedUser:   *testdata.Users["user_3"],
+			fullDetails:    true,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Should fetch Portal User ID for a given portal user ID if `full_details` is true",
+			portalUserID:   "user_3",
+			expectedUser:   *testdata.Users["user_3"],
+			fullDetails:    true,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Should fetch Portal User ID for a given auth provider user ID if `full_details` is false",
+			providerUserID: "auth0|ellen_ripley",
 			expectedUserID: "user_3",
+			fullDetails:    false,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Should fetch Portal User ID for a given portal user ID if `full_details` is false",
+			portalUserID:   "user_3",
+			expectedUserID: "user_3",
+			fullDetails:    false,
 			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "Should return 404 status for non-existent user ID",
-			userID:         "auth0|sir_robin",
+			providerUserID: "auth0|sir_robin",
 			expectedUserID: "",
 			expectedStatus: http.StatusNotFound,
 		},
@@ -1614,17 +1583,38 @@ func TestRouter_getPortalUserIDFromProviderUserID(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s", test.userID), nil)
+			var userID string
+			switch test.providerUserID {
+			case "":
+				userID = string(test.portalUserID)
+			default:
+				userID = string(test.providerUserID)
+			}
+
+			endpoint := fmt.Sprintf("/v2/user/%s", userID)
+			if test.fullDetails {
+				endpoint = fmt.Sprintf("%s?full_details=true", endpoint)
+			}
+
+			req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
 			if test.expectedStatus == http.StatusOK {
-				var portalUserIDResp types.UserID
-				err = json.Unmarshal(rr.Body.Bytes(), &portalUserIDResp)
-				c.NoError(err)
-				c.Equal(test.expectedUserID, portalUserIDResp)
+				switch test.fullDetails {
+				case true:
+					var portalUserResp types.User
+					err = json.Unmarshal(rr.Body.Bytes(), &portalUserResp)
+					c.NoError(err)
+					c.Equal(test.expectedUser, portalUserResp)
+				default:
+					var portalUserIDResp types.UserID
+					err = json.Unmarshal(rr.Body.Bytes(), &portalUserIDResp)
+					c.NoError(err)
+					c.Equal(test.expectedUserID, portalUserIDResp)
+				}
 			}
 		})
 	}

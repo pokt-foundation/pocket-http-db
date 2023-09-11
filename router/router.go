@@ -19,16 +19,17 @@ import (
 )
 
 var (
-	errNoChainsFound                error = errors.New("no chains were found")
-	errNoGigastakeAppsFound         error = errors.New("no gigastake apps were found")
-	errNoGigastakeAppsFoundForChain error = errors.New("no gigastake apps were found for chain")
-	errChainNotFound                error = errors.New("chain not found")
-	errGigastakeAppNotFound         error = errors.New("gigastake app not found")
-	errNoPortalAppsFound            error = errors.New("no portal apps were found")
-	errPortalAppNotFound            error = errors.New("portal app not found")
-	errAccountNotFound              error = errors.New("account not found")
-	errNoAccountsFoundForUserID     error = errors.New("no accounts were found for user ID")
-	errUserNotFound                 error = errors.New("user not found for provider user ID")
+	errNoChainsFound                  error = errors.New("no chains were found")
+	errNoGigastakeAppsFound           error = errors.New("no gigastake apps were found")
+	errNoGigastakeAppsFoundForChain   error = errors.New("no gigastake apps were found for chain")
+	errChainNotFound                  error = errors.New("chain not found")
+	errGigastakeAppNotFound           error = errors.New("gigastake app not found")
+	errNoPortalAppsFound              error = errors.New("no portal apps were found")
+	errPortalAppNotFound              error = errors.New("portal app not found")
+	errAccountNotFound                error = errors.New("account not found")
+	errNoAccountsFoundForUserID       error = errors.New("no accounts were found for user ID")
+	errUserIDNotFoundByProviderUserID error = errors.New("portal user ID not found for provider user ID: %s")
+	errUserNotFoundByID               error = errors.New("user not found for ID: %s")
 
 	errBlockchainNotFound    error = errors.New("blockchain not found")
 	errNoBlockchainsFound    error = errors.New("no blockchains were found")
@@ -136,8 +137,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/account/user/remove", rt.removeAccountUser).Methods(http.MethodPut)
 
 	rt.Router.HandleFunc("/v2/user", rt.createUser).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v2/user/{userID}", rt.getPortalUserID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v2/user/{userID}/permission", rt.getUserPermissionByUserID).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/user/{userID}", rt.getPortalUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/portal_app", rt.getPortalAppsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.createAccount).Methods(http.MethodPost)
@@ -736,6 +736,12 @@ func (rt *Router) createAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	plan := rt.cache.GetPlan(createdAccount.PlanType)
+	if plan.Type == "" {
+		rt.handleError(w, "createAccount", http.StatusInternalServerError, fmt.Errorf("plan type %s not found", createdAccount.PlanType))
+	}
+	createdAccount.Plan = &plan
+
 	jsonresponse.RespondWithJSON(w, http.StatusOK, createdAccount)
 }
 
@@ -920,20 +926,48 @@ func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 
 /* ---------- V2 User Handler Methods ---------- */
 
-// GET /v2/user/{userID}/permission - Gets all PortalApp permissions for a given provider user ID.
-func (rt *Router) getUserPermissionByUserID(w http.ResponseWriter, r *http.Request) {
+// GET /v2/user/{userID} - Gets the Portal User ID for a given auth provider user ID.
+func (rt *Router) getPortalUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	providerUserID := types.ProviderUserID(vars["userID"])
+	userID := vars["userID"]
 
-	portalUserID := rt.cache.GetUserIDFromProviderUserID(providerUserID)
-	if portalUserID == "" {
-		rt.handleError(w, "getUserPermissionByUserID", http.StatusNotFound, errUserNotFound)
+	queryParams := map[queryParam]queryParamDetail{
+		userParams.fullDetails: {required: false},
+	}
+
+	options, err := paramProcessor(r.URL, queryParams)
+	if err != nil {
+		rt.handleError(w, "getPortalUser", http.StatusBadRequest, err)
 		return
 	}
 
-	userPermissions := rt.cache.GetUserPermissionsByUserID(portalUserID)
+	var user types.User
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, userPermissions)
+	// First try to get user by provider user ID
+	userByProviderID := rt.cache.GetUserByProviderID(types.ProviderUserID(userID))
+	if userByProviderID.ID != "" {
+		user = userByProviderID
+	} else {
+		// Then try and get user by portal user ID
+		userByPortalID := rt.cache.GetUserByID(types.UserID(userID))
+		if userByPortalID.ID != "" {
+			user = userByPortalID
+		}
+	}
+	// If both user ID types fail to find a user, return a 404
+	if user.ID == "" {
+		rt.handleError(w, "getPortalUser", http.StatusNotFound, fmt.Errorf(errUserNotFoundByID.Error(), userID))
+		return
+	}
+
+	switch {
+	// If 'full_details' param provided return entire user
+	case options.FullDetails:
+		jsonresponse.RespondWithJSON(w, http.StatusOK, user)
+	// If 'full_details' param not provided or false return only user ID
+	default:
+		jsonresponse.RespondWithJSON(w, http.StatusOK, user.ID)
+	}
 }
 
 // GET /v2/user/{userID} - Gets the Portal User ID for a given auth provider user ID.
@@ -941,13 +975,13 @@ func (rt *Router) getPortalUserID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	providerUserID := types.ProviderUserID(vars["userID"])
 
-	portalUserID := rt.cache.GetUserIDFromProviderUserID(providerUserID)
-	if portalUserID == "" {
-		rt.handleError(w, "getPortalUserID", http.StatusNotFound, errUserNotFound)
+	portalUser := rt.cache.GetUserByProviderID(providerUserID)
+	if portalUser.ID == "" {
+		rt.handleError(w, "getPortalUserID", http.StatusNotFound, fmt.Errorf(errUserIDNotFoundByProviderUserID.Error(), providerUserID))
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, portalUserID)
+	jsonresponse.RespondWithJSON(w, http.StatusOK, portalUser.ID)
 }
 
 // POST /v2/user - Creates a new User in the database. Called in response to a new user sign up.
