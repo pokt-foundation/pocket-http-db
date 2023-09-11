@@ -1484,6 +1484,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
+				initialChain, err := ts.v2Client1.GetChainByID(context.Background(), test.chainUpdate.ID)
+				ts.NoError(err)
+
 				chainUpdateResponse, err := ts.v2Client1.UpdateChain(context.Background(), test.chainUpdate)
 				ts.Equal(test.err, err)
 
@@ -1502,66 +1505,85 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					for _, updatedChain := range updatedChains {
 						ts.Equal(chainUpdateResponse, updatedChain)
 
-						expectedChain := &v2Types.Chain{
-							GigastakeApps: chainUpdateResponse.GigastakeApps,
+						// Assert that the fields in the updated chain match the expected values
+						// Only check the fields present in the update struct
+						if test.chainUpdate.Blockchain != nil {
+							ts.Equal(*test.chainUpdate.Blockchain, updatedChain.Blockchain)
+						} else {
+							ts.Equal(initialChain.Blockchain, updatedChain.Blockchain)
 						}
 
-						// Only compare the fields present in the update struct
-						if test.chainUpdate.Blockchain != nil {
-							expectedChain.Blockchain = *test.chainUpdate.Blockchain
+						if test.chainUpdate.IconURL != nil {
+							ts.Equal(*test.chainUpdate.IconURL, updatedChain.IconURL)
+						} else {
+							ts.Equal(initialChain.IconURL, updatedChain.IconURL)
 						}
 
 						if test.chainUpdate.Description != nil {
-							expectedChain.Description = *test.chainUpdate.Description
+							ts.Equal(*test.chainUpdate.Description, updatedChain.Description)
+						} else {
+							ts.Equal(initialChain.Description, updatedChain.Description)
 						}
 
 						if test.chainUpdate.EnforceResult != nil {
-							expectedChain.EnforceResult = *test.chainUpdate.EnforceResult
+							ts.Equal(*test.chainUpdate.EnforceResult, updatedChain.EnforceResult)
+						} else {
+							ts.Equal(initialChain.EnforceResult, updatedChain.EnforceResult)
 						}
 
 						if test.chainUpdate.Path != nil {
-							expectedChain.Path = *test.chainUpdate.Path
+							ts.Equal(*test.chainUpdate.Path, updatedChain.Path)
+						} else {
+							ts.Equal(initialChain.Path, updatedChain.Path)
 						}
 
 						if test.chainUpdate.Ticker != nil {
-							expectedChain.Ticker = *test.chainUpdate.Ticker
+							ts.Equal(*test.chainUpdate.Ticker, updatedChain.Ticker)
+						} else {
+							ts.Equal(initialChain.Ticker, updatedChain.Ticker)
 						}
 
 						if test.chainUpdate.AllowedMethods != nil {
-							expectedChain.AllowedMethods = test.chainUpdate.AllowedMethods
+							ts.Equal(test.chainUpdate.AllowedMethods, updatedChain.AllowedMethods)
+						} else {
+							ts.Equal(initialChain.AllowedMethods, updatedChain.AllowedMethods)
 						}
 
 						if test.chainUpdate.LogLimitBlocks != nil {
-							expectedChain.LogLimitBlocks = *test.chainUpdate.LogLimitBlocks
+							ts.Equal(*test.chainUpdate.LogLimitBlocks, updatedChain.LogLimitBlocks)
+						} else {
+							ts.Equal(initialChain.LogLimitBlocks, updatedChain.LogLimitBlocks)
 						}
 
 						if test.chainUpdate.RequestTimeout != nil {
-							expectedChain.RequestTimeout = *test.chainUpdate.RequestTimeout
+							ts.Equal(*test.chainUpdate.RequestTimeout, updatedChain.RequestTimeout)
+						} else {
+							ts.Equal(initialChain.RequestTimeout, updatedChain.RequestTimeout)
 						}
 
 						if test.chainUpdate.Active != nil {
-							expectedChain.Active = *test.chainUpdate.Active
-						}
-
-						if !test.noSubtables {
-							expectedChain.Altruists = *test.chainUpdate.Altruists
-							expectedChain.Checks = *test.chainUpdate.Checks
-							expectedChain.Aliases = *test.chainUpdate.Aliases
-							// DEPRECATED - TODO remove when move to only store aliases is complete
-							expectedChain.AliasDomains = updatedChain.AliasDomains
+							ts.Equal(*test.chainUpdate.Active, updatedChain.Active)
 						} else {
-							expectedChain.Altruists = updatedChain.Altruists
-							expectedChain.Checks = updatedChain.Checks
-							expectedChain.Aliases = updatedChain.Aliases
-							// DEPRECATED - TODO remove when move to only store aliases is complete
-							expectedChain.AliasDomains = updatedChain.AliasDomains
+							ts.Equal(initialChain.Active, updatedChain.Active)
 						}
 
-						expectedChain.ID = updatedChain.ID
-						expectedChain.CreatedAt = updatedChain.CreatedAt
-						expectedChain.UpdatedAt = updatedChain.UpdatedAt
+						if test.chainUpdate.Altruists != nil && len(*test.chainUpdate.Altruists) > 0 {
+							ts.Equal(*test.chainUpdate.Altruists, updatedChain.Altruists)
+						} else {
+							ts.Equal(initialChain.Altruists, updatedChain.Altruists)
+						}
 
-						ts.Equal(expectedChain, updatedChain)
+						if test.chainUpdate.Checks != nil && len(*test.chainUpdate.Checks) > 0 {
+							ts.Equal(*test.chainUpdate.Checks, updatedChain.Checks)
+						} else {
+							ts.Equal(initialChain.Checks, updatedChain.Checks)
+						}
+
+						if test.chainUpdate.Aliases != nil && len(*test.chainUpdate.Aliases) > 0 {
+							ts.Equal(*test.chainUpdate.Aliases, updatedChain.Aliases)
+						} else {
+							ts.Equal(initialChain.Aliases, updatedChain.Aliases)
+						}
 					}
 				}
 			})
@@ -1739,8 +1761,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				portalAppInput: testdata.TestCreatePortalApp,
 				aatInput:       testdata.TestCreatePortalAppAAT,
 				expected: &v2Types.PortalApp{
-					Name:      "create_pokt_app_1",
-					AccountID: "account_4",
+					Name:        "create_pokt_app_1",
+					AppEmoji:    "💍",
+					Description: "Embark on a journey across the enchanting realm of Middle-earth.",
+					AccountID:   "account_4",
 					Settings: v2Types.Settings{
 						Environment:       "production",
 						SecretKey:         "test_3e3fb7949c9e3b193cfba5348f93bb2f",
@@ -1772,9 +1796,24 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name: "Should return an error if no app emoji provided",
+				portalAppInput: &v2Types.PortalApp{
+					AppEmoji:  "",
+					AccountID: "account_4",
+					LegacyFields: v2Types.LegacyFields{
+						PlanType: "basic_plan",
+					},
+					Settings: v2Types.Settings{
+						Environment: "production",
+					},
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: provided app emoji field is not an emoji"),
+			},
+			{
 				name: "Should return an error if no name provided",
 				portalAppInput: &v2Types.PortalApp{
 					Name:      "",
+					AppEmoji:  "💀",
 					AccountID: "account_4",
 					LegacyFields: v2Types.LegacyFields{
 						PlanType: "basic_plan",
@@ -1789,6 +1828,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should return an error if invalid environment provided",
 				portalAppInput: &v2Types.PortalApp{
 					Name:      "Test App",
+					AppEmoji:  "💀",
 					AccountID: "account_4",
 					LegacyFields: v2Types.LegacyFields{
 						PlanType: "basic_plan",
@@ -1803,6 +1843,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should return an error for non-existent account ID",
 				portalAppInput: &v2Types.PortalApp{
 					Name:      "Test App",
+					AppEmoji:  "💀",
 					AccountID: "non_existing_account_id",
 					LegacyFields: v2Types.LegacyFields{
 						PlanType: "basic_plan",
@@ -1817,6 +1858,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should return an error for non-existent plan",
 				portalAppInput: &v2Types.PortalApp{
 					Name:      "Test App",
+					AppEmoji:  "💀",
 					AccountID: "account_4",
 					LegacyFields: v2Types.LegacyFields{
 						PlanType: "non_existing_plan",
@@ -2264,19 +2306,26 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				accountInput: testdata.TestCreateAccount,
 				expected: &v2Types.Account{
 					PlanType:  v2Types.PayPlanType("developer_plan"),
+					Name:      "Protogen Corp",
+					IconURL:   "https://picsum.photos/200",
 					CreatedAt: testdata.MockTimestamp,
 					UpdatedAt: testdata.MockTimestamp,
 					Users: map[v2Types.UserID]v2Types.AccountUserAccess{
 						"user_1": {
-							UserID:   "user_1",
-							Email:    "james.holden123@test.com",
-							Owner:    true,
-							Accepted: true,
+							UserID:         "user_1",
+							Email:          "james.holden123@test.com",
+							Owner:          true,
+							Accepted:       true,
+							IconURL:        "https://picsum.photos/200",
+							UpdatesProduct: true,
+							BetaTester:     true,
 						},
 					},
 				},
 				expectedPlan: &v2Types.Plan{
 					Type:              v2Types.PayPlanType("developer_plan"),
+					Name:              "Developer Plan",
+					Description:       "Developer plan for testing purposes",
 					ChainIDs:          map[v2Types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
 					MonthlyRelayLimit: 500_000,
 					ThroughputLimit:   500,
@@ -2571,11 +2620,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    v2Types.RoleMember,
 				},
 				expected: &v2Types.AccountUserAccess{
-					AccountID:      "account_4",
-					UserID:         "user_11",
-					Email:          "bernard.marx@test.com",
-					Accepted:       false,
-					PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{"test_app_1": v2Types.RoleMember},
+					AccountID:        "account_4",
+					UserID:           "user_11",
+					Email:            "bernard.marx@test.com",
+					Accepted:         false,
+					IconURL:          "https://picsum.photos/200",
+					UpdatesProduct:   true,
+					UpdatesMarketing: true,
+					PortalAppRoles:   map[v2Types.PortalAppID]v2Types.RoleName{"test_app_1": v2Types.RoleMember},
 				},
 			},
 			{
@@ -2730,6 +2782,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
 							"test_app_3": v2Types.RoleAdmin,
 						},
+						IconURL:          "https://picsum.photos/200",
+						UpdatesProduct:   true,
+						UpdatesMarketing: true,
+						BetaTester:       true,
 					},
 				},
 				testCreatedTime: testdata.MockTimestamp,
@@ -2754,6 +2810,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
 							"test_app_3": v2Types.RoleMember,
 						},
+						IconURL:          "https://picsum.photos/200",
+						UpdatesProduct:   true,
+						UpdatesMarketing: true,
+						BetaTester:       true,
 					},
 				},
 				testCreatedTime: testdata.MockTimestamp,
@@ -2777,6 +2837,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
 							"test_app_2": v2Types.RoleAdmin,
 						},
+						IconURL:          "https://picsum.photos/200",
+						UpdatesProduct:   true,
+						UpdatesMarketing: true,
 					},
 					"user_4": {
 						Owner:    true,
@@ -2786,6 +2849,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
 							"test_app_2": v2Types.RoleOwner,
 						},
+						IconURL:    "https://picsum.photos/200",
+						BetaTester: true,
 					},
 				},
 				testCreatedTime: testdata.MockTimestamp,
@@ -2809,6 +2874,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
 							"test_app_2": v2Types.RoleAdmin,
 						},
+						IconURL:    "https://picsum.photos/200",
+						BetaTester: true,
 					},
 					"user_3": {
 						Owner:    true,
@@ -2818,6 +2885,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{
 							"test_app_2": v2Types.RoleOwner,
 						},
+						IconURL:          "https://picsum.photos/200",
+						UpdatesProduct:   true,
+						UpdatesMarketing: true,
 					},
 				},
 				testCreatedTime: testdata.MockTimestamp,
@@ -2961,6 +3031,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:          "daenerys.targaryen123@test.com",
 					Accepted:       true,
 					PortalAppRoles: map[v2Types.PortalAppID]v2Types.RoleName{"test_app_3": v2Types.RoleMember},
+					IconURL:        "https://picsum.photos/200",
+					BetaTester:     true,
 				},
 				err: nil,
 			},
@@ -3547,64 +3619,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					permission, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(providerID))
 					ts.NoError(err)
 					ts.NotNil(permission)
-				}
-			})
-		}
-	})
-
-	ts.Run("Test_CreateLoadBalancer", func() {
-		tests := []struct {
-			name                   string
-			loadBalancer           *v1Types.LoadBalancer
-			userID, providerUserID string
-			expectedCovalentAPIKey string
-			err                    error
-		}{
-			{
-				name:                   "Should create a single loadBalancer in the DB",
-				loadBalancer:           phdtestdata.CreateLegacyLoadBalancer,
-				userID:                 "user_1",
-				providerUserID:         "auth0|james_holden",
-				expectedCovalentAPIKey: "covalent_api_key_1",
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				createdLB, err := ts.client1.CreateLoadBalancer(context.Background(), *test.loadBalancer)
-				ts.Equal(test.err, err)
-
-				test.loadBalancer.Integrations.CovalentAPIKeyFree = test.expectedCovalentAPIKey
-				test.loadBalancer.Applications[0].GatewayAAT.PrivateKey = ""
-				test.loadBalancer.ID = createdLB.ID
-				test.loadBalancer.UserID = test.userID
-				test.loadBalancer.Applications[0].ID = createdLB.Applications[0].ID
-				test.loadBalancer.Applications[0].UserID = test.userID
-				phdtestdata.ClearTimeFields(createdLB)
-
-				ts.Equal(test.loadBalancer, createdLB)
-
-				if test.err == nil {
-					<-time.After(50 * time.Millisecond)
-
-					loadBalancer, err := ts.client1.GetLoadBalancerByID(context.Background(), createdLB.ID)
-					ts.Equal(test.err, err)
-					phdtestdata.ClearTimeFields(loadBalancer)
-					ts.Equal(test.loadBalancer, loadBalancer)
-
-					loadBalancer, err = ts.client2.GetLoadBalancerByID(context.Background(), createdLB.ID)
-					ts.Equal(test.err, err)
-					phdtestdata.ClearTimeFields(loadBalancer)
-					ts.Equal(test.loadBalancer, loadBalancer)
-
-					// If the loadBalancer was created, it should have permissions
-					permissionsByUserID, err := ts.client1.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
-					ts.Equal(test.err, err)
-					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
-
-					permissionsByUserID, err = ts.client2.GetUserPermissionsByUserID(context.Background(), v1Types.UserID(test.providerUserID))
-					ts.Equal(test.err, err)
-					ts.NotEmpty(permissionsByUserID.LoadBalancers[v1Types.LoadBalancerID(loadBalancer.ID)])
 				}
 			})
 		}

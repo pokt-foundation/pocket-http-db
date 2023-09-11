@@ -495,9 +495,17 @@ func (c *Cache) upsertAccount(account types.Account) {
 			}
 			if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
 				accountUser.Email = existingAccountUser.Email
+				accountUser.IconURL = existingAccountUser.IconURL
+				accountUser.UpdatesMarketing = existingAccountUser.UpdatesMarketing
+				accountUser.UpdatesProduct = existingAccountUser.UpdatesProduct
+				accountUser.BetaTester = existingAccountUser.BetaTester
 			}
 			if user, ok := c.pendingUsers[accountUser.UserID]; ok {
 				accountUser.Email = user.Email
+				accountUser.IconURL = user.IconURL
+				accountUser.UpdatesMarketing = user.UpdatesMarketing
+				accountUser.UpdatesProduct = user.UpdatesProduct
+				accountUser.BetaTester = user.BetaTester
 				delete(c.pendingUsers, accountUser.UserID)
 			}
 
@@ -567,6 +575,10 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 
 	if user, ok := c.pendingUsers[accountUser.UserID]; ok {
 		accountUser.Email = user.Email
+		accountUser.IconURL = user.IconURL
+		accountUser.UpdatesMarketing = user.UpdatesMarketing
+		accountUser.UpdatesProduct = user.UpdatesProduct
+		accountUser.BetaTester = user.BetaTester
 		delete(c.pendingUsers, accountUser.UserID)
 	}
 
@@ -579,6 +591,10 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 		// Set values from existing app to avoid overwriting cache
 		if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
 			accountUser.Email = existingAccountUser.Email
+			accountUser.IconURL = existingAccountUser.IconURL
+			accountUser.UpdatesMarketing = existingAccountUser.UpdatesMarketing
+			accountUser.UpdatesProduct = existingAccountUser.UpdatesProduct
+			accountUser.BetaTester = existingAccountUser.BetaTester
 			accountUser.PortalAppRoles = existingAccountUser.PortalAppRoles
 		}
 

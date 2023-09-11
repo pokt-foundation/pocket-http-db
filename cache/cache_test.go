@@ -277,9 +277,11 @@ func Test_upsertAccountUser(t *testing.T) {
 			name:      "Should add a new Accepted user to account and user permissions",
 			accountID: "account_2",
 			accountUser: types.AccountUserAccess{
-				UserID:   "user_1",
-				Email:    "james.holden123@test.com",
-				Accepted: true,
+				UserID:     "user_1",
+				Email:      "james.holden123@test.com",
+				Accepted:   true,
+				IconURL:    "https://picsum.photos/200",
+				BetaTester: true,
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
 					"test_app_2": types.RoleMember,
 				},
@@ -289,9 +291,11 @@ func Test_upsertAccountUser(t *testing.T) {
 			name:      "Should add a new not-Accepted user to account",
 			accountID: "account_3",
 			accountUser: types.AccountUserAccess{
-				UserID:   "user_10",
-				Email:    "daenerys.targaryen123@test.com",
-				Accepted: false,
+				UserID:     "user_10",
+				Email:      "daenerys.targaryen123@test.com",
+				Accepted:   false,
+				IconURL:    "https://picsum.photos/200",
+				BetaTester: true,
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
 					"test_app_3": types.RoleMember,
 				},
