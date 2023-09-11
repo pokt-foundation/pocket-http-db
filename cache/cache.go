@@ -1351,6 +1351,10 @@ func (c *Cache) upsertUser(user types.User) {
 	for accountID, account := range accountsForUser {
 		if accountUser, ok := account.Users[user.ID]; ok {
 			accountUser.Email = user.Email
+			accountUser.IconURL = user.IconURL
+			accountUser.UpdatesMarketing = user.UpdatesMarketing
+			accountUser.UpdatesProduct = user.UpdatesProduct
+			accountUser.BetaTester = user.BetaTester
 			account.Users[user.ID] = accountUser
 			c.accountsByUserID[user.ID][accountID] = account
 		}
