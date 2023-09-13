@@ -14,8 +14,8 @@ import (
 func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	c := require.New(t)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
 	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
+	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)

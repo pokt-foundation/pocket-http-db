@@ -76,12 +76,12 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 
 	loadBalancers := []v1Types.LoadBalancer{}
 
-	portalUserID := c.GetUserIDFromProviderUserID(v2Types.ProviderUserID(userID))
-	if portalUserID == "" {
+	portalUser := c.GetUserByProviderID(v2Types.ProviderUserID(userID))
+	if portalUser.ID == "" {
 		return nil, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
-	accounts := c.GetAccountsByUserID(portalUserID)
+	accounts := c.GetAccountsByUserID(portalUser.ID)
 
 	filteredAccounts := make(map[types.AccountID]v2Types.Account)
 	switch {
@@ -95,7 +95,7 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 	case roleNameFilter != v1Types.RoleName(""):
 		for _, account := range accounts {
 			if !account.Deleted {
-				if user, ok := account.Users[portalUserID]; ok {
+				if user, ok := account.Users[portalUser.ID]; ok {
 					if user.Accepted {
 						for _, roleName := range user.PortalAppRoles {
 							if roleName == v2Types.RoleName(roleNameFilter) {
@@ -175,12 +175,12 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 
 	applications := []v1Types.Application{}
 
-	portalUserID := c.GetUserIDFromProviderUserID(v2Types.ProviderUserID(userID))
-	if portalUserID == "" {
+	portalUser := c.GetUserByProviderID(v2Types.ProviderUserID(userID))
+	if portalUser.ID == "" {
 		return nil, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
-	accounts := c.GetAccountsByUserID(portalUserID)
+	accounts := c.GetAccountsByUserID(portalUser.ID)
 
 	for _, account := range accounts {
 		if !account.Deleted {
@@ -199,7 +199,7 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 	}
 
 	if len(applications) == 0 {
-		return applications, fmt.Errorf(errPortalAppsNotFoundForUser.Error(), portalUserID)
+		return applications, fmt.Errorf(errPortalAppsNotFoundForUser.Error(), portalUser.ID)
 	}
 
 	return applications, nil
@@ -239,19 +239,19 @@ func (c *Cache) GetLegacyUserPermissionsByUserID(ctx context.Context, userID str
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	portalUserID := c.GetUserIDFromProviderUserID(v2Types.ProviderUserID(userID))
-	if portalUserID == "" {
+	portalUser := c.GetUserByProviderID(v2Types.ProviderUserID(userID))
+	if portalUser.ID == "" {
 		return v1Types.UserPermissions{}, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
-	userPermissions := c.GetUserPermissionsByUserID(portalUserID)
+	user := c.GetUserByID(portalUser.ID)
 
 	legacyUserPermissions := v1Types.UserPermissions{
 		UserID:        v1Types.UserID(userID),
 		LoadBalancers: make(map[v1Types.LoadBalancerID]v1Types.LoadBalancerPermissions),
 	}
 
-	for portalAppID, portalAppPermissions := range userPermissions.PortalApps {
+	for portalAppID, portalAppPermissions := range user.Permissions {
 		lbID := v1Types.LoadBalancerID(portalAppID)
 
 		rolePermissions := []v1Types.PermissionsEnum{}
@@ -366,17 +366,17 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	// Convert the V2 LoadBalancer object to a V2 portal app & AAT using the ConvertToV2PortalAppAndAAT function
 	portalApp, aat := legacyadapters.ConvertToV2PortalAppAndAAT(lb)
 
-	portalUserID := c.GetUserIDFromProviderUserID(v2Types.ProviderUserID(lb.UserID))
-	if portalUserID == "" {
+	portalUser := c.GetUserByProviderID(v2Types.ProviderUserID(lb.UserID))
+	if portalUser.ID == "" {
 		return v1Types.LoadBalancer{}, fmt.Errorf(errUserNotFound.Error(), lb.UserID)
 	}
 
 	// Get the Account of the user creating the load balancer
 	var account v2Types.Account
 
-	accounts := c.GetAccountsByUserID(portalUserID)
+	accounts := c.GetAccountsByUserID(portalUser.ID)
 	for _, userAccount := range accounts {
-		if user, ok := userAccount.Users[portalUserID]; ok {
+		if user, ok := userAccount.Users[portalUser.ID]; ok {
 			for _, roleName := range user.PortalAppRoles {
 				if roleName == v2Types.RoleOwner {
 					account = userAccount
@@ -388,7 +388,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 
 	// If user does not have an Account, create a default one for them with FreetierV0 plan
 	if account.ID == "" {
-		createdAccount, err := writer.WriteAccount(ctx, portalUserID, v2Types.Account{PlanType: v2Types.FreetierV0}, createdAt)
+		createdAccount, err := writer.WriteAccount(ctx, portalUser.ID, v2Types.Account{PlanType: v2Types.FreetierV0}, createdAt)
 		if err != nil {
 			return v1Types.LoadBalancer{}, fmt.Errorf(errWritingAccount.Error(), err)
 		}
@@ -418,7 +418,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	}
 
 	// Add the creator as the OWNER to the account before returning converted legacy load balancer
-	if accountUsers, ok := account.Users[portalUserID]; ok {
+	if accountUsers, ok := account.Users[portalUser.ID]; ok {
 		if accountUsers.PortalAppRoles == nil {
 			accountUsers.PortalAppRoles = make(map[v2Types.PortalAppID]v2Types.RoleName)
 		}
@@ -690,8 +690,8 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	portalUserID := c.GetUserIDFromProviderUserID(v2Types.ProviderUserID(updateUser.UserID))
-	if portalUserID == "" {
+	portalUser := c.GetUserByProviderID(v2Types.ProviderUserID(updateUser.UserID))
+	if portalUser.ID == "" {
 		return v1Types.LoadBalancer{}, fmt.Errorf(errUserNotFound.Error(), updateUser.UserID)
 
 	}
@@ -708,7 +708,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 		return v1Types.LoadBalancer{}, fmt.Errorf(errAccountNotFound.Error(), portalApp.AccountID)
 	}
 
-	updateAccountUser := legacyadapters.ConvertToV2UpdateAcceptAccountUserAccess(updateUser, portalAppID, portalUserID)
+	updateAccountUser := legacyadapters.ConvertToV2UpdateAcceptAccountUserAccess(updateUser, portalAppID, portalUser.ID)
 
 	err := writer.UpdateAcceptAccountUser(ctx, updateAccountUser, updatedAt)
 	if err != nil {
@@ -720,7 +720,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 			continue
 		}
 
-		if userID == portalUserID {
+		if userID == portalUser.ID {
 			updatedUser := user
 			updatedUser.Accepted = true
 			account.Users[userID] = updatedUser

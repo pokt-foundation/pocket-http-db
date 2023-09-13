@@ -22,8 +22,7 @@ func NewTestCache(t *testing.T) *Cache {
 
 	readerMock, _ := NewReaderMock(t)
 
-	readerMock.On("ReadUserPermissions", testCtx).Return(testdata.UserPermissions, nil)
-	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
+	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
 	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
 	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
@@ -52,14 +51,14 @@ func Test_SetCache(t *testing.T) {
 		actual, expected interface{}
 	}{
 		{
-			name:     "Should return user permissions by user ID",
-			actual:   cache.GetUserPermissionsByUserID("user_1"),
-			expected: *testdata.UserPermissions["user_1"],
+			name:     "Should return a user for a given provider user ID",
+			actual:   cache.GetUserByProviderID("auth0|chrisjen_avasarala"),
+			expected: *testdata.Users["user_5"],
 		},
 		{
-			name:     "Should return a user ID for a given provider user ID",
-			actual:   cache.GetUserIDFromProviderUserID("auth0|chrisjen_avasarala"),
-			expected: types.UserID("user_5"),
+			name:     "Should return a user for a given portal user ID",
+			actual:   cache.GetUserByID("user_5"),
+			expected: *testdata.Users["user_5"],
 		},
 		{
 			name:     "Should return all accounts",
@@ -154,13 +153,8 @@ func TestCache_SetCache_Failure(t *testing.T) {
 		err          error
 	}{
 		{
-			name:         "should fail if ReadUserPermissions fails",
-			failedMethod: "ReadUserPermissions",
-			err:          errors.New("error on user permissions"),
-		},
-		{
-			name:         "should fail if ReadUserIDsMap fails",
-			failedMethod: "ReadUserIDsMap",
+			name:         "should fail if ReadAllUsers fails",
+			failedMethod: "ReadAllUsers",
 			err:          errors.New("error on user IDs"),
 		},
 		{
@@ -201,57 +195,46 @@ func TestCache_SetCache_Failure(t *testing.T) {
 
 			switch test.failedMethod {
 
-			case "ReadUserPermissions":
-				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
-
-			case "ReadUserIDsMap":
-				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
+			case "ReadAllUsers":
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
 			case "ReadPlans":
-				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
-				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
 			case "ReadAccounts":
-				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
-				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
 
 			case "ReadPortalApps":
-				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
-				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
 
 			case "ReadChains":
-				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
-				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
 
 			case "ReadGigastakeApps":
-				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
-				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
 
 			case "ReadBlockedContracts":
-				readerMock.On("ReadUserPermissions", testCtx).Return(map[types.UserID]*types.UserPermissions{}, nil)
-				readerMock.On("ReadUserIDsMap", testCtx).Return(map[types.ProviderUserID]types.UserID{}, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, nil)
 				readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.GigastakeAppID]*types.GigastakeApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx).Return(types.GlobalBlockedContracts{}, test.err)
-
 			}
 
 			_, err := NewCache(testCtx, Config{
@@ -337,9 +320,9 @@ func Test_upsertAccountUser(t *testing.T) {
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
 			if test.accountUser.Accepted {
-				userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
+				user := cache.GetUserByID(test.accountUser.UserID)
 				for portalAppID, roleName := range test.accountUser.PortalAppRoles {
-					portalAppPermission, ok := userPermissions.PortalApps[portalAppID]
+					portalAppPermission, ok := user.Permissions[portalAppID]
 
 					c.True(ok, "PortalAppPermissions should be present in UserPermissions")
 					c.Equal(roleName, portalAppPermission.RoleName, "Role should be updated in UserPermissions")
@@ -517,9 +500,9 @@ func Test_deleteAccountUser(t *testing.T) {
 				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
-				userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
+				user := cache.GetUserByID(test.accountUser.UserID)
 				for portalAppID := range test.accountUser.PortalAppRoles {
-					_, ok = userPermissions.PortalApps[portalAppID]
+					_, ok = user.Permissions[portalAppID]
 					c.True(ok, "PortalAppPermissions should be found in UserPermissions for each PortalAppRole before deletion")
 				}
 			}
@@ -537,9 +520,9 @@ func Test_deleteAccountUser(t *testing.T) {
 			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
-			userPermissions := cache.GetUserPermissionsByUserID(test.accountUser.UserID)
+			user := cache.GetUserByID(test.accountUser.UserID)
 			for portalAppID := range test.accountUser.PortalAppRoles {
-				_, ok = userPermissions.PortalApps[portalAppID]
+				_, ok = user.Permissions[portalAppID]
 				c.False(ok, "PortalAppPermissions should be removed from UserPermissions for each PortalAppRole")
 			}
 		})
@@ -1541,6 +1524,226 @@ func Test_addCheck(t *testing.T) {
 				}
 				c.True(found, "Check should be added to the pending Checks")
 			}
+		})
+	}
+}
+
+/* ---------- Users ---------- */
+
+func Test_upsertUser(t *testing.T) {
+	tests := []struct {
+		name               string
+		user, expectedUser types.User
+		pendingAccounts    bool
+		err                error
+	}{
+		{
+			name: "Should insert a new Portal User with no pending accounts",
+			user: types.User{
+				ID:       "user_22", // user ID set in test case
+				Email:    "geralt.of.rivia623@example.com",
+				SignedUp: true,
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Username: {
+						ProviderUserID: "auth0|geralt_of_rivia",
+						Type:           types.AuthTypeAuth0Username,
+						Provider:       types.AuthProviderAuth0,
+						Federated:      false,
+					},
+				},
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+			expectedUser: types.User{
+				ID:       "user_22", // user ID set in test case
+				Email:    "geralt.of.rivia623@example.com",
+				SignedUp: true,
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Username: {
+						ProviderUserID: "auth0|geralt_of_rivia",
+						Type:           types.AuthTypeAuth0Username,
+						Provider:       types.AuthProviderAuth0,
+						Federated:      false,
+					},
+				},
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+			err: nil,
+		},
+		{
+			name:            "Should insert a new Portal User with pending accounts",
+			user:            *testdata.Users["user_10"],
+			expectedUser:    *testdata.Users["user_10"],
+			pendingAccounts: true,
+			err:             nil,
+		},
+		{
+			name: "Should update an existing user",
+			user: types.User{
+				ID:               "user_1",
+				Email:            "james.holden752@test.com",
+				SignedUp:         true,
+				IconURL:          "https://picsum.photos/666",
+				UpdatesProduct:   true,
+				UpdatesMarketing: true,
+				BetaTester:       false,
+			},
+			expectedUser: types.User{
+				ID:               "user_1",
+				Email:            "james.holden752@test.com",
+				IconURL:          "https://picsum.photos/666",
+				SignedUp:         true,
+				UpdatesProduct:   true,
+				UpdatesMarketing: true,
+				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
+					"test_app_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
+					"test_app_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
+				},
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					"auth0_github": {
+						ProviderUserID: "github|james_holden",
+						Type:           "auth0_github",
+						Provider:       "auth0",
+						Federated:      true,
+					},
+					"auth0_username": {
+						ProviderUserID: "auth0|james_holden",
+						Type:           "auth0_username",
+						Provider:       "auth0",
+					},
+				},
+			},
+			err: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+			cache := NewTestCache(t)
+
+			cache.upsertUser(test.user)
+
+			user := cache.GetUserByID(test.user.ID)
+			c.Equal(test.expectedUser, user)
+
+			if test.pendingAccounts {
+				accounts := cache.GetAccountsByUserID(test.user.ID)
+				for _, account := range accounts {
+					c.NotEmpty(account.Users[test.user.ID])
+				}
+			}
+		})
+	}
+}
+
+func Test_addUserAuthProvider(t *testing.T) {
+	tests := []struct {
+		name         string
+		userAuth     types.UserAuthProvider
+		initialUser  types.User
+		expectedUser types.User
+	}{
+		{
+			name: "Should add a new AuthProvider to an existing user",
+			userAuth: types.UserAuthProvider{
+				UserID:         "user_1",
+				Type:           types.AuthTypeAuth0Github,
+				ProviderUserID: "github|james_holden",
+				Provider:       "auth0",
+				Federated:      true,
+			},
+			initialUser: types.User{
+				ID:    "user_1",
+				Email: "james.holden752@test.com",
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Username: {
+						ProviderUserID: "auth0|james_holden",
+						Type:           types.AuthTypeAuth0Username,
+						Provider:       "auth0",
+						Federated:      false,
+					},
+				},
+			},
+			expectedUser: types.User{
+				ID:    "user_1",
+				Email: "james.holden752@test.com",
+				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
+					"test_app_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
+					"test_app_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
+				},
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					"auth0_github": {
+						ProviderUserID: "github|james_holden",
+						Type:           "auth0_github",
+						Provider:       "auth0",
+						Federated:      true,
+					},
+					"auth0_username": {
+						ProviderUserID: "auth0|james_holden",
+						Type:           "auth0_username",
+						Provider:       "auth0",
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+			cache := NewTestCache(t)
+
+			cache.upsertUser(test.initialUser)
+
+			cache.addUserAuthProvider(test.userAuth)
+
+			actualUser := cache.GetUserByID(test.userAuth.UserID)
+			c.Equal(test.expectedUser, actualUser)
+		})
+	}
+}
+
+func Test_deleteUser(t *testing.T) {
+	tests := []struct {
+		name        string
+		initialUser types.User
+	}{
+		{
+			name: "Should delete an existing user",
+			initialUser: types.User{
+				ID:    "user_1",
+				Email: "james.holden752@test.com",
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Username: {
+						ProviderUserID: "auth0|james_holden",
+						Type:           types.AuthTypeAuth0Username,
+						Provider:       "auth0",
+						Federated:      false,
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+			cache := NewTestCache(t)
+
+			cache.upsertUser(test.initialUser)
+
+			actualUser := cache.GetUserByID(test.initialUser.ID)
+			c.NotEmpty(actualUser)
+
+			cache.deleteUser(test.initialUser)
+
+			deletedUser := cache.GetUserByID(test.initialUser.ID)
+			c.Empty(deletedUser)
+
+			deletedUser = cache.GetUserByProviderID(test.initialUser.AuthProviders[types.AuthTypeAuth0Username].ProviderUserID)
+			c.Empty(deletedUser)
 		})
 	}
 }

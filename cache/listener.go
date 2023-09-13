@@ -308,6 +308,9 @@ func (c *Cache) parseUsersNotification(n types.Notification) {
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
 		c.upsertUser(*user)
 	}
+	if n.Action == types.ActionDelete {
+		c.deleteUser(*user)
+	}
 }
 
 func (c *Cache) parseUserAuthProviderNotification(n types.Notification) {

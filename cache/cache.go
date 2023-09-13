@@ -28,13 +28,14 @@ type (
 		rwMutex sync.RWMutex
 
 		// Cached Data (including pending sub-table data maps)
-		userPermissions map[types.UserID]*types.UserPermissions
-		userIDs         map[types.ProviderUserID]types.UserID
+		users             map[types.UserID]*types.User
+		usersByProviderID map[types.ProviderUserID]*types.User
 
 		accounts                 map[types.AccountID]*types.Account
 		accountsByUserID         map[types.UserID]AccountsForUser
 		pendingAccountUserAccess map[types.AccountID][]types.AccountUserAccess
 		pendingUsers             map[types.UserID]types.User
+		pendingUserAuthProviders map[types.UserID]types.UserAuthProvider
 
 		portalApps                map[types.PortalAppID]*types.PortalApp
 		portalAppsByProtocolAppID map[types.ProtocolAppID]*types.PortalApp
@@ -71,12 +72,13 @@ type (
 		IncludeDeleted            bool
 		IncludeInactiveChains     bool
 		ExcludeChainGigastakeApps bool
+		FullDetails               bool
 		FilterPortalApps          []types.RoleName
 	}
 
 	userData struct {
-		userPermissions map[types.UserID]*types.UserPermissions
-		userIDs         map[types.ProviderUserID]types.UserID
+		users             map[types.UserID]*types.User
+		usersByProviderID map[types.ProviderUserID]*types.User
 	}
 
 	appsData struct {
@@ -101,6 +103,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 
 		pendingAccountUserAccess:   make(map[types.AccountID][]types.AccountUserAccess),
 		pendingUsers:               make(map[types.UserID]types.User),
+		pendingUserAuthProviders:   make(map[types.UserID]types.UserAuthProvider),
 		pendingPortalAppAATs:       make(map[types.PortalAppID]types.AAT),
 		pendingSettings:            make(map[types.PortalAppID]types.Settings),
 		pendingAppNotifications:    make(map[types.PortalAppID]types.AppNotification),
@@ -181,8 +184,8 @@ func (c *Cache) setCache(ctx context.Context) error {
 	defer c.rwMutex.Unlock()
 
 	// Set the cache with the fetched data
-	c.userPermissions = userData.userPermissions
-	c.userIDs = userData.userIDs
+	c.users = userData.users
+	c.usersByProviderID = userData.usersByProviderID
 
 	c.plans = appsData.plans
 	c.accounts = appsData.accounts
@@ -200,17 +203,19 @@ func (c *Cache) setCache(ctx context.Context) error {
 
 // fetchUserData reads UserPermissions from the database and returns them.
 func (c *Cache) fetchUserData(ctx context.Context) (userData, error) {
-	userPermissions, err := c.reader.ReadUserPermissions(ctx)
+	users, err := c.reader.ReadAllUsers(ctx)
 	if err != nil {
-		return userData{}, fmt.Errorf("ReadUserPermissions - %w", err)
+		return userData{}, fmt.Errorf("ReadAllUsers - %w", err)
 	}
 
-	userIDs, err := c.reader.ReadUserIDsMap(ctx)
-	if err != nil {
-		return userData{}, fmt.Errorf("ReadUserIDsMap - %w", err)
+	usersByProviderID := make(map[types.ProviderUserID]*types.User)
+	for _, user := range users {
+		for _, authProvider := range user.AuthProviders {
+			usersByProviderID[authProvider.ProviderUserID] = user
+		}
 	}
 
-	return userData{userPermissions, userIDs}, nil
+	return userData{users, usersByProviderID}, nil
 }
 
 // fetchAppsData reads Plans, Accounts and PortalApps from the database,
@@ -333,30 +338,30 @@ func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes tim
 
 /* ---------- User Data ---------- */
 
-// GetUserPermissionsByUserID returns all load balancer UserPermissions for a given UserID
-func (c *Cache) GetUserPermissionsByUserID(userID types.UserID) types.UserPermissions {
+// GetUserByID returns the Portal User for a given portal UserID
+func (c *Cache) GetUserByID(userID types.UserID) types.User {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	permission, ok := c.userPermissions[userID]
+	user, ok := c.users[userID]
 	if !ok {
-		return types.UserPermissions{}
+		return types.User{}
 	}
 
-	return *permission
+	return *user
 }
 
-// GetUserIDFromProviderUserID returns the Portal UserID for a given provider UserID
-func (c *Cache) GetUserIDFromProviderUserID(providerUserID types.ProviderUserID) types.UserID {
+// GetUserByProviderID returns the Portal User for a given provider UserID
+func (c *Cache) GetUserByProviderID(providerUserID types.ProviderUserID) types.User {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	userID, ok := c.userIDs[providerUserID]
+	user, ok := c.usersByProviderID[providerUserID]
 	if !ok {
-		return types.UserID("")
+		return types.User{}
 	}
 
-	return userID
+	return *user
 }
 
 /* ---------- Blocked Contracts ---------- */
@@ -543,32 +548,29 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 
 	// Add user to permissions map if they have accepted their invitation
 	if accountUser.Accepted {
-		userPermissions, ok := c.userPermissions[accountUser.UserID]
-		if !ok {
-			userPermissions = &types.UserPermissions{
-				UserID:     accountUser.UserID,
-				PortalApps: map[types.PortalAppID]types.PortalAppPermissions{},
+		if user, ok := c.users[accountUser.UserID]; ok {
+			if user.ArePermissionsEmpty() {
+				user.Permissions = make(map[types.PortalAppID]types.PortalAppPermissions)
 			}
-			c.userPermissions[accountUser.UserID] = userPermissions
-		}
 
-		switch accountUser.Owner {
-		// If incoming account user is owner, set permissions for all account's portal apps
-		case true:
-			if account, ok := c.accounts[accountID]; ok {
-				for portalAppID := range account.PortalApps {
-					_, err := userPermissions.UpsertPermissions(portalAppID, types.RoleOwner)
-					if err != nil {
-						fmt.Printf("error upserting user permissions: %v\n", err)
+			switch accountUser.Owner {
+			// If incoming account user is owner, set permissions for all account's portal apps
+			case true:
+				if account, ok := c.accounts[accountID]; ok {
+					for portalAppID := range account.PortalApps {
+						_, err := user.UpsertPermissions(portalAppID, types.RoleOwner)
+						if err != nil {
+							fmt.Printf("error upserting user permissions: %v\n", err)
+						}
 					}
 				}
-			}
 
-		// If incoming account user is not owner only set permissions for incoming portal app
-		default:
-			_, err := userPermissions.UpsertPermissions(incomingPortalAppID, incomingPortalAppRole)
-			if err != nil {
-				fmt.Printf("error upserting user permissions: %v\n", err)
+				// If incoming account user is not owner only set permissions for incoming portal app
+			default:
+				_, err := user.UpsertPermissions(incomingPortalAppID, incomingPortalAppRole)
+				if err != nil {
+					fmt.Printf("error upserting user permissions: %v\n", err)
+				}
 			}
 		}
 	}
@@ -654,9 +656,11 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	}
 
 	// Remove user permissions for each PortalApp in the account
-	if userPermissions, ok := c.userPermissions[userID]; ok {
-		for portalAppID := range accountUser.PortalAppRoles {
-			delete(userPermissions.PortalApps, portalAppID)
+	if user, ok := c.users[userID]; ok {
+		if !user.ArePermissionsEmpty() {
+			for portalAppID := range accountUser.PortalAppRoles {
+				user.DeletePermissions(portalAppID)
+			}
 		}
 	}
 
@@ -864,8 +868,12 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 				owner.PortalAppRoles[portalApp.ID] = types.RoleOwner
 
 				// Add owner to user permissions map
-				if userPermissions, ok := c.userPermissions[ownerID]; ok {
-					_, err = userPermissions.UpsertPermissions(portalApp.ID, types.RoleOwner)
+				if user, ok := c.users[ownerID]; ok {
+					if user.ArePermissionsEmpty() {
+						user.Permissions = make(map[types.PortalAppID]types.PortalAppPermissions)
+					}
+
+					_, err = user.UpsertPermissions(portalApp.ID, types.RoleOwner)
 					if err != nil {
 						fmt.Printf("error upserting user permissions: %v\n", err)
 					}
@@ -1341,6 +1349,25 @@ func (c *Cache) upsertUser(user types.User) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
+	if existingUser, ok := c.users[user.ID]; ok {
+		user.Permissions = existingUser.Permissions
+		user.AuthProviders = existingUser.AuthProviders
+	}
+
+	if pendingUserAuth, ok := c.pendingUserAuthProviders[user.ID]; ok {
+		if user.AuthProviders == nil {
+			user.AuthProviders = make(map[types.AuthType]types.UserAuthProvider)
+		}
+		user.AuthProviders[pendingUserAuth.Type] = pendingUserAuth
+		delete(c.pendingUserAuthProviders, user.ID)
+	}
+
+	c.users[user.ID] = &user
+	for _, userAuthProvider := range user.AuthProviders {
+		c.usersByProviderID[userAuthProvider.ProviderUserID] = &user
+	}
+
+	// Pending users map is used to update user info in accounts
 	c.pendingUsers[user.ID] = user
 
 	accountsForUser, ok := c.accountsByUserID[user.ID]
@@ -1365,7 +1392,38 @@ func (c *Cache) addUserAuthProvider(userAuth types.UserAuthProvider) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	c.userIDs[userAuth.ProviderUserID] = userAuth.UserID
+	userID := userAuth.UserID
+	userAuth.UserID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
+	if user, ok := c.users[userID]; ok {
+		if user.AuthProviders == nil {
+			user.AuthProviders = make(map[types.AuthType]types.UserAuthProvider)
+		}
+
+		userAuthProviders := user.AuthProviders
+		userAuthProviders[userAuth.Type] = userAuth
+		user.AuthProviders = userAuthProviders
+
+		c.users[user.ID] = user
+		c.usersByProviderID[userAuth.ProviderUserID] = user
+
+		return
+	}
+
+	c.pendingUserAuthProviders[userID] = userAuth
+}
+
+// deleteUser deletes a user
+func (c *Cache) deleteUser(user types.User) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	if cacheUser, ok := c.users[user.ID]; ok {
+		delete(c.users, cacheUser.ID)
+		for _, userAuthProvider := range cacheUser.AuthProviders {
+			delete(c.usersByProviderID, userAuthProvider.ProviderUserID)
+		}
+	}
 }
 
 /* ---------- Plans ---------- */

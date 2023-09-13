@@ -28,6 +28,9 @@ type (
 	portalAppQueryParams struct {
 		roleNameFilters queryParam
 	}
+	userQueryParams struct {
+		fullDetails queryParam
+	}
 
 	paramHandler func(v string, options *cache.Options) error
 )
@@ -37,6 +40,7 @@ const (
 	chainEndpoint     = "/chain"
 	portalAppEndpoint = "/portal_app"
 	accountEndpoint   = "/account"
+	userEndpoint      = "/user"
 	// TODO remove when v1 endpoints are removed
 	apiVersion1          = "/v1"
 	blockchainEndpointV1 = "/blockchain"
@@ -46,6 +50,7 @@ var (
 	v2ChainEndpoint     = fmt.Sprintf("%s%s", apiVersion2, chainEndpoint)
 	v2PortalAppEndpoint = fmt.Sprintf("%s%s", apiVersion2, portalAppEndpoint)
 	v2AccountEndpoint   = fmt.Sprintf("%s%s", apiVersion2, accountEndpoint)
+	v2UserEndpoint      = fmt.Sprintf("%s%s", apiVersion2, userEndpoint)
 	// TODO remove when v1 endpoints are removed
 	v1BlockchainEndpoint = fmt.Sprintf("%s%s", apiVersion1, blockchainEndpointV1)
 
@@ -58,6 +63,9 @@ var (
 	}
 	portalAppParams = portalAppQueryParams{
 		roleNameFilters: "filters",
+	}
+	userParams = userQueryParams{
+		fullDetails: "full_details",
 	}
 
 	// NOTE: Add new parameter handlers here when new query param options added
@@ -103,6 +111,17 @@ var (
 					return err
 				}
 				options.FilterPortalApps = roleNameFilters
+				return nil
+			},
+		},
+
+		v2UserEndpoint: {
+			userParams.fullDetails: func(v string, options *cache.Options) error {
+				val, err := parseBool(v)
+				if err != nil {
+					return err
+				}
+				options.FullDetails = val
 				return nil
 			},
 		},
@@ -159,9 +178,7 @@ func paramProcessor(url *url.URL, queryParams map[queryParam]queryParamDetail) (
 		switch {
 		case param.isCommon():
 			path = ""
-		case param.isChain():
-			path = pathMatcher(url.Path)
-		case param.isPortalApp():
+		case param.isChain() || param.isPortalApp() || param.isUser():
 			path = pathMatcher(url.Path)
 		default:
 			return cache.Options{}, fmt.Errorf("invalid parameter %s", param)
@@ -191,6 +208,9 @@ func pathMatcher(path string) string {
 	if strings.HasPrefix(path, v2AccountEndpoint) || strings.Contains(path, accountEndpoint) {
 		return v2AccountEndpoint
 	}
+	if strings.HasPrefix(path, v2UserEndpoint) || strings.Contains(path, v2UserEndpoint) {
+		return v2UserEndpoint
+	}
 	// TODO remove when v1 endpoints are removed
 	if strings.HasPrefix(path, v1BlockchainEndpoint) {
 		return v1BlockchainEndpoint
@@ -208,6 +228,10 @@ func (qp queryParam) isChain() bool {
 
 func (qp queryParam) isPortalApp() bool {
 	return qp == portalAppParams.roleNameFilters
+}
+
+func (qp queryParam) isUser() bool {
+	return qp == userParams.fullDetails
 }
 
 func parseBool(v string) (bool, error) {
