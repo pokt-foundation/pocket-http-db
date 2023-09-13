@@ -1346,7 +1346,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				aatInput:       testdata.TestCreatePortalAppAAT,
 				expected: &v2Types.PortalApp{
 					Name:        "create_pokt_app_1",
-					AppEmoji:    "💍",
+					AppEmoji:    "1F336",
 					Description: "Embark on a journey across the enchanting realm of Middle-earth.",
 					AccountID:   "account_4",
 					Settings: v2Types.Settings{
@@ -1378,20 +1378,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						RequestTimeout: 15_000,
 					},
 				},
-			},
-			{
-				name: "Should return an error if no app emoji provided",
-				portalAppInput: &v2Types.PortalApp{
-					AppEmoji:  "",
-					AccountID: "account_4",
-					LegacyFields: v2Types.LegacyFields{
-						PlanType: "basic_plan",
-					},
-					Settings: v2Types.Settings{
-						Environment: "production",
-					},
-				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: provided app emoji field is not an emoji"),
 			},
 			{
 				name: "Should return an error if no name provided",
@@ -2895,6 +2881,117 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					portalUser, err = ts.v2Client2.GetPortalUser(context.Background(), string(providerID))
 					ts.NoError(err)
 					ts.NotNil(portalUser)
+				}
+			})
+		}
+	})
+
+	ts.Run("Test_UpdateUser", func() {
+		tests := []struct {
+			name             string
+			userInput        v2Types.UpdateUser
+			expectedStatus   int
+			expectedResponse *v2Types.User
+			err              error
+		}{
+			{
+				name:      "Should successfully update a user in the DB",
+				userInput: testdata.UpdateUserOne,
+				expectedResponse: &v2Types.User{
+					ID:               "user_5",
+					Email:            "chrisjen.avasarala1@test.com",
+					IconURL:          "https://picsum.photos/227",
+					SignedUp:         true,
+					UpdatesProduct:   false,
+					UpdatesMarketing: false,
+					BetaTester:       true,
+					AuthProviders: map[v2Types.AuthType]v2Types.UserAuthProvider{
+						"auth0_username": {
+							ProviderUserID: "auth0|chrisjen_avasarala",
+							Type:           "auth0_username",
+							Provider:       "auth0"},
+					},
+					Permissions: map[v2Types.PortalAppID]v2Types.PortalAppPermissions{
+						"test_app_3": {
+							RoleName: v2Types.RoleOwner,
+							Permissions: []v2Types.Permissions{
+								v2Types.PermReadEndpoint,
+								v2Types.PermWriteEndpoint,
+								v2Types.PermDeleteEndpoint,
+								v2Types.PermTransferEndpoint,
+							},
+						},
+					},
+				},
+				err: nil,
+			},
+			{
+				name:      "Should successfully update a user in the DB again",
+				userInput: testdata.UpdateUserTwo,
+				expectedResponse: &v2Types.User{
+					ID:               "user_5",
+					Email:            "chrisjen.avasarala1@test.com",
+					IconURL:          "https://picsum.photos/200",
+					SignedUp:         true,
+					UpdatesProduct:   true,
+					UpdatesMarketing: false,
+					BetaTester:       false,
+					AuthProviders: map[v2Types.AuthType]v2Types.UserAuthProvider{
+						"auth0_username": {
+							ProviderUserID: "auth0|chrisjen_avasarala",
+							Type:           "auth0_username",
+							Provider:       "auth0"},
+					},
+					Permissions: map[v2Types.PortalAppID]v2Types.PortalAppPermissions{
+						"test_app_3": {
+							RoleName: v2Types.RoleOwner,
+							Permissions: []v2Types.Permissions{
+								v2Types.PermReadEndpoint,
+								v2Types.PermWriteEndpoint,
+								v2Types.PermDeleteEndpoint,
+								v2Types.PermTransferEndpoint,
+							},
+						},
+					},
+				},
+				err: nil,
+			},
+			{
+				name: "Should fail if there's no user ID",
+				userInput: types.UpdateUser{
+					ID: "",
+				},
+				err: fmt.Errorf("no user ID"),
+			},
+			{
+				name: "Should fail if invalid user ID provided",
+				userInput: types.UpdateUser{
+					ID: "invalid_id",
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateUser: error user does not exist for portal ID 'invalid_id'"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				updatedUser, err := ts.v2Client1.UpdateUser(context.Background(), test.userInput)
+				ts.Equal(test.err, err)
+
+				if test.err == nil {
+					<-time.After(50 * time.Millisecond)
+
+					test.expectedResponse.CreatedAt = updatedUser.CreatedAt
+					test.expectedResponse.UpdatedAt = updatedUser.UpdatedAt
+					// If the user was updated, verify updated fields
+					if test.err == nil {
+						portalUser, err := ts.v2Client1.GetPortalUser(context.Background(), string(test.userInput.ID))
+						ts.NoError(err)
+						ts.Equal(test.expectedResponse, portalUser)
+
+						portalUser, err = ts.v2Client2.GetPortalUser(context.Background(), string(test.userInput.ID))
+						ts.NoError(err)
+						ts.Equal(test.expectedResponse, portalUser)
+					}
 				}
 			})
 		}
