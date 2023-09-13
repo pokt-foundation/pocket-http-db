@@ -1383,6 +1383,58 @@ func TestRouter_writeAccountUser(t *testing.T) {
 	}
 }
 
+func TestRouter_updateUser(t *testing.T) {
+	tests := []struct {
+		name            string
+		updateUserInput types.UpdateUser
+		updatedUser     *types.User
+		expectedStatus  int
+	}{
+		{
+			name:            "Should update an existing user",
+			updateUserInput: testdata.UpdateUserOne,
+			updatedUser: &types.User{
+				ID:               "user_5",
+				IconURL:          "https://picsum.photos/227",
+				UpdatesProduct:   false,
+				UpdatesMarketing: false,
+				BetaTester:       true,
+				UpdatedAt:        testdata.MockTimestamp,
+			},
+			expectedStatus: http.StatusOK,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateUser", mock.Anything, test.updateUserInput, mock.Anything).Return(test.updatedUser, nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			updateUserInputBytes, err := json.Marshal(test.updateUserInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, "/v2/user", bytes.NewBuffer(updateUserInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var updatedUser *types.User
+			err = json.Unmarshal(rr.Body.Bytes(), &updatedUser)
+			c.NoError(err)
+			c.Equal(test.updatedUser, updatedUser)
+		})
+	}
+}
+
 func TestRouter_updateAccountUserRole(t *testing.T) {
 	tests := []struct {
 		name            string

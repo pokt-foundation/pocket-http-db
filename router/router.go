@@ -137,6 +137,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/account/user/remove", rt.removeAccountUser).Methods(http.MethodPut)
 
 	rt.Router.HandleFunc("/v2/user", rt.createUser).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/user", rt.updateUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/user/{userID}", rt.getPortalUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/portal_app", rt.getPortalAppsByUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
@@ -1005,6 +1006,26 @@ func (rt *Router) createUser(w http.ResponseWriter, r *http.Request) {
 		User:      *createdUser,
 		AccountID: accountID,
 	})
+}
+
+// PUT /v2/user - Updates a User in the database.
+func (rt *Router) updateUser(w http.ResponseWriter, r *http.Request) {
+	var updateUser types.UpdateUser
+
+	err := json.NewDecoder(r.Body).Decode(&updateUser)
+	if err != nil {
+		rt.handleError(w, "updateUser", http.StatusBadRequest, err)
+		return
+	}
+	defer r.Body.Close()
+
+	updatedUser, err := rt.writer.UpdateUser(r.Context(), updateUser, time.Now())
+	if err != nil {
+		rt.handleError(w, "updateUser", http.StatusInternalServerError, err)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedUser)
 }
 
 // DELETE /v2/user/{userID} - Deletes a User (WARNING: this will perform a hard delete in the database).
