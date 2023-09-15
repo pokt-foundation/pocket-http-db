@@ -1162,7 +1162,7 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		for _, alias := range pendingAliases {
 			chain.Aliases[alias] = struct{}{}
 		}
-		delete(c.pendingAliasDomains, chain.ID)
+		delete(c.pendingAliases, chain.ID)
 	}
 
 	// DEPRECATED - TODO remove when move to only store aliases is complete
