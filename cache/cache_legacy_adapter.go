@@ -81,7 +81,7 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 		return nil, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
-	accounts := c.GetAccountsByUserID(portalUser.ID)
+	accounts := c.GetAccountsByUserID(portalUser.ID, Options{})
 
 	filteredAccounts := make(map[types.AccountID]v2Types.Account)
 	switch {
@@ -180,7 +180,7 @@ func (c *Cache) GetLegacyApplicationsByUserID(ctx context.Context, userID string
 		return nil, fmt.Errorf(errUserNotFound.Error(), userID)
 	}
 
-	accounts := c.GetAccountsByUserID(portalUser.ID)
+	accounts := c.GetAccountsByUserID(portalUser.ID, Options{})
 
 	for _, account := range accounts {
 		if !account.Deleted {
@@ -306,7 +306,7 @@ func (c *Cache) GetLegacyPendingLoadBalancers(ctx context.Context, portalUserID 
 
 	userID := v2Types.UserID(portalUserID)
 
-	accounts := c.GetAccountsByUserID(userID)
+	accounts := c.GetAccountsByUserID(userID, Options{})
 
 	pendingAccounts := []v2Types.Account{}
 	for _, account := range accounts {
@@ -337,7 +337,7 @@ func (c *Cache) GetLegacyLoadBalancersCount(ctx context.Context, portalUserID st
 
 	userID := v1Types.UserID(portalUserID)
 
-	accounts := c.GetAccountsByUserID(v2Types.UserID(portalUserID))
+	accounts := c.GetAccountsByUserID(v2Types.UserID(portalUserID), Options{})
 	for _, account := range accounts {
 		if user, ok := account.Users[v2Types.UserID(userID)]; ok {
 			if user.Accepted {
@@ -374,7 +374,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	// Get the Account of the user creating the load balancer
 	var account v2Types.Account
 
-	accounts := c.GetAccountsByUserID(portalUser.ID)
+	accounts := c.GetAccountsByUserID(portalUser.ID, Options{})
 	for _, userAccount := range accounts {
 		if user, ok := userAccount.Users[portalUser.ID]; ok {
 			for _, roleName := range user.PortalAppRoles {

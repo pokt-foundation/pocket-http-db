@@ -106,10 +106,10 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
 			if test.sideTableAction == types.ActionDelete {
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID, Options{}), test.accountID)
 				c.False(accountFound, "Account should be removed from accountsByUserID map")
 			} else {
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map")
 			}
 		})

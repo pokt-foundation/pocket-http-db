@@ -704,7 +704,17 @@ func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
 		rt.handleError(w, "getAccountsByUser", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
 	}
 
-	accounts := rt.cache.GetAccountsByUserID(userID)
+	queryParams := map[queryParam]queryParamDetail{
+		portalAppParams.roleNameFilters: {required: false},
+	}
+
+	options, err := paramProcessor(r.URL, queryParams)
+	if err != nil {
+		rt.handleError(w, "getAccountsByUser", http.StatusBadRequest, err)
+		return
+	}
+
+	accounts := rt.cache.GetAccountsByUserID(userID, options)
 
 	if len(accounts) == 0 {
 		rt.handleError(w, "getAccountsByUser", http.StatusNotFound, errNoAccountsFoundForUserID)
@@ -876,8 +886,15 @@ func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) 
 	}
 	defer r.Body.Close()
 
+	if updateUser.RoleName == types.RoleOwner {
+		fmt.Println("updateAccountUserRole CALLED")
+	}
+
 	err = rt.writer.SetAccountUserRole(r.Context(), updateUser, time.Now())
 	if err != nil {
+		if updateUser.RoleName == types.RoleOwner {
+			fmt.Println("updateAccountUserRole ERROR", err)
+		}
 		rt.handleError(w, "updateAccountUserRole", http.StatusInternalServerError, err)
 		return
 	}

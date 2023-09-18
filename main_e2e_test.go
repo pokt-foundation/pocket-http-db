@@ -306,15 +306,17 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 	ts.Run("Test_GetPortalAppByID", func() {
 		tests := []struct {
-			name        string
-			portalAppID v2Types.PortalAppID
-			expectedApp *v2Types.PortalApp
-			err         error
+			name           string
+			portalAppID    v2Types.PortalAppID
+			portalAppUsers map[types.UserID]*types.AccountUserAccess
+			expectedApp    *v2Types.PortalApp
+			err            error
 		}{
 			{
-				name:        "Should get portal app by ID",
-				portalAppID: "test_app_1",
-				expectedApp: testdata.PortalApps["test_app_1"],
+				name:           "Should get portal app by ID",
+				portalAppID:    "test_app_1",
+				portalAppUsers: testdata.PortalAppUsers["test_app_1"],
+				expectedApp:    testdata.PortalApps["test_app_1"],
 			},
 			{
 				name:        "Should return error if app ID is empty",
@@ -334,6 +336,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
+					test.expectedApp.Users = test.portalAppUsers
+
 					ts.Equal(test.expectedApp, portalApp)
 
 					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), test.portalAppID)
@@ -346,13 +350,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 	ts.Run("Test_GetAllPortalApps", func() {
 		tests := []struct {
-			name         string
-			expectedApps map[v2Types.PortalAppID]*v2Types.PortalApp
-			err          error
+			name           string
+			expectedApps   map[v2Types.PortalAppID]*v2Types.PortalApp
+			portalAppUsers map[v2Types.PortalAppID]map[types.UserID]*types.AccountUserAccess
+			err            error
 		}{
 			{
-				name:         "Should get all portal apps",
-				expectedApps: testdata.PortalApps,
+				name:           "Should get all portal apps",
+				expectedApps:   testdata.PortalApps,
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 		}
 
@@ -362,6 +368,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
+					for _, portalApp := range test.expectedApps {
+						portalApp.Users = test.portalAppUsers[portalApp.ID]
+					}
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
 					portalApps, err = ts.v2Client2.GetAllPortalApps(context.Background())
@@ -374,11 +383,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 	ts.Run("Test_GetPortalAppsByUser", func() {
 		tests := []struct {
-			name         string
-			userID       v2Types.UserID
-			options      v2DBClient.PortalAppOptions
-			expectedApps map[v2Types.PortalAppID]*v2Types.PortalApp
-			err          error
+			name           string
+			userID         v2Types.UserID
+			options        v2DBClient.PortalAppOptions
+			expectedApps   map[v2Types.PortalAppID]*v2Types.PortalApp
+			portalAppUsers map[v2Types.PortalAppID]map[types.UserID]*types.AccountUserAccess
+			err            error
 		}{
 			{
 				name:   "Should get all portal apps for user_4 with no role filter",
@@ -386,6 +396,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
 				name:   "Should get portal apps where user_1 is OWNER",
@@ -398,6 +409,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
 				name:   "Should get portal apps where user_6 is ADMIN",
@@ -410,6 +422,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
 				name:   "Should get portal apps where user_7 is MEMBER",
@@ -422,6 +435,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				expectedApps: map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
 				name:   "Should get portal apps where user_2 is ADMIN or MEMBER",
@@ -436,6 +450,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_1": testdata.PortalApps["test_app_1"],
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 		}
 
@@ -452,6 +467,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
+					for _, portalApp := range test.expectedApps {
+						portalApp.Users = test.portalAppUsers[portalApp.ID]
+					}
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
 					if len(test.options.RoleNameFilters) > 0 {
@@ -526,26 +544,29 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 	ts.Run("Test_GetAccountByID", func() {
 		tests := []struct {
-			name        string
-			accountID   v2Types.AccountID
-			expectedAcc *v2Types.Account
-			assignPlan  *v2Types.Plan
-			assignApp   *v2Types.PortalApp
-			err         error
+			name           string
+			accountID      v2Types.AccountID
+			expectedAcc    *v2Types.Account
+			assignPlan     *v2Types.Plan
+			assignApp      *v2Types.PortalApp
+			assignAppUsers map[types.UserID]*types.AccountUserAccess
+			err            error
 		}{
 			{
-				name:        "Should get an account by its account ID",
-				accountID:   "account_1",
-				assignPlan:  testdata.PayPlans["basic_plan"],
-				assignApp:   testdata.PortalApps["test_app_1"],
-				expectedAcc: testdata.Accounts["account_1"],
+				name:           "Should get an account by its account ID",
+				accountID:      "account_1",
+				assignPlan:     testdata.PayPlans["basic_plan"],
+				assignApp:      testdata.PortalApps["test_app_1"],
+				assignAppUsers: testdata.PortalAppUsers["test_app_1"],
+				expectedAcc:    testdata.Accounts["account_1"],
 			},
 			{
-				name:        "Should get another account by its account ID",
-				accountID:   "account_2",
-				assignPlan:  testdata.PayPlans["pro_plan"],
-				assignApp:   testdata.PortalApps["test_app_2"],
-				expectedAcc: testdata.Accounts["account_2"],
+				name:           "Should get another account by its account ID",
+				accountID:      "account_2",
+				assignPlan:     testdata.PayPlans["pro_plan"],
+				assignApp:      testdata.PortalApps["test_app_2"],
+				assignAppUsers: testdata.PortalAppUsers["test_app_2"],
+				expectedAcc:    testdata.Accounts["account_2"],
 			},
 		}
 
@@ -556,6 +577,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if test.expectedAcc.PortalApps == nil {
 					test.expectedAcc.PortalApps = make(map[v2Types.PortalAppID]*v2Types.PortalApp)
 				}
+				test.assignApp.Users = test.assignAppUsers
 				test.expectedAcc.PortalApps[test.assignApp.ID] = test.assignApp
 
 				account, err := ts.v2Client1.GetAccountByID(context.Background(), test.accountID)
@@ -574,12 +596,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 	ts.Run("Test_GetAccountsByUser", func() {
 		tests := []struct {
-			name         string
-			userID       v2Types.UserID
-			expectedAccs map[v2Types.AccountID]*v2Types.Account
-			plans        map[v2Types.AccountID]*v2Types.Plan
-			portalApps   map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp
-			err          error
+			name           string
+			userID         v2Types.UserID
+			expectedAccs   map[v2Types.AccountID]*v2Types.Account
+			plans          map[v2Types.AccountID]*v2Types.Plan
+			portalApps     map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp
+			portalAppUsers map[v2Types.PortalAppID]map[types.UserID]*types.AccountUserAccess
+			err            error
 		}{
 			{
 				name:   "Should get accounts for user_2",
@@ -596,6 +619,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
 					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
 				name:   "Should get accounts for user_1",
@@ -609,6 +633,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				portalApps: map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
 				name:   "Should get accounts for user_4",
@@ -626,6 +651,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				portalApps: map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp{
 					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
 				},
+				portalAppUsers: testdata.PortalAppUsers,
 			},
 		}
 
@@ -640,6 +666,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					for id, account := range test.expectedAccs {
 						account.Plan = test.plans[id]
 						account.PortalApps = test.portalApps[id]
+						for _, portalApp := range account.PortalApps {
+							portalApp.Users = test.portalAppUsers[portalApp.ID]
+						}
 					}
 					ts.Equal(test.expectedAccs, accountMap)
 
@@ -2316,6 +2345,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.Users[test.expected.UserID])
 
+					// Confirm that user was added to PortalApp
+					portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), test.createAccountUserInput.PortalAppID)
+					ts.NoError(err)
+					_, ok := portalApp.Users[test.expected.UserID]
+					ts.True(ok)
+
+					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), test.createAccountUserInput.PortalAppID)
+					ts.NoError(err)
+					_, ok = portalApp.Users[test.expected.UserID]
+					ts.True(ok)
+
 					// Clean up created account user
 					_, err = ts.v2Client1.RemoveAccountUser(context.Background(), v2Types.UpdateRemoveAccountUser{
 						AccountID:   test.createAccountUserInput.AccountID,
@@ -2574,6 +2614,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					account, err = ts.v2Client2.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(test.accountUsersAfterUpdate, account.Users)
+
+					// Confirm that user role was updated on PortalApp
+					portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), test.updateAccountUserRole.PortalAppID)
+					ts.NoError(err)
+					portalAppUser, ok := portalApp.Users[test.updateAccountUserRole.UserID]
+					ts.True(ok)
+					ts.Equal(test.updateAccountUserRole.RoleName, portalAppUser.PortalAppRoles[test.updateAccountUserRole.PortalAppID])
+
+					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), test.updateAccountUserRole.PortalAppID)
+					ts.NoError(err)
+					portalAppUser, ok = portalApp.Users[test.updateAccountUserRole.UserID]
+					ts.True(ok)
+					ts.Equal(test.updateAccountUserRole.RoleName, portalAppUser.PortalAppRoles[test.updateAccountUserRole.PortalAppID])
 				}
 
 			})
@@ -2677,6 +2730,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					account, err = ts.v2Client2.GetAccountByID(context.Background(), accountID)
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.Users[test.expected.UserID])
+
+					// // Confirm that user role was updated on to PortalApp
+					// portalApp, err := ts.v2Client1.GetPortalAppByID(context.Background(), test.acceptAccountUserInput.PortalAppID)
+					// ts.NoError(err)
+					// portalAppUser, ok := portalApp.Users[test.acceptAccountUserInput.UserID]
+					// ts.True(ok)
+					// ts.True(portalAppUser.Accepted)
+
+					// portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), test.acceptAccountUserInput.PortalAppID)
+					// ts.NoError(err)
+					// portalAppUser, ok = portalApp.Users[test.acceptAccountUserInput.UserID]
+					// ts.True(ok)
+					// ts.True(portalAppUser.Accepted)
 				}
 			})
 		}

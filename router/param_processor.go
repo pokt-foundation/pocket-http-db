@@ -28,6 +28,9 @@ type (
 	portalAppQueryParams struct {
 		roleNameFilters queryParam
 	}
+	accountQueryParams struct {
+		roleNameFilters queryParam
+	}
 	userQueryParams struct {
 		fullDetails queryParam
 	}
@@ -62,6 +65,9 @@ var (
 		excludeGigastakeApps: "exclude_gigastake_apps",
 	}
 	portalAppParams = portalAppQueryParams{
+		roleNameFilters: "filters",
+	}
+	accountParams = accountQueryParams{
 		roleNameFilters: "filters",
 	}
 	userParams = userQueryParams{
@@ -106,6 +112,17 @@ var (
 
 		v2PortalAppEndpoint: {
 			portalAppParams.roleNameFilters: func(v string, options *cache.Options) error {
+				roleNameFilters, err := parseRoleNameList(v)
+				if err != nil {
+					return err
+				}
+				options.FilterPortalApps = roleNameFilters
+				return nil
+			},
+		},
+
+		v2AccountEndpoint: {
+			accountParams.roleNameFilters: func(v string, options *cache.Options) error {
 				roleNameFilters, err := parseRoleNameList(v)
 				if err != nil {
 					return err
@@ -178,7 +195,7 @@ func paramProcessor(url *url.URL, queryParams map[queryParam]queryParamDetail) (
 		switch {
 		case param.isCommon():
 			path = ""
-		case param.isChain() || param.isPortalApp() || param.isUser():
+		case param.isChain() || param.isPortalApp() || param.isUser() || param.isAccount():
 			path = pathMatcher(url.Path)
 		default:
 			return cache.Options{}, fmt.Errorf("invalid parameter %s", param)
@@ -228,6 +245,10 @@ func (qp queryParam) isChain() bool {
 
 func (qp queryParam) isPortalApp() bool {
 	return qp == portalAppParams.roleNameFilters
+}
+
+func (qp queryParam) isAccount() bool {
+	return qp == accountParams.roleNameFilters
 }
 
 func (qp queryParam) isUser() bool {

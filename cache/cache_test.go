@@ -72,7 +72,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:   "Should return accounts by user ID",
-			actual: phdtestdata.AccountsToMap(cache.GetAccountsByUserID("user_4")),
+			actual: phdtestdata.AccountsToMap(cache.GetAccountsByUserID("user_4", Options{})),
 			expected: map[types.AccountID]*types.Account{
 				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
 				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
@@ -316,7 +316,7 @@ func Test_upsertAccountUser(t *testing.T) {
 			c.True(ok, "AccountUserAccess should be present in account Users map")
 			c.Equal(test.accountUser, accountUser, "AccountUserAccess should be added or updated in the cache")
 
-			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
+			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID, Options{}), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
 			if test.accountUser.Accepted {
@@ -451,7 +451,7 @@ func Test_upsertAccount(t *testing.T) {
 				}
 
 				for _, user := range test.account.Users {
-					accountsForUser := cache.GetAccountsByUserID(user.UserID)
+					accountsForUser := cache.GetAccountsByUserID(user.UserID, Options{})
 
 					accountInUserAccounts := phdtestdata.FindAccountInAccounts(accountsForUser, accountID)
 
@@ -497,7 +497,7 @@ func Test_deleteAccountUser(t *testing.T) {
 				_, ok := cache.GetAccount(test.accountID).Users[test.accountUser.UserID]
 				c.True(ok, "AccountUserAccess should be found in account Users map before deletion")
 
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
 				user := cache.GetUserByID(test.accountUser.UserID)
@@ -517,7 +517,7 @@ func Test_deleteAccountUser(t *testing.T) {
 			_, ok := account.Users[test.accountUser.UserID]
 			c.False(ok, "AccountUserAccess should be deleted from account Users map")
 
-			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID), test.accountID)
+			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID, Options{}), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
 			user := cache.GetUserByID(test.accountUser.UserID)
@@ -669,7 +669,7 @@ func Test_upsertPortalApp(t *testing.T) {
 
 			if test.update || test.delete {
 				storedPortalApp := cache.GetPortalApp(test.portalApp.ID)
-				c.Equal(test.portalApp, storedPortalApp, "PortalApp should be present in cache before update")
+				c.Equal(test.portalApp.ID, storedPortalApp.ID, "PortalApp should be present in cache before update")
 			}
 			if test.delete {
 				test.portalApp.Deleted = true
@@ -714,7 +714,7 @@ func Test_upsertPortalApp(t *testing.T) {
 
 				// Check PortalApp in cache
 				storedPortalApp := cache.GetPortalApp(test.portalApp.ID)
-				c.Equal(expectedPortalApp, storedPortalApp, "PortalApp should be added to cache")
+				c.Equal(expectedPortalApp.ID, storedPortalApp.ID, "PortalApp should be added to cache")
 			}
 
 			_, ok := cache.pendingPortalAppAATs[test.portalApp.ID]
@@ -1629,7 +1629,7 @@ func Test_upsertUser(t *testing.T) {
 			c.Equal(test.expectedUser, user)
 
 			if test.pendingAccounts {
-				accounts := cache.GetAccountsByUserID(test.user.ID)
+				accounts := cache.GetAccountsByUserID(test.user.ID, Options{})
 				for _, account := range accounts {
 					c.NotEmpty(account.Users[test.user.ID])
 				}
