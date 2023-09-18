@@ -1597,8 +1597,8 @@ func Test_upsertUser(t *testing.T) {
 				UpdatesProduct:   true,
 				UpdatesMarketing: true,
 				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-					"test_app_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"test_app_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
+					"test_app_1": {RoleName: "OWNER", AccountID: "account_1", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
+					"test_app_2": {RoleName: "MEMBER", AccountID: "account_2", Permissions: []types.Permissions{"read:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {
@@ -1670,8 +1670,8 @@ func Test_addUserAuthProvider(t *testing.T) {
 				ID:    "user_1",
 				Email: "james.holden752@test.com",
 				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-					"test_app_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"test_app_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
+					"test_app_1": {RoleName: "OWNER", AccountID: "account_1", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
+					"test_app_2": {RoleName: "MEMBER", AccountID: "account_2", Permissions: []types.Permissions{"read:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {

@@ -558,7 +558,7 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 			case true:
 				if account, ok := c.accounts[accountID]; ok {
 					for portalAppID := range account.PortalApps {
-						_, err := user.UpsertPermissions(portalAppID, types.RoleOwner)
+						_, err := user.UpsertPermissions(portalAppID, accountID, types.RoleOwner)
 						if err != nil {
 							fmt.Printf("error upserting user permissions: %v\n", err)
 						}
@@ -567,7 +567,7 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 
 				// If incoming account user is not owner only set permissions for incoming portal app
 			default:
-				_, err := user.UpsertPermissions(incomingPortalAppID, incomingPortalAppRole)
+				_, err := user.UpsertPermissions(incomingPortalAppID, accountID, incomingPortalAppRole)
 				if err != nil {
 					fmt.Printf("error upserting user permissions: %v\n", err)
 				}
@@ -873,7 +873,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 						user.Permissions = make(map[types.PortalAppID]types.PortalAppPermissions)
 					}
 
-					_, err = user.UpsertPermissions(portalApp.ID, types.RoleOwner)
+					_, err = user.UpsertPermissions(portalApp.ID, account.ID, types.RoleOwner)
 					if err != nil {
 						fmt.Printf("error upserting user permissions: %v\n", err)
 					}

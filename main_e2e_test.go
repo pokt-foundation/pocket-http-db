@@ -2906,7 +2906,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					},
 					Permissions: map[v2Types.PortalAppID]v2Types.PortalAppPermissions{
 						"test_app_3": {
-							RoleName: v2Types.RoleOwner,
+							AccountID: "account_3",
+							RoleName:  v2Types.RoleOwner,
 							Permissions: []v2Types.Permissions{
 								v2Types.PermReadEndpoint,
 								v2Types.PermWriteEndpoint,
@@ -2937,7 +2938,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					},
 					Permissions: map[v2Types.PortalAppID]v2Types.PortalAppPermissions{
 						"test_app_3": {
-							RoleName: v2Types.RoleOwner,
+							AccountID: "account_3",
+							RoleName:  v2Types.RoleOwner,
 							Permissions: []v2Types.Permissions{
 								v2Types.PermReadEndpoint,
 								v2Types.PermWriteEndpoint,
