@@ -452,18 +452,48 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				},
 				portalAppUsers: testdata.PortalAppUsers,
 			},
+			{
+				name:   "Should get portal apps for user_10 where user_10 has not signed up yet",
+				userID: "user_10",
+				options: v2DBClient.PortalAppOptions{
+					Accepted: v2DBClient.BoolPtr(false),
+				},
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_3": testdata.PortalApps["test_app_3"],
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get portal apps for user_2 where user_2 has signed up",
+				userID: "user_2",
+				options: v2DBClient.PortalAppOptions{
+					Accepted: v2DBClient.BoolPtr(true),
+				},
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_1": testdata.PortalApps["test_app_1"],
+					"test_app_2": testdata.PortalApps["test_app_2"],
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get portal apps for user_3 where user_3 has signed up and is the OWNER",
+				userID: "user_3",
+				options: v2DBClient.PortalAppOptions{
+					Accepted: v2DBClient.BoolPtr(true),
+					RoleNameFilters: []types.RoleName{
+						types.RoleOwner,
+					},
+				},
+				expectedApps: map[types.PortalAppID]*types.PortalApp{
+					"test_app_2": testdata.PortalApps["test_app_2"],
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				var portalApps []*v2Types.PortalApp
-				var err error
-
-				if len(test.options.RoleNameFilters) > 0 {
-					portalApps, err = ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID, test.options)
-				} else {
-					portalApps, err = ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID)
-				}
+				portalApps, err := ts.v2Client1.GetPortalAppsByUser(context.Background(), test.userID, test.options)
 				ts.Equal(test.err, err)
 
 				if err == nil {
@@ -472,11 +502,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					}
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
-					if len(test.options.RoleNameFilters) > 0 {
-						portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID, test.options)
-					} else {
-						portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID)
-					}
+					portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID, test.options)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 				}
@@ -598,6 +624,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name           string
 			userID         v2Types.UserID
+			options        v2DBClient.AccountOptions
 			expectedAccs   map[v2Types.AccountID]*v2Types.Account
 			plans          map[v2Types.AccountID]*v2Types.Plan
 			portalApps     map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp
@@ -605,50 +632,163 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			err            error
 		}{
 			{
-				name:   "Should get accounts for user_2",
+				name:   "Should get accounts for user_2 with no role filter",
 				userID: "user_2",
-				expectedAccs: map[v2Types.AccountID]*v2Types.Account{
+				expectedAccs: map[types.AccountID]*types.Account{
 					"account_1": testdata.Accounts["account_1"],
 					"account_2": testdata.Accounts["account_2"],
 				},
-				plans: map[v2Types.AccountID]*v2Types.Plan{
+				plans: map[types.AccountID]*types.Plan{
 					"account_1": testdata.PayPlans["basic_plan"],
 					"account_2": testdata.PayPlans["pro_plan"],
 				},
-				portalApps: map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp{
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
 					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
 					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
 				},
 				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
-				name:   "Should get accounts for user_1",
-				userID: "user_1",
-				expectedAccs: map[v2Types.AccountID]*v2Types.Account{
+				name:   "Should get accounts for user_2 where user_2 is OWNER",
+				userID: "user_2",
+				options: v2DBClient.AccountOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleOwner,
+					},
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
 					"account_1": testdata.Accounts["account_1"],
+					"account_2": testdata.Accounts["account_2"],
 				},
-				plans: map[v2Types.AccountID]*v2Types.Plan{
+				plans: map[types.AccountID]*types.Plan{
 					"account_1": testdata.PayPlans["basic_plan"],
+					"account_2": testdata.PayPlans["pro_plan"],
 				},
-				portalApps: map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp{
+				portalApps:     map[types.AccountID]map[types.PortalAppID]*types.PortalApp{},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get accounts for user_2 where user_2 is ADMIN",
+				userID: "user_2",
+				options: v2DBClient.AccountOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleAdmin,
+					},
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_1": testdata.Accounts["account_1"],
+					"account_2": testdata.Accounts["account_2"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_1": testdata.PayPlans["basic_plan"],
+					"account_2": testdata.PayPlans["pro_plan"],
+				},
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
 					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
 				},
 				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
+				name:   "Should get accounts for user_1 with no role filter",
+				userID: "user_1",
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_1": testdata.Accounts["account_1"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_1": testdata.PayPlans["basic_plan"],
+				},
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
+					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get accounts for user_1 where user_1 is OWNER",
+				userID: "user_1",
+				options: v2DBClient.AccountOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleOwner,
+					},
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_1": testdata.Accounts["account_1"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_1": testdata.PayPlans["basic_plan"],
+				},
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
+					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get accounts for user_10 where user_10 has not signed up yet",
+				userID: "user_10",
+				options: v2DBClient.AccountOptions{
+					Accepted: v2DBClient.BoolPtr(false),
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_3": testdata.Accounts["account_3"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_3": testdata.PayPlans["startup_plan"],
+				},
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
+					"account_3": {"test_app_3": testdata.PortalApps["test_app_3"]},
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get accounts for user_2 where user_2 has signed up",
+				userID: "user_2",
+				options: v2DBClient.AccountOptions{
+					Accepted: v2DBClient.BoolPtr(true),
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_1": testdata.Accounts["account_1"],
+					"account_2": testdata.Accounts["account_2"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_1": testdata.PayPlans["basic_plan"],
+					"account_2": testdata.PayPlans["pro_plan"],
+				},
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
+					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
+					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get accounts for user_2 where user_2 has not signed up yet",
+				userID: "user_2",
+				options: v2DBClient.AccountOptions{
+					Accepted: v2DBClient.BoolPtr(false),
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_1": testdata.Accounts["account_1"],
+					"account_2": testdata.Accounts["account_2"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_1": testdata.PayPlans["basic_plan"],
+					"account_2": testdata.PayPlans["pro_plan"],
+				},
+				portalApps:     nil,
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
 				name:   "Should get accounts for user_4",
 				userID: "user_4",
-				expectedAccs: map[v2Types.AccountID]*v2Types.Account{
+				expectedAccs: map[types.AccountID]*types.Account{
 					"account_2": testdata.Accounts["account_2"],
 					"account_4": testdata.Accounts["account_4"],
 					"account_5": testdata.Accounts["account_5"],
 				},
-				plans: map[v2Types.AccountID]*v2Types.Plan{
+				plans: map[types.AccountID]*types.Plan{
 					"account_2": testdata.PayPlans["pro_plan"],
 					"account_4": testdata.PayPlans["enterprise_plan"],
 					"account_5": testdata.PayPlans["basic_plan"],
 				},
-				portalApps: map[v2Types.AccountID]map[v2Types.PortalAppID]*v2Types.PortalApp{
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
 					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
 				},
 				portalAppUsers: testdata.PortalAppUsers,
@@ -657,7 +797,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				accounts, err := ts.v2Client1.GetAccountsByUser(context.Background(), test.userID)
+				accounts, err := ts.v2Client1.GetAccountsByUser(context.Background(), test.userID, test.options)
 				ts.Equal(test.err, err)
 
 				if err == nil {
@@ -672,12 +812,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					}
 					ts.Equal(test.expectedAccs, accountMap)
 
-					accounts, err = ts.v2Client2.GetAccountsByUser(context.Background(), test.userID)
+					accounts, err = ts.v2Client2.GetAccountsByUser(context.Background(), test.userID, test.options)
 					ts.Equal(test.err, err)
 					accountMap = phdtestdata.ConvertAccountPointersToMap(accounts)
 					for id, account := range test.expectedAccs {
 						account.Plan = test.plans[id]
 						account.PortalApps = test.portalApps[id]
+						for _, portalApp := range account.PortalApps {
+							portalApp.Users = test.portalAppUsers[portalApp.ID]
+						}
 					}
 					ts.Equal(test.expectedAccs, accountMap)
 				}
