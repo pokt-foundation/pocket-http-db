@@ -96,7 +96,13 @@ func (c *Cache) GetLegacyLoadBalancersByUserID(ctx context.Context, userID strin
 		for _, account := range accounts {
 			if !account.Deleted {
 				if user, ok := account.Users[portalUser.ID]; ok {
-					if user.Accepted {
+					var accepted bool
+					for _, portalAppAccepted := range user.PortalAppsAccepted {
+						accepted = portalAppAccepted
+						break
+					}
+
+					if accepted {
 						for _, roleName := range user.PortalAppRoles {
 							if roleName == v2Types.RoleName(roleNameFilter) {
 								if _, ok := filteredAccounts[account.ID]; ok {
@@ -311,7 +317,13 @@ func (c *Cache) GetLegacyPendingLoadBalancers(ctx context.Context, portalUserID 
 	pendingAccounts := []v2Types.Account{}
 	for _, account := range accounts {
 		for _, user := range account.Users {
-			if !user.Accepted && user.UserID == userID {
+			var accepted bool
+			for _, portalAppAccepted := range user.PortalAppsAccepted {
+				accepted = portalAppAccepted
+				break
+			}
+
+			if !accepted && user.UserID == userID {
 				pendingAccounts = append(pendingAccounts, account)
 			}
 		}
@@ -340,7 +352,13 @@ func (c *Cache) GetLegacyLoadBalancersCount(ctx context.Context, portalUserID st
 	accounts := c.GetAccountsByUserID(v2Types.UserID(portalUserID), Options{})
 	for _, account := range accounts {
 		if user, ok := account.Users[v2Types.UserID(userID)]; ok {
-			if user.Accepted {
+			var accepted bool
+			for _, portalAppAccepted := range user.PortalAppsAccepted {
+				accepted = portalAppAccepted
+				break
+			}
+
+			if accepted {
 				for _, roleName := range user.PortalAppRoles {
 					if roleName == v2Types.RoleOwner {
 						count++
@@ -722,7 +740,7 @@ func (c *Cache) AcceptLegacyUser(ctx context.Context, writer driver.Writer, lbID
 
 		if userID == portalUser.ID {
 			updatedUser := user
-			updatedUser.Accepted = true
+			updatedUser.PortalAppsAccepted[portalAppID] = true
 			account.Users[userID] = updatedUser
 			break
 		}

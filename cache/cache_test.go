@@ -262,11 +262,13 @@ func Test_upsertAccountUser(t *testing.T) {
 			accountUser: types.AccountUserAccess{
 				UserID:     "user_1",
 				Email:      "james.holden123@test.com",
-				Accepted:   true,
 				IconURL:    "https://picsum.photos/200",
 				BetaTester: true,
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
 					"test_app_2": types.RoleMember,
+				},
+				PortalAppsAccepted: map[types.PortalAppID]bool{
+					"test_app_2": true,
 				},
 			},
 		},
@@ -276,11 +278,13 @@ func Test_upsertAccountUser(t *testing.T) {
 			accountUser: types.AccountUserAccess{
 				UserID:     "user_10",
 				Email:      "daenerys.targaryen123@test.com",
-				Accepted:   false,
 				IconURL:    "https://picsum.photos/200",
 				BetaTester: true,
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
 					"test_app_3": types.RoleMember,
+				},
+				PortalAppsAccepted: map[types.PortalAppID]bool{
+					"test_app_3": true,
 				},
 			},
 		},
@@ -319,7 +323,13 @@ func Test_upsertAccountUser(t *testing.T) {
 			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID, Options{}), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
-			if test.accountUser.Accepted {
+			var accepted bool
+			for _, portalAppAccepted := range test.accountUser.PortalAppsAccepted {
+				accepted = portalAppAccepted
+				break
+			}
+
+			if accepted {
 				user := cache.GetUserByID(test.accountUser.UserID)
 				for portalAppID, roleName := range test.accountUser.PortalAppRoles {
 					portalAppPermission, ok := user.Permissions[portalAppID]

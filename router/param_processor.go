@@ -27,9 +27,11 @@ type (
 	}
 	portalAppQueryParams struct {
 		roleNameFilters queryParam
+		accepted        queryParam
 	}
 	accountQueryParams struct {
 		roleNameFilters queryParam
+		accepted        queryParam
 	}
 	userQueryParams struct {
 		fullDetails queryParam
@@ -66,9 +68,11 @@ var (
 	}
 	portalAppParams = portalAppQueryParams{
 		roleNameFilters: "filters",
+		accepted:        "accepted",
 	}
 	accountParams = accountQueryParams{
 		roleNameFilters: "filters",
+		accepted:        "accepted",
 	}
 	userParams = userQueryParams{
 		fullDetails: "full_details",
@@ -119,6 +123,15 @@ var (
 				options.FilterPortalApps = roleNameFilters
 				return nil
 			},
+
+			portalAppParams.accepted: func(v string, options *cache.Options) error {
+				val, err := parseBool(v)
+				if err != nil {
+					return err
+				}
+				options.Accepted = &val
+				return nil
+			},
 		},
 
 		v2AccountEndpoint: {
@@ -128,6 +141,15 @@ var (
 					return err
 				}
 				options.FilterPortalApps = roleNameFilters
+				return nil
+			},
+
+			accountParams.accepted: func(v string, options *cache.Options) error {
+				val, err := parseBool(v)
+				if err != nil {
+					return err
+				}
+				options.Accepted = &val
 				return nil
 			},
 		},
@@ -244,11 +266,11 @@ func (qp queryParam) isChain() bool {
 }
 
 func (qp queryParam) isPortalApp() bool {
-	return qp == portalAppParams.roleNameFilters
+	return qp == portalAppParams.roleNameFilters || qp == portalAppParams.accepted
 }
 
 func (qp queryParam) isAccount() bool {
-	return qp == accountParams.roleNameFilters
+	return qp == accountParams.roleNameFilters || qp == accountParams.accepted
 }
 
 func (qp queryParam) isUser() bool {

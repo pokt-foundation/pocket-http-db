@@ -51,11 +51,13 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUserAccess{
 					"user_3": {
-						UserID:   "user_3",
-						Email:    "ellen.ripley789@test.com",
-						Accepted: true,
+						UserID: "user_3",
+						Email:  "ellen.ripley789@test.com",
 						PortalAppRoles: map[types.PortalAppID]types.RoleName{
 							"test_app_1": types.RoleMember,
+						},
+						PortalAppsAccepted: map[types.PortalAppID]bool{
+							"test_app_1": true,
 						},
 					},
 				},
@@ -69,11 +71,13 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUserAccess{
 					"user_3": {
-						UserID:   "user_2",
-						Email:    "paul.atreides456@test.com",
-						Accepted: true,
+						UserID: "user_2",
+						Email:  "paul.atreides456@test.com",
 						PortalAppRoles: map[types.PortalAppID]types.RoleName{
 							"test_app_1": types.RoleMember,
+						},
+						PortalAppsAccepted: map[types.PortalAppID]bool{
+							"test_app_1": true,
 						},
 					},
 				},

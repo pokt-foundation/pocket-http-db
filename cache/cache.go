@@ -74,6 +74,7 @@ type (
 		ExcludeChainGigastakeApps bool
 		FullDetails               bool
 		FilterPortalApps          []types.RoleName
+		Accepted                  *bool
 	}
 
 	userData struct {
@@ -449,6 +450,10 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID, options Options) []type
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
+		if account.Deleted {
+			continue
+		}
+
 		userAccess, ok := account.Users[userID]
 		if !ok {
 			continue
@@ -466,7 +471,15 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID, options Options) []type
 			filterRoles = []types.RoleName{types.RoleOwner, types.RoleAdmin, types.RoleMember}
 		}
 
-		filteredPortalApps := filterPortalAppsByRoleName(account.PortalApps, userAccess.PortalAppRoles, filterRoles)
+		var accountPortalApps []types.PortalApp
+		switch {
+		case options.Accepted != nil:
+			accountPortalApps = account.GetAcceptedPortalApps(userID, *options.Accepted)
+		default:
+			accountPortalApps = account.GetPortalApps()
+		}
+
+		filteredPortalApps := filterPortalAppsByRoleName(accountPortalApps, userAccess.PortalAppRoles, filterRoles, options)
 
 		if len(filteredPortalApps) > 0 {
 			accountCopy.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
@@ -483,17 +496,22 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID, options Options) []type
 
 // filterPortalAppsByRoleName filters the portal apps based on the provided role names
 func filterPortalAppsByRoleName(
-	portalApps map[types.PortalAppID]*types.PortalApp,
+	portalApps []types.PortalApp,
 	userRoles map[types.PortalAppID]types.RoleName,
 	filters []types.RoleName,
+	options Options,
 ) []types.PortalApp {
 	filteredPortalApps := []types.PortalApp{}
 
-	for appID, app := range portalApps {
-		if userRole, ok := userRoles[appID]; ok {
+	for _, portalApp := range portalApps {
+		if portalApp.Deleted {
+			continue
+		}
+
+		if userRole, ok := userRoles[portalApp.ID]; ok {
 			for _, filter := range filters {
 				if filter == userRole {
-					filteredPortalApps = append(filteredPortalApps, *app)
+					filteredPortalApps = append(filteredPortalApps, portalApp)
 				}
 			}
 		}
@@ -575,14 +593,19 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 	// Save incoming portal app ID and user role
 	var incomingPortalAppID types.PortalAppID
 	var incomingPortalAppRole types.RoleName
+	var accepted bool
 	for portalAppID, role := range accountUser.PortalAppRoles {
 		incomingPortalAppID = portalAppID
 		incomingPortalAppRole = role
 		break
 	}
+	for _, portalAppAccepted := range accountUser.PortalAppsAccepted {
+		accepted = portalAppAccepted
+		break
+	}
 
 	// Add user to permissions map if they have accepted their invitation
-	if accountUser.Accepted {
+	if accepted {
 		if user, ok := c.users[accountUser.UserID]; ok {
 			if user.ArePermissionsEmpty() {
 				user.Permissions = make(map[types.PortalAppID]types.PortalAppPermissions)
@@ -633,6 +656,7 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 			accountUser.UpdatesProduct = existingAccountUser.UpdatesProduct
 			accountUser.BetaTester = existingAccountUser.BetaTester
 			accountUser.PortalAppRoles = existingAccountUser.PortalAppRoles
+			accountUser.PortalAppsAccepted = existingAccountUser.PortalAppsAccepted
 		}
 
 		switch accountUser.Owner {
@@ -666,17 +690,22 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 			if user.PortalAppRoles == nil {
 				user.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
 			}
+			if user.PortalAppsAccepted == nil {
+				user.PortalAppsAccepted = make(map[types.PortalAppID]bool)
+			}
 
 			switch accountUser.Owner {
 			// If incoming account user is owner, set owner for all account's portal apps
 			case true:
 				for portalAppID := range account.PortalApps {
 					user.PortalAppRoles[portalAppID] = types.RoleOwner
+					user.PortalAppsAccepted[portalAppID] = true
 				}
 
 			// If incoming account user is not owner only set role for incoming portal app
 			default:
 				user.PortalAppRoles[incomingPortalAppID] = incomingPortalAppRole
+				user.PortalAppsAccepted[incomingPortalAppID] = accepted
 			}
 		}
 
@@ -826,8 +855,8 @@ func (c *Cache) GetPortalAppsByUserID(userID types.UserID, options Options) []ty
 	for _, account := range c.GetAccountsByUserID(userID, options) {
 		var portalApps []types.PortalApp
 
-		for _, app := range account.PortalApps {
-			portalApps = append(portalApps, *app)
+		for _, portalApp := range account.PortalApps {
+			portalApps = append(portalApps, *portalApp)
 		}
 
 		portalAppsToReturn = append(portalAppsToReturn, portalApps...)

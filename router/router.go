@@ -548,6 +548,7 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 
 	queryParams := map[queryParam]queryParamDetail{
 		portalAppParams.roleNameFilters: {required: false},
+		portalAppParams.accepted:        {required: false},
 	}
 
 	options, err := paramProcessor(r.URL, queryParams)
@@ -705,7 +706,8 @@ func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	queryParams := map[queryParam]queryParamDetail{
-		portalAppParams.roleNameFilters: {required: false},
+		accountParams.roleNameFilters: {required: false},
+		accountParams.accepted:        {required: false},
 	}
 
 	options, err := paramProcessor(r.URL, queryParams)
