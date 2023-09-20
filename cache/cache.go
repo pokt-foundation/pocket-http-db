@@ -253,6 +253,10 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 
 	// Set pointers to Account PortalApps and create map of PortalApps by ProtocolAppID
 	for portalAppID, portalApp := range portalApps {
+		if portalApp.Deleted {
+			continue
+		}
+
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			// Set users for the Portal App
 			portalAppUsers := make(map[types.UserID]*types.AccountUserAccess)
@@ -418,6 +422,9 @@ func (c *Cache) GetAccount(accountID types.AccountID) types.Account {
 
 	account, ok := c.accounts[accountID]
 	if !ok {
+		return types.Account{}
+	}
+	if account.Deleted {
 		return types.Account{}
 	}
 
