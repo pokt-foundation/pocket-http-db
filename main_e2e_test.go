@@ -10,14 +10,14 @@ import (
 
 	dbclient "github.com/pokt-foundation/db-client/client"
 	v2DBClient "github.com/pokt-foundation/db-client/v2/client"
-	phdtestdata "github.com/pokt-foundation/pocket-http-db/testdata"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	v2Types "github.com/pokt-foundation/portal-db/v2/types"
+	phdtestdata "github.com/pokt-foundation/portal-http-db/testdata"
 	"github.com/stretchr/testify/suite"
 )
 
-func Test_V1_E2E_PocketHTTPDBTestSuite(t *testing.T) {
+func Test_V1_E2E_PortalHTTPDBTestSuite(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping end to end test")
 	}
@@ -55,13 +55,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:         "Should return status 200 and correct body on port 1",
 				url:          fmt.Sprintf("http://localhost:%s/healthz", phdPortOne),
-				expectedBody: "DB Check Done. Pocket HTTP DB is up and running!\nImage Tag: development",
+				expectedBody: "DB Check Done. Portal HTTP DB is up and running!\nImage Tag: development",
 				expectedCode: http.StatusOK,
 			},
 			{
 				name:         "Should return status 200 and correct body on port 2",
 				url:          fmt.Sprintf("http://localhost:%s/healthz", phdPortTwo),
-				expectedBody: "DB Check Done. Pocket HTTP DB is up and running!\nImage Tag: development",
+				expectedBody: "DB Check Done. Portal HTTP DB is up and running!\nImage Tag: development",
 				expectedCode: http.StatusOK,
 			},
 		}

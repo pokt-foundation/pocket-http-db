@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/pokt-foundation/pocket-http-db/cache"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-http-db/cache"
 	"github.com/stretchr/testify/require"
 )
 

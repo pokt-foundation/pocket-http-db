@@ -1,12 +1,12 @@
 <div align="center">
-    <img src=".github/banner.png" alt="Pocket Network logo" width="600"/>
-    <h1>Pocket HTTP Database</h1>
-    <big>The Pocket HTTP DB (PHD) provides access to the Portal database using a RESTful API.</big>
+    <img src=".github/grove_logo.png" alt="Portal Network logo" width="600"/>
+    <h1>Portal HTTP Database</h1>
+    <big>The Portal HTTP DB (PHD) provides access to the Portal database using a RESTful API.</big>
     <div>
        <br/>
-        <a href="https://github.com/pokt-foundation/pocket-http-db/pulse"><img src="https://img.shields.io/github/last-commit/pokt-foundation/pocket-http-db.svg"/></a>
-        <a href="https://github.com/pokt-foundation/pocket-http-db/pulls"><img src="https://img.shields.io/github/issues-pr/pokt-foundation/pocket-http-db.svg"/></a>
-        <a href="https://github.com/pokt-foundation/pocket-http-db/issues"><img src="https://img.shields.io/github/issues-closed/pokt-foundation/pocket-http-db.svg"/></a>
+        <a href="https://github.com/pokt-foundation/portal-http-db/pulse"><img src="https://img.shields.io/github/last-commit/pokt-foundation/portal-http-db.svg"/></a>
+        <a href="https://github.com/pokt-foundation/portal-http-db/pulls"><img src="https://img.shields.io/github/issues-pr/pokt-foundation/portal-http-db.svg"/></a>
+        <a href="https://github.com/pokt-foundation/portal-http-db/issues"><img src="https://img.shields.io/github/issues-closed/pokt-foundation/portal-http-db.svg"/></a>
     </div>
 </div>
 <br/>
@@ -15,7 +15,7 @@
 
 ## DB Client
 
-To use the Pocket HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
+To use the Portal HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
 
 ## Modifying Functionality
 

@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pokt-foundation/pocket-http-db/cache"
-	"github.com/pokt-foundation/pocket-http-db/router"
 	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-http-db/cache"
+	"github.com/pokt-foundation/portal-http-db/router"
 	"github.com/pokt-foundation/utils-go/environment"
 	"github.com/pokt-foundation/utils-go/logger"
 )
@@ -150,7 +150,7 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 
 // httpHandler starts the HTTP server for the application using the provided router, port, and logger.
 func httpHandler(router *router.Router, options options, logger *logger.Logger) {
-	logger.Info(fmt.Sprintf("Pocket HTTP DB %s running on port: %s", options.imageTag, options.port))
+	logger.Info(fmt.Sprintf("Portal HTTP DB %s running on port: %s", options.imageTag, options.port))
 	logger.Info(fmt.Sprintf("Log level is: %s", logger.LogLevel()))
 	if options.appEnv != types.AppEnvProduction {
 		logger.Info(fmt.Sprintf("Running in %s mode. Connected to DB at %s:%s", options.appEnv, options.pgHost, options.pgPort))

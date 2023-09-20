@@ -1,9 +1,9 @@
 apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
-  name: pocket-http-db
+  name: portal-http-db
   annotations:
-    github.com/project-slug: pokt-foundation/pocket-http-db
+    github.com/project-slug: pokt-foundation/portal-http-db
     github.com/team-slug: pokt-foundation/backend
     backstage.io/techdocs-ref: dir:.
   tags:

@@ -1,13 +1,13 @@
-# This Docker compose only used for E2E testing the Pocket HTTP DB
+# This Docker compose only used for E2E testing the Portal HTTP DB
 version: "3"
 
 services:
-  pocket-http-db-1:
+  portal-http-db-1:
     build:
       context: ..
       args:
         IMAGE_TAG: development
-    container_name: pocket-http-db-1
+    container_name: portal-http-db-1
     restart: always
     ports:
       - 8080:8080
@@ -28,12 +28,12 @@ services:
       timeout: 10s
       retries: 5
 
-  pocket-http-db-2:
+  portal-http-db-2:
     build:
       context: ..
       args:
         IMAGE_TAG: development
-    container_name: pocket-http-db-2
+    container_name: portal-http-db-2
     restart: always
     ports:
       - 8081:8080

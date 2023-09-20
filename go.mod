@@ -1,4 +1,4 @@
-module github.com/pokt-foundation/pocket-http-db
+module github.com/pokt-foundation/portal-http-db
 
 go 1.21
 

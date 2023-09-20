@@ -6,8 +6,8 @@ on:
 
 env:
   PROJECT_ID: portal-gb-prod
-  REPOSITORY: pocket-http-db
-  IMAGE: pocket-http-db
+  REPOSITORY: portal-http-db
+  IMAGE: portal-http-db
   REGISTRY: us-central1-docker.pkg.dev
 
 jobs:

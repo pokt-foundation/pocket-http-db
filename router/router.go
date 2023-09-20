@@ -10,10 +10,10 @@ import (
 	"log/slog"
 
 	"github.com/gorilla/mux"
-	"github.com/pokt-foundation/pocket-http-db/cache"
 	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-http-db/cache"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
 	"github.com/pokt-foundation/utils-go/logger"
 )
@@ -217,7 +217,7 @@ func (rt *Router) healthCheck(w http.ResponseWriter, r *http.Request) {
 	var statusCode int
 	if err := rt.writer.Ping(r.Context()); err == nil {
 		statusCode = http.StatusOK
-		msg = fmt.Sprintf("DB Check Done. Pocket HTTP DB is up and running!\nImage Tag: %s", rt.imageTag)
+		msg = fmt.Sprintf("DB Check Done. Portal HTTP DB is up and running!\nImage Tag: %s", rt.imageTag)
 	} else {
 		statusCode = http.StatusServiceUnavailable
 		msg = fmt.Sprintf("Could not connect to the db: %s", err.Error())
