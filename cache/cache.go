@@ -460,7 +460,6 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID, options Options) []type
 		}
 
 		accountCopy := *account // Make a shallow copy of the account
-		accountCopy.PortalApps = nil
 
 		var filterRoles []types.RoleName
 		if len(options.FilterPortalApps) > 0 {
@@ -471,21 +470,15 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID, options Options) []type
 			filterRoles = []types.RoleName{types.RoleOwner, types.RoleAdmin, types.RoleMember}
 		}
 
-		var accountPortalApps []types.PortalApp
-		switch {
-		case options.Accepted != nil:
-			accountPortalApps = account.GetAcceptedPortalApps(userID, *options.Accepted)
-		default:
-			accountPortalApps = account.GetPortalApps()
+		if options.Accepted != nil {
+			accountCopy.PortalApps = accountCopy.GetAcceptedPortalApps(userID, *options.Accepted)
 		}
 
-		filteredPortalApps := filterPortalAppsByRoleName(accountPortalApps, userAccess.PortalAppRoles, filterRoles, options)
+		filteredPortalApps := filterPortalAppsByRoleName(accountCopy.PortalApps, userAccess.PortalAppRoles, filterRoles)
+		accountCopy.PortalApps = nil
 
 		if len(filteredPortalApps) > 0 {
-			accountCopy.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
-			for _, app := range filteredPortalApps {
-				accountCopy.PortalApps[app.ID] = &app
-			}
+			accountCopy.PortalApps = filteredPortalApps
 		}
 
 		accountsToReturn = append(accountsToReturn, accountCopy)
@@ -496,12 +489,11 @@ func (c *Cache) GetAccountsByUserID(userID types.UserID, options Options) []type
 
 // filterPortalAppsByRoleName filters the portal apps based on the provided role names
 func filterPortalAppsByRoleName(
-	portalApps []types.PortalApp,
+	portalApps map[types.PortalAppID]*types.PortalApp,
 	userRoles map[types.PortalAppID]types.RoleName,
 	filters []types.RoleName,
-	options Options,
-) []types.PortalApp {
-	filteredPortalApps := []types.PortalApp{}
+) map[types.PortalAppID]*types.PortalApp {
+	filteredPortalApps := make(map[types.PortalAppID]*types.PortalApp)
 
 	for _, portalApp := range portalApps {
 		if portalApp.Deleted {
@@ -511,7 +503,7 @@ func filterPortalAppsByRoleName(
 		if userRole, ok := userRoles[portalApp.ID]; ok {
 			for _, filter := range filters {
 				if filter == userRole {
-					filteredPortalApps = append(filteredPortalApps, portalApp)
+					filteredPortalApps[portalApp.ID] = portalApp
 				}
 			}
 		}
