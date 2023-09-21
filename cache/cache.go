@@ -457,12 +457,26 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
+		// filter portal apps by user's role and accepted status
 		accountCopy := filterAccountPortalApps(account, userID, options)
 		if accountCopy.ID == "" {
 			continue
 		}
 
-		accountsToReturn = append(accountsToReturn, accountCopy)
+		// only include accounts where user is owner or has accepted invite
+		ownerID, _ := account.GetOwnerID()
+		if userID != ownerID {
+			acceptedInvite := false
+			for _, portalApp := range accountCopy.PortalApps {
+				if accepted, ok := account.HasUserAcceptedInvite(userID, portalApp.ID); ok && accepted {
+					acceptedInvite = true
+					break
+				}
+			}
+			if acceptedInvite {
+				accountsToReturn = append(accountsToReturn, accountCopy)
+			}
+		}
 	}
 
 	return accountsToReturn
@@ -497,6 +511,9 @@ func filterAccountPortalApps(account *types.Account, userID types.UserID, option
 	filteredPortalApps := make(map[types.PortalAppID]*types.PortalApp)
 	for _, portalApp := range accountCopy.PortalApps {
 		if portalApp.Deleted {
+			continue
+		}
+		if portalAppAccepted, ok := userAccess.PortalAppsAccepted[portalApp.ID]; !ok || !portalAppAccepted {
 			continue
 		}
 
