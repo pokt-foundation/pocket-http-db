@@ -110,10 +110,10 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
 			if test.sideTableAction == types.ActionDelete {
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID, Options{}), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.userID, Options{}), test.accountID)
 				c.False(accountFound, "Account should be removed from accountsByUserID map")
 			} else {
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.userID, Options{}), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.userID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map")
 			}
 		})
@@ -126,6 +126,7 @@ func Test_parseAccountNotification(t *testing.T) {
 		mainTableAction  types.Action
 		sideTablesAction types.Action
 		accountID        types.AccountID
+		user             types.AccountUserAccess
 		account          *types.Account
 	}{
 		{
@@ -133,6 +134,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionInsert,
 			sideTablesAction: types.ActionInsert,
 			accountID:        "account_6",
+			user:             testdata.AccountUserAccess[1],
 			account:          testdata.TestCreateAccount,
 		},
 		{
@@ -140,6 +142,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
+			user:             testdata.AccountUserAccess[1],
 			account: &types.Account{
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
@@ -152,6 +155,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
+			user:             testdata.AccountUserAccess[1],
 			account: &types.Account{
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
@@ -172,11 +176,13 @@ func Test_parseAccountNotification(t *testing.T) {
 
 			test.account.ID = test.accountID
 			testAccount := test.account
+			testAccount.Users = map[types.UserID]types.AccountUserAccess{test.user.UserID: test.user}
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, testAccount)
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			account := cache.GetAccount(test.accountID)
+			account := cache.GetUserAccount(test.accountID, test.user.UserID, Options{})
+
 			if testAccount.Deleted {
 				c.Empty(account)
 			} else {

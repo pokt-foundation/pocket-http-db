@@ -992,52 +992,7 @@ func TestRouter_getAccounts(t *testing.T) {
 	}
 }
 
-func TestRouter_getAccountByID(t *testing.T) {
-	tests := []struct {
-		name             string
-		accountID        types.AccountID
-		expectedStatus   int
-		expectedAccount  types.Account
-		accountPlan      *types.Plan
-		accountPortalApp *types.PortalApp
-	}{
-		{
-			name:             "Should get one account by ID",
-			accountID:        "account_1",
-			expectedStatus:   http.StatusOK,
-			expectedAccount:  *testdata.Accounts["account_1"],
-			accountPlan:      testdata.PayPlans["basic_plan"],
-			accountPortalApp: testdata.PortalApps["test_app_1"],
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			router, err := newTestRouter(t)
-			c.NoError(err)
-
-			rr := httptest.NewRecorder()
-
-			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/account/%s", test.accountID), nil)
-			c.NoError(err)
-
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
-
-			var accountResp types.Account
-			err = json.Unmarshal(rr.Body.Bytes(), &accountResp)
-			c.NoError(err)
-			test.expectedAccount.Plan = test.accountPlan
-			test.expectedAccount.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
-			test.expectedAccount.PortalApps[test.accountPortalApp.ID] = test.accountPortalApp
-			c.Equal(test.expectedAccount, accountResp)
-		})
-	}
-}
-
-func TestRouter_getAccountsByUser(t *testing.T) {
+func TestRouter_getUserAccounts(t *testing.T) {
 	tests := []struct {
 		name             string
 		userID           types.UserID
@@ -1080,6 +1035,53 @@ func TestRouter_getAccountsByUser(t *testing.T) {
 			test.expectedData[0].PortalApps = make(map[types.PortalAppID]*types.PortalApp)
 			test.expectedData[0].PortalApps[test.accountPortalApp.ID] = test.accountPortalApp
 			c.Equal(test.expectedData, accountsResp)
+		})
+	}
+}
+
+func TestRouter_getUserAccount(t *testing.T) {
+	tests := []struct {
+		name             string
+		accountID        types.AccountID
+		userID           types.UserID
+		expectedStatus   int
+		expectedAccount  types.Account
+		accountPlan      *types.Plan
+		accountPortalApp *types.PortalApp
+	}{
+		{
+			name:             "Should get one user account by ID",
+			accountID:        "account_1",
+			userID:           "user_1",
+			expectedStatus:   http.StatusOK,
+			expectedAccount:  *testdata.Accounts["account_1"],
+			accountPlan:      testdata.PayPlans["basic_plan"],
+			accountPortalApp: testdata.PortalApps["test_app_1"],
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/user/%s/account/%s", test.userID, test.accountID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var accountResp types.Account
+			err = json.Unmarshal(rr.Body.Bytes(), &accountResp)
+			c.NoError(err)
+			test.expectedAccount.Plan = test.accountPlan
+			test.expectedAccount.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
+			test.expectedAccount.PortalApps[test.accountPortalApp.ID] = test.accountPortalApp
+			c.Equal(test.expectedAccount, accountResp)
 		})
 	}
 }
