@@ -596,25 +596,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				},
 				portalAppUsers: testdata.PortalAppUsers,
 			},
-			{
-				name:   "Should get accounts for user_2 where user_2 is OWNER",
-				userID: "user_2",
-				options: v2DBClient.AccountOptions{
-					RoleNameFilters: []types.RoleName{
-						types.RoleOwner,
-					},
-				},
-				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
-					"account_2": testdata.Accounts["account_2"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
-					"account_2": testdata.PayPlans["pro_plan"],
-				},
-				portalApps:     map[types.AccountID]map[types.PortalAppID]*types.PortalApp{},
-				portalAppUsers: testdata.PortalAppUsers,
-			},
+
 			{
 				name:   "Should get accounts for user_2 where user_2 is ADMIN",
 				userID: "user_2",
@@ -625,11 +607,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
 					"account_1": testdata.Accounts["account_1"],
-					"account_2": testdata.Accounts["account_2"],
 				},
 				plans: map[types.AccountID]*types.Plan{
 					"account_1": testdata.PayPlans["basic_plan"],
-					"account_2": testdata.PayPlans["pro_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
 					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
@@ -670,23 +650,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
-				name:   "Should get accounts for user_10 where user_10 has not signed up yet",
-				userID: "user_10",
-				options: v2DBClient.AccountOptions{
-					Accepted: v2DBClient.BoolPtr(false),
-				},
-				expectedAccs: map[types.AccountID]*types.Account{
-					"account_3": testdata.Accounts["account_3"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_3": testdata.PayPlans["startup_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_3": {"test_app_3": testdata.PortalApps["test_app_3"]},
-				},
-				portalAppUsers: testdata.PortalAppUsers,
-			},
-			{
 				name:   "Should get accounts for user_2 where user_2 has signed up",
 				userID: "user_2",
 				options: v2DBClient.AccountOptions{
@@ -707,23 +670,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
-				name:   "Should get accounts for user_2 where user_2 has not signed up yet",
-				userID: "user_2",
-				options: v2DBClient.AccountOptions{
-					Accepted: v2DBClient.BoolPtr(false),
-				},
-				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
-					"account_2": testdata.Accounts["account_2"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
-					"account_2": testdata.PayPlans["pro_plan"],
-				},
-				portalApps:     nil,
-				portalAppUsers: testdata.PortalAppUsers,
-			},
-			{
 				name:   "Should get accounts for user_4",
 				userID: "user_4",
 				expectedAccs: map[types.AccountID]*types.Account{
@@ -740,6 +686,32 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
 				},
 				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should fail to get accounts for user_2 where user_2 is OWNER (user_2 owns no accounts)",
+				userID: "user_2",
+				options: v2DBClient.AccountOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleOwner,
+					},
+				},
+				expectedAccs:   map[types.AccountID]*types.Account{},
+				plans:          map[types.AccountID]*types.Plan{},
+				portalApps:     map[types.AccountID]map[types.PortalAppID]*types.PortalApp{},
+				portalAppUsers: testdata.PortalAppUsers,
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getUserAccounts: no accounts were found for user ID"),
+			},
+			{
+				name:   "Should fail to get accounts for user_2 where user_2 has not signed up yet (should not return invited accounts)",
+				userID: "user_2",
+				options: v2DBClient.AccountOptions{
+					Accepted: v2DBClient.BoolPtr(false),
+				},
+				expectedAccs:   map[types.AccountID]*types.Account{},
+				plans:          map[types.AccountID]*types.Plan{},
+				portalApps:     nil,
+				portalAppUsers: testdata.PortalAppUsers,
+				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getUserAccounts: no accounts were found for user ID"),
 			},
 		}
 

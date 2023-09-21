@@ -398,7 +398,7 @@ func Test_upsertAccount(t *testing.T) {
 				CreatedAt:              testdata.MockTimestamp,
 				UpdatedAt:              testdata.MockTimestamp,
 			},
-			userID: "user_7",
+			userID: "user_1",
 			pendingUsers: map[types.AccountID][]types.AccountUserAccess{
 				"account_1": {testdata.AccountUserAccess[7], testdata.AccountUserAccess[3]},
 			},
@@ -437,10 +437,10 @@ func Test_upsertAccount(t *testing.T) {
 				for _, pending := range pendingUsers {
 					for _, userPending := range pending {
 						userPending.PortalAppRoles["test_app_1"] = types.RoleMember
+						userPending.PortalAppsAccepted["test_app_1"] = true
 					}
 				}
 				cache.pendingAccountUserAccess = pendingUsers
-
 			}
 
 			// Upsert account
@@ -472,8 +472,19 @@ func Test_upsertAccount(t *testing.T) {
 					if test.account.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {
-						c.True(accountInUserAccounts, "Account should be present in accountsByUserID map")
-						c.Equal(test.account, phdtestdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+						accepted := false
+						for _, portalAppAccepted := range user.PortalAppsAccepted {
+							if portalAppAccepted {
+								accepted = true
+								break
+							}
+						}
+						if accepted {
+							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.UserID, accountID)
+							c.Equal(test.account, phdtestdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+						} else {
+							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted")
+						}
 					}
 				}
 			}
