@@ -857,12 +857,9 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 	// Remove from Accounts map
 	if account, ok := c.accounts[accountID]; ok {
 		if accountUser, ok := account.Users[userID]; ok {
-			if _, ok := accountUser.PortalAppRoles[incomingPortalAppID]; ok {
-				delete(accountUser.PortalAppRoles, incomingPortalAppID)
-			}
-			if _, ok := accountUser.PortalAppsAccepted[incomingPortalAppID]; ok {
-				delete(accountUser.PortalAppsAccepted, incomingPortalAppID)
-			}
+			delete(accountUser.PortalAppRoles, incomingPortalAppID)
+			delete(accountUser.PortalAppsAccepted, incomingPortalAppID)
+
 			if len(accountUser.PortalAppRoles) == 0 && len(accountUser.PortalAppsAccepted) == 0 {
 				delete(account.Users, userID)
 			}
