@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	dbclient "github.com/pokt-foundation/db-client/v2/client"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	phdtestdata "github.com/pokt-foundation/portal-http-db/testdata"
@@ -24,10 +25,10 @@ func NewTestCache(t *testing.T) *Cache {
 
 	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
-	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
-	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.GigastakeApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
+	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
+	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps, nil)
+	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps, nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users[types.UserID("usertest")], nil)
 
@@ -63,7 +64,7 @@ func Test_SetCache(t *testing.T) {
 		{
 			name:     "Should return all accounts",
 			actual:   phdtestdata.AccountsToMap(cache.GetAccounts(Options{})),
-			expected: testdata.Accounts,
+			expected: phdtestdata.ModifiedAccountToTest(),
 		},
 		{
 			name:     "Should return account by ID",
@@ -205,35 +206,35 @@ func TestCache_SetCache_Failure(t *testing.T) {
 			case "ReadAccounts":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
+				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadPortalApps":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadChains":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
-				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadGigastakeApps":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
-				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
 
 			case "ReadBlockedContracts":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
-				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, nil)
-				readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.GigastakeAppID]*types.GigastakeApp{}, nil)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.RelayChainID]*types.Chain{}, nil)
+				readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.GigastakeAppID]*types.GigastakeApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx).Return(types.GlobalBlockedContracts{}, test.err)
 			}
 
@@ -465,7 +466,9 @@ func Test_upsertAccount(t *testing.T) {
 				}
 
 				for _, user := range test.account.Users {
-					accountsForUser := cache.GetUserAccounts(user.UserID, Options{})
+					accountsForUser := cache.GetUserAccounts(user.UserID, Options{
+						Accepted: dbclient.BoolPtr(true),
+					})
 
 					accountInUserAccounts := phdtestdata.FindAccountInAccounts(accountsForUser, accountID)
 
@@ -483,7 +486,7 @@ func Test_upsertAccount(t *testing.T) {
 							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.UserID, accountID)
 							c.Equal(test.account, phdtestdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
 						} else {
-							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted")
+							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
 						}
 					}
 				}

@@ -158,10 +158,15 @@ func ModifiedAccountToTest() map[v2Types.AccountID]*v2Types.Account {
 	accCopy := testdata.Accounts
 	accCopy["account_1"].Plan = payPlanCopy["basic_plan"]
 	accCopy["account_2"].Plan = payPlanCopy["pro_plan"]
-	accCopy["account_2"].PortalApps["test_app_2"] = portalAppsCopy["test_app_2"]
 	accCopy["account_3"].Plan = payPlanCopy["startup_plan"]
 	accCopy["account_4"].Plan = payPlanCopy["enterprise_plan"]
 	accCopy["account_5"].Plan = payPlanCopy["basic_plan"]
+
+	accCopy["account_1"].PortalApps["test_app_1"] = portalAppsCopy["test_app_1"]
+	accCopy["account_2"].PortalApps["test_app_2"] = portalAppsCopy["test_app_2"]
+	accCopy["account_3"].PortalApps["test_app_3"] = portalAppsCopy["test_app_3"]
+	accCopy["account_4"].PortalApps = map[v2Types.PortalAppID]*v2Types.PortalApp{}
+	accCopy["account_5"].PortalApps = map[v2Types.PortalAppID]*v2Types.PortalApp{}
 
 	return accCopy
 }

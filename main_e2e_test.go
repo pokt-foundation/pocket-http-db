@@ -596,14 +596,37 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				},
 				portalAppUsers: testdata.PortalAppUsers,
 			},
-
 			{
-				name:   "Should get accounts for user_2 where user_2 is ADMIN",
+				name:   "Should get accounts for user_2 where user_2 is ADMIN or MEMBER",
+				userID: "user_2",
+				options: v2DBClient.AccountOptions{
+					RoleNameFilters: []types.RoleName{
+						types.RoleAdmin,
+						types.RoleMember,
+					},
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_1": testdata.Accounts["account_1"],
+					"account_2": testdata.Accounts["account_2"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_1": testdata.PayPlans["basic_plan"],
+					"account_2": testdata.PayPlans["pro_plan"],
+				},
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
+					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
+					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
+				name:   "Should get accounts for user_2 where user_2 is ADMIN and has accepted invite",
 				userID: "user_2",
 				options: v2DBClient.AccountOptions{
 					RoleNameFilters: []types.RoleName{
 						types.RoleAdmin,
 					},
+					Accepted: v2DBClient.BoolPtr(true),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
 					"account_1": testdata.Accounts["account_1"],
@@ -684,6 +707,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
 					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
+					"account_4": {},
+					"account_5": {},
 				},
 				portalAppUsers: testdata.PortalAppUsers,
 			},
@@ -2043,6 +2068,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						LegacyDailyLimit:  100,
 						CreatedAt:         testdata.MockTimestamp,
 					},
+					PortalApps: map[v2Types.PortalAppID]*v2Types.PortalApp{},
 				},
 				expectedPlan: &types.Plan{
 					Type:              types.PayPlanType("developer_plan"),
