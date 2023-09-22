@@ -936,7 +936,15 @@ func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "accepted"})
+	var status string
+	switch acceptUser.DeclinedInvite {
+	case true:
+		status = "declined"
+	default:
+		status = "accepted"
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": status})
 }
 
 // PUT /v2/account/user/remove - Remove an AccountUserAccess.
