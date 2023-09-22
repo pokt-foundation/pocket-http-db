@@ -6,7 +6,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.4.1
 	github.com/pokt-foundation/db-client v1.11.1
-	github.com/pokt-foundation/db-client/v2 v2.14.0
+	github.com/pokt-foundation/db-client/v2 v2.14.2
 	github.com/pokt-foundation/portal-db v1.11.0
 	github.com/pokt-foundation/portal-db/v2 v2.13.1
 	github.com/pokt-foundation/utils-go v0.9.0
