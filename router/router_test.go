@@ -2656,8 +2656,6 @@ func TestRouter_createPortalUser(t *testing.T) {
 			req, err := http.NewRequestWithContext(testCtx, http.MethodPost, "/v1/user", bytes.NewBuffer(userInputBytes))
 			c.NoError(err)
 
-			fmt.Println(req.Context())
-
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 

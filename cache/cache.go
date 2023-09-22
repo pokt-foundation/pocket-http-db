@@ -2,9 +2,7 @@
 package cache
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -453,8 +451,10 @@ func (c *Cache) GetUserAccount(accountID types.AccountID, userID types.UserID, o
 			return *account
 		}
 
-		// filter portal apps by role name and accepted status
-		return filterAccountPortalApps(account, userID, options)
+		if userCanReadAccount(account, userID, options) {
+			// filter portal apps by role name and accepted status
+			return filterAccountPortalApps(account, userID, options)
+		}
 	}
 
 	return types.Account{}
@@ -468,36 +468,44 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
-		ownerID, _ := account.GetOwnerID()
-		if userID != ownerID {
-			// if accepted param set then filter accounts by accepted status
-			if options.Accepted != nil {
-				acceptedInvite := userAcceptedAccountInite(account, userID)
-				if acceptedInvite != *options.Accepted {
-					continue
-				}
-			}
-			// if role filters param set then filter accounts by whether user has access
-			if len(options.FilterPortalApps) > 0 && !userHasAccountPerms(account, userID, options.FilterPortalApps) {
+		if userCanReadAccount(account, userID, options) {
+			// filter portal apps by role name and accepted status
+			accountCopy := filterAccountPortalApps(account, userID, options)
+			if accountCopy.ID == "" {
 				continue
 			}
+
+			accountsToReturn = append(accountsToReturn, accountCopy)
 		}
 
-		// filter portal apps by role name and accepted status
-		accountCopy := filterAccountPortalApps(account, userID, options)
-		if accountCopy.ID == "" {
-			continue
-		}
-
-		accountsToReturn = append(accountsToReturn, accountCopy)
 	}
 
 	return accountsToReturn
 }
 
-// userAcceptedAccountInite returns a boolean indicating if the user
+// userCanReadAccount returns a boolean indicating if the user can read the account with the given query params
+func userCanReadAccount(a *types.Account, userID types.UserID, options Options) bool {
+	ownerID, _ := a.GetOwnerID()
+	if userID != ownerID {
+		// if accepted param set then filter accounts by accepted status
+		if options.Accepted != nil {
+			acceptedInvite := userAcceptedAccountInvite(a, userID)
+			if acceptedInvite != *options.Accepted {
+				return false
+			}
+		}
+		// if role filters param set then filter accounts by whether user has access
+		if len(options.FilterPortalApps) > 0 && !userHasAccountPerms(a, userID, options.FilterPortalApps) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// userAcceptedAccountInvite returns a boolean indicating if the user
 // has accepted an invitation to any PortalApp in the Account
-func userAcceptedAccountInite(a *types.Account, userID types.UserID) bool {
+func userAcceptedAccountInvite(a *types.Account, userID types.UserID) bool {
 	if user, ok := a.Users[userID]; ok {
 		acceptedInvite := false
 
@@ -603,18 +611,6 @@ func filterAccountPortalAppsByAccepted(
 	}
 
 	return portalApps
-}
-
-func Plog(args ...interface{}) {
-	for _, arg := range args {
-		var prettyJSON bytes.Buffer
-		jsonArg, _ := json.Marshal(arg)
-		str := string(jsonArg)
-		_ = json.Indent(&prettyJSON, []byte(str), "", "    ")
-		output := prettyJSON.String()
-
-		fmt.Println(output)
-	}
 }
 
 // upsertAccount adds, updates or deletes Account in cache
@@ -860,7 +856,17 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 
 	// Remove from Accounts map
 	if account, ok := c.accounts[accountID]; ok {
-		delete(account.Users, userID)
+		if accountUser, ok := account.Users[userID]; ok {
+			if _, ok := accountUser.PortalAppRoles[incomingPortalAppID]; ok {
+				delete(accountUser.PortalAppRoles, incomingPortalAppID)
+			}
+			if _, ok := accountUser.PortalAppsAccepted[incomingPortalAppID]; ok {
+				delete(accountUser.PortalAppsAccepted, incomingPortalAppID)
+			}
+			if len(accountUser.PortalAppRoles) == 0 && len(accountUser.PortalAppsAccepted) == 0 {
+				delete(account.Users, userID)
+			}
+		}
 
 		if accountsForUser, ok := c.accountsByUserID[accountUser.UserID]; ok {
 			delete(accountsForUser, accountID)
