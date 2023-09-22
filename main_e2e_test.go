@@ -2763,11 +2763,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			accountID              types.AccountID
 			userID                 types.UserID
 			acceptAccountUserInput types.UpdateAcceptAccountUser
+			createUser             v2Types.CreateUser
 			expected               *types.AccountUserAccess
 			err                    error
 		}{
 			{
-				name:      "Should create a new UserAuthProvider for an existing user in the DB",
+				name:      "Should create a new AccountUserAccess row if a user accepts their invitation",
 				accountID: "account_3",
 				userID:    "user_10",
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
@@ -2784,6 +2785,30 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					PortalAppsAccepted: map[types.PortalAppID]bool{"test_app_3": true},
 					IconURL:            "https://picsum.photos/200",
 					BetaTester:         true,
+				},
+				err: nil,
+			},
+			{
+				name:      "Should delete the AccountUserAccess row if a user declines their invitation",
+				accountID: "account_3",
+				userID:    "user_5", // owner of account; used to fetch account in test
+				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					DeclinedInvite:   true,
+					PortalAppID:      "test_app_3",
+					UserID:           "", // set in test case
+					AuthProviderType: types.AuthTypeAuth0Username,
+					ProviderUserID:   "auth0|rand_althor",
+				},
+				createUser: v2Types.CreateUser{
+					Email:          "rand_althor@test.com",
+					ProviderUserID: "auth0|rand_althor",
+				},
+				expected: &types.AccountUserAccess{
+					AccountID:          "account_3",
+					UserID:             "", // set in test case
+					Email:              "rand_althor@test.com",
+					PortalAppRoles:     map[types.PortalAppID]types.RoleName{"test_app_3": types.RoleMember},
+					PortalAppsAccepted: map[types.PortalAppID]bool{"test_app_3": false},
 				},
 				err: nil,
 			},
@@ -2838,6 +2863,28 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
+				// If testing declined invite, create a new User and AccountUserAccess
+				if test.createUser.Email != "" && test.acceptAccountUserInput.DeclinedInvite {
+					newUserResp, err := ts.v2Client1.CreateUser(context.Background(), test.createUser)
+					ts.NoError(err)
+
+					test.acceptAccountUserInput.UserID = newUserResp.User.ID
+					test.expected.UserID = newUserResp.User.ID
+					test.expected.AccountID = ""
+
+					_, err = ts.v2Client1.WriteAccountUser(context.Background(), types.CreateAccountUserAccess{
+						AccountID:   test.accountID,
+						PortalAppID: test.acceptAccountUserInput.PortalAppID,
+						Email:       test.createUser.Email,
+						RoleName:    types.RoleMember,
+					}, testdata.MockTimestamp)
+					ts.NoError(err)
+
+					account, err := ts.v2Client1.GetUserAccount(context.Background(), test.accountID, test.userID)
+					ts.NoError(err)
+					ts.Equal(*test.expected, account.Users[test.acceptAccountUserInput.UserID])
+				}
+
 				_, err := ts.v2Client1.UpdateAcceptAccountUser(context.Background(), test.acceptAccountUserInput, testdata.MockTimestamp)
 				ts.Equal(test.err, err)
 
@@ -2849,11 +2896,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					account, err := ts.v2Client1.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
-					ts.Equal(*test.expected, account.Users[test.expected.UserID])
+					if test.acceptAccountUserInput.DeclinedInvite {
+						ts.Empty(account.Users[test.acceptAccountUserInput.UserID])
+					} else {
+						ts.Equal(*test.expected, account.Users[test.expected.UserID])
+					}
 
 					account, err = ts.v2Client2.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
-					ts.Equal(*test.expected, account.Users[test.expected.UserID])
+					if test.acceptAccountUserInput.DeclinedInvite {
+						ts.Empty(account.Users[test.acceptAccountUserInput.UserID])
+					} else {
+						ts.Equal(*test.expected, account.Users[test.expected.UserID])
+					}
 				}
 			})
 		}
