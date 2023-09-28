@@ -1037,6 +1037,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 					owner.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
 				}
 				owner.PortalAppRoles[portalApp.ID] = types.RoleOwner
+				owner.PortalAppsAccepted[portalApp.ID] = true
 
 				// Add owner to user permissions map
 				if user, ok := c.users[ownerID]; ok {
