@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	dbclient "github.com/pokt-foundation/db-client/v2/client"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	phdtestdata "github.com/pokt-foundation/portal-http-db/testdata"
@@ -24,10 +25,10 @@ func NewTestCache(t *testing.T) *Cache {
 
 	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
-	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Accounts, nil)
-	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.GigastakeApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(testdata.Chains, nil)
+	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
+	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps, nil)
+	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps, nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains, nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users[types.UserID("usertest")], nil)
 
@@ -49,6 +50,7 @@ func Test_SetCache(t *testing.T) {
 	tests := []struct {
 		name             string
 		actual, expected interface{}
+		emptyPortalApps  types.AccountID
 	}{
 		{
 			name:     "Should return a user for a given provider user ID",
@@ -63,21 +65,44 @@ func Test_SetCache(t *testing.T) {
 		{
 			name:     "Should return all accounts",
 			actual:   phdtestdata.AccountsToMap(cache.GetAccounts(Options{})),
-			expected: testdata.Accounts,
+			expected: phdtestdata.ModifiedAccountToTest(),
 		},
 		{
 			name:     "Should return account by ID",
-			actual:   cache.GetAccount("account_1"),
+			actual:   cache.GetUserAccount("account_1", "user_1", Options{}),
 			expected: *testdata.Accounts["account_1"],
 		},
 		{
-			name:   "Should return accounts by user ID",
-			actual: phdtestdata.AccountsToMap(cache.GetAccountsByUserID("user_4", Options{})),
+			name:   "Should return accounts by user ID where accepted param not provided",
+			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{})),
 			expected: map[types.AccountID]*types.Account{
 				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
 				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
 				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
 			},
+		},
+		{
+			name: "Should return accounts by user ID where accepted = true",
+			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
+				Accepted: dbclient.BoolPtr(true),
+			})),
+			expected: map[types.AccountID]*types.Account{
+				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
+				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
+				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
+			},
+		},
+		{
+			name: "Should return accounts by user ID where accepted = false",
+			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
+				Accepted: dbclient.BoolPtr(false),
+			})),
+			expected: map[types.AccountID]*types.Account{
+				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
+				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
+				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
+			},
+			emptyPortalApps: "account_2",
 		},
 		{
 			name:     "Should return portal app by ID",
@@ -139,6 +164,9 @@ func Test_SetCache(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
+			if test.emptyPortalApps != "" {
+				test.expected.(map[types.AccountID]*types.Account)[test.emptyPortalApps].PortalApps = map[types.PortalAppID]*types.PortalApp{}
+			}
 			c.Equal(test.expected, test.actual)
 		})
 	}
@@ -205,35 +233,35 @@ func TestCache_SetCache_Failure(t *testing.T) {
 			case "ReadAccounts":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
+				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadPortalApps":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadChains":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
-				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: true}).Return(nil, test.err)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadGigastakeApps":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
-				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
 
 			case "ReadBlockedContracts":
 				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
-				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.AccountID]*types.Account{}, nil)
-				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
-				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.RelayChainID]*types.Chain{}, nil)
-				readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: true}).Return(map[types.GigastakeAppID]*types.GigastakeApp{}, nil)
+				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
+				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
+				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.RelayChainID]*types.Chain{}, nil)
+				readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.GigastakeAppID]*types.GigastakeApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx).Return(types.GlobalBlockedContracts{}, test.err)
 			}
 
@@ -315,12 +343,12 @@ func Test_upsertAccountUser(t *testing.T) {
 			testAccountUser.AccountID = test.accountID
 			cache.upsertAccountUser(testAccountUser)
 
-			account := cache.GetAccount(test.accountID)
+			account := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{})
 			accountUser, ok := account.Users[test.accountUser.UserID]
 			c.True(ok, "AccountUserAccess should be present in account Users map")
 			c.Equal(test.accountUser, accountUser, "AccountUserAccess should be added or updated in the cache")
 
-			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
 			var accepted bool
@@ -346,6 +374,7 @@ func Test_upsertAccount(t *testing.T) {
 	tests := []struct {
 		name         string
 		account      types.Account
+		userID       types.UserID
 		accountUsers AccountsForUser
 		pendingUsers map[types.AccountID][]types.AccountUserAccess
 	}{
@@ -373,6 +402,7 @@ func Test_upsertAccount(t *testing.T) {
 				CreatedAt:              testdata.MockTimestamp,
 				UpdatedAt:              testdata.MockTimestamp,
 			},
+			userID: "user_1",
 		},
 		{
 			name: "Should update an existing account when pending users found in cache",
@@ -396,6 +426,7 @@ func Test_upsertAccount(t *testing.T) {
 				CreatedAt:              testdata.MockTimestamp,
 				UpdatedAt:              testdata.MockTimestamp,
 			},
+			userID: "user_1",
 			pendingUsers: map[types.AccountID][]types.AccountUserAccess{
 				"account_1": {testdata.AccountUserAccess[7], testdata.AccountUserAccess[3]},
 			},
@@ -417,6 +448,7 @@ func Test_upsertAccount(t *testing.T) {
 				Integrations: types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
 				Deleted:      true,
 			},
+			userID: "user_3",
 		},
 	}
 
@@ -433,16 +465,16 @@ func Test_upsertAccount(t *testing.T) {
 				for _, pending := range pendingUsers {
 					for _, userPending := range pending {
 						userPending.PortalAppRoles["test_app_1"] = types.RoleMember
+						userPending.PortalAppsAccepted["test_app_1"] = true
 					}
 				}
 				cache.pendingAccountUserAccess = pendingUsers
-
 			}
 
 			// Upsert account
 			cache.upsertAccount(test.account)
 			if test.account.Deleted {
-				c.Empty(cache.GetAccount(accountID), "Account should be removed from cache")
+				c.Empty(cache.GetUserAccount(accountID, test.userID, Options{}), "Account should be removed from cache")
 			} else {
 				if len(test.pendingUsers) > 0 {
 					for _, user := range test.pendingUsers[test.account.ID] {
@@ -451,7 +483,7 @@ func Test_upsertAccount(t *testing.T) {
 				}
 
 				test.account.Plan = cache.plans[test.account.PlanType]
-				c.Equal(test.account, cache.GetAccount(test.account.ID))
+				c.Equal(test.account, cache.GetUserAccount(test.account.ID, test.userID, Options{}), "Account should be present in cache and updated")
 
 				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
 				if test.account.Deleted {
@@ -461,15 +493,28 @@ func Test_upsertAccount(t *testing.T) {
 				}
 
 				for _, user := range test.account.Users {
-					accountsForUser := cache.GetAccountsByUserID(user.UserID, Options{})
+					accountsForUser := cache.GetUserAccounts(user.UserID, Options{
+						Accepted: dbclient.BoolPtr(true),
+					})
 
 					accountInUserAccounts := phdtestdata.FindAccountInAccounts(accountsForUser, accountID)
 
 					if test.account.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {
-						c.True(accountInUserAccounts, "Account should be present in accountsByUserID map")
-						c.Equal(test.account, phdtestdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+						accepted := false
+						for _, portalAppAccepted := range user.PortalAppsAccepted {
+							if portalAppAccepted {
+								accepted = true
+								break
+							}
+						}
+						if accepted {
+							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.UserID, accountID)
+							c.Equal(test.account, phdtestdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+						} else {
+							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
+						}
 					}
 				}
 			}
@@ -504,10 +549,10 @@ func Test_deleteAccountUser(t *testing.T) {
 			cache := NewTestCache(t)
 
 			if test.existingAccount {
-				_, ok := cache.GetAccount(test.accountID).Users[test.accountUser.UserID]
+				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{}).Users[test.accountUser.UserID]
 				c.True(ok, "AccountUserAccess should be found in account Users map before deletion")
 
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID, Options{}), test.accountID)
+				accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
 				user := cache.GetUserByID(test.accountUser.UserID)
@@ -522,12 +567,12 @@ func Test_deleteAccountUser(t *testing.T) {
 			testAccountUser.AccountID = test.accountID
 			cache.deleteAccountUser(testAccountUser)
 
-			account := cache.GetAccount(test.accountID)
+			account := cache.GetUserAccount(test.accountID, testAccountUser.UserID, Options{})
 
 			_, ok := account.Users[test.accountUser.UserID]
 			c.False(ok, "AccountUserAccess should be deleted from account Users map")
 
-			accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccountsByUserID(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
 			user := cache.GetUserByID(test.accountUser.UserID)
@@ -1639,7 +1684,7 @@ func Test_upsertUser(t *testing.T) {
 			c.Equal(test.expectedUser, user)
 
 			if test.pendingAccounts {
-				accounts := cache.GetAccountsByUserID(test.user.ID, Options{})
+				accounts := cache.GetUserAccounts(test.user.ID, Options{})
 				for _, account := range accounts {
 					c.NotEmpty(account.Users[test.user.ID])
 				}

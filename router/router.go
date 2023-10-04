@@ -125,7 +125,6 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/middleware/portal_app", rt.getPortalAppsForMiddleware).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v2/account", rt.getAccounts).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccountByID).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.createAccountIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.updateAccountIntegration).Methods(http.MethodPut)
@@ -140,7 +139,8 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/user", rt.updateUser).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/user/{userID}", rt.getPortalUser).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/portal_app", rt.getPortalAppsByUser).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getAccountsByUser).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.getUserAccounts).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/user/{userID}/account/{id}", rt.getUserAccount).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/user/{userID}/account", rt.createAccount).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/user/{userID}", rt.deleteUser).Methods(http.MethodDelete)
 
@@ -680,29 +680,12 @@ func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, accounts)
 }
 
-// GET /v2/account/{id} - Get one Account by account ID.
-func (rt *Router) getAccountByID(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	accountID := types.AccountID(vars["id"])
-	if accountID == "" {
-		rt.handleError(w, "getAccountByID", http.StatusBadRequest, fmt.Errorf("account ID must be provided"))
-	}
-
-	account := rt.cache.GetAccount(accountID)
-	if account.ID == "" {
-		rt.handleError(w, "getAccountByID", http.StatusNotFound, errAccountNotFound)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, account)
-}
-
-// GET /v2/{userID}/account - Fetches all accounts for a given user ID.
-func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
+// GET /v2/{userID}/account - Get all user accounts by user ID.
+func (rt *Router) getUserAccounts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	userID := types.UserID(vars["userID"])
 	if userID == "" {
-		rt.handleError(w, "getAccountsByUser", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
+		rt.handleError(w, "getUserAccounts", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
 	}
 
 	queryParams := map[queryParam]queryParamDetail{
@@ -712,18 +695,50 @@ func (rt *Router) getAccountsByUser(w http.ResponseWriter, r *http.Request) {
 
 	options, err := paramProcessor(r.URL, queryParams)
 	if err != nil {
-		rt.handleError(w, "getAccountsByUser", http.StatusBadRequest, err)
+		rt.handleError(w, "getUserAccounts", http.StatusBadRequest, err)
 		return
 	}
 
-	accounts := rt.cache.GetAccountsByUserID(userID, options)
+	accounts := rt.cache.GetUserAccounts(userID, options)
 
 	if len(accounts) == 0 {
-		rt.handleError(w, "getAccountsByUser", http.StatusNotFound, errNoAccountsFoundForUserID)
+		rt.handleError(w, "getUserAccounts", http.StatusNotFound, errNoAccountsFoundForUserID)
 		return
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, accounts)
+}
+
+// GET /v2/user/{userID}/account/{id} - Get one user account by account ID.
+func (rt *Router) getUserAccount(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	userID := types.UserID(vars["userID"])
+	if userID == "" {
+		rt.handleError(w, "getUserAccount", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
+	}
+	accountID := types.AccountID(vars["id"])
+	if accountID == "" {
+		rt.handleError(w, "getUserAccount", http.StatusBadRequest, fmt.Errorf("account ID must be provided"))
+	}
+
+	queryParams := map[queryParam]queryParamDetail{
+		accountParams.roleNameFilters: {required: false},
+		accountParams.accepted:        {required: false},
+	}
+
+	options, err := paramProcessor(r.URL, queryParams)
+	if err != nil {
+		rt.handleError(w, "getUserAccount", http.StatusBadRequest, err)
+		return
+	}
+
+	account := rt.cache.GetUserAccount(accountID, userID, options)
+	if account.ID == "" {
+		rt.handleError(w, "getUserAccount", http.StatusNotFound, errAccountNotFound)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, account)
 }
 
 // POST /v2/{userID}/account - Creates an Account in the database for a single user.
@@ -888,15 +903,8 @@ func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) 
 	}
 	defer r.Body.Close()
 
-	if updateUser.RoleName == types.RoleOwner {
-		fmt.Println("updateAccountUserRole CALLED")
-	}
-
 	err = rt.writer.SetAccountUserRole(r.Context(), updateUser, time.Now())
 	if err != nil {
-		if updateUser.RoleName == types.RoleOwner {
-			fmt.Println("updateAccountUserRole ERROR", err)
-		}
 		rt.handleError(w, "updateAccountUserRole", http.StatusInternalServerError, err)
 		return
 	}
@@ -921,7 +929,15 @@ func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "accepted"})
+	var status string
+	switch acceptUser.DeclinedInvite {
+	case true:
+		status = "declined"
+	default:
+		status = "accepted"
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": status})
 }
 
 // PUT /v2/account/user/remove - Remove an AccountUserAccess.

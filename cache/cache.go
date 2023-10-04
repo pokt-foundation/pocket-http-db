@@ -228,11 +228,11 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 	if err != nil {
 		return appsData{}, fmt.Errorf("ReadPlans - %w", err)
 	}
-	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{IncludeDeleted: true})
+	accounts, err := c.reader.ReadAccounts(ctx, types.DriverOptions{IncludeDeleted: false})
 	if err != nil {
 		return appsData{}, fmt.Errorf("ReadAccounts - %w", err)
 	}
-	portalApps, err := c.reader.ReadPortalApps(ctx, types.DriverOptions{IncludeDeleted: true})
+	portalApps, err := c.reader.ReadPortalApps(ctx, types.DriverOptions{IncludeDeleted: false})
 	if err != nil {
 		return appsData{}, fmt.Errorf("ReadPortalApps - %w", err)
 	}
@@ -253,6 +253,10 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 
 	// Set pointers to Account PortalApps and create map of PortalApps by ProtocolAppID
 	for portalAppID, portalApp := range portalApps {
+		if portalApp.Deleted {
+			continue
+		}
+
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			// Set users for the Portal App
 			portalAppUsers := make(map[types.UserID]*types.AccountUserAccess)
@@ -281,6 +285,10 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 	// Create map of Accounts by UserID for all Account team members
 	accountsByUserID := make(map[types.UserID]AccountsForUser)
 	for _, account := range accounts {
+		if account.Deleted {
+			continue
+		}
+
 		for _, user := range account.Users {
 			if _, ok := accountsByUserID[user.UserID]; !ok {
 				accountsByUserID[user.UserID] = make(map[types.AccountID]*types.Account)
@@ -301,11 +309,11 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 // fetchChainsData reads Chains and GigastakeApps from the database and returns them.
 // It also sets pointers to GigastakeApps on Chains.
 func (c *Cache) fetchChainsData(ctx context.Context) (chainsData, error) {
-	chains, err := c.reader.ReadChains(ctx, types.DriverOptions{IncludeDeleted: true})
+	chains, err := c.reader.ReadChains(ctx, types.DriverOptions{IncludeDeleted: false})
 	if err != nil {
 		return chainsData{}, fmt.Errorf("ReadChains - %w", err)
 	}
-	gigastakeApps, err := c.reader.ReadGigastakeApps(ctx, types.DriverOptions{IncludeDeleted: true})
+	gigastakeApps, err := c.reader.ReadGigastakeApps(ctx, types.DriverOptions{IncludeDeleted: false})
 	if err != nil {
 		return chainsData{}, fmt.Errorf("ReadGigastakeApps - %w", err)
 	}
@@ -411,19 +419,6 @@ func (c *Cache) deleteGlobalBlockedContract(blockedContract types.BlockedContrac
 
 /* ---------- Accounts ---------- */
 
-// GetAccount returns Account by accountID
-func (c *Cache) GetAccount(accountID types.AccountID) types.Account {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	account, ok := c.accounts[accountID]
-	if !ok {
-		return types.Account{}
-	}
-
-	return *account
-}
-
 // GetAccounts returns all Accounts in cache
 // May select whether to include deleted Accounts. Default: false
 func (c *Cache) GetAccounts(options Options) []types.Account {
@@ -434,90 +429,190 @@ func (c *Cache) GetAccounts(options Options) []types.Account {
 
 	for _, account := range c.accounts {
 		if options.IncludeDeleted || !account.Deleted {
-			accountsToReturn = append(accountsToReturn, *account)
+			accountCopy := *account
+			if len(accountCopy.PortalApps) == 0 {
+				accountCopy.PortalApps = map[types.PortalAppID]*types.PortalApp{}
+			}
+			accountsToReturn = append(accountsToReturn, accountCopy)
 		}
 	}
 
 	return accountsToReturn
 }
 
-// GetAccountsByUserID returns all Accounts for a given user. PortalApps for the
-// Account will be filtered to only include apps the user has permissions for.
-func (c *Cache) GetAccountsByUserID(userID types.UserID, options Options) []types.Account {
+// GetUserAccount returns one Account by accountID with portal apps filtered by user ID
+func (c *Cache) GetUserAccount(accountID types.AccountID, userID types.UserID, options Options) types.Account {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	if account, ok := c.accounts[accountID]; ok {
+		// TODO remove once cache adapters removed
+		if userID == "" {
+			return *account
+		}
+
+		if userCanReadAccount(account, userID, options) {
+			// filter portal apps by role name and accepted status
+			return filterAccountPortalApps(account, userID, options)
+		}
+	}
+
+	return types.Account{}
+}
+
+// GetUserAccounts returns all Accounts for a given user with portal apps filtered by user ID
+func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Account {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
-		if account.Deleted {
-			continue
-		}
-
-		userAccess, ok := account.Users[userID]
-		if !ok {
-			continue
-		}
-
-		accountCopy := *account // Make a shallow copy of the account
-		accountCopy.PortalApps = nil
-
-		var filterRoles []types.RoleName
-		if len(options.FilterPortalApps) > 0 {
-			// If filter params provided then filter by those params
-			filterRoles = options.FilterPortalApps
-		} else {
-			// If filter params not provided then include any portal apps that user has any role for
-			filterRoles = []types.RoleName{types.RoleOwner, types.RoleAdmin, types.RoleMember}
-		}
-
-		var accountPortalApps []types.PortalApp
-		switch {
-		case options.Accepted != nil:
-			accountPortalApps = account.GetAcceptedPortalApps(userID, *options.Accepted)
-		default:
-			accountPortalApps = account.GetPortalApps()
-		}
-
-		filteredPortalApps := filterPortalAppsByRoleName(accountPortalApps, userAccess.PortalAppRoles, filterRoles, options)
-
-		if len(filteredPortalApps) > 0 {
-			accountCopy.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
-			for _, app := range filteredPortalApps {
-				accountCopy.PortalApps[app.ID] = &app
+		if userCanReadAccount(account, userID, options) {
+			// filter portal apps by role name and accepted status
+			accountCopy := filterAccountPortalApps(account, userID, options)
+			if accountCopy.ID == "" {
+				continue
 			}
+
+			accountsToReturn = append(accountsToReturn, accountCopy)
 		}
 
-		accountsToReturn = append(accountsToReturn, accountCopy)
 	}
 
 	return accountsToReturn
 }
 
-// filterPortalAppsByRoleName filters the portal apps based on the provided role names
-func filterPortalAppsByRoleName(
-	portalApps []types.PortalApp,
-	userRoles map[types.PortalAppID]types.RoleName,
-	filters []types.RoleName,
-	options Options,
-) []types.PortalApp {
-	filteredPortalApps := []types.PortalApp{}
+// userCanReadAccount returns a boolean indicating if the user can read the account with the given query params
+func userCanReadAccount(a *types.Account, userID types.UserID, options Options) bool {
+	// if accepted = false include all accounts, which will have their portal apps filtered by accepted
+	if options.Accepted != nil && !*options.Accepted {
+		return true
+	}
 
-	for _, portalApp := range portalApps {
-		if portalApp.Deleted {
-			continue
+	// if owner of account then return true
+	ownerID, _ := a.GetOwnerID()
+	if userID == ownerID {
+		return true
+	}
+
+	// if role filters param set then filter accounts by whether user has access
+	if len(options.FilterPortalApps) > 0 && !userHasAccountPerms(a, userID, options.FilterPortalApps) {
+		return false
+	}
+
+	// if accepted param set then filter accounts by whether user has accepted
+	return userAcceptedAccountInvite(a, userID)
+}
+
+// userAcceptedAccountInvite returns a boolean indicating if the user
+// has accepted an invitation to any PortalApp in the Account
+func userAcceptedAccountInvite(a *types.Account, userID types.UserID) bool {
+	if user, ok := a.Users[userID]; ok {
+		acceptedInvite := false
+
+		for _, portalAppAccepted := range user.PortalAppsAccepted {
+			if portalAppAccepted {
+				acceptedInvite = true
+				break
+			}
 		}
 
-		if userRole, ok := userRoles[portalApp.ID]; ok {
-			for _, filter := range filters {
+		return acceptedInvite
+	}
+
+	return false
+}
+
+// userHasAccountPerms returns a boolean indicating if the user
+// has any account permissions for any PortalApps for the account
+func userHasAccountPerms(a *types.Account, userID types.UserID, filterRoles []types.RoleName) bool {
+	if user, ok := a.Users[userID]; ok {
+		hasPermissions := false
+
+		for _, portalAppRole := range user.PortalAppRoles {
+			for _, filter := range filterRoles {
+				if filter == portalAppRole {
+					hasPermissions = true
+					break
+				}
+			}
+		}
+
+		return hasPermissions
+	}
+
+	return false
+}
+
+// filterAccountPortalApps filters PortalApps based on the provided RoleNames and Accepted status
+func filterAccountPortalApps(account *types.Account, userID types.UserID, options Options) types.Account {
+	userAccess, ok := account.Users[userID]
+	if !ok {
+		return types.Account{}
+	}
+
+	accountCopy := *account
+
+	// filter portal apps by user's role and accepted status
+	accountCopy.PortalApps = filterAccountPortalAppsByRole(accountCopy.PortalApps, userAccess, userID, options)
+
+	// filter portal apps by accepted status
+	if options.Accepted != nil {
+		accountCopy.PortalApps = filterAccountPortalAppsByAccepted(accountCopy.PortalApps, userAccess, userID, options)
+	}
+
+	return accountCopy
+}
+
+// filterAccountPortalAppsByRole filters PortalApps based on the provided RoleNames
+func filterAccountPortalAppsByRole(
+	accountPortalApps map[types.PortalAppID]*types.PortalApp,
+	userAccess types.AccountUserAccess,
+	userID types.UserID,
+	options Options,
+) map[types.PortalAppID]*types.PortalApp {
+	var filterRoles []types.RoleName
+	if len(options.FilterPortalApps) > 0 {
+		// If filter params provided then filter by those params
+		filterRoles = options.FilterPortalApps
+	} else {
+		// If filter params not provided then include any portal apps that user has any role for
+		filterRoles = []types.RoleName{types.RoleOwner, types.RoleAdmin, types.RoleMember}
+	}
+
+	filteredPortalApps := make(map[types.PortalAppID]*types.PortalApp)
+	for _, portalApp := range accountPortalApps {
+		if userRole, ok := userAccess.PortalAppRoles[portalApp.ID]; ok {
+			for _, filter := range filterRoles {
 				if filter == userRole {
-					filteredPortalApps = append(filteredPortalApps, portalApp)
+					filteredPortalApps[portalApp.ID] = portalApp
 				}
 			}
 		}
 	}
 
 	return filteredPortalApps
+}
+
+// filterAccountPortalAppsByAccepted filters the PortalAppss based on the Accepted param
+func filterAccountPortalAppsByAccepted(
+	accountPortalApps map[types.PortalAppID]*types.PortalApp,
+	userAccess types.AccountUserAccess,
+	userID types.UserID,
+	options Options,
+) map[types.PortalAppID]*types.PortalApp {
+	portalApps := make(map[types.PortalAppID]*types.PortalApp)
+
+	for _, portalApp := range accountPortalApps {
+		portalAppAccepted, ok := userAccess.PortalAppsAccepted[portalApp.ID]
+
+		if ok && portalAppAccepted == *options.Accepted {
+			portalApps[portalApp.ID] = portalApp
+		}
+	}
+
+	return portalApps
 }
 
 // upsertAccount adds, updates or deletes Account in cache
@@ -682,7 +777,6 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 
 				portalApp.Users[accountUser.UserID] = &accountUser
 			}
-
 		}
 
 		account.Users[accountUser.UserID] = accountUser
@@ -763,7 +857,14 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 
 	// Remove from Accounts map
 	if account, ok := c.accounts[accountID]; ok {
-		delete(account.Users, userID)
+		if accountUser, ok := account.Users[userID]; ok {
+			delete(accountUser.PortalAppRoles, incomingPortalAppID)
+			delete(accountUser.PortalAppsAccepted, incomingPortalAppID)
+
+			if len(accountUser.PortalAppRoles) == 0 && len(accountUser.PortalAppsAccepted) == 0 {
+				delete(account.Users, userID)
+			}
+		}
 
 		if accountsForUser, ok := c.accountsByUserID[accountUser.UserID]; ok {
 			delete(accountsForUser, accountID)
@@ -852,7 +953,7 @@ func (c *Cache) GetPortalAppsByUserID(userID types.UserID, options Options) []ty
 
 	var portalAppsToReturn []types.PortalApp
 
-	for _, account := range c.GetAccountsByUserID(userID, options) {
+	for _, account := range c.GetUserAccounts(userID, options) {
 		var portalApps []types.PortalApp
 
 		for _, portalApp := range account.PortalApps {
@@ -918,6 +1019,17 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		delete(c.pendingWhitelists, portalApp.ID)
 	}
 
+	if pendingAccountUserAccess, ok := c.pendingAccountUserAccess[portalApp.AccountID]; ok {
+		for _, accountUser := range pendingAccountUserAccess {
+			if accountUser.Owner {
+				if portalApp.Users == nil {
+					portalApp.Users = make(map[types.UserID]*types.AccountUserAccess)
+				}
+				portalApp.Users[accountUser.UserID] = &accountUser
+			}
+		}
+	}
+
 	c.portalApps[portalApp.ID] = &portalApp
 	for aatID := range portalApp.AATs {
 		c.portalAppsByProtocolAppID[aatID] = &portalApp
@@ -937,6 +1049,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 					owner.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
 				}
 				owner.PortalAppRoles[portalApp.ID] = types.RoleOwner
+				owner.PortalAppsAccepted[portalApp.ID] = true
 
 				// Add owner to user permissions map
 				if user, ok := c.users[ownerID]; ok {
