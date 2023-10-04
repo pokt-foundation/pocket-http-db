@@ -50,6 +50,7 @@ func Test_SetCache(t *testing.T) {
 	tests := []struct {
 		name             string
 		actual, expected interface{}
+		emptyPortalApps  types.AccountID
 	}{
 		{
 			name:     "Should return a user for a given provider user ID",
@@ -72,13 +73,36 @@ func Test_SetCache(t *testing.T) {
 			expected: *testdata.Accounts["account_1"],
 		},
 		{
-			name:   "Should return accounts by user ID",
+			name:   "Should return accounts by user ID where accepted param not provided",
 			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{})),
 			expected: map[types.AccountID]*types.Account{
 				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
 				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
 				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
 			},
+		},
+		{
+			name: "Should return accounts by user ID where accepted = true",
+			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
+				Accepted: dbclient.BoolPtr(true),
+			})),
+			expected: map[types.AccountID]*types.Account{
+				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
+				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
+				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
+			},
+		},
+		{
+			name: "Should return accounts by user ID where accepted = false",
+			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
+				Accepted: dbclient.BoolPtr(false),
+			})),
+			expected: map[types.AccountID]*types.Account{
+				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
+				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
+				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
+			},
+			emptyPortalApps: "account_2",
 		},
 		{
 			name:     "Should return portal app by ID",
@@ -140,6 +164,9 @@ func Test_SetCache(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
+			if test.emptyPortalApps != "" {
+				test.expected.(map[types.AccountID]*types.Account)[test.emptyPortalApps].PortalApps = map[types.PortalAppID]*types.PortalApp{}
+			}
 			c.Equal(test.expected, test.actual)
 		})
 	}

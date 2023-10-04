@@ -693,8 +693,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
-				name:   "Should get accounts for user_4",
+				name:   "Should get accounts for user_4 with accepted = true",
 				userID: "user_4",
+				options: v2DBClient.AccountOptions{
+					Accepted: v2DBClient.BoolPtr(true),
+				},
 				expectedAccs: map[types.AccountID]*types.Account{
 					"account_2": testdata.Accounts["account_2"],
 					"account_4": testdata.Accounts["account_4"],
@@ -713,6 +716,29 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				portalAppUsers: testdata.PortalAppUsers,
 			},
 			{
+				name:   "Should get accounts for user_4 with accepted = false",
+				userID: "user_4",
+				options: v2DBClient.AccountOptions{
+					Accepted: v2DBClient.BoolPtr(false),
+				},
+				expectedAccs: map[types.AccountID]*types.Account{
+					"account_2": testdata.Accounts["account_2"],
+					"account_4": testdata.Accounts["account_4"],
+					"account_5": testdata.Accounts["account_5"],
+				},
+				plans: map[types.AccountID]*types.Plan{
+					"account_2": testdata.PayPlans["pro_plan"],
+					"account_4": testdata.PayPlans["enterprise_plan"],
+					"account_5": testdata.PayPlans["basic_plan"],
+				},
+				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
+					"account_2": {},
+					"account_4": {},
+					"account_5": {},
+				},
+				portalAppUsers: testdata.PortalAppUsers,
+			},
+			{
 				name:   "Should fail to get accounts for user_2 where user_2 is OWNER (user_2 owns no accounts)",
 				userID: "user_2",
 				options: v2DBClient.AccountOptions{
@@ -723,18 +749,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				expectedAccs:   map[types.AccountID]*types.Account{},
 				plans:          map[types.AccountID]*types.Plan{},
 				portalApps:     map[types.AccountID]map[types.PortalAppID]*types.PortalApp{},
-				portalAppUsers: testdata.PortalAppUsers,
-				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getUserAccounts: no accounts were found for user ID"),
-			},
-			{
-				name:   "Should fail to get accounts for user_2 where user_2 has not signed up yet (should not return invited accounts)",
-				userID: "user_2",
-				options: v2DBClient.AccountOptions{
-					Accepted: v2DBClient.BoolPtr(false),
-				},
-				expectedAccs:   map[types.AccountID]*types.Account{},
-				plans:          map[types.AccountID]*types.Plan{},
-				portalApps:     nil,
 				portalAppUsers: testdata.PortalAppUsers,
 				err:            fmt.Errorf("Response not OK. 404 Not Found: error in getUserAccounts: no accounts were found for user ID"),
 			},

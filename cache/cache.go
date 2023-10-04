@@ -485,22 +485,24 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 
 // userCanReadAccount returns a boolean indicating if the user can read the account with the given query params
 func userCanReadAccount(a *types.Account, userID types.UserID, options Options) bool {
-	ownerID, _ := a.GetOwnerID()
-	if userID != ownerID {
-		// if accepted param set then filter accounts by accepted status
-		if options.Accepted != nil {
-			acceptedInvite := userAcceptedAccountInvite(a, userID)
-			if acceptedInvite != *options.Accepted {
-				return false
-			}
-		}
-		// if role filters param set then filter accounts by whether user has access
-		if len(options.FilterPortalApps) > 0 && !userHasAccountPerms(a, userID, options.FilterPortalApps) {
-			return false
-		}
+	// if accepted = false include all accounts, which will have their portal apps filtered by accepted
+	if options.Accepted != nil && !*options.Accepted {
+		return true
 	}
 
-	return true
+	// if owner of account then return true
+	ownerID, _ := a.GetOwnerID()
+	if userID == ownerID {
+		return true
+	}
+
+	// if role filters param set then filter accounts by whether user has access
+	if len(options.FilterPortalApps) > 0 && !userHasAccountPerms(a, userID, options.FilterPortalApps) {
+		return false
+	}
+
+	// if accepted param set then filter accounts by whether user has accepted
+	return userAcceptedAccountInvite(a, userID)
 }
 
 // userAcceptedAccountInvite returns a boolean indicating if the user
@@ -775,7 +777,6 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 
 				portalApp.Users[accountUser.UserID] = &accountUser
 			}
-
 		}
 
 		account.Users[accountUser.UserID] = accountUser
@@ -1016,6 +1017,17 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 			portalApp.AddWhitelist(whitelist)
 		}
 		delete(c.pendingWhitelists, portalApp.ID)
+	}
+
+	if pendingAccountUserAccess, ok := c.pendingAccountUserAccess[portalApp.AccountID]; ok {
+		for _, accountUser := range pendingAccountUserAccess {
+			if accountUser.Owner {
+				if portalApp.Users == nil {
+					portalApp.Users = make(map[types.UserID]*types.AccountUserAccess)
+				}
+				portalApp.Users[accountUser.UserID] = &accountUser
+			}
+		}
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
