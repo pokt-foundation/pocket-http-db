@@ -8,11 +8,7 @@ require (
 	github.com/pokt-foundation/db-client v1.11.1
 	github.com/pokt-foundation/db-client/v2 v2.14.2
 	github.com/pokt-foundation/portal-db v1.11.0
-<<<<<<< HEAD
 	github.com/pokt-foundation/portal-db/v2 v2.14.1
-=======
-	github.com/pokt-foundation/portal-db/v2 v2.13.3
->>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 	github.com/pokt-foundation/utils-go v0.9.0
 	github.com/stretchr/testify v1.8.1
 )
