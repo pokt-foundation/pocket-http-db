@@ -308,6 +308,7 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should add AAT to PortalApp in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			portalApp: &types.PortalApp{
+				ID: "test_app_3",
 				AATs: map[types.ProtocolAppID]types.AAT{
 					"test_protocol_app_3": {
 						ID:              "test_protocol_app_3",
@@ -325,6 +326,7 @@ func Test_parseAATNotification(t *testing.T) {
 			name:            "Should update AAT in PortalApp in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			portalApp: &types.PortalApp{
+				ID: "test_app_3",
 				AATs: map[types.ProtocolAppID]types.AAT{
 					"test_protocol_app_3": {
 						ID:              "test_protocol_app_3",

@@ -541,12 +541,16 @@ func TestRouter_getPortalAppByID(t *testing.T) {
 		portalAppID       types.PortalAppID
 		expectedStatus    int
 		expectedPortalApp types.PortalApp
+		expectedUsers     map[types.UserID]types.AccountUserAccess
+		expectedAppUsers  map[types.UserID]types.PortalAppUser
 	}{
 		{
 			name:              "Should fetch a single portal application",
 			portalAppID:       "test_app_1",
 			expectedStatus:    http.StatusOK,
 			expectedPortalApp: *testdata.PortalApps["test_app_1"],
+			expectedUsers:     testdata.PortalAppUsers["test_app_1"],
+			expectedAppUsers:  testdata.PortalAppUsersMap["test_app_1"],
 		},
 	}
 
@@ -565,6 +569,9 @@ func TestRouter_getPortalAppByID(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
+			test.expectedPortalApp.Users = test.expectedUsers
+			test.expectedPortalApp.AppUsers = test.expectedAppUsers
+
 			var portalAppResp types.PortalApp
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
 			c.NoError(err)
@@ -578,11 +585,15 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 		name               string
 		expectedStatus     int
 		expectedPortalApps map[types.PortalAppID]*types.PortalApp
+		expectedUsers      map[types.PortalAppID]map[types.UserID]types.AccountUserAccess
+		expectedAppUsers   map[types.PortalAppID]map[types.UserID]types.PortalAppUser
 	}{
 		{
 			name:               "Should fetch all portal applications",
 			expectedStatus:     http.StatusOK,
 			expectedPortalApps: testdata.PortalApps,
+			expectedUsers:      testdata.PortalAppUsers,
+			expectedAppUsers:   testdata.PortalAppUsersMap,
 		},
 	}
 
@@ -600,6 +611,11 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
+
+			for _, portalApp := range test.expectedPortalApps {
+				portalApp.Users = test.expectedUsers[portalApp.ID]
+				portalApp.AppUsers = test.expectedAppUsers[portalApp.ID]
+			}
 
 			var portalAppsResp []types.PortalApp
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
@@ -656,7 +672,7 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 		roleFilter         types.RoleName
 		expectedStatus     int
 		expectedPortalApps []types.PortalApp
-		portalAppUsers     map[types.PortalAppID]map[types.UserID]*types.AccountUserAccess
+		portalAppUsers     map[types.PortalAppID]map[types.UserID]types.AccountUserAccess
 	}{
 		// {
 		// 	name:               "Should fetch all portal applications for a user",
@@ -727,9 +743,9 @@ func TestRouter_createNewPortalApp(t *testing.T) {
 	}{
 		{
 			name:              "Should create a new PortalApp",
-			portalAppInput:    *testdata.TestCreatePortalApp,
+			portalAppInput:    *testdata.TestCreatePortalAppByOwner,
 			expectedStatus:    http.StatusOK,
-			expectedPortalApp: testdata.TestCreatePortalApp,
+			expectedPortalApp: testdata.TestCreatePortalAppByOwner,
 		},
 	}
 

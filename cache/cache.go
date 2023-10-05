@@ -256,6 +256,8 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 		if portalApp.Deleted {
 			continue
 		}
+<<<<<<< HEAD
+=======
 
 		if account, ok := accounts[portalApp.AccountID]; ok {
 			// Set users for the Portal App
@@ -269,7 +271,9 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 				}
 			}
 			portalApp.Users = portalAppUsers
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 
+		if account, ok := accounts[portalApp.AccountID]; ok {
 			if account.PortalApps == nil {
 				account.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
 			}
@@ -433,6 +437,12 @@ func (c *Cache) GetAccounts(options Options) []types.Account {
 			if len(accountCopy.PortalApps) == 0 {
 				accountCopy.PortalApps = map[types.PortalAppID]*types.PortalApp{}
 			}
+<<<<<<< HEAD
+
+			accountCopy.AssignPortalAppUsers()
+
+=======
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 			accountsToReturn = append(accountsToReturn, accountCopy)
 		}
 	}
@@ -452,6 +462,11 @@ func (c *Cache) GetUserAccount(accountID types.AccountID, userID types.UserID, o
 		}
 
 		if userCanReadAccount(account, userID, options) {
+<<<<<<< HEAD
+			account.AssignPortalAppUsers()
+
+=======
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 			// filter portal apps by role name and accepted status
 			return filterAccountPortalApps(account, userID, options)
 		}
@@ -475,6 +490,11 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 				continue
 			}
 
+<<<<<<< HEAD
+			// assign account users to all portal apps attached to the account
+			accountCopy.AssignPortalAppUsers()
+=======
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 			accountsToReturn = append(accountsToReturn, accountCopy)
 		}
 
@@ -648,17 +668,9 @@ func (c *Cache) upsertAccount(account types.Account) {
 			}
 			if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
 				accountUser.Email = existingAccountUser.Email
-				accountUser.IconURL = existingAccountUser.IconURL
-				accountUser.UpdatesMarketing = existingAccountUser.UpdatesMarketing
-				accountUser.UpdatesProduct = existingAccountUser.UpdatesProduct
-				accountUser.BetaTester = existingAccountUser.BetaTester
 			}
 			if user, ok := c.pendingUsers[accountUser.UserID]; ok {
 				accountUser.Email = user.Email
-				accountUser.IconURL = user.IconURL
-				accountUser.UpdatesMarketing = user.UpdatesMarketing
-				accountUser.UpdatesProduct = user.UpdatesProduct
-				accountUser.BetaTester = user.BetaTester
 				delete(c.pendingUsers, accountUser.UserID)
 			}
 
@@ -730,10 +742,6 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 
 	if user, ok := c.pendingUsers[accountUser.UserID]; ok {
 		accountUser.Email = user.Email
-		accountUser.IconURL = user.IconURL
-		accountUser.UpdatesMarketing = user.UpdatesMarketing
-		accountUser.UpdatesProduct = user.UpdatesProduct
-		accountUser.BetaTester = user.BetaTester
 		delete(c.pendingUsers, accountUser.UserID)
 	}
 
@@ -746,14 +754,12 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 		// Set values from existing app to avoid overwriting cache
 		if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
 			accountUser.Email = existingAccountUser.Email
-			accountUser.IconURL = existingAccountUser.IconURL
-			accountUser.UpdatesMarketing = existingAccountUser.UpdatesMarketing
-			accountUser.UpdatesProduct = existingAccountUser.UpdatesProduct
-			accountUser.BetaTester = existingAccountUser.BetaTester
 			accountUser.PortalAppRoles = existingAccountUser.PortalAppRoles
 			accountUser.PortalAppsAccepted = existingAccountUser.PortalAppsAccepted
 		}
 
+<<<<<<< HEAD
+=======
 		switch accountUser.Owner {
 		// If incoming account user is owner, set user for all account's portal apps
 		case true:
@@ -779,6 +785,7 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 			}
 		}
 
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 		account.Users[accountUser.UserID] = accountUser
 		if user, ok := account.Users[accountUser.UserID]; ok {
 			if user.PortalAppRoles == nil {
@@ -889,7 +896,13 @@ func (c *Cache) GetPortalApp(portalAppID types.PortalAppID) types.PortalApp {
 		return types.PortalApp{}
 	}
 
-	return *portalApp
+	portalAppCopy := *portalApp
+
+	if account, ok := c.accounts[portalApp.AccountID]; ok {
+		portalAppCopy.AssignUsers(account)
+	}
+
+	return portalAppCopy
 }
 
 // GetPortalAppByProtocolAppID returns PortalApp from cache by protocolAppID
@@ -902,7 +915,13 @@ func (c *Cache) GetPortalAppByProtocolAppID(protocolAppID types.ProtocolAppID) t
 		return types.PortalApp{}
 	}
 
-	return *portalApp
+	portalAppCopy := *portalApp
+
+	if account, ok := c.accounts[portalApp.AccountID]; ok {
+		portalAppCopy.AssignUsers(account)
+	}
+
+	return portalAppCopy
 }
 
 // GetPortalApps returns all PortalApps in cache
@@ -914,7 +933,13 @@ func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 
 	for _, portalApp := range c.portalApps {
 		if options.IncludeDeleted || !portalApp.Deleted {
-			portalAppsToReturn = append(portalAppsToReturn, *portalApp)
+			portalAppCopy := *portalApp
+
+			if account, ok := c.accounts[portalApp.AccountID]; ok {
+				portalAppCopy.AssignUsers(account)
+			}
+
+			portalAppsToReturn = append(portalAppsToReturn, portalAppCopy)
 		}
 	}
 
@@ -988,6 +1013,13 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 			delete(account.PortalApps, portalApp.ID)
 		}
 
+		for _, account := range c.accounts {
+			for _, user := range account.Users {
+				delete(user.PortalAppRoles, portalApp.ID)
+				delete(user.PortalAppsAccepted, portalApp.ID)
+			}
+		}
+
 		return
 	}
 
@@ -1019,6 +1051,8 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		delete(c.pendingWhitelists, portalApp.ID)
 	}
 
+<<<<<<< HEAD
+=======
 	if pendingAccountUserAccess, ok := c.pendingAccountUserAccess[portalApp.AccountID]; ok {
 		for _, accountUser := range pendingAccountUserAccess {
 			if accountUser.Owner {
@@ -1035,6 +1069,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		c.portalAppsByProtocolAppID[aatID] = &portalApp
 	}
 
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 	if account, ok := c.accounts[portalApp.AccountID]; ok {
 		// Assign new app to account's PortalApps map
 		if account.PortalApps == nil {
@@ -1064,6 +1099,11 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 				}
 			}
 		}
+	}
+
+	c.portalApps[portalApp.ID] = &portalApp
+	for aatID := range portalApp.AATs {
+		c.portalAppsByProtocolAppID[aatID] = &portalApp
 	}
 }
 
@@ -1562,10 +1602,6 @@ func (c *Cache) upsertUser(user types.User) {
 	for accountID, account := range accountsForUser {
 		if accountUser, ok := account.Users[user.ID]; ok {
 			accountUser.Email = user.Email
-			accountUser.IconURL = user.IconURL
-			accountUser.UpdatesMarketing = user.UpdatesMarketing
-			accountUser.UpdatesProduct = user.UpdatesProduct
-			accountUser.BetaTester = user.BetaTester
 			account.Users[user.ID] = accountUser
 			c.accountsByUserID[user.ID][accountID] = account
 		}
