@@ -288,10 +288,8 @@ func Test_upsertAccountUser(t *testing.T) {
 			name:      "Should add a new Accepted user to account and user permissions",
 			accountID: "account_2",
 			accountUser: types.AccountUserAccess{
-				UserID:     "user_1",
-				Email:      "james.holden123@test.com",
-				IconURL:    "https://picsum.photos/200",
-				BetaTester: true,
+				UserID: "user_1",
+				Email:  "james.holden123@test.com",
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
 					"test_app_2": types.RoleMember,
 				},
@@ -304,10 +302,8 @@ func Test_upsertAccountUser(t *testing.T) {
 			name:      "Should add a new not-Accepted user to account",
 			accountID: "account_3",
 			accountUser: types.AccountUserAccess{
-				UserID:     "user_10",
-				Email:      "daenerys.targaryen123@test.com",
-				IconURL:    "https://picsum.photos/200",
-				BetaTester: true,
+				UserID: "user_10",
+				Email:  "daenerys.targaryen123@test.com",
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
 					"test_app_3": types.RoleMember,
 				},
@@ -587,7 +583,7 @@ func Test_deleteAccountUser(t *testing.T) {
 /* ---------- PortalApps ---------- */
 
 func Test_upsertPortalApp(t *testing.T) {
-	testApp := *testdata.TestCreatePortalApp
+	testApp := *testdata.TestCreatePortalAppByOwner
 	testBaseApp := types.PortalApp{
 		ID:        testApp.ID,
 		AccountID: testApp.AccountID,
