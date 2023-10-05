@@ -591,7 +591,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			expectedAccs   map[types.AccountID]*types.Account
 			plans          map[types.AccountID]*types.Plan
 			portalApps     map[types.AccountID]map[types.PortalAppID]*types.PortalApp
+<<<<<<< HEAD
 			portalAppUsers map[types.PortalAppID]map[types.UserID]types.AccountUserAccess
+=======
+			portalAppUsers map[types.PortalAppID]map[types.UserID]*types.AccountUserAccess
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 			err            error
 		}{
 			{
@@ -810,7 +814,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			expectedAcc    *types.Account
 			assignPlan     *types.Plan
 			assignApp      *types.PortalApp
+<<<<<<< HEAD
 			assignAppUsers map[types.UserID]types.AccountUserAccess
+=======
+			assignAppUsers map[types.UserID]*types.AccountUserAccess
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 			err            error
 		}{
 			{
@@ -2114,6 +2122,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							UserID:             "user_1",
 							Email:              "james.holden123@test.com",
 							Owner:              true,
+<<<<<<< HEAD
+=======
+							IconURL:            "https://picsum.photos/200",
+							UpdatesProduct:     true,
+							BetaTester:         true,
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 							PortalAppRoles:     map[types.PortalAppID]types.RoleName{},
 							PortalAppsAccepted: map[types.PortalAppID]bool{},
 						},
@@ -2129,7 +2143,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						LegacyDailyLimit:  100,
 						CreatedAt:         testdata.MockTimestamp,
 					},
+<<<<<<< HEAD
 					PortalApps: map[types.PortalAppID]*types.PortalApp{},
+=======
+					PortalApps: map[v2Types.PortalAppID]*v2Types.PortalApp{},
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 				},
 				expectedPlan: &types.Plan{
 					Type:              types.PayPlanType("developer_plan"),
@@ -2441,6 +2459,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AccountID:          "account_4",
 					UserID:             "user_11",
 					Email:              "bernard.marx@test.com",
+<<<<<<< HEAD
+=======
+					IconURL:            "https://picsum.photos/200",
+					UpdatesProduct:     true,
+					UpdatesMarketing:   true,
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 					PortalAppRoles:     map[types.PortalAppID]types.RoleName{"test_app_1": types.RoleMember},
 					PortalAppsAccepted: map[types.PortalAppID]bool{"test_app_1": false},
 				},
@@ -2803,7 +2827,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			accountID              types.AccountID
 			userID                 types.UserID
 			acceptAccountUserInput types.UpdateAcceptAccountUser
+<<<<<<< HEAD
 			createUser             types.CreateUser
+=======
+			createUser             v2Types.CreateUser
+>>>>>>> 807487a9148e2c17fd6c0d9018a69d66a00f8742
 			expected               *types.AccountUserAccess
 			err                    error
 		}{
@@ -2838,6 +2866,30 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ProviderUserID:   "auth0|rand_althor",
 				},
 				createUser: types.CreateUser{
+					Email:          "rand_althor@test.com",
+					ProviderUserID: "auth0|rand_althor",
+				},
+				expected: &types.AccountUserAccess{
+					AccountID:          "account_3",
+					UserID:             "", // set in test case
+					Email:              "rand_althor@test.com",
+					PortalAppRoles:     map[types.PortalAppID]types.RoleName{"test_app_3": types.RoleMember},
+					PortalAppsAccepted: map[types.PortalAppID]bool{"test_app_3": false},
+				},
+				err: nil,
+			},
+			{
+				name:      "Should delete the AccountUserAccess row if a user declines their invitation",
+				accountID: "account_3",
+				userID:    "user_5", // owner of account; used to fetch account in test
+				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					DeclinedInvite:   true,
+					PortalAppID:      "test_app_3",
+					UserID:           "", // set in test case
+					AuthProviderType: types.AuthTypeAuth0Username,
+					ProviderUserID:   "auth0|rand_althor",
+				},
+				createUser: v2Types.CreateUser{
 					Email:          "rand_althor@test.com",
 					ProviderUserID: "auth0|rand_althor",
 				},
