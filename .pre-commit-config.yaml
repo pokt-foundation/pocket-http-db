@@ -8,7 +8,7 @@ repos:
       - id: trailing-whitespace
       - id: no-commit-to-branch
   - repo: https://github.com/pokt-foundation/backend-precommit-hooks
-    rev: v0.0.5
+    rev: v0.0.10
     hooks:
       - id: go-fmt
       - id: go-imports
