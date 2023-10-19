@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	dbClient "github.com/pokt-foundation/db-client/v2/client"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
+	dbClient "github.com/pokt-foundation/portal-http-db/client"
 	phdtestdata "github.com/pokt-foundation/portal-http-db/testdata"
 	"github.com/stretchr/testify/suite"
 )

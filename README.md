@@ -11,19 +11,33 @@
 </div>
 <br/>
 
-# Development
+# PHD Client
 
-## DB Client
+To use the Portal HTTP DB in other packages, import the `github.com/pokt-foundation/portal-http-db/client` package. 
 
-To use the Portal HTTP DB in other packages, [a Go client is available](https://github.com/pokt-foundation/db-client). This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
+This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
 
-## Modifying Functionality
+### PHD Client Usage
+
+This client should be installed in any Go backend repo that needs to interact with PHD. 
+
+The interface to be used depends on the interactions required by the repo:
+
+- `IDBReader`: read-only
+- `IDBWrite`: write-only
+- `IDBClient`: read & write
+
+### PHD Client Mocks
+
+Mocks of the above interfaces are generated using [Mockery](https://github.com/vektra/mockery). 
+
+To generate them from the interfaces run `make gen_client_mocks`.
+
+# Modifying PHD Functionality
 
 When adding or updating functionality to PHD, there is a order of operations that should be followed for best results.
 
-**This may appear convoluted but if all these steps are completed we can have a high degree of confidence in any changes.**
-
-1. **Add changes to the [Portal DB driver](https://github.com/pokt-foundation/portal-db) repository:**
+1. *(Optional)* **Add changes to the [Portal DB Driver](https://github.com/pokt-foundation/portal-db) repository if necessary**
 
 - Start by updating the `postgresdrver/sqlc/schema.yml` and/or `postgresdrver/sqlc/query.yml` files
 - Generate the SQLC Go code from these SQL files using `make`
@@ -31,33 +45,18 @@ When adding or updating functionality to PHD, there is a order of operations tha
 - Update the driver integration tests in the `Portal DB` repository to cover all code changes
 - Once merged to `main` a new version of the DB driver will be published, following semantic versioning standards based on the commit message(s)
 
-2. **Add the new functionality to PHD:**
+2. **Add the new functionality to PHD**
 
 - Open a new feature branch in PHD, pointed to the `staging` branch
 - Install the newly published `Portal DB driver` version into PHD
-- Make any necessary changes to both the `cache.go` and `router.go`
-- Update or create unit tests to cover all changes, ensuring they pass _(E2E tests will be added in **step 4**)_
-- Push the feature branch to the PHD repository
+- Make any necessary changes to both the `cache.go` and/or `router.go`
+- Update or create unit tests in `cache_Test.go` and/or `router_test.go` to cover all changes, ensuring they pass
 
-3. **Add the new functionality to the [DB Client](https://github.com/pokt-foundation/db-client) repository:**
+3. **Update the PHD Client and PHD E2E tests**
 
-- Add or modify all of the relevant methods inside the `client.go` file and update the interface(s)
-- Update the `docker-compose.test.yml` file **(line 9)** inside the `DB Client` repository to point to the PHD feature branch that was just pushed
-- Update or create E2E tests inside the `DB Client` to cover all code changes
-- As with the `Portal DB`, when these changes are merged to `main` a new version of the `DB Client` will be published
-
-4. **Update PHD E2E tests using new `DB Client` version:**
-
-- Install the newly published `DB Client` version into the PHD feature branch (this is only used for the E2E tests)
-- The E2E tests that were written or modified in the `DB Client` in **step 3** may be reused in the main E2E test file
-- Following the example of the already existing tests, add a check to confirm the second PHD test container also registered DB updates
-- Once the E2E tests are passing the PR may be submitted for review
-
-5. **Finally, update the DB Client `docker-compose.test.yml` file (**line 7**) back to the `master` branch of PHD**
-
-By following these steps, you can ensure all changes are tested at every stage of development, from the database to the PHD API to the DB client used in other packages. This will give you a high degree of confidence in any modifications.
-
-In addition, the `DB Client` will be up to date and ready for use in any other repos that require these updates.
+- Add or modify all of the relevant methods inside the `client/client.go` file and update the interface
+- Run `make gen_client_mocks` to update the PHD Client mocks
+- Update or create E2E tests inside `main_e2e_test.go` to cover all code changes
 
 ## Pre-Commit Installation
 
@@ -83,6 +82,7 @@ Once this is done, the following checks will be performed on every commit to the
 - **go-critic** - run `gocritic check ./...`
 - **go-build** - run `go build`
 - **go-mod-tidy** - run `go mod tidy -v`
+- **go-unit-tests** - run `CGO_ENABLED=0 go test ./... -short || fail`
 
 ### 3. Detect Secrets
 
