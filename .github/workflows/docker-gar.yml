@@ -71,14 +71,6 @@ jobs:
         id: semantic
         uses: codfish/semantic-release-action@v2
         with:
-          branches: |
-            [
-              'master',
-              {
-                name: 'staging',
-                prerelease: 'rc'
-              }
-            ]
           tag_format: "v${version}"
           additional_packages: |
             ['@semantic-release/commit-analyzer']
