@@ -33,7 +33,7 @@ type (
 
 		accounts                 map[types.AccountID]*types.Account
 		accountsByUserID         map[types.UserID]AccountsForUser
-		pendingAccountUserAccess map[types.AccountID][]types.AccountUserAccess
+		pendingAccountUserAccess map[types.AccountID][]types.AccountUser
 		pendingUsers             map[types.UserID]types.User
 		pendingUserAuthProviders map[types.UserID]types.UserAuthProvider
 
@@ -102,7 +102,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		logger: config.Logger,
 
-		pendingAccountUserAccess:   make(map[types.AccountID][]types.AccountUserAccess),
+		pendingAccountUserAccess:   make(map[types.AccountID][]types.AccountUser),
 		pendingUsers:               make(map[types.UserID]types.User),
 		pendingUserAuthProviders:   make(map[types.UserID]types.UserAuthProvider),
 		pendingPortalAppAATs:       make(map[types.PortalAppID]types.AAT),
@@ -277,7 +277,7 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 			continue
 		}
 
-		for _, user := range account.Users {
+		for _, user := range account.AccountUsers {
 			if _, ok := accountsByUserID[user.UserID]; !ok {
 				accountsByUserID[user.UserID] = make(map[types.AccountID]*types.Account)
 			}
@@ -503,7 +503,7 @@ func userCanReadAccount(a *types.Account, userID types.UserID, options Options) 
 // userAcceptedAccountInvite returns a boolean indicating if the user
 // has accepted an invitation to any PortalApp in the Account
 func userAcceptedAccountInvite(a *types.Account, userID types.UserID) bool {
-	if user, ok := a.Users[userID]; ok {
+	if user, ok := a.AccountUsers[userID]; ok {
 		acceptedInvite := false
 
 		for _, portalAppAccepted := range user.PortalAppsAccepted {
@@ -522,7 +522,7 @@ func userAcceptedAccountInvite(a *types.Account, userID types.UserID) bool {
 // userHasAccountPerms returns a boolean indicating if the user
 // has any account permissions for any PortalApps for the account
 func userHasAccountPerms(a *types.Account, userID types.UserID, filterRoles []types.RoleName) bool {
-	if user, ok := a.Users[userID]; ok {
+	if user, ok := a.AccountUsers[userID]; ok {
 		hasPermissions := false
 
 		for _, portalAppRole := range user.PortalAppRoles {
@@ -542,7 +542,7 @@ func userHasAccountPerms(a *types.Account, userID types.UserID, filterRoles []ty
 
 // filterAccountPortalApps filters PortalApps based on the provided RoleNames and Accepted status
 func filterAccountPortalApps(account *types.Account, userID types.UserID, options Options) types.Account {
-	userAccess, ok := account.Users[userID]
+	userAccess, ok := account.AccountUsers[userID]
 	if !ok {
 		return types.Account{}
 	}
@@ -563,7 +563,7 @@ func filterAccountPortalApps(account *types.Account, userID types.UserID, option
 // filterAccountPortalAppsByRole filters PortalApps based on the provided RoleNames
 func filterAccountPortalAppsByRole(
 	accountPortalApps map[types.PortalAppID]*types.PortalApp,
-	userAccess types.AccountUserAccess,
+	userAccess types.AccountUser,
 	userID types.UserID,
 	options Options,
 ) map[types.PortalAppID]*types.PortalApp {
@@ -593,7 +593,7 @@ func filterAccountPortalAppsByRole(
 // filterAccountPortalAppsByAccepted filters the PortalAppss based on the Accepted param
 func filterAccountPortalAppsByAccepted(
 	accountPortalApps map[types.PortalAppID]*types.PortalApp,
-	userAccess types.AccountUserAccess,
+	userAccess types.AccountUser,
 	userID types.UserID,
 	options Options,
 ) map[types.PortalAppID]*types.PortalApp {
@@ -619,7 +619,7 @@ func (c *Cache) upsertAccount(account types.Account) {
 	// and from all user ID maps of all Account users
 	if account.Deleted {
 		delete(c.accounts, account.ID)
-		for _, user := range account.Users {
+		for _, user := range account.AccountUsers {
 			delete(c.accountsByUserID, user.UserID)
 		}
 		return
@@ -628,7 +628,7 @@ func (c *Cache) upsertAccount(account types.Account) {
 	// Ensure upsert does not overwrite existing Account fields
 	if existingAccount, ok := c.accounts[account.ID]; ok {
 		account.PortalApps = existingAccount.PortalApps
-		account.Users = existingAccount.Users
+		account.AccountUsers = existingAccount.AccountUsers
 		account.Integrations = existingAccount.Integrations
 	}
 	// Set plan in cache to latest value
@@ -638,10 +638,10 @@ func (c *Cache) upsertAccount(account types.Account) {
 
 	if pendingAccountUsers, ok := c.pendingAccountUserAccess[account.ID]; ok {
 		for _, accountUser := range pendingAccountUsers {
-			if account.Users == nil {
-				account.Users = make(map[types.UserID]types.AccountUserAccess)
+			if account.AccountUsers == nil {
+				account.AccountUsers = make(map[types.UserID]types.AccountUser)
 			}
-			if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
+			if existingAccountUser, ok := account.AccountUsers[accountUser.UserID]; ok {
 				accountUser.Email = existingAccountUser.Email
 			}
 			if user, ok := c.pendingUsers[accountUser.UserID]; ok {
@@ -649,14 +649,14 @@ func (c *Cache) upsertAccount(account types.Account) {
 				delete(c.pendingUsers, accountUser.UserID)
 			}
 
-			account.Users[accountUser.UserID] = accountUser
+			account.AccountUsers[accountUser.UserID] = accountUser
 		}
 		delete(c.pendingAccountUserAccess, account.ID)
 	}
 
 	c.accounts[account.ID] = &account
 
-	for _, user := range account.Users {
+	for _, user := range account.AccountUsers {
 		if _, ok := c.accountsByUserID[user.UserID]; !ok {
 			c.accountsByUserID[user.UserID] = make(map[types.AccountID]*types.Account)
 		}
@@ -664,8 +664,8 @@ func (c *Cache) upsertAccount(account types.Account) {
 	}
 }
 
-// upsertAccount adds or updates AccountUserAccess in cache
-func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
+// upsertAccount adds or updates AccountUser in cache
+func (c *Cache) upsertAccountUser(accountUser types.AccountUser) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -722,19 +722,19 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUserAccess) {
 
 	// Add or update user's Accounts
 	if account, ok := c.accounts[accountID]; ok {
-		if account.Users == nil {
-			account.Users = make(map[types.UserID]types.AccountUserAccess)
+		if account.AccountUsers == nil {
+			account.AccountUsers = make(map[types.UserID]types.AccountUser)
 		}
 
 		// Set values from existing app to avoid overwriting cache
-		if existingAccountUser, ok := account.Users[accountUser.UserID]; ok {
+		if existingAccountUser, ok := account.AccountUsers[accountUser.UserID]; ok {
 			accountUser.Email = existingAccountUser.Email
 			accountUser.PortalAppRoles = existingAccountUser.PortalAppRoles
 			accountUser.PortalAppsAccepted = existingAccountUser.PortalAppsAccepted
 		}
 
-		account.Users[accountUser.UserID] = accountUser
-		if user, ok := account.Users[accountUser.UserID]; ok {
+		account.AccountUsers[accountUser.UserID] = accountUser
+		if user, ok := account.AccountUsers[accountUser.UserID]; ok {
 			if user.PortalAppRoles == nil {
 				user.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
 			}
@@ -781,7 +781,7 @@ func (c *Cache) upsertAccountIntegrations(accountIntegrations *types.AccountInte
 }
 
 // deleteAccountUser deletes Account user saved in cache and updates permissions
-func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
+func (c *Cache) deleteAccountUser(accountUser types.AccountUser) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
@@ -811,12 +811,12 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 
 	// Remove from Accounts map
 	if account, ok := c.accounts[accountID]; ok {
-		if accountUser, ok := account.Users[userID]; ok {
+		if accountUser, ok := account.AccountUsers[userID]; ok {
 			delete(accountUser.PortalAppRoles, incomingPortalAppID)
 			delete(accountUser.PortalAppsAccepted, incomingPortalAppID)
 
 			if len(accountUser.PortalAppRoles) == 0 && len(accountUser.PortalAppsAccepted) == 0 {
-				delete(account.Users, userID)
+				delete(account.AccountUsers, userID)
 			}
 		}
 
@@ -827,7 +827,7 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUserAccess) {
 
 	// Remove from PortalApp map
 	if portalApp, ok := c.portalApps[incomingPortalAppID]; ok {
-		delete(portalApp.Users, userID)
+		delete(portalApp.PortalAppUsers, userID)
 	}
 }
 
@@ -961,7 +961,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 		}
 
 		for _, account := range c.accounts {
-			for _, user := range account.Users {
+			for _, user := range account.AccountUsers {
 				delete(user.PortalAppRoles, portalApp.ID)
 				delete(user.PortalAppsAccepted, portalApp.ID)
 			}
@@ -1007,7 +1007,7 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 		// Set account owner to OWNER role for new app
 		if ownerID, err := account.GetOwnerID(); err == nil {
-			if owner, ok := account.Users[ownerID]; ok {
+			if owner, ok := account.AccountUsers[ownerID]; ok {
 				if owner.PortalAppRoles == nil {
 					owner.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
 				}
@@ -1528,9 +1528,9 @@ func (c *Cache) upsertUser(user types.User) {
 	}
 
 	for accountID, account := range accountsForUser {
-		if accountUser, ok := account.Users[user.ID]; ok {
+		if accountUser, ok := account.AccountUsers[user.ID]; ok {
 			accountUser.Email = user.Email
-			account.Users[user.ID] = accountUser
+			account.AccountUsers[user.ID] = accountUser
 			c.accountsByUserID[user.ID][accountID] = account
 		}
 	}

@@ -306,8 +306,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name           string
 			portalAppID    types.PortalAppID
-			portalAppUsers map[types.UserID]types.AccountUserAccess
-			appUsers       map[types.UserID]types.PortalAppUser
+			portalAppUsers map[types.UserID]types.PortalAppUser
 			expectedApp    *types.PortalApp
 			err            error
 		}{
@@ -315,7 +314,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:           "Should get portal app by ID",
 				portalAppID:    "test_app_1",
 				portalAppUsers: testdata.PortalAppUsers["test_app_1"],
-				appUsers:       testdata.PortalAppUsersMap["test_app_1"],
 				expectedApp:    testdata.PortalApps["test_app_1"],
 			},
 			{
@@ -336,8 +334,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
-					test.expectedApp.Users = test.portalAppUsers
-					test.expectedApp.AppUsers = test.appUsers
+					test.expectedApp.PortalAppUsers = test.portalAppUsers
 
 					ts.Equal(test.expectedApp, portalApp)
 
@@ -353,15 +350,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		tests := []struct {
 			name           string
 			expectedApps   map[types.PortalAppID]*types.PortalApp
-			portalAppUsers map[types.PortalAppID]map[types.UserID]types.AccountUserAccess
-			appUsers       map[types.PortalAppID]map[types.UserID]types.PortalAppUser
+			portalAppUsers map[types.PortalAppID]map[types.UserID]types.PortalAppUser
 			err            error
 		}{
 			{
 				name:           "Should get all portal apps",
 				expectedApps:   testdata.PortalApps,
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 		}
 
@@ -372,8 +367,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 				if err == nil {
 					for _, portalApp := range test.expectedApps {
-						portalApp.Users = test.portalAppUsers[portalApp.ID]
-						portalApp.AppUsers = test.appUsers[portalApp.ID]
+						portalApp.PortalAppUsers = test.portalAppUsers[portalApp.ID]
 					}
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
@@ -391,8 +385,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			userID         types.UserID
 			options        dbClient.PortalAppOptions
 			expectedApps   map[types.PortalAppID]*types.PortalApp
-			portalAppUsers map[types.PortalAppID]map[types.UserID]types.AccountUserAccess
-			appUsers       map[types.PortalAppID]map[types.UserID]types.PortalAppUser
+			portalAppUsers map[types.PortalAppID]map[types.UserID]types.PortalAppUser
 			err            error
 		}{
 			{
@@ -402,7 +395,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 			{
 				name:   "Should get portal apps where user_1 is OWNER",
@@ -416,7 +408,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_1": testdata.PortalApps["test_app_1"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 			{
 				name:   "Should get portal apps where user_6 is ADMIN",
@@ -430,7 +421,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 			{
 				name:   "Should get portal apps where user_7 is MEMBER",
@@ -444,7 +434,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 			{
 				name:   "Should get portal apps where user_2 is ADMIN or MEMBER",
@@ -460,7 +449,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 			{
 				name:   "Should get portal apps for user_10 where user_10 has not signed up yet",
@@ -472,7 +460,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_3": testdata.PortalApps["test_app_3"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 			{
 				name:   "Should get portal apps for user_2 where user_2 has signed up",
@@ -485,7 +472,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 			{
 				name:   "Should get portal apps for user_3 where user_3 has signed up and is the OWNER",
@@ -500,7 +486,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					"test_app_2": testdata.PortalApps["test_app_2"],
 				},
 				portalAppUsers: testdata.PortalAppUsers,
-				appUsers:       testdata.PortalAppUsersMap,
 			},
 		}
 
@@ -511,8 +496,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 				if err == nil {
 					for _, portalApp := range test.expectedApps {
-						portalApp.Users = test.portalAppUsers[portalApp.ID]
-						portalApp.AppUsers = test.appUsers[portalApp.ID]
+						portalApp.PortalAppUsers = test.portalAppUsers[portalApp.ID]
 					}
 					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
 
@@ -590,7 +574,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			expectedAccs   map[types.AccountID]*types.Account
 			plans          map[types.AccountID]*types.Plan
 			portalApps     map[types.AccountID]map[types.PortalAppID]*types.PortalApp
-			portalAppUsers map[types.PortalAppID]map[types.UserID]types.AccountUserAccess
+			portalAppUsers map[types.PortalAppID]map[types.UserID]types.PortalAppUser
 			err            error
 		}{
 			{
@@ -780,7 +764,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 						account.Plan = test.plans[id]
 						account.PortalApps = test.portalApps[id]
 						for _, portalApp := range account.PortalApps {
-							portalApp.Users = test.portalAppUsers[portalApp.ID]
+							portalApp.PortalAppUsers = test.portalAppUsers[portalApp.ID]
 						}
 					}
 					ts.Equal(test.expectedAccs, accountMap)
@@ -792,7 +776,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 						account.Plan = test.plans[id]
 						account.PortalApps = test.portalApps[id]
 						for _, portalApp := range account.PortalApps {
-							portalApp.Users = test.portalAppUsers[portalApp.ID]
+							portalApp.PortalAppUsers = test.portalAppUsers[portalApp.ID]
 						}
 					}
 					ts.Equal(test.expectedAccs, accountMap)
@@ -809,7 +793,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			expectedAcc    *types.Account
 			assignPlan     *types.Plan
 			assignApp      *types.PortalApp
-			assignAppUsers map[types.UserID]types.AccountUserAccess
+			assignAppUsers map[types.UserID]types.PortalAppUser
 			err            error
 		}{
 			{
@@ -839,7 +823,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if test.expectedAcc.PortalApps == nil {
 					test.expectedAcc.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
 				}
-				test.assignApp.Users = test.assignAppUsers
+				test.assignApp.PortalAppUsers = test.assignAppUsers
 				test.expectedAcc.PortalApps[test.assignApp.ID] = test.assignApp
 
 				account, err := ts.client1.GetUserAccount(context.Background(), test.accountID, test.userID)
@@ -1527,13 +1511,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 	ts.Run("Test_CreatePortalApp", func() {
 		tests := []struct {
-			name             string
-			portalAppInput   *types.PortalApp
-			aatInput         types.AAT
-			err              error
-			expected         *types.PortalApp
-			expectedUsers    map[types.UserID]types.AccountUserAccess
-			expectedAppUsers map[types.UserID]types.PortalAppUser
+			name                   string
+			portalAppInput         *types.PortalApp
+			aatInput               types.AAT
+			err                    error
+			expected               *types.PortalApp
+			expectedPortalAppUsers map[types.UserID]types.PortalAppUser
 		}{
 			{
 				name:           "Should create a new Portal app in the DB",
@@ -1573,16 +1556,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						RequestTimeout: 15_000,
 					},
 				},
-				expectedUsers: map[types.UserID]types.AccountUserAccess{
-					"user_4": {
-						Owner:              true,
-						UserID:             "user_4",
-						Email:              "ulfric.stormcloak123@test.com",
-						PortalAppRoles:     map[types.PortalAppID]types.RoleName{}, // OWNER role set in test case after app created
-						PortalAppsAccepted: map[types.PortalAppID]bool{},           // Accepted = true set in test case after app created
-					},
-				},
-				expectedAppUsers: map[types.UserID]types.PortalAppUser{
+				expectedPortalAppUsers: map[types.UserID]types.PortalAppUser{
 					"user_4": {
 						ID:       "user_4",
 						Email:    "ulfric.stormcloak123@test.com",
@@ -1685,19 +1659,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.Equal(test.expected, createdPortalApp)
 
-					for _, expectedUser := range test.expectedUsers {
-						expectedUser.PortalAppRoles[createdPortalApp.ID] = types.RoleOwner
-						expectedUser.PortalAppsAccepted[createdPortalApp.ID] = true
-						if test.expected.Users == nil {
-							test.expected.Users = map[types.UserID]types.AccountUserAccess{}
+					for _, expectedAppUser := range test.expectedPortalAppUsers {
+						if test.expected.PortalAppUsers == nil {
+							test.expected.PortalAppUsers = map[types.UserID]types.PortalAppUser{}
 						}
-						test.expected.Users[expectedUser.UserID] = expectedUser
-					}
-					for _, expectedAppUser := range test.expectedAppUsers {
-						if test.expected.AppUsers == nil {
-							test.expected.AppUsers = map[types.UserID]types.PortalAppUser{}
-						}
-						test.expected.AppUsers[expectedAppUser.ID] = expectedAppUser
+						test.expected.PortalAppUsers[expectedAppUser.ID] = expectedAppUser
 					}
 
 					portalApp, err := ts.client1.GetPortalAppByID(context.Background(), createdPortalApp.ID)
@@ -2108,7 +2074,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					IconURL:   "https://picsum.photos/200",
 					CreatedAt: testdata.MockTimestamp,
 					UpdatedAt: testdata.MockTimestamp,
-					Users: map[types.UserID]types.AccountUserAccess{
+					AccountUsers: map[types.UserID]types.AccountUser{
 						"user_1": {
 							UserID:             "user_1",
 							Email:              "james.holden123@test.com",
@@ -2184,9 +2150,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.Equal(test.expected, createdAccount)
 
 					test.expected.Plan = test.expectedPlan
-					expectedUsers := test.expected.Users[test.ownerID]
+					expectedUsers := test.expected.AccountUsers[test.ownerID]
 					expectedUsers.PortalAppRoles = map[types.PortalAppID]types.RoleName{}
-					test.expected.Users[test.ownerID] = expectedUsers
+					test.expected.AccountUsers[test.ownerID] = expectedUsers
 
 					account, err := ts.client1.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
 					ts.NoError(err)
@@ -2424,11 +2390,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			name                   string
 			createAccountUserInput types.CreateAccountUserAccess
 			userID                 types.UserID
-			expected               *types.AccountUserAccess
+			expected               *types.AccountUser
 			err                    error
 		}{
 			{
-				name: "Should create a new AccountUserAccess in the DB",
+				name: "Should create a new AccountUser in the DB",
 				createAccountUserInput: types.CreateAccountUserAccess{
 					AccountID:   "account_4",
 					PortalAppID: "test_app_1",
@@ -2436,7 +2402,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    types.RoleMember,
 				},
 				userID: "user_4",
-				expected: &types.AccountUserAccess{
+				expected: &types.AccountUser{
 					AccountID:          "account_4",
 					UserID:             "user_11",
 					Email:              "bernard.marx@test.com",
@@ -2445,7 +2411,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name: "Should create a new AccountUserAccess in the DB for a user that hasn't signed up yet",
+				name: "Should create a new AccountUser in the DB for a user that hasn't signed up yet",
 				createAccountUserInput: types.CreateAccountUserAccess{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
@@ -2453,7 +2419,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    types.RoleAdmin,
 				},
 				userID: "user_5",
-				expected: &types.AccountUserAccess{
+				expected: &types.AccountUser{
 					AccountID:          "account_3",
 					UserID:             "", // UserID created when user created
 					Email:              "winston.smith@test.com",
@@ -2551,11 +2517,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					account, err := ts.client1.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
-					ts.Equal(*test.expected, account.Users[test.expected.UserID])
+					ts.Equal(*test.expected, account.AccountUsers[test.expected.UserID])
 
 					account, err = ts.v2Client2.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
-					ts.Equal(*test.expected, account.Users[test.expected.UserID])
+					ts.Equal(*test.expected, account.AccountUsers[test.expected.UserID])
 
 					// Clean up created account user
 					_, err = ts.client1.RemoveAccountUser(context.Background(), types.UpdateRemoveAccountUser{
@@ -2575,12 +2541,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			name                    string
 			updateAccountUserRole   types.UpdateAccountUserRole
 			userID                  types.UserID
-			accountUsersAfterUpdate map[types.UserID]types.AccountUserAccess
+			accountUsersAfterUpdate map[types.UserID]types.AccountUser
 			testCreatedTime         time.Time
 			err                     error
 		}{
 			{
-				name: "Should update an existing AccountUserAccess row's role to non-OWNER role",
+				name: "Should update an existing AccountUser row's role to non-OWNER role",
 				updateAccountUserRole: types.UpdateAccountUserRole{
 					PortalAppID: "test_app_3",
 					AccountID:   "account_3",
@@ -2588,10 +2554,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    types.RoleAdmin,
 				},
 				userID: "user_5",
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
-					"user_5":  testdata.AccountUserAccess[5],
-					"user_6":  testdata.AccountUserAccess[6],
-					"user_10": testdata.AccountUserAccess[12],
+				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
+					"user_5":  testdata.AccountUser[5],
+					"user_6":  testdata.AccountUser[6],
+					"user_10": testdata.AccountUser[12],
 					"user_7": {
 						UserID:             "user_7",
 						Email:              "frodo.baggins123@test.com",
@@ -2603,7 +2569,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				err:             nil,
 			},
 			{
-				name: "Should update an existing AccountUserAccess row's role back to original role",
+				name: "Should update an existing AccountUser row's role back to original role",
 				updateAccountUserRole: types.UpdateAccountUserRole{
 					PortalAppID: "test_app_3",
 					AccountID:   "account_3",
@@ -2611,10 +2577,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    types.RoleMember,
 				},
 				userID: "user_5",
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
-					"user_5":  testdata.AccountUserAccess[5],
-					"user_6":  testdata.AccountUserAccess[6],
-					"user_10": testdata.AccountUserAccess[12],
+				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
+					"user_5":  testdata.AccountUser[5],
+					"user_6":  testdata.AccountUser[6],
+					"user_10": testdata.AccountUser[12],
 					"user_7": {
 						UserID:             "user_7",
 						Email:              "frodo.baggins123@test.com",
@@ -2634,9 +2600,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    types.RoleOwner,
 				},
 				userID: "user_3",
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
-					"user_9": testdata.AccountUserAccess[9],
-					"user_2": testdata.AccountUserAccess[10],
+				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
+					"user_9": testdata.AccountUser[9],
+					"user_2": testdata.AccountUser[10],
 					"user_3": {
 						UserID:             "user_3",
 						Email:              "ellen.ripley789@test.com",
@@ -2663,9 +2629,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:    types.RoleOwner,
 				},
 				userID: "user_3",
-				accountUsersAfterUpdate: map[types.UserID]types.AccountUserAccess{
-					"user_9": testdata.AccountUserAccess[9],
-					"user_2": testdata.AccountUserAccess[10],
+				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
+					"user_9": testdata.AccountUser[9],
+					"user_2": testdata.AccountUser[10],
 					"user_4": {
 						UserID:             "user_4",
 						Email:              "ulfric.stormcloak123@test.com",
@@ -2785,11 +2751,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					account, err := ts.client1.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
-					ts.Equal(test.accountUsersAfterUpdate, account.Users)
+					ts.Equal(test.accountUsersAfterUpdate, account.AccountUsers)
 
 					account, err = ts.v2Client2.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
-					ts.Equal(test.accountUsersAfterUpdate, account.Users)
+					ts.Equal(test.accountUsersAfterUpdate, account.AccountUsers)
 				}
 
 			})
@@ -2803,11 +2769,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			userID                 types.UserID
 			acceptAccountUserInput types.UpdateAcceptAccountUser
 			createUser             types.CreateUser
-			expected               *types.AccountUserAccess
+			expected               *types.AccountUser
 			err                    error
 		}{
 			{
-				name:      "Should create a new AccountUserAccess row if a user accepts their invitation",
+				name:      "Should create a new AccountUser row if a user accepts their invitation",
 				accountID: "account_3",
 				userID:    "user_10",
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
@@ -2816,7 +2782,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AuthProviderType: types.AuthTypeAuth0Username,
 					ProviderUserID:   "auth0|daenerys_targaryen",
 				},
-				expected: &types.AccountUserAccess{
+				expected: &types.AccountUser{
 					AccountID:          "account_3",
 					UserID:             "user_10",
 					Email:              "daenerys.targaryen123@test.com",
@@ -2826,7 +2792,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				err: nil,
 			},
 			{
-				name:      "Should delete the AccountUserAccess row if a user declines their invitation",
+				name:      "Should delete the AccountUser row if a user declines their invitation",
 				accountID: "account_3",
 				userID:    "user_5", // owner of account; used to fetch account in test
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
@@ -2840,7 +2806,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Email:          "rand_althor@test.com",
 					ProviderUserID: "auth0|rand_althor",
 				},
-				expected: &types.AccountUserAccess{
+				expected: &types.AccountUser{
 					AccountID:          "account_3",
 					UserID:             "", // set in test case
 					Email:              "rand_althor@test.com",
@@ -2900,7 +2866,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				// If testing declined invite, create a new User and AccountUserAccess
+				// If testing declined invite, create a new User and AccountUser
 				if test.createUser.Email != "" && test.acceptAccountUserInput.DeclinedInvite {
 					newUserResp, err := ts.client1.CreateUser(context.Background(), test.createUser)
 					ts.NoError(err)
@@ -2919,7 +2885,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					account, err := ts.client1.GetUserAccount(context.Background(), test.accountID, test.userID)
 					ts.NoError(err)
-					ts.Equal(*test.expected, account.Users[test.acceptAccountUserInput.UserID])
+					ts.Equal(*test.expected, account.AccountUsers[test.acceptAccountUserInput.UserID])
 				}
 
 				_, err := ts.client1.UpdateAcceptAccountUser(context.Background(), test.acceptAccountUserInput, testdata.MockTimestamp)
@@ -2934,17 +2900,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					account, err := ts.client1.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
 					if test.acceptAccountUserInput.DeclinedInvite {
-						ts.Empty(account.Users[test.acceptAccountUserInput.UserID])
+						ts.Empty(account.AccountUsers[test.acceptAccountUserInput.UserID])
 					} else {
-						ts.Equal(*test.expected, account.Users[test.expected.UserID])
+						ts.Equal(*test.expected, account.AccountUsers[test.expected.UserID])
 					}
 
 					account, err = ts.v2Client2.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
 					if test.acceptAccountUserInput.DeclinedInvite {
-						ts.Empty(account.Users[test.acceptAccountUserInput.UserID])
+						ts.Empty(account.AccountUsers[test.acceptAccountUserInput.UserID])
 					} else {
-						ts.Equal(*test.expected, account.Users[test.expected.UserID])
+						ts.Equal(*test.expected, account.AccountUsers[test.expected.UserID])
 					}
 				}
 			})
@@ -2957,11 +2923,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			createAccountUserInput  types.CreateAccountUserAccess
 			updateRemoveAccountUser types.UpdateRemoveAccountUser
 			userID                  types.UserID
-			accountUsersAfterDelete map[types.UserID]types.AccountUserAccess
+			accountUsersAfterDelete map[types.UserID]types.AccountUser
 			err                     error
 		}{
 			{
-				name: "Should delete a single AccountUserAccess row",
+				name: "Should delete a single AccountUser row",
 				createAccountUserInput: types.CreateAccountUserAccess{
 					AccountID:   "account_3",
 					PortalAppID: "test_app_3",
@@ -2973,10 +2939,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					PortalAppID: "test_app_3",
 				},
 				userID: "user_5",
-				accountUsersAfterDelete: map[types.UserID]types.AccountUserAccess{
-					"user_1": testdata.AccountUserAccess[1],
-					"user_2": testdata.AccountUserAccess[2],
-					"user_8": testdata.AccountUserAccess[8],
+				accountUsersAfterDelete: map[types.UserID]types.AccountUser{
+					"user_1": testdata.AccountUser[1],
+					"user_2": testdata.AccountUser[2],
+					"user_8": testdata.AccountUser[8],
 				},
 				err: nil,
 			},
@@ -3043,7 +3009,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.updateRemoveAccountUser.UserID = userID
 					account, err := ts.client1.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
 					ts.NoError(err)
-					ts.Contains(account.Users, userID)
+					ts.Contains(account.AccountUsers, userID)
 				}
 
 				_, err := ts.client1.RemoveAccountUser(context.Background(), test.updateRemoveAccountUser)
@@ -3054,11 +3020,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					account, err := ts.client1.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
 					ts.NoError(err)
-					ts.NotContains(account.Users, userID)
+					ts.NotContains(account.AccountUsers, userID)
 
 					account, err = ts.v2Client2.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
 					ts.NoError(err)
-					ts.NotContains(account.Users, userID)
+					ts.NotContains(account.AccountUsers, userID)
 				}
 			})
 		}
