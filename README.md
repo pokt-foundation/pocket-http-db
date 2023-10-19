@@ -13,13 +13,13 @@
 
 # PHD Client
 
-To use the Portal HTTP DB in other packages, import the `github.com/pokt-foundation/portal-http-db/client` package. 
+To use the Portal HTTP DB in other packages, import the `github.com/pokt-foundation/portal-http-db/client` package.
 
 This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
 
 ### PHD Client Usage
 
-This client should be installed in any Go backend repo that needs to interact with PHD. 
+This client should be installed in any Go backend repo that needs to interact with PHD.
 
 The interface to be used depends on the interactions required by the repo:
 
@@ -29,7 +29,7 @@ The interface to be used depends on the interactions required by the repo:
 
 ### PHD Client Mocks
 
-Mocks of the above interfaces are generated using [Mockery](https://github.com/vektra/mockery). 
+Mocks of the above interfaces are generated using [Mockery](https://github.com/vektra/mockery).
 
 To generate them from the interfaces run `make gen_client_mocks`.
 
