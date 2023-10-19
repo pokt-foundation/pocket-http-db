@@ -107,8 +107,6 @@ github.com/microsoft/go-mssqldb v1.1.0 h1:jsV+tpvcPTbNNKW0o3kiCD69kOHICsfjZ2VcVu
 github.com/microsoft/go-mssqldb v1.1.0/go.mod h1:LzkFdl4z2Ck+Hi+ycGOTbL56VEfgoyA2DvYejrNGbRk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pokt-foundation/db-client v1.11.1 h1:P0KCjEGVZ9zMkIMvhKlnV0q6PFqZCHwfj5TcNGobFJ8=
-github.com/pokt-foundation/db-client v1.11.1/go.mod h1:/U6fZh0ZjUY1gYFnNZ5T6U0yTXZY9X2LqM85HgA+eAA=
 github.com/pokt-foundation/db-client/v2 v2.14.2 h1:TeQIJ8fPWe+iOxJG5iWPxya3UDi6s8oS4CqZVEZeFGY=
 github.com/pokt-foundation/db-client/v2 v2.14.2/go.mod h1:sh87ndMoe9SslJYT7vGSQi+sJ39IZojY/SOH+aWLl2I=
 github.com/pokt-foundation/portal-db v1.11.0 h1:rI2JDc9RrB1Rz6nhOls23gaClQJeQdunUOksUVvI6pU=
