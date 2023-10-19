@@ -105,7 +105,7 @@ func (c *Cache) parseAccountNotification(n types.Notification) {
 }
 
 func (c *Cache) parseAccountUserAccessNotification(n types.Notification) {
-	accountUserAccess, ok := n.Data.(*types.AccountUser)
+	accountUserAccess, ok := n.Data.(*types.AccountUserAccess)
 	if !ok {
 		c.logger.Error("parseAccountUserAccessNotification failed")
 		return
