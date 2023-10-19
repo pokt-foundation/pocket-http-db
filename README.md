@@ -4,18 +4,18 @@
     <big>The Portal HTTP DB (PHD) provides access to the Portal database using a RESTful API.</big>
     <div>
        <br/>
-        <a href="https://github.com/pokt-foundation/portal-http-db/pulse"><img src="https://img.shields.io/github/last-commit/pokt-foundation/portal-http-db.svg"/></a>
-        <a href="https://github.com/pokt-foundation/portal-http-db/pulls"><img src="https://img.shields.io/github/issues-pr/pokt-foundation/portal-http-db.svg"/></a>
-        <a href="https://github.com/pokt-foundation/portal-http-db/issues"><img src="https://img.shields.io/github/issues-closed/pokt-foundation/portal-http-db.svg"/></a>
+        <a href="https://github.com/pokt-foundation/portal-http-db/v2/pulse"><img src="https://img.shields.io/github/last-commit/pokt-foundation/portal-http-db.svg"/></a>
+        <a href="https://github.com/pokt-foundation/portal-http-db/v2/pulls"><img src="https://img.shields.io/github/issues-pr/pokt-foundation/portal-http-db.svg"/></a>
+        <a href="https://github.com/pokt-foundation/portal-http-db/v2/issues"><img src="https://img.shields.io/github/issues-closed/pokt-foundation/portal-http-db.svg"/></a>
     </div>
 </div>
 <br/>
 
 # PHD Client
 
-To use the Portal HTTP DB in other packages, import the `github.com/pokt-foundation/portal-http-db/client` package.
+To use the Portal HTTP DB Client in other packages, import the `github.com/pokt-foundation/phd-client` module (located at `./client`).
 
-This is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
+This client is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
 
 ### PHD Client Usage
 

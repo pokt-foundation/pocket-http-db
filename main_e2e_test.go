@@ -10,8 +10,8 @@ import (
 
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
-	dbClient "github.com/pokt-foundation/portal-http-db/client"
-	phdtestdata "github.com/pokt-foundation/portal-http-db/testdata"
+	dbClient "github.com/pokt-foundation/portal-http-db/v2/client"
+	phdtestdata "github.com/pokt-foundation/portal-http-db/v2/testdata"
 	"github.com/stretchr/testify/suite"
 )
 
