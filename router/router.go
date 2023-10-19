@@ -912,7 +912,7 @@ func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
-// PUT /v2/account/user/accept - Accept an AccountUserAccess.
+// PUT /v2/account/user/accept - Accept an AccountUser.
 func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 	var acceptUser types.UpdateAcceptAccountUser
 
@@ -940,7 +940,7 @@ func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": status})
 }
 
-// PUT /v2/account/user/remove - Remove an AccountUserAccess.
+// PUT /v2/account/user/remove - Remove an AccountUser.
 func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 	var removeUser types.UpdateRemoveAccountUser
 

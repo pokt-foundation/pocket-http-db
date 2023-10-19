@@ -451,7 +451,7 @@ func (c *Cache) CreateLegacyLoadBalancer(ctx context.Context, writer driver.Writ
 	return legacyadapters.ConvertPortalAppToLegacyLoadBalancer(derefCreatedPortalApp, account), nil
 }
 
-// CreateLegacyLoadBalancerUser creates a single V2 AccountUserAccess row for a given account
+// CreateLegacyLoadBalancerUser creates a single V2 AccountUser row for a given account
 func (c *Cache) CreateLegacyLoadBalancerUser(ctx context.Context, writer driver.Writer, lbID string, user v1Types.UserAccess) (v1Types.LoadBalancer, error) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
@@ -793,7 +793,7 @@ func (c *Cache) RemoveLegacyAccountUser(ctx context.Context, writer driver.Write
 		return v1Types.LoadBalancer{}, fmt.Errorf("RemoveAccountUser failed: %w", err)
 	}
 
-	filteredUsers := map[v2Types.UserID]v2Types.AccountUserAccess{}
+	filteredUsers := map[v2Types.UserID]v2Types.AccountUser{}
 
 	for userID, user := range account.Users {
 		if user.UserID == "" {

@@ -44,12 +44,12 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		account         *types.Account
 	}{
 		{
-			name:            "Should insert AccountUserAccess in cache when receiving an insert notification",
+			name:            "Should insert AccountUser in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			userID:          "user_3",
 			accountID:       "account_1",
 			account: &types.Account{
-				Users: map[types.UserID]types.AccountUserAccess{
+				AccountUsers: map[types.UserID]types.AccountUser{
 					"user_3": {
 						UserID: "user_3",
 						Email:  "ellen.ripley789@test.com",
@@ -64,12 +64,12 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			},
 		},
 		{
-			name:            "Should update AccountUserAccess in cache when receiving an update notification",
+			name:            "Should update AccountUser in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			userID:          "user_2",
 			accountID:       "account_1",
 			account: &types.Account{
-				Users: map[types.UserID]types.AccountUserAccess{
+				AccountUsers: map[types.UserID]types.AccountUser{
 					"user_3": {
 						UserID: "user_2",
 						Email:  "paul.atreides456@test.com",
@@ -84,13 +84,13 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			},
 		},
 		{
-			name:            "Should delete AccountUserAccess from cache when receiving a delete notification",
+			name:            "Should delete AccountUser from cache when receiving a delete notification",
 			sideTableAction: types.ActionDelete,
 			userID:          "user_8",
 			accountID:       "account_1",
 			account: &types.Account{
-				Users: map[types.UserID]types.AccountUserAccess{
-					"user_8": testdata.AccountUserAccess[8],
+				AccountUsers: map[types.UserID]types.AccountUser{
+					"user_8": testdata.AccountUser[8],
 				},
 			},
 		},
@@ -126,7 +126,7 @@ func Test_parseAccountNotification(t *testing.T) {
 		mainTableAction  types.Action
 		sideTablesAction types.Action
 		accountID        types.AccountID
-		user             types.AccountUserAccess
+		user             types.AccountUser
 		account          *types.Account
 	}{
 		{
@@ -134,7 +134,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionInsert,
 			sideTablesAction: types.ActionInsert,
 			accountID:        "account_6",
-			user:             testdata.AccountUserAccess[1],
+			user:             testdata.AccountUser[1],
 			account:          testdata.TestCreateAccount,
 		},
 		{
@@ -142,7 +142,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
-			user:             testdata.AccountUserAccess[1],
+			user:             testdata.AccountUser[1],
 			account: &types.Account{
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
@@ -155,7 +155,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
-			user:             testdata.AccountUserAccess[1],
+			user:             testdata.AccountUser[1],
 			account: &types.Account{
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
@@ -176,7 +176,7 @@ func Test_parseAccountNotification(t *testing.T) {
 
 			test.account.ID = test.accountID
 			testAccount := test.account
-			testAccount.Users = map[types.UserID]types.AccountUserAccess{test.user.UserID: test.user}
+			testAccount.AccountUsers = map[types.UserID]types.AccountUser{test.user.UserID: test.user}
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, testAccount)
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
