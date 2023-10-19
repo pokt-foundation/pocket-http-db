@@ -281,13 +281,13 @@ func Test_upsertAccountUser(t *testing.T) {
 	tests := []struct {
 		name        string
 		accountID   types.AccountID
-		accountUser types.AccountUserAccess
+		accountUser types.AccountUser
 		updateRoles map[types.PortalAppID]types.RoleName
 	}{
 		{
 			name:      "Should add a new Accepted user to account and user permissions",
 			accountID: "account_2",
-			accountUser: types.AccountUserAccess{
+			accountUser: types.AccountUser{
 				UserID: "user_1",
 				Email:  "james.holden123@test.com",
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
@@ -301,7 +301,7 @@ func Test_upsertAccountUser(t *testing.T) {
 		{
 			name:      "Should add a new not-Accepted user to account",
 			accountID: "account_3",
-			accountUser: types.AccountUserAccess{
+			accountUser: types.AccountUser{
 				UserID: "user_10",
 				Email:  "daenerys.targaryen123@test.com",
 				PortalAppRoles: map[types.PortalAppID]types.RoleName{
@@ -315,7 +315,7 @@ func Test_upsertAccountUser(t *testing.T) {
 		{
 			name:        "Should update an existing account User's roles",
 			accountID:   "account_1",
-			accountUser: testdata.AccountUserAccess[2],
+			accountUser: testdata.AccountUser[2],
 			updateRoles: map[types.PortalAppID]types.RoleName{
 				"test_app_1": types.RoleMember,
 			},
@@ -340,9 +340,9 @@ func Test_upsertAccountUser(t *testing.T) {
 			cache.upsertAccountUser(testAccountUser)
 
 			account := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{})
-			accountUser, ok := account.Users[test.accountUser.UserID]
-			c.True(ok, "AccountUserAccess should be present in account Users map")
-			c.Equal(test.accountUser, accountUser, "AccountUserAccess should be added or updated in the cache")
+			accountUser, ok := account.AccountUsers[test.accountUser.UserID]
+			c.True(ok, "AccountUser should be present in account Users map")
+			c.Equal(test.accountUser, accountUser, "AccountUser should be added or updated in the cache")
 
 			accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
@@ -372,7 +372,7 @@ func Test_upsertAccount(t *testing.T) {
 		account      types.Account
 		userID       types.UserID
 		accountUsers AccountsForUser
-		pendingUsers map[types.AccountID][]types.AccountUserAccess
+		pendingUsers map[types.AccountID][]types.AccountUser
 	}{
 		{
 			name:    "Should insert a new account",
@@ -383,10 +383,10 @@ func Test_upsertAccount(t *testing.T) {
 			account: types.Account{
 				ID:       "account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
-				Users: map[types.UserID]types.AccountUserAccess{
-					"user_1": testdata.AccountUserAccess[1],
-					"user_2": testdata.AccountUserAccess[2],
-					"user_8": testdata.AccountUserAccess[8],
+				AccountUsers: map[types.UserID]types.AccountUser{
+					"user_1": testdata.AccountUser[1],
+					"user_2": testdata.AccountUser[2],
+					"user_8": testdata.AccountUser[8],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
@@ -405,12 +405,12 @@ func Test_upsertAccount(t *testing.T) {
 			account: types.Account{
 				ID:       "account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
-				Users: map[types.UserID]types.AccountUserAccess{
-					"user_7": testdata.AccountUserAccess[7],
-					"user_1": testdata.AccountUserAccess[1],
-					"user_2": testdata.AccountUserAccess[2],
-					"user_8": testdata.AccountUserAccess[8],
-					"user_3": testdata.AccountUserAccess[3],
+				AccountUsers: map[types.UserID]types.AccountUser{
+					"user_7": testdata.AccountUser[7],
+					"user_1": testdata.AccountUser[1],
+					"user_2": testdata.AccountUser[2],
+					"user_8": testdata.AccountUser[8],
+					"user_3": testdata.AccountUser[3],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_1": testdata.PortalApps["test_app_1"],
@@ -423,8 +423,8 @@ func Test_upsertAccount(t *testing.T) {
 				UpdatedAt:              testdata.MockTimestamp,
 			},
 			userID: "user_1",
-			pendingUsers: map[types.AccountID][]types.AccountUserAccess{
-				"account_1": {testdata.AccountUserAccess[7], testdata.AccountUserAccess[3]},
+			pendingUsers: map[types.AccountID][]types.AccountUser{
+				"account_1": {testdata.AccountUser[7], testdata.AccountUser[3]},
 			},
 		},
 		{
@@ -432,11 +432,11 @@ func Test_upsertAccount(t *testing.T) {
 			account: types.Account{
 				ID:       "account_2",
 				PlanType: types.PayPlanType("pro_plan"),
-				Users: map[types.UserID]types.AccountUserAccess{
-					"user_3": testdata.AccountUserAccess[3],
-					"user_4": testdata.AccountUserAccess[4],
-					"user_9": testdata.AccountUserAccess[9],
-					"user_2": testdata.AccountUserAccess[10],
+				AccountUsers: map[types.UserID]types.AccountUser{
+					"user_3": testdata.AccountUser[3],
+					"user_4": testdata.AccountUser[4],
+					"user_9": testdata.AccountUser[9],
+					"user_2": testdata.AccountUser[10],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
 					"test_app_2": testdata.PortalApps["test_app_2"],
@@ -474,7 +474,7 @@ func Test_upsertAccount(t *testing.T) {
 			} else {
 				if len(test.pendingUsers) > 0 {
 					for _, user := range test.pendingUsers[test.account.ID] {
-						test.account.Users[user.UserID] = user
+						test.account.AccountUsers[user.UserID] = user
 					}
 				}
 
@@ -488,7 +488,7 @@ func Test_upsertAccount(t *testing.T) {
 					c.True(accountFound, "Account should be found in accounts map")
 				}
 
-				for _, user := range test.account.Users {
+				for _, user := range test.account.AccountUsers {
 					accountsForUser := cache.GetUserAccounts(user.UserID, Options{
 						Accepted: dbclient.BoolPtr(true),
 					})
@@ -522,19 +522,19 @@ func Test_deleteAccountUser(t *testing.T) {
 	tests := []struct {
 		name            string
 		accountID       types.AccountID
-		accountUser     types.AccountUserAccess
+		accountUser     types.AccountUser
 		existingAccount bool
 	}{
 		{
 			name:            "Should delete an existing user access and update permissions",
 			accountID:       "account_1",
-			accountUser:     testdata.AccountUserAccess[2],
+			accountUser:     testdata.AccountUser[2],
 			existingAccount: true,
 		},
 		{
 			name:        "Should not fail when deleting a non-existing user access",
 			accountID:   "account_5",
-			accountUser: testdata.AccountUserAccess[12],
+			accountUser: testdata.AccountUser[12],
 		},
 	}
 
@@ -545,8 +545,8 @@ func Test_deleteAccountUser(t *testing.T) {
 			cache := NewTestCache(t)
 
 			if test.existingAccount {
-				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{}).Users[test.accountUser.UserID]
-				c.True(ok, "AccountUserAccess should be found in account Users map before deletion")
+				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{}).AccountUsers[test.accountUser.UserID]
+				c.True(ok, "AccountUser should be found in account Users map before deletion")
 
 				accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
@@ -565,8 +565,8 @@ func Test_deleteAccountUser(t *testing.T) {
 
 			account := cache.GetUserAccount(test.accountID, testAccountUser.UserID, Options{})
 
-			_, ok := account.Users[test.accountUser.UserID]
-			c.False(ok, "AccountUserAccess should be deleted from account Users map")
+			_, ok := account.AccountUsers[test.accountUser.UserID]
+			c.False(ok, "AccountUser should be deleted from account Users map")
 
 			accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
@@ -1682,7 +1682,7 @@ func Test_upsertUser(t *testing.T) {
 			if test.pendingAccounts {
 				accounts := cache.GetUserAccounts(test.user.ID, Options{})
 				for _, account := range accounts {
-					c.NotEmpty(account.Users[test.user.ID])
+					c.NotEmpty(account.AccountUsers[test.user.ID])
 				}
 			}
 		})

@@ -107,14 +107,12 @@ github.com/microsoft/go-mssqldb v1.1.0 h1:jsV+tpvcPTbNNKW0o3kiCD69kOHICsfjZ2VcVu
 github.com/microsoft/go-mssqldb v1.1.0/go.mod h1:LzkFdl4z2Ck+Hi+ycGOTbL56VEfgoyA2DvYejrNGbRk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/pokt-foundation/db-client v1.11.1 h1:P0KCjEGVZ9zMkIMvhKlnV0q6PFqZCHwfj5TcNGobFJ8=
-github.com/pokt-foundation/db-client v1.11.1/go.mod h1:/U6fZh0ZjUY1gYFnNZ5T6U0yTXZY9X2LqM85HgA+eAA=
 github.com/pokt-foundation/db-client/v2 v2.14.2 h1:TeQIJ8fPWe+iOxJG5iWPxya3UDi6s8oS4CqZVEZeFGY=
 github.com/pokt-foundation/db-client/v2 v2.14.2/go.mod h1:sh87ndMoe9SslJYT7vGSQi+sJ39IZojY/SOH+aWLl2I=
 github.com/pokt-foundation/portal-db v1.11.0 h1:rI2JDc9RrB1Rz6nhOls23gaClQJeQdunUOksUVvI6pU=
 github.com/pokt-foundation/portal-db v1.11.0/go.mod h1:Pf8IIeoj3mSIk0+eNdzssz3T7GvnWRkFKPwGsFT2D5w=
-github.com/pokt-foundation/portal-db/v2 v2.14.1 h1:eUS13A8ErBGFluhxP0Bplz8Ds4zfxrWK6rYs94ew/6M=
-github.com/pokt-foundation/portal-db/v2 v2.14.1/go.mod h1:b0pEpQPKXMelw+ZHz3nxbiBGvzGwV9zFOIdzZJEdkLM=
+github.com/pokt-foundation/portal-db/v2 v2.15.1 h1:Fu7MXuj7U2l9nOMGEiAjC09kIhd/LYdgNzdcmWAsUsI=
+github.com/pokt-foundation/portal-db/v2 v2.15.1/go.mod h1:b0pEpQPKXMelw+ZHz3nxbiBGvzGwV9zFOIdzZJEdkLM=
 github.com/pokt-foundation/utils-go v0.9.0 h1:AYyz8K/FizdE11/c2USu5rvtz2H+xkcFMiesA/oRGFA=
 github.com/pokt-foundation/utils-go v0.9.0/go.mod h1:YZDpKHum+UINTYIzFJvLdlne2ksnlBonszqZQ7mkKnU=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=

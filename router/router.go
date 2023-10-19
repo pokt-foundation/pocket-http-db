@@ -10,7 +10,6 @@ import (
 	"log/slog"
 
 	"github.com/gorilla/mux"
-	v1Types "github.com/pokt-foundation/portal-db/types"
 	"github.com/pokt-foundation/portal-db/v2/driver"
 	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/pokt-foundation/portal-http-db/cache"
@@ -19,22 +18,16 @@ import (
 )
 
 var (
-	errNoChainsFound                  error = errors.New("no chains were found")
-	errNoGigastakeAppsFound           error = errors.New("no gigastake apps were found")
-	errNoGigastakeAppsFoundForChain   error = errors.New("no gigastake apps were found for chain")
-	errChainNotFound                  error = errors.New("chain not found")
-	errGigastakeAppNotFound           error = errors.New("gigastake app not found")
-	errNoPortalAppsFound              error = errors.New("no portal apps were found")
-	errPortalAppNotFound              error = errors.New("portal app not found")
-	errAccountNotFound                error = errors.New("account not found")
-	errNoAccountsFoundForUserID       error = errors.New("no accounts were found for user ID")
-	errUserIDNotFoundByProviderUserID error = errors.New("portal user ID not found for provider user ID: %s")
-	errUserNotFoundByID               error = errors.New("user not found for ID: %s")
-
-	errBlockchainNotFound    error = errors.New("blockchain not found")
-	errNoBlockchainsFound    error = errors.New("no blockchains were found")
-	errInvalidRoleNameFilter error = errors.New("invalid role name filter")
-	errPermissionsNotFound   error = errors.New("no permissions found for given user ID")
+	errNoChainsFound                error = errors.New("no chains were found")
+	errNoGigastakeAppsFound         error = errors.New("no gigastake apps were found")
+	errNoGigastakeAppsFoundForChain error = errors.New("no gigastake apps were found for chain")
+	errChainNotFound                error = errors.New("chain not found")
+	errGigastakeAppNotFound         error = errors.New("gigastake app not found")
+	errNoPortalAppsFound            error = errors.New("no portal apps were found")
+	errPortalAppNotFound            error = errors.New("portal app not found")
+	errAccountNotFound              error = errors.New("account not found")
+	errNoAccountsFoundForUserID     error = errors.New("no accounts were found for user ID")
+	errUserNotFoundByID             error = errors.New("user not found for ID: %s")
 )
 
 // router struct handler for router requests
@@ -150,37 +143,6 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}", rt.removeBlockedContract).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v2/plan", rt.getPlans).Methods(http.MethodGet)
-
-	/* ----- V1 Endpoints ----- */
-	// V1 endpoints are for the legacy DB schema and access the cache through the legacy adapters.
-
-	rt.Router.HandleFunc("/v1/blockchain", rt.getBlockchains).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/blockchain/{id}", rt.getBlockchain).Methods(http.MethodGet)
-
-	rt.Router.HandleFunc("/v1/application", rt.getApplications).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/application/first_date_surpassed", rt.updateFirstDateSurpassed).Methods(http.MethodPost)
-
-	rt.Router.HandleFunc("/v1/load_balancer", rt.getLoadBalancers).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/load_balancer", rt.createLoadBalancer).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.getLoadBalancer).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}", rt.updateLoadBalancer).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.createLoadBalancerUser).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/integration", rt.createLoadBalancerIntegration).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/user", rt.updateLoadBalancerUserRole).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/accept", rt.acceptLoadBalancerUser).Methods(http.MethodPut)
-	rt.Router.HandleFunc("/v1/load_balancer/{id}/user/{userID}", rt.deleteLoadBalancerUser).Methods(http.MethodDelete)
-
-	rt.Router.HandleFunc("/v1/user", rt.createPortalUser).Methods(http.MethodPost)
-	rt.Router.HandleFunc("/v1/user/{userID}/portal_id", rt.getPortalUserID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/user/{id}/application", rt.getApplicationsByUserID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/user/{id}/load_balancer", rt.getLoadBalancersByUserID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/user/{id}/permission", rt.getUserPermissionsByUserID).Methods(http.MethodGet)
-
-	rt.Router.HandleFunc("/v1/user/{portalID}/load_balancer/pending", rt.getPendingLoadBalancersByPortalID).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/user/{portalID}/load_balancer/count", rt.getLoadBalancersCountByPortalID).Methods(http.MethodGet)
-
-	rt.Router.HandleFunc("/v1/pay_plan", rt.getPayPlans).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v1/pay_plan/{type}", rt.getPayPlan).Methods(http.MethodGet)
 
 	rt.Router.Use(rt.authorizationHandler)
 
@@ -912,7 +874,7 @@ func (rt *Router) updateAccountUserRole(w http.ResponseWriter, r *http.Request) 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
-// PUT /v2/account/user/accept - Accept an AccountUserAccess.
+// PUT /v2/account/user/accept - Accept an AccountUser.
 func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 	var acceptUser types.UpdateAcceptAccountUser
 
@@ -940,7 +902,7 @@ func (rt *Router) acceptAccountUser(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": status})
 }
 
-// PUT /v2/account/user/remove - Remove an AccountUserAccess.
+// PUT /v2/account/user/remove - Remove an AccountUser.
 func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 	var removeUser types.UpdateRemoveAccountUser
 
@@ -1004,20 +966,6 @@ func (rt *Router) getPortalUser(w http.ResponseWriter, r *http.Request) {
 	default:
 		jsonresponse.RespondWithJSON(w, http.StatusOK, user.ID)
 	}
-}
-
-// GET /v2/user/{userID} - Gets the Portal User ID for a given auth provider user ID.
-func (rt *Router) getPortalUserID(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	providerUserID := types.ProviderUserID(vars["userID"])
-
-	portalUser := rt.cache.GetUserByProviderID(providerUserID)
-	if portalUser.ID == "" {
-		rt.handleError(w, "getPortalUserID", http.StatusNotFound, fmt.Errorf(errUserIDNotFoundByProviderUserID.Error(), providerUserID))
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, portalUser.ID)
 }
 
 // POST /v2/user - Creates a new User in the database. Called in response to a new user sign up.
@@ -1147,388 +1095,4 @@ func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) 
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
-}
-
-/* ---------- V1 Read Methods ---------- */
-
-func (rt *Router) getUserPermissionsByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getUserPermissionsByUserID")
-
-	vars := mux.Vars(r)
-	userID := vars["id"]
-
-	permissions, err := rt.cache.GetLegacyUserPermissionsByUserID(r.Context(), userID)
-	if err != nil {
-		rt.handleError(w, "getUserPermissionsByUserID", http.StatusNotFound, err)
-		return
-	}
-	if permissions.UserID == "" {
-		rt.handleError(w, "getUserPermissionsByUserID", http.StatusNotFound, errPermissionsNotFound)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, permissions)
-}
-
-func (rt *Router) getApplicationsByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getApplicationsByUserID")
-
-	vars := mux.Vars(r)
-
-	apps, err := rt.cache.GetLegacyApplicationsByUserID(r.Context(), vars["id"])
-	if err != nil {
-		rt.handleError(w, "getApplicationsByUserID", http.StatusNotFound, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, apps)
-}
-
-func (rt *Router) getApplications(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getApplications")
-
-	applications := rt.cache.GetLegacyApplications(cache.Options{
-		IncludeDeleted: false,
-	})
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, applications)
-}
-
-func (rt *Router) getLoadBalancersByUserID(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getLoadBalancersByUserID")
-
-	vars := mux.Vars(r)
-	userID := vars["id"]
-
-	roleNameFilter := v1Types.RoleName(r.URL.Query().Get("filter"))
-	if roleNameFilter != v1Types.RoleName("") && !v1Types.ValidRoleNames[roleNameFilter] {
-		jsonresponse.RespondWithError(w, http.StatusBadRequest, errInvalidRoleNameFilter.Error())
-		return
-	}
-
-	lbs, err := rt.cache.GetLegacyLoadBalancersByUserID(r.Context(), userID, roleNameFilter)
-	if err != nil {
-		rt.handleError(w, "getLoadBalancersByUserID", http.StatusNotFound, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
-}
-
-func (rt *Router) getLoadBalancers(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getLoadBalancers")
-
-	lbs := rt.cache.GetLegacyLoadBalancers(r.Context())
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
-}
-
-func (rt *Router) getLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getLoadBalancer")
-
-	vars := mux.Vars(r)
-
-	lb, err := rt.cache.GetLegacyLoadBalancer(r.Context(), vars["id"])
-	if err != nil {
-		rt.handleError(w, "getLoadBalancer", http.StatusNotFound, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
-}
-
-func (rt *Router) getBlockchains(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getBlockchains")
-
-	queryParams := map[queryParam]queryParamDetail{
-		chainParams.includeInactive: {required: false},
-	}
-
-	options, err := paramProcessor(r.URL, queryParams)
-	if err != nil {
-		rt.handleError(w, "getBlockchains", http.StatusBadRequest, err)
-		return
-	}
-
-	blockchains := rt.cache.GetLegacyBlockchains(r.Context(), options.IncludeInactiveChains)
-	if len(blockchains) == 0 {
-		rt.handleError(w, "getBlockchains", http.StatusNotFound, errNoBlockchainsFound)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, blockchains)
-}
-
-func (rt *Router) getBlockchain(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getBlockchain")
-
-	vars := mux.Vars(r)
-
-	blockchain := rt.cache.GetLegacyBlockchain(r.Context(), vars["id"])
-	if blockchain.ID == "" {
-		rt.handleError(w, "getBlockchain", http.StatusNotFound, errBlockchainNotFound)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, blockchain)
-}
-
-func (rt *Router) getPayPlans(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getPayPlans")
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, rt.cache.GetLegacyPayPlans(r.Context()))
-}
-
-func (rt *Router) getPayPlan(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getPayPlan")
-
-	vars := mux.Vars(r)
-
-	plan, err := rt.cache.GetLegacyPayPlan(r.Context(), vars["type"])
-	if err != nil {
-		rt.handleError(w, "getPayPlan", http.StatusNotFound, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, plan)
-}
-
-/* Returns all pending load balancers for a given portal user ID. */
-func (rt *Router) getPendingLoadBalancersByPortalID(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getPendingLoadBalancersByPortalID")
-
-	vars := mux.Vars(r)
-	userPortalID := vars["portalID"]
-
-	lbs, err := rt.cache.GetLegacyPendingLoadBalancers(r.Context(), userPortalID)
-	if err != nil {
-		rt.handleError(w, "getPendingLoadBalancersByPortalID", http.StatusNotFound, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lbs)
-}
-
-/* Returns the number of load balancers a given user owns, by portal ID */
-func (rt *Router) getLoadBalancersCountByPortalID(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - getLoadBalancersCountByPortalID")
-
-	vars := mux.Vars(r)
-	userPortalID := vars["portalID"]
-
-	lbsCount := rt.cache.GetLegacyLoadBalancersCount(r.Context(), userPortalID)
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lbsCount)
-}
-
-/* ---------- V1 Create Methods ---------- */
-func (rt *Router) createLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - createLoadBalancer")
-
-	var lb v1Types.LoadBalancer
-
-	err := json.NewDecoder(r.Body).Decode(&lb)
-	if err != nil {
-		rt.handleError(w, "createLoadBalancer", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	createdLB, err := rt.cache.CreateLegacyLoadBalancer(r.Context(), rt.writer, lb)
-	if err != nil {
-		rt.handleError(w, "createLoadBalancer", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, createdLB)
-}
-
-func (rt *Router) createLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - createLoadBalancerUser")
-
-	vars := mux.Vars(r)
-	lbID := vars["id"]
-
-	var user v1Types.UserAccess
-
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		rt.handleError(w, "createLoadBalancerUser", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	updatedLB, err := rt.cache.CreateLegacyLoadBalancerUser(r.Context(), rt.writer, lbID, user)
-	if err != nil {
-		rt.handleError(w, "createLoadBalancerUser", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedLB)
-}
-
-func (rt *Router) createLoadBalancerIntegration(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - createLoadBalancerIntegration")
-
-	vars := mux.Vars(r)
-	lbID := vars["id"]
-
-	var integrationsInput types.AccountIntegrations
-
-	err := json.NewDecoder(r.Body).Decode(&integrationsInput)
-	if err != nil {
-		rt.handleError(w, "createLoadBalancerIntegration", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	updatedLB, err := rt.cache.CreateLegacyLoadBalancerIntegration(r.Context(), rt.writer, lbID, integrationsInput)
-	if err != nil {
-		rt.handleError(w, "createLoadBalancerIntegration", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedLB)
-}
-
-func (rt *Router) createPortalUser(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - createPortalUser")
-
-	var userInput types.CreateUser
-
-	err := json.NewDecoder(r.Body).Decode(&userInput)
-	if err != nil {
-		rt.handleError(w, "createPortalUser", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	newUser, accountID, err := rt.writer.WriteUserNewSignUp(r.Context(), userInput, time.Now())
-	if err != nil {
-		rt.handleError(w, "createPortalUser", http.StatusBadRequest, err)
-		return
-	}
-
-	createPortalUserResponse := types.CreateUserResponse{
-		User:      *newUser,
-		AccountID: accountID,
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, createPortalUserResponse)
-}
-
-/* ---------- V1 Update Methods ---------- */
-
-func (rt *Router) updateLoadBalancer(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - updateLoadBalancer")
-
-	vars := mux.Vars(r)
-	lbID := vars["id"]
-
-	var updateInput v1Types.UpdateApplication
-
-	err := json.NewDecoder(r.Body).Decode(&updateInput)
-	if err != nil {
-		rt.handleError(w, "updateLoadBalancer", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	loadBalancer, err := rt.cache.UpdateLegacyLoadBalancer(r.Context(), rt.writer, lbID, updateInput)
-	if err != nil {
-		if err.Error() == fmt.Errorf(cache.ErrPortalAppNotFound.Error(), lbID).Error() {
-			rt.handleError(w, "updateLoadBalancer", http.StatusNotFound, err)
-			return
-		}
-
-		rt.handleError(w, "updateLoadBalancer", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, loadBalancer)
-}
-
-func (rt *Router) updateFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - updateFirstDateSurpassed")
-
-	var updateInput v1Types.UpdateFirstDateSurpassed
-
-	err := json.NewDecoder(r.Body).Decode(&updateInput)
-	if err != nil {
-		rt.handleError(w, "updateFirstDateSurpassed", http.StatusBadRequest, err)
-		return
-	}
-
-	defer r.Body.Close()
-
-	appsToUpdate, err := rt.cache.UpdateLegacyApplicationsFirstDateSurpassed(r.Context(), rt.writer, updateInput)
-	if err != nil {
-		rt.handleError(w, "updateFirstDateSurpassed", http.StatusBadRequest, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, appsToUpdate)
-}
-
-func (rt *Router) updateLoadBalancerUserRole(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - updateLoadBalancerUserRole")
-
-	vars := mux.Vars(r)
-	lbID := vars["id"]
-
-	var updateUser v1Types.UpdateUserAccess
-
-	err := json.NewDecoder(r.Body).Decode(&updateUser)
-	if err != nil {
-		rt.handleError(w, "updateLoadBalancerUserRole", http.StatusBadRequest, err)
-		return
-	}
-
-	defer r.Body.Close()
-
-	updatedLB, err := rt.cache.UpdateLegacyUserRole(r.Context(), rt.writer, lbID, updateUser)
-	if err != nil {
-		rt.handleError(w, "updateLoadBalancerUserRole", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedLB)
-}
-
-func (rt *Router) acceptLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - acceptLoadBalancerUser")
-
-	vars := mux.Vars(r)
-	lbID := vars["id"]
-
-	var acceptUserUpdate v1Types.UpdateUserAccess
-
-	err := json.NewDecoder(r.Body).Decode(&acceptUserUpdate)
-	if err != nil {
-		rt.handleError(w, "acceptLoadBalancerUser", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	updatedLB, err := rt.cache.AcceptLegacyUser(r.Context(), rt.writer, lbID, acceptUserUpdate)
-	if err != nil {
-		rt.handleError(w, "acceptLoadBalancerUser", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedLB)
-}
-
-func (rt *Router) deleteLoadBalancerUser(w http.ResponseWriter, r *http.Request) {
-	rt.logger.Info("V1 endpoint hit - deleteLoadBalancerUser")
-
-	vars := mux.Vars(r)
-
-	lb, err := rt.cache.RemoveLegacyAccountUser(r.Context(), rt.writer, vars["userID"], vars["id"])
-	if err != nil {
-		rt.handleError(w, "deleteLoadBalancerUser", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, lb)
 }
