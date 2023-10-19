@@ -13,6 +13,6 @@ WORKDIR /app
 ARG IMAGE_TAG
 ENV IMAGE_TAG=${IMAGE_TAG}
 
-COPY --from=builder /go/src/github.com/pokt-foundation/portal-http-db/bin ./
+COPY --from=builder /go/src/github.com/pokt-foundation/portal-http-db/v2/bin ./
 
 ENTRYPOINT ["/app/bin"]

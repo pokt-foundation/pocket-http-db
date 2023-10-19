@@ -77,6 +77,22 @@ jobs:
           plugins: |
             ['@semantic-release/commit-analyzer']
 
+  release-client:
+    if: needs.tag.outputs.new == 'true'
+    name: Push Docker Image to Google Artifact Registry
+    runs-on: ubuntu-22.04
+    needs: [lint, test, tag]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+
+      - name: Go List
+        run: GOPROXY=proxy.golang.org go list -m github.com/pokt-foundation/portal-http-db@v${{ needs.tag.outputs.version }}
+
   push:
     if: needs.tag.outputs.new == 'true'
     name: Push Docker Image to Google Artifact Registry
