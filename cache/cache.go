@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pokt-foundation/portal-db/v2/driver"
-	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-http-db/v2/driver"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 	"github.com/pokt-foundation/utils-go/logger"
 )
 

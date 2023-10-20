@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
-	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/pokt-foundation/portal-http-db/v2/cache"
+	postgresdriver "github.com/pokt-foundation/portal-http-db/v2/postgres-driver"
 	"github.com/pokt-foundation/portal-http-db/v2/router"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 	"github.com/pokt-foundation/utils-go/environment"
 	"github.com/pokt-foundation/utils-go/logger"
 )

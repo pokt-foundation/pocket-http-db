@@ -8,10 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pokt-foundation/portal-db/v2/testdata"
-	"github.com/pokt-foundation/portal-db/v2/types"
 	dbClient "github.com/pokt-foundation/portal-http-db/v2/client"
-	phdtestdata "github.com/pokt-foundation/portal-http-db/v2/testdata"
+	"github.com/pokt-foundation/portal-http-db/v2/testdata"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -119,7 +118,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 
-					chain, err = ts.v2Client2.GetChainByID(context.Background(), test.chainID)
+					chain, err = ts.client2.GetChainByID(context.Background(), test.chainID)
 					ts.Equal(test.err, err)
 					test.expectedChain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
 					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
@@ -160,7 +159,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 				if err == nil {
 					ts.Equal(test.expectedApp, app)
-					app, err = ts.v2Client2.GetGigastakeAppByID(context.Background(), test.gigastakeAppID)
+					app, err = ts.client2.GetGigastakeAppByID(context.Background(), test.gigastakeAppID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedApp, app)
 				}
@@ -178,7 +177,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:           "Should get all active chains",
-				expectedChains: phdtestdata.FilterActiveChains(testdata.Chains),
+				expectedChains: testdata.FilterActiveChains(testdata.Chains),
 				gigastakeApps:  testdata.GigastakeApps,
 			},
 			{
@@ -216,15 +215,15 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
-					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
+					ts.Equal(test.expectedChains, testdata.ChainPointersToMap(chains))
 
 					if test.options.IncludeInactive != nil && *test.options.IncludeInactive {
-						chains, err = ts.v2Client2.GetAllChains(context.Background(), test.options)
+						chains, err = ts.client2.GetAllChains(context.Background(), test.options)
 					} else {
-						chains, err = ts.v2Client2.GetAllChains(context.Background())
+						chains, err = ts.client2.GetAllChains(context.Background())
 					}
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedChains, phdtestdata.ChainPointersToMap(chains))
+					ts.Equal(test.expectedChains, testdata.ChainPointersToMap(chains))
 				}
 			})
 		}
@@ -248,11 +247,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
-					ts.Equal(test.expectedApps, phdtestdata.GigastakeAppPointersToMap(gigastakeApps))
+					ts.Equal(test.expectedApps, testdata.GigastakeAppPointersToMap(gigastakeApps))
 
-					gigastakeApps, err = ts.v2Client2.GetAllGigastakeApps(context.Background())
+					gigastakeApps, err = ts.client2.GetAllGigastakeApps(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedApps, phdtestdata.GigastakeAppPointersToMap(gigastakeApps))
+					ts.Equal(test.expectedApps, testdata.GigastakeAppPointersToMap(gigastakeApps))
 				}
 			})
 		}
@@ -292,7 +291,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if err == nil {
 					ts.Equal(test.expectedApps, apps)
 
-					apps, err = ts.v2Client2.GetAllGigastakeAppsByChain(context.Background(), test.chainID)
+					apps, err = ts.client2.GetAllGigastakeAppsByChain(context.Background(), test.chainID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedApps, apps)
 				}
@@ -338,7 +337,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 					ts.Equal(test.expectedApp, portalApp)
 
-					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), test.portalAppID)
+					portalApp, err = ts.client2.GetPortalAppByID(context.Background(), test.portalAppID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedApp, portalApp)
 				}
@@ -369,11 +368,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					for _, portalApp := range test.expectedApps {
 						portalApp.PortalAppUsers = test.portalAppUsers[portalApp.ID]
 					}
-					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
+					ts.Equal(test.expectedApps, testdata.PortalAppPointersToMap(portalApps))
 
-					portalApps, err = ts.v2Client2.GetAllPortalApps(context.Background())
+					portalApps, err = ts.client2.GetAllPortalApps(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
+					ts.Equal(test.expectedApps, testdata.PortalAppPointersToMap(portalApps))
 				}
 			})
 		}
@@ -498,11 +497,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					for _, portalApp := range test.expectedApps {
 						portalApp.PortalAppUsers = test.portalAppUsers[portalApp.ID]
 					}
-					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
+					ts.Equal(test.expectedApps, testdata.PortalAppPointersToMap(portalApps))
 
-					portalApps, err = ts.v2Client2.GetPortalAppsByUser(context.Background(), test.userID, test.options)
+					portalApps, err = ts.client2.GetPortalAppsByUser(context.Background(), test.userID, test.options)
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedApps, phdtestdata.PortalAppPointersToMap(portalApps))
+					ts.Equal(test.expectedApps, testdata.PortalAppPointersToMap(portalApps))
 				}
 			})
 		}
@@ -526,11 +525,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					ts.Equal(test.expectedApps, phdtestdata.PortalAppLitePointersToMap(portalAppLites))
+					ts.Equal(test.expectedApps, testdata.PortalAppLitePointersToMap(portalAppLites))
 
-					portalAppLites, err = ts.v2Client2.GetPortalAppsForMiddleware(context.Background())
+					portalAppLites, err = ts.client2.GetPortalAppsForMiddleware(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(test.expectedApps, phdtestdata.PortalAppLitePointersToMap(portalAppLites))
+					ts.Equal(test.expectedApps, testdata.PortalAppLitePointersToMap(portalAppLites))
 				}
 			})
 		}
@@ -558,7 +557,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if err == nil {
 					ts.Len(accounts, test.expectedAccNum)
 
-					accounts, err = ts.v2Client2.GetAllAccounts(context.Background())
+					accounts, err = ts.client2.GetAllAccounts(context.Background())
 					ts.Equal(test.err, err)
 					ts.Len(accounts, test.expectedAccNum)
 				}
@@ -758,7 +757,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					accountMap := phdtestdata.ConvertAccountPointersToMap(accounts)
+					accountMap := testdata.ConvertAccountPointersToMap(accounts)
 					// Assign plans and portal apps to expected data
 					for id, account := range test.expectedAccs {
 						account.Plan = test.plans[id]
@@ -769,9 +768,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					}
 					ts.Equal(test.expectedAccs, accountMap)
 
-					accounts, err = ts.v2Client2.GetUserAccounts(context.Background(), test.userID, test.options)
+					accounts, err = ts.client2.GetUserAccounts(context.Background(), test.userID, test.options)
 					ts.Equal(test.err, err)
-					accountMap = phdtestdata.ConvertAccountPointersToMap(accounts)
+					accountMap = testdata.ConvertAccountPointersToMap(accounts)
 					for id, account := range test.expectedAccs {
 						account.Plan = test.plans[id]
 						account.PortalApps = test.portalApps[id]
@@ -832,7 +831,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if err == nil {
 					ts.Equal(test.expectedAcc, account)
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), test.accountID, test.userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), test.accountID, test.userID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedAcc, account)
 				}
@@ -939,7 +938,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if err == nil {
 					ts.Equal(test.expectedPortalUser, portalUser)
 
-					portalUser, err = ts.v2Client2.GetPortalUser(context.Background(), test.userID)
+					portalUser, err = ts.client2.GetPortalUser(context.Background(), test.userID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedPortalUser, portalUser)
 				}
@@ -1014,7 +1013,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if err == nil {
 					ts.Equal(test.expectedPortalUserID, portalUserID)
 
-					portalUserID, err = ts.v2Client2.GetPortalUserID(context.Background(), test.userID)
+					portalUserID, err = ts.client2.GetPortalUserID(context.Background(), test.userID)
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedPortalUserID, portalUserID)
 				}
@@ -1043,11 +1042,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					ts.Equal(phdtestdata.DerefPlansMap(test.expected), phdtestdata.ConvertPlanPointersToMap(plans))
+					ts.Equal(testdata.DerefPlansMap(test.expected), testdata.ConvertPlanPointersToMap(plans))
 
-					plans, err = ts.v2Client2.GetAllPlans(context.Background())
+					plans, err = ts.client2.GetAllPlans(context.Background())
 					ts.Equal(test.err, err)
-					ts.Equal(phdtestdata.DerefPlansMap(test.expected), phdtestdata.ConvertPlanPointersToMap(plans))
+					ts.Equal(testdata.DerefPlansMap(test.expected), testdata.ConvertPlanPointersToMap(plans))
 				}
 			})
 		}
@@ -1075,7 +1074,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				if err == nil {
 					ts.Equal(test.expectedBlockedCon, blockedContracts)
 
-					blockedContracts, err = ts.v2Client2.GetBlockedContracts(context.Background())
+					blockedContracts, err = ts.client2.GetBlockedContracts(context.Background())
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedBlockedCon, blockedContracts)
 				}
@@ -1142,7 +1141,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 
-					createdChainByID, err = ts.v2Client2.GetChainByID(context.Background(), createdChain.ID)
+					createdChainByID, err = ts.client2.GetChainByID(context.Background(), createdChain.ID)
 					ts.NoError(err)
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
@@ -1210,7 +1209,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
 						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ID])
 
-						chain, err = ts.v2Client2.GetChainByID(context.Background(), chainID)
+						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
 						chain.GigastakeApps[test.expected.ID].CreatedAt = timestamp
 						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
@@ -1258,7 +1257,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					updatedChainByID1, err := ts.client1.GetChainByID(context.Background(), chainUpdateResponse.ID)
 					ts.NoError(err)
-					updatedChainByID2, err := ts.v2Client2.GetChainByID(context.Background(), chainUpdateResponse.ID)
+					updatedChainByID2, err := ts.client2.GetChainByID(context.Background(), chainUpdateResponse.ID)
 					ts.NoError(err)
 
 					updatedChains := []*types.Chain{updatedChainByID1, updatedChainByID2}
@@ -1457,7 +1456,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.Equal(test.gigastakeAppUpdate.Name, chain.GigastakeApps[updatedGigastakeApp.ID].Name)
 						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
 
-						chain, err = ts.v2Client2.GetChainByID(context.Background(), chainID)
+						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
 						ts.Equal(test.gigastakeAppUpdate.Name, chain.GigastakeApps[updatedGigastakeApp.ID].Name)
 						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
@@ -1499,7 +1498,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(test.active, fetchedChain.Active)
 
-					fetchedChain, err = ts.v2Client2.GetChainByID(context.Background(), test.chainID)
+					fetchedChain, err = ts.client2.GetChainByID(context.Background(), test.chainID)
 					ts.NoError(err)
 					ts.Equal(test.active, fetchedChain.Active)
 				}
@@ -1673,7 +1672,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					ts.Equal(test.expected, portalApp)
 
-					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
+					portalApp, err = ts.client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.NoError(err)
 					portalApp.CreatedAt = timestamp
 					portalApp.UpdatedAt = timestamp
@@ -1946,7 +1945,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					checkUpdatedPortalApp(updatedPortalApp)
 
-					updatedPortalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
+					updatedPortalApp, err = ts.client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.NoError(err)
 					checkUpdatedPortalApp(updatedPortalApp)
 				}
@@ -1980,7 +1979,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			portalApp, err := ts.client1.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 			ts.NoError(err)
 			ts.NotEmpty(portalApp)
-			portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
+			portalApp, err = ts.client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 			ts.NoError(err)
 			ts.NotEmpty(portalApp)
 
@@ -1998,7 +1997,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.Equal(test.err, err)
 					ts.Nil(portalApp)
 
-					portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
+					portalApp, err = ts.client2.GetPortalAppByID(context.Background(), createdPortalApp.ID)
 					ts.Equal(test.err, err)
 					ts.Nil(portalApp)
 				}
@@ -2044,7 +2043,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.NoError(err)
 						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
 
-						portalApp, err = ts.v2Client2.GetPortalAppByID(context.Background(), appID)
+						portalApp, err = ts.client2.GetPortalAppByID(context.Background(), appID)
 						ts.NoError(err)
 						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
 					}
@@ -2160,7 +2159,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					account.UpdatedAt = testdata.MockTimestamp
 					ts.Equal(test.expected, account)
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
+					account, err = ts.client2.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
 					ts.NoError(err)
 					account.CreatedAt = testdata.MockTimestamp
 					account.UpdatedAt = testdata.MockTimestamp
@@ -2269,7 +2268,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(test.expectedAccountIntegration, account.Integrations)
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), createdAccountIntegration.AccountID, test.userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), createdAccountIntegration.AccountID, test.userID)
 					ts.NoError(err)
 					ts.Equal(test.expectedAccountIntegration, account.Integrations)
 				}
@@ -2316,7 +2315,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(test.expected.CovalentAPIKeyFree, account.Integrations.CovalentAPIKeyFree)
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), updatedAccountIntegration.AccountID, test.userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), updatedAccountIntegration.AccountID, test.userID)
 					ts.NoError(err)
 					ts.Equal(test.expected.CovalentAPIKeyFree, account.Integrations.CovalentAPIKeyFree)
 				}
@@ -2357,7 +2356,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			account, err := ts.client1.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
 			ts.NoError(err)
 			ts.NotEmpty(account)
-			account, err = ts.v2Client2.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
+			account, err = ts.client2.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
 			ts.NoError(err)
 			ts.NotEmpty(account)
 
@@ -2375,7 +2374,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.Equal(test.err, err)
 					ts.Nil(account)
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
+					account, err = ts.client2.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
 					ts.Equal(test.err, err)
 					ts.Nil(account)
 				}
@@ -2519,7 +2518,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.AccountUsers[test.expected.UserID])
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), accountID, test.userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.AccountUsers[test.expected.UserID])
 
@@ -2753,7 +2752,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(test.accountUsersAfterUpdate, account.AccountUsers)
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), accountID, test.userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
 					ts.Equal(test.accountUsersAfterUpdate, account.AccountUsers)
 				}
@@ -2905,7 +2904,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.Equal(*test.expected, account.AccountUsers[test.expected.UserID])
 					}
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), accountID, test.userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), accountID, test.userID)
 					ts.NoError(err)
 					if test.acceptAccountUserInput.DeclinedInvite {
 						ts.Empty(account.AccountUsers[test.acceptAccountUserInput.UserID])
@@ -3022,7 +3021,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.NotContains(account.AccountUsers, userID)
 
-					account, err = ts.v2Client2.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
 					ts.NoError(err)
 					ts.NotContains(account.AccountUsers, userID)
 				}
@@ -3108,7 +3107,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.NotNil(portalUser)
 
-					portalUser, err = ts.v2Client2.GetPortalUser(context.Background(), string(providerID))
+					portalUser, err = ts.client2.GetPortalUser(context.Background(), string(providerID))
 					ts.NoError(err)
 					ts.NotNil(portalUser)
 				}
@@ -3220,7 +3219,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.NoError(err)
 						ts.Equal(test.expectedResponse, portalUser)
 
-						portalUser, err = ts.v2Client2.GetPortalUser(context.Background(), string(test.userInput.ID))
+						portalUser, err = ts.client2.GetPortalUser(context.Background(), string(test.userInput.ID))
 						ts.NoError(err)
 						ts.Equal(test.expectedResponse, portalUser)
 					}
@@ -3272,11 +3271,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.Error(err)
 					ts.Nil(portalUser)
 
-					accounts, err = ts.v2Client2.GetUserAccounts(context.Background(), test.userID)
+					accounts, err = ts.client2.GetUserAccounts(context.Background(), test.userID)
 					ts.Error(err)
 					ts.Nil(accounts)
 
-					portalUser, err = ts.v2Client2.GetPortalUser(context.Background(), string(test.providerUserID))
+					portalUser, err = ts.client2.GetPortalUser(context.Background(), string(test.providerUserID))
 					ts.Error(err)
 					ts.Nil(portalUser)
 				}
@@ -3341,7 +3340,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 
-					globalBlockedContracts, err = ts.v2Client2.GetBlockedContracts(context.Background())
+					globalBlockedContracts, err = ts.client2.GetBlockedContracts(context.Background())
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 				}
@@ -3411,7 +3410,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 
-					globalBlockedContracts, err = ts.v2Client2.GetBlockedContracts(context.Background())
+					globalBlockedContracts, err = ts.client2.GetBlockedContracts(context.Background())
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 				}
@@ -3464,7 +3463,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 
-					globalBlockedContracts, err = ts.v2Client2.GetBlockedContracts(context.Background())
+					globalBlockedContracts, err = ts.client2.GetBlockedContracts(context.Background())
 					ts.NoError(err)
 					ts.Equal(test.expectedBlockedContracts, globalBlockedContracts)
 				}
@@ -3477,12 +3476,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 /* ---------- Test Suite Util Interfaces ---------- */
 type phdE2EReadTestSuite struct {
 	suite.Suite
-	client1, v2Client2 dbClient.IDBClient
+	client1, client2 dbClient.IDBClient
 }
 
 type phdE2EWriteTestSuite struct {
 	suite.Suite
-	client1, v2Client2 dbClient.IDBClient
+	client1, client2 dbClient.IDBClient
 }
 
 type DBClientInitializer interface {
@@ -3540,13 +3539,13 @@ func (ts *phdE2EReadTestSuite) SetClient1(client dbClient.IDBClient) {
 	ts.client1 = client
 }
 func (ts *phdE2EReadTestSuite) SetClient2(client dbClient.IDBClient) {
-	ts.v2Client2 = client
+	ts.client2 = client
 }
 func (ts *phdE2EWriteTestSuite) SetClient1(client dbClient.IDBClient) {
 	ts.client1 = client
 }
 func (ts *phdE2EWriteTestSuite) SetClient2(client dbClient.IDBClient) {
-	ts.v2Client2 = client
+	ts.client2 = client
 }
 
 func (ts *phdE2EReadTestSuite) NoError(err error) {

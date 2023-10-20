@@ -55,7 +55,9 @@ services:
       retries: 5
 
   portal-db:
-    image: pocketfoundation/test-portal-postgres:latest
+    build:
+      context: ..
+      dockerfile: Dockerfile.testdb
     container_name: portal-db
     restart: always
     ports:

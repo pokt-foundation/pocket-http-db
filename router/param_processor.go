@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/pokt-foundation/portal-http-db/v2/cache"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
 type (

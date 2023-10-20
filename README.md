@@ -1,7 +1,7 @@
 <div align="center">
     <img src=".github/grove_logo.png" alt="Portal Network logo" width="600"/>
     <h1>Portal HTTP Database</h1>
-    <big>The Portal HTTP DB (PHD) provides access to the Portal database using a RESTful API.</big>
+    <big>The Portal HTTP DB (PHD) provides access to the Portal database through a REST API.</big>
     <div>
        <br/>
         <a href="https://github.com/pokt-foundation/portal-http-db/v2/pulse"><img src="https://img.shields.io/github/last-commit/pokt-foundation/portal-http-db.svg"/></a>
@@ -11,15 +11,52 @@
 </div>
 <br/>
 
+# Table of Contents
+  - [PHD API](#phd-api)
+  - [PHD Client](#phd-client)
+  - [DB Driver](#db-driver)
+    - [Postgres Driver](#2-postgres-driver)
+    - [Types Package](#3-types)
+  - [Development](#development)
+    - [Code Generation](#code-generation)
+    - [Modifying PHD Functionality](#modifying-phd-functionality)
+    - [Pre-Commit](#pre-commit-installation)
+
+# PHD API
+
+The PHD API is a REST interface over top of a Postgres database connection. It has 3 key components:
+
+## 1. [Cache](https://github.com/pokt-foundation/portal-http-db/blob/master/cache/cache.go)
+
+The `cache` contains all the data contained in the database, in the form of the Go structs used across the backend repos.
+
+The `cache` is set up to refresh at a specified interval (default is 5 minutes).
+
+## 2. [Listener](https://github.com/pokt-foundation/portal-http-db/blob/master/cache/listener.go)
+
+The listener (located in the `cache` package) receives Postgres notification payloads triggered by the Postgres database and updates the cache in response to any writes performed on the DB.
+
+All `cache` updates in PHD happen in response to one of these listener events.
+
+## 3. [Router](https://github.com/pokt-foundation/portal-http-db/blob/master/router/router.go)
+
+The `router` contains all endpoints that may be used for interacting with the Portal DB:
+
 # PHD Client
 
-To use the Portal HTTP DB Client in other packages, import the `github.com/pokt-foundation/phd-client` module (located at `./client`).
+To use the Portal HTTP DB Client in other backend repos, run:
+
+```go
+go get github.com/pokt-foundation/portal-http-db/v2@latest
+```
+
+and import the module:
+
+```go
+phdClient github.com/pokt-foundation/portal-http-db/v2/phd-client
+```
 
 This client is a lightweight wrapper around the HTTP requests that PHD supports and allows easy use of PHD from other backend services.
-
-### PHD Client Usage
-
-This client should be installed in any Go backend repo that needs to interact with PHD.
 
 The interface to be used depends on the interactions required by the repo:
 
@@ -27,32 +64,67 @@ The interface to be used depends on the interactions required by the repo:
 - `IDBWrite`: write-only
 - `IDBClient`: read & write
 
-### PHD Client Mocks
+# DB Driver
 
-Mocks of the above interfaces are generated using [Mockery](https://github.com/vektra/mockery).
+### 1. Driver
 
-To generate them from the interfaces run `make gen_client_mocks`.
+`github.com/pokt-foundation/portal-http-db/v2/driver`
+
+Contains the following interfaces:
+
+- **Driver**: contains all Read & Write methods.
+- **Reader**: contains only Read methods and the Notification channel.
+- **Writer**: contains only Write methods.
+
+### 2. Postgres Driver
+
+`github.com/pokt-foundation/portal-http-db/v2/postgresdriver`
+
+Contains all functionality to interact with Postgres.
+
+- Provides a struct that satisfies the Driver interface.
+- Type-safe Go code is generated from SQL schema by SQLC.
+
+### 3. Types
+
+`github.com/pokt-foundation/portal-http-db/v2/types`
+
+Contains all database structs and their associated methods which are used across the Portal API backend Go repos.
+
+# Development
+
+## Code Generation
+⚠️ IMPORTANT - Before any commit the `make gen` target **MUST** be run. ⚠️
+
+In order for this target to properly generate the Go code and mocks the following dependencies **MUST** be installed:
+
+- [SQLC](https://docs.sqlc.dev/en/stable/overview/install.html)
+- [Mockery](https://vektra.github.io/mockery/latest/installation/)
 
 # Modifying PHD Functionality
 
-When adding or updating functionality to PHD, there is a order of operations that should be followed for best results.
+When adding or updating functionality to PHD, there is a order of operations that must be followed for best results.
 
-1. *(Optional)* **Add changes to the [Portal DB Driver](https://github.com/pokt-foundation/portal-db) repository if necessary**
+1. **Add changes to the `types` package *(if necessary)***
+
+- All structs used throughout the Portal backend are located inside `./types`
+- Unit tests for the the `types` package must also be updated
+
+2. **Add changes to the `driver` and/or `postgresdriver` packages *(if necessary)***
 
 - Start by updating the `postgresdrver/sqlc/schema.yml` and/or `postgresdrver/sqlc/query.yml` files
-- Generate the SQLC Go code from these SQL files using `make`
+- Generate the SQLC Go code from these SQL files using `make gen`
 - Add new functionality to the postgres driver methods and the Driver interface
-- Update the driver integration tests in the `Portal DB` repository to cover all code changes
-- Once merged to `main` a new version of the DB driver will be published, following semantic versioning standards based on the commit message(s)
+- Update the driver integration tests in the `postgresdriver` package to cover all code changes
 
-2. **Add the new functionality to PHD**
+3. **Add the new functionality to PHD `cache` and/or `router` packages**
 
 - Open a new feature branch in PHD, pointed to the `staging` branch
 - Install the newly published `Portal DB driver` version into PHD
 - Make any necessary changes to both the `cache.go` and/or `router.go`
 - Update or create unit tests in `cache_Test.go` and/or `router_test.go` to cover all changes, ensuring they pass
 
-3. **Update the PHD Client and PHD E2E tests**
+4. **Update the `phd-client` package and PHD E2E tests**
 
 - Add or modify all of the relevant methods inside the `client/client.go` file and update the interface
 - Run `make gen_client_mocks` to update the PHD Client mocks

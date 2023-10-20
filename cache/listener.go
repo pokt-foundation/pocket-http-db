@@ -6,7 +6,7 @@ import (
 
 	"log/slog"
 
-	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
 func (c *Cache) listen() {

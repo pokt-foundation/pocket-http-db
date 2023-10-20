@@ -1,4 +1,4 @@
-name: Lint, Test and Push to Google Artifact Registry
+name: Lint, Test, Publish New Go Version, Push Test Database Image and Push Docker Image to GAR
 
 on:
   push:
@@ -53,6 +53,12 @@ jobs:
       - name: Set up Docker test stack
         run: make test_env_up
 
+      - name: Run Postgres Driver tests
+        run: make run_driver_tests_ci
+
+      - name: Reset test env
+        run: make reset_test_env
+
       - name: Run E2E tests
         run: make run_e2e_tests_ci
 
@@ -93,6 +99,33 @@ jobs:
       - name: Go List
         run: GOPROXY=proxy.golang.org go list -m github.com/pokt-foundation/portal-http-db/v2@v${{ needs.tag.outputs.version }}
 
+  publish-test-db:
+    if: needs.tag.outputs.new == 'true'
+    name: Push Test Database Image to Dockerhub
+    runs-on: ubuntu-22.04
+    needs: [lint, test, tag]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: docker/setup-buildx-action@v2
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag Test Database Docker image and push to Dockerhub
+        uses: docker/build-push-action@v4
+        with:
+          push: true
+          context: .
+          file: ./Dockerfile.testdb
+          tags: |
+            pocketfoundation/test-portal-postgres:latest
+            pocketfoundation/test-portal-postgres:${{ needs.tag.outputs.version }}
+
   push:
     if: needs.tag.outputs.new == 'true'
     name: Push Docker Image to Google Artifact Registry
@@ -121,10 +154,12 @@ jobs:
       - name: Tag Docker image and push to Google Artifact Registry
         uses: docker/build-push-action@v4
         with:
+          push: true
+          context: .
+          file: ./Dockerfile
           build-args: |
             IMAGE_TAG=${{ needs.tag.outputs.version }}
             GITHUB_TOKEN=${{ secrets.GH_ACCESS_TOKEN }}
-          push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ needs.tag.outputs.version }}
             ${{ env.REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:latest

@@ -1,10 +1,9 @@
-package phdtestdata
+package testdata
 
 import (
 	"sort"
 
-	"github.com/pokt-foundation/portal-db/v2/testdata"
-	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
 /* ---------- Test Utils ---------- */
@@ -126,9 +125,9 @@ func FilterActiveChains(chains map[types.RelayChainID]*types.Chain) map[types.Re
 
 // This functIon is needed because the cache alter the DB output
 func ModifiedAccountToTest() map[types.AccountID]*types.Account {
-	portalAppsCopy := testdata.PortalApps
-	payPlanCopy := testdata.PayPlans
-	accCopy := testdata.Accounts
+	portalAppsCopy := PortalApps
+	payPlanCopy := PayPlans
+	accCopy := Accounts
 	accCopy["account_1"].Plan = payPlanCopy["basic_plan"]
 	accCopy["account_2"].Plan = payPlanCopy["pro_plan"]
 	accCopy["account_3"].Plan = payPlanCopy["startup_plan"]

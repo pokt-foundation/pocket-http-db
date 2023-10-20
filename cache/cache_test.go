@@ -9,10 +9,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pokt-foundation/portal-db/v2/testdata"
-	"github.com/pokt-foundation/portal-db/v2/types"
 	dbclient "github.com/pokt-foundation/portal-http-db/v2/client"
-	phdtestdata "github.com/pokt-foundation/portal-http-db/v2/testdata"
+	"github.com/pokt-foundation/portal-http-db/v2/testdata"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 	"github.com/pokt-foundation/utils-go/logger"
 )
 
@@ -64,8 +63,8 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all accounts",
-			actual:   phdtestdata.AccountsToMap(cache.GetAccounts(Options{})),
-			expected: phdtestdata.ModifiedAccountToTest(),
+			actual:   testdata.AccountsToMap(cache.GetAccounts(Options{})),
+			expected: testdata.ModifiedAccountToTest(),
 		},
 		{
 			name:     "Should return account by ID",
@@ -74,33 +73,33 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:   "Should return accounts by user ID where accepted param not provided",
-			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{})),
+			actual: testdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{})),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
-				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
-				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
+				"account_2": testdata.ModifiedAccountToTest()["account_2"],
+				"account_4": testdata.ModifiedAccountToTest()["account_4"],
+				"account_5": testdata.ModifiedAccountToTest()["account_5"],
 			},
 		},
 		{
 			name: "Should return accounts by user ID where accepted = true",
-			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
+			actual: testdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
 				Accepted: dbclient.BoolPtr(true),
 			})),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
-				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
-				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
+				"account_2": testdata.ModifiedAccountToTest()["account_2"],
+				"account_4": testdata.ModifiedAccountToTest()["account_4"],
+				"account_5": testdata.ModifiedAccountToTest()["account_5"],
 			},
 		},
 		{
 			name: "Should return accounts by user ID where accepted = false",
-			actual: phdtestdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
+			actual: testdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
 				Accepted: dbclient.BoolPtr(false),
 			})),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": phdtestdata.ModifiedAccountToTest()["account_2"],
-				"account_4": phdtestdata.ModifiedAccountToTest()["account_4"],
-				"account_5": phdtestdata.ModifiedAccountToTest()["account_5"],
+				"account_2": testdata.ModifiedAccountToTest()["account_2"],
+				"account_4": testdata.ModifiedAccountToTest()["account_4"],
+				"account_5": testdata.ModifiedAccountToTest()["account_5"],
 			},
 			emptyPortalApps: "account_2",
 		},
@@ -111,12 +110,12 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all portal apps",
-			actual:   phdtestdata.PortalAppsToMap(cache.GetPortalApps(Options{})),
+			actual:   testdata.PortalAppsToMap(cache.GetPortalApps(Options{})),
 			expected: testdata.PortalApps,
 		},
 		{
 			name:     "Should return all portal app lites for middleware",
-			actual:   phdtestdata.PortalAppLitesToMap(cache.GetPortalAppsForMiddleware()),
+			actual:   testdata.PortalAppLitesToMap(cache.GetPortalAppsForMiddleware()),
 			expected: testdata.PortalAppLites,
 		},
 		{
@@ -126,7 +125,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all gigastake apps",
-			actual:   phdtestdata.GigastakeAppsToMap(cache.GetGigastakeApps(Options{})),
+			actual:   testdata.GigastakeAppsToMap(cache.GetGigastakeApps(Options{})),
 			expected: testdata.GigastakeApps,
 		},
 		{
@@ -136,12 +135,12 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all active chains",
-			actual:   phdtestdata.ChainsToMap(cache.GetChains(Options{})),
-			expected: phdtestdata.FilterActiveChains(testdata.Chains),
+			actual:   testdata.ChainsToMap(cache.GetChains(Options{})),
+			expected: testdata.FilterActiveChains(testdata.Chains),
 		},
 		{
 			name:     "Should return all chains inclouding inactive",
-			actual:   phdtestdata.ChainsToMap(cache.GetChains(Options{IncludeInactiveChains: true})),
+			actual:   testdata.ChainsToMap(cache.GetChains(Options{IncludeInactiveChains: true})),
 			expected: testdata.Chains,
 		},
 		{
@@ -151,7 +150,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return all pay plans",
-			actual:   phdtestdata.PayPlansToMap(cache.GetPlans()),
+			actual:   testdata.PayPlansToMap(cache.GetPlans()),
 			expected: testdata.PayPlans,
 		},
 		{
@@ -344,7 +343,7 @@ func Test_upsertAccountUser(t *testing.T) {
 			c.True(ok, "AccountUser should be present in account Users map")
 			c.Equal(test.accountUser, accountUser, "AccountUser should be added or updated in the cache")
 
-			accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
 			var accepted bool
@@ -481,7 +480,7 @@ func Test_upsertAccount(t *testing.T) {
 				test.account.Plan = cache.plans[test.account.PlanType]
 				c.Equal(test.account, cache.GetUserAccount(test.account.ID, test.userID, Options{}), "Account should be present in cache and updated")
 
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
+				accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
 				if test.account.Deleted {
 					c.False(accountFound, "Account should be removed from accounts map")
 				} else {
@@ -493,7 +492,7 @@ func Test_upsertAccount(t *testing.T) {
 						Accepted: dbclient.BoolPtr(true),
 					})
 
-					accountInUserAccounts := phdtestdata.FindAccountInAccounts(accountsForUser, accountID)
+					accountInUserAccounts := testdata.FindAccountInAccounts(accountsForUser, accountID)
 
 					if test.account.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
@@ -507,7 +506,7 @@ func Test_upsertAccount(t *testing.T) {
 						}
 						if accepted {
 							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.UserID, accountID)
-							c.Equal(test.account, phdtestdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+							c.Equal(test.account, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
 						} else {
 							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
 						}
@@ -548,7 +547,7 @@ func Test_deleteAccountUser(t *testing.T) {
 				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{}).AccountUsers[test.accountUser.UserID]
 				c.True(ok, "AccountUser should be found in account Users map before deletion")
 
-				accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+				accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
 				user := cache.GetUserByID(test.accountUser.UserID)
@@ -568,7 +567,7 @@ func Test_deleteAccountUser(t *testing.T) {
 			_, ok := account.AccountUsers[test.accountUser.UserID]
 			c.False(ok, "AccountUser should be deleted from account Users map")
 
-			accountFound := phdtestdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
 			user := cache.GetUserByID(test.accountUser.UserID)
@@ -757,7 +756,7 @@ func Test_upsertPortalApp(t *testing.T) {
 			// Add, update or delete PortalApp
 			cache.upsertPortalApp(test.portalApp)
 
-			portalAppFound := phdtestdata.FindPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalApp.ID)
+			portalAppFound := testdata.FindPortalAppInPortalApps(cache.GetPortalApps(Options{IncludeDeleted: false}), test.portalApp.ID)
 			if test.delete {
 				c.False(portalAppFound, "PortalApp should be removed from portalApps map")
 			} else {
@@ -1170,7 +1169,7 @@ func Test_upsertGigastakeApp(t *testing.T) {
 			// Add, update, or delete GigastakeApp
 			cache.upsertGigastakeApp(test.gigastakeApp)
 
-			gigastakeAppFound := phdtestdata.FindGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.ID)
+			gigastakeAppFound := testdata.FindGigastakeAppInGigastakeApps(cache.GetGigastakeApps(Options{}), test.gigastakeApp.ID)
 			if test.delete {
 				c.False(gigastakeAppFound, "GigastakeApp should be removed from gigastakeApps map")
 			} else {
@@ -1360,7 +1359,7 @@ func Test_upsertChain(t *testing.T) {
 			// Add or update Chain
 			cache.upsertChain(chain)
 
-			chainFound := phdtestdata.FindChainInChains(cache.GetChains(Options{IncludeInactiveChains: true}), chain.ID)
+			chainFound := testdata.FindChainInChains(cache.GetChains(Options{IncludeInactiveChains: true}), chain.ID)
 			if test.delete {
 				c.False(chainFound, "Chain should be removed from chains map")
 			} else {

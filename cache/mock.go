@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pokt-foundation/portal-db/v2/driver"
-	postgresdriver "github.com/pokt-foundation/portal-db/v2/postgres-driver"
-	"github.com/pokt-foundation/portal-db/v2/types"
+	"github.com/pokt-foundation/portal-http-db/v2/driver"
+	postgresdriver "github.com/pokt-foundation/portal-http-db/v2/postgres-driver"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
 type ReaderMock struct {

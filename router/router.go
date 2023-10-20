@@ -10,9 +10,9 @@ import (
 	"log/slog"
 
 	"github.com/gorilla/mux"
-	"github.com/pokt-foundation/portal-db/v2/driver"
-	"github.com/pokt-foundation/portal-db/v2/types"
 	"github.com/pokt-foundation/portal-http-db/v2/cache"
+	"github.com/pokt-foundation/portal-http-db/v2/driver"
+	"github.com/pokt-foundation/portal-http-db/v2/types"
 	jsonresponse "github.com/pokt-foundation/utils-go/json-response"
 	"github.com/pokt-foundation/utils-go/logger"
 )

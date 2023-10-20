@@ -5,7 +5,7 @@ package client
 import (
 	context "context"
 
-	types "github.com/pokt-foundation/portal-db/v2/types"
+	types "github.com/pokt-foundation/portal-http-db/v2/types"
 	mock "github.com/stretchr/testify/mock"
 )
 
