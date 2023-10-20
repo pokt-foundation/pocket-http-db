@@ -5,8 +5,8 @@ go 1.21
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/jackc/pgx/v5 v5.4.1
-	github.com/pokt-foundation/portal-db/v2 v2.15.1
-	github.com/pokt-foundation/utils-go v0.9.0
+	github.com/pokt-foundation/portal-db/v2 v2.15.2
+	github.com/pokt-foundation/utils-go v0.11.1
 	github.com/stretchr/testify v1.8.1
 )
 
@@ -27,7 +27,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.0 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/pokt-foundation/portal-db v1.11.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
