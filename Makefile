@@ -3,6 +3,15 @@ SHELL := /bin/bash
 build:
 	CGO_ENABLED=0 GOOS=linux go build -a -o bin/portal-http-db ./main.go
 
+gen_client_mocks: gen_client gen_reader gen_writer
+
+gen_client:
+	mockery --name=IDBClient --filename=mock_client.go --recursive --inpackage
+gen_reader:
+	mockery --name=IDBReader --filename=mock_reader.go --recursive --inpackage
+gen_writer:
+	mockery --name=IDBWriter --filename=mock_writer.go --recursive --inpackage
+
 # These targets spin up and shut down the E2E test env in docker.
 test_env_up:
 	@echo "🧪 Starting up Portal HTTP DB test environment ..."

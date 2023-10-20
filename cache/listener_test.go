@@ -6,7 +6,7 @@ import (
 
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
-	phdtestdata "github.com/pokt-foundation/portal-http-db/testdata"
+	phdtestdata "github.com/pokt-foundation/portal-http-db/v2/testdata"
 	"github.com/pokt-foundation/utils-go/logger"
 	"github.com/stretchr/testify/require"
 )

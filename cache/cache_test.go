@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	dbclient "github.com/pokt-foundation/db-client/v2/client"
 	"github.com/pokt-foundation/portal-db/v2/testdata"
 	"github.com/pokt-foundation/portal-db/v2/types"
-	phdtestdata "github.com/pokt-foundation/portal-http-db/testdata"
+	dbclient "github.com/pokt-foundation/portal-http-db/v2/client"
+	phdtestdata "github.com/pokt-foundation/portal-http-db/v2/testdata"
 	"github.com/pokt-foundation/utils-go/logger"
 )
 
