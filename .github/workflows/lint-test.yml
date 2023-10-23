@@ -51,7 +51,7 @@ jobs:
         run: make run_driver_tests_ci
 
       - name: Reset test env
-        run: make reset_test_env
+        run: make reset_test_env_ci
 
       - name: Run E2E tests
         run: make run_e2e_tests_ci
