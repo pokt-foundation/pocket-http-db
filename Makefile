@@ -48,6 +48,7 @@ test_env_down:
 	@docker-compose -f ./testdata/docker-compose.test.yml down --remove-orphans 1>/dev/null
 	@echo "✅ Test environment is down."
 reset_test_env: stop_test_phd reset_test_db start_test_phd reset_test_cache
+reset_test_env_ci: stop_test_phd reset_test_db_ci start_test_phd reset_test_cache
 
 run_all_tests:
 	go test ./... -count=1
@@ -81,6 +82,10 @@ test: test_unit test_env_up run_driver_tests reset_test_env run_e2e_tests test_e
 # These targets are for running E2E tests locally. Once the test env is up and running via `make test_env_up`
 # you can run the E2E tests use `make test_dev`. This will reset the test DB and cache before running the tests.
 # This allows for running the E2E tests multiple times quickly without having to restart the test env.
+reset_test_db_ci:
+	@echo "🧨 Resetting the test database ..."
+	@docker exec portal-db psql -U postgres -d postgres -f /scripts/reset_test_db.sql >/dev/null || (echo "❌ Database reset operation failed:" && docker exec portal-db psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/reset_test_db.sql)
+	@echo "✅ Test database reset operation completed successfully!"
 reset_test_db:
 	@echo "🧨 Resetting the test database ..."
 	@docker exec -it portal-db psql -U postgres -d postgres -f /scripts/reset_test_db.sql >/dev/null || (echo "❌ Database reset operation failed:" && docker exec -it portal-db psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/reset_test_db.sql)
