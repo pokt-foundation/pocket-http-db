@@ -83,7 +83,7 @@ test: test_unit test_env_up run_driver_tests reset_test_env run_e2e_tests test_e
 # This allows for running the E2E tests multiple times quickly without having to restart the test env.
 reset_test_db:
 	@echo "🧨 Resetting the test database ..."
-	@docker exec -it portal-db psql -U postgres -d postgres -f /scripts/reset_test_db.sql >/dev/null || (echo "❌ Database reset operation failed:" && docker exec -it test-database psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/reset_test_db.sql)
+	@docker exec -it portal-db psql -U postgres -d postgres -f /scripts/reset_test_db.sql >/dev/null || (echo "❌ Database reset operation failed:" && docker exec -it portal-db psql -U postgres -d postgres -f /docker-entrypoint-initdb.d/reset_test_db.sql)
 	@echo "✅ Test database reset operation completed successfully!"
 reset_test_cache:
 	@echo "💡 Resetting the PHD cache ..."
