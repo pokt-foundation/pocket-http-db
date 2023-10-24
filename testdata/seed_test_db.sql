@@ -573,143 +573,115 @@ VALUES (
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
--- Insert account_user_access
-INSERT INTO account_user_access (
-        account_id,
+-- Insert into account_users
+INSERT INTO account_users (
         user_id,
-        portal_application_id,
+        account_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
     )
 VALUES (
-        'account_1',
         'user_1',
-        NULL,
+        'account_1',
         'OWNER',
         true,
-        true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_1',
         'user_2',
-        'test_app_1',
+        'account_1',
         'ADMIN',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_1',
         'user_8',
-        'test_app_1',
+        'account_1',
         'ADMIN',
-        false,
         false,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_2',
         'user_3',
-        NULL,
+        'account_2',
         'OWNER',
         true,
-        true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_2',
         'user_4',
-        'test_app_2',
+        'account_2',
         'MEMBER',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_2',
         'user_9',
-        'test_app_2',
-        'MEMBER',
-        false,
-        false,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
         'account_2',
+        'MEMBER',
+        false,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
         'user_2',
-        'test_app_2',
+        'account_2',
         'MEMBER',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_3',
         'user_5',
-        NULL,
+        'account_3',
         'OWNER',
-        true,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_3',
         'user_6',
-        'test_app_3',
+        'account_3',
         'ADMIN',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_3',
         'user_7',
-        'test_app_3',
-        'MEMBER',
-        false,
-        true,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
         'account_3',
+        'MEMBER',
+        true,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
         'user_10',
-        'test_app_3',
+        'account_3',
         'MEMBER',
         false,
-        false,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
+        'user_4',
         'account_4',
-        'user_4',
-        NULL,
         'OWNER',
-        true,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_5',
         'user_4',
-        NULL,
+        'account_5',
         'OWNER',
-        true,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'

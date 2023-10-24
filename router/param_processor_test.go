@@ -61,16 +61,16 @@ func Test_paramProcessor(t *testing.T) {
 				IncludeDeleted:            true,
 			},
 		},
-		{
-			name: "Should process valid params correctly for portal_app endpoint",
-			params: url.Values{
-				string(portalAppParams.roleNameFilters): []string{"OWNER,ADMIN"},
-			},
-			path: v2PortalAppEndpoint,
-			expected: cache.Options{
-				FilterPortalApps: []types.RoleName{types.RoleOwner, types.RoleAdmin},
-			},
-		},
+		// {
+		// 	name: "Should process valid params correctly for portal_app endpoint",
+		// 	params: url.Values{
+		// 		string(portalAppParams.roleNameFilters): []string{"OWNER,ADMIN"},
+		// 	},
+		// 	path: v2PortalAppEndpoint,
+		// 	expected: cache.Options{
+		// 		FilterPortalApps: []types.RoleName{types.RoleOwner, types.RoleAdmin},
+		// 	},
+		// },
 		{
 			name: "Should return error for invalid boolean param in common endpoint",
 			params: url.Values{

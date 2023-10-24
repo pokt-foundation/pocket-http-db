@@ -150,7 +150,7 @@ var (
 			Name:     "The Brave Voyager",
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("basic_plan"),
-			AccountUsers: map[types.UserID]types.AccountUser{
+			Users: map[types.UserID]types.AccountUser{
 				"user_1": AccountUser[1],
 				"user_2": AccountUser[2],
 				"user_8": AccountUser[8],
@@ -170,7 +170,7 @@ var (
 			Name:     "Dragonborn Explorer",
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("pro_plan"),
-			AccountUsers: map[types.UserID]types.AccountUser{
+			Users: map[types.UserID]types.AccountUser{
 				"user_3": AccountUser[3],
 				"user_4": AccountUser[4],
 				"user_9": AccountUser[9],
@@ -191,7 +191,7 @@ var (
 			Name:     "Fellowship Startup",
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("startup_plan"),
-			AccountUsers: map[types.UserID]types.AccountUser{
+			Users: map[types.UserID]types.AccountUser{
 				"user_5":  AccountUser[5],
 				"user_6":  AccountUser[6],
 				"user_7":  AccountUser[7],
@@ -212,7 +212,7 @@ var (
 			Name:     "Iron Throne Enterprise",
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("enterprise_plan"),
-			AccountUsers: map[types.UserID]types.AccountUser{
+			Users: map[types.UserID]types.AccountUser{
 				"user_4": AccountUser[11],
 			},
 			Integrations: types.AccountIntegrations{
@@ -230,7 +230,7 @@ var (
 			Name:     "Nomad Wanderer",
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("basic_plan"),
-			AccountUsers: map[types.UserID]types.AccountUser{
+			Users: map[types.UserID]types.AccountUser{
 				"user_4": AccountUser[11],
 			},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0006": {}, "0040": {}},
@@ -255,145 +255,95 @@ var (
 	AccountUser = map[int]types.AccountUser{
 		1: {
 			AccountID: "",
-			UserID:    "user_1",
+			ID:        "user_1",
 			Email:     "james.holden123@test.com",
-			Owner:     true,
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_1": types.RoleOwner,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_1": true,
-			},
+			RoleName:  types.RoleOwner,
+			Accepted:  true,
 		},
 		2: {
 			AccountID: "",
-			UserID:    "user_2",
+			ID:        "user_2",
 			Email:     "paul.atreides456@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_1": types.RoleAdmin,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_1": true,
-			},
+			RoleName:  types.RoleAdmin,
+			Accepted:  true,
 		},
 		3: {
 			AccountID: "",
-			UserID:    "user_3",
+			ID:        "user_3",
 			Email:     "ellen.ripley789@test.com",
-			Owner:     true,
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_2": types.RoleOwner,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_2": true,
-			},
+			RoleName:  types.RoleOwner,
+			Accepted:  true,
 		},
 		4: {
 			AccountID: "",
-			UserID:    "user_4",
+			ID:        "user_4",
 			Email:     "ulfric.stormcloak123@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_2": types.RoleMember,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_2": true,
-			},
+			RoleName:  types.RoleMember,
+			Accepted:  true,
 		},
 		5: {
 			AccountID: "",
-			UserID:    "user_5",
+			ID:        "user_5",
 			Email:     "chrisjen.avasarala1@test.com",
-			Owner:     true,
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_3": types.RoleOwner,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_3": true,
-			},
+			RoleName:  types.RoleOwner,
+			Accepted:  true,
 		},
 		6: {
 			AccountID: "",
-			UserID:    "user_6",
+			ID:        "user_6",
 			Email:     "amos.burton789@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_3": types.RoleAdmin,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_3": true,
-			},
+			RoleName:  types.RoleAdmin,
+			Accepted:  true,
 		},
 		7: {
 			AccountID: "",
-			UserID:    "user_7",
+			ID:        "user_7",
 			Email:     "frodo.baggins123@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_3": types.RoleMember,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_3": true,
-			},
+			RoleName:  types.RoleMember,
+			Accepted:  true,
 		},
 		8: {
 			AccountID: "",
-			UserID:    "user_8",
+			ID:        "user_8",
 			Email:     "rick.deckard456@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_1": types.RoleAdmin,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_1": false,
-			},
+			RoleName:  types.RoleAdmin,
+			Accepted:  true,
 		},
 		9: {
 			AccountID: "",
-			UserID:    "user_9",
+			ID:        "user_9",
 			Email:     "tyrion.lannister789@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_2": types.RoleMember,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_2": false,
-			},
+			RoleName:  types.RoleMember,
+			Accepted:  false,
 		},
 		// Paul is an admin of Account 1 as well as a member of Account 2
 		10: {
 			AccountID: "",
-			UserID:    "user_2",
+			ID:        "user_2",
 			Email:     "paul.atreides456@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_2": types.RoleMember,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_2": true,
-			},
+			RoleName:  types.RoleMember,
+			Accepted:  true,
 		},
 		// Ulfric is an admin of Account 2 as well as the owner of Accounts 4 and 5
 		11: {
-			AccountID:          "",
-			UserID:             "user_4",
-			Email:              "ulfric.stormcloak123@test.com",
-			Owner:              true,
-			PortalAppRoles:     map[types.PortalAppID]types.RoleName{},
-			PortalAppsAccepted: map[types.PortalAppID]bool{},
+			AccountID: "",
+			ID:        "user_4",
+			Email:     "ulfric.stormcloak123@test.com",
+			RoleName:  types.RoleOwner,
+			Accepted:  true,
 		},
 		// Daenerys has not signed up with an auth provider yet and is a member of Account 3
 		12: {
 			AccountID: "",
-			UserID:    "user_10",
+			ID:        "user_10",
 			Email:     "daenerys.targaryen123@test.com",
-			PortalAppRoles: map[types.PortalAppID]types.RoleName{
-				"test_app_3": types.RoleMember,
-			},
-			PortalAppsAccepted: map[types.PortalAppID]bool{
-				"test_app_3": false,
-			},
+			RoleName:  types.RoleMember,
+			Accepted:  false,
 		},
 		// Bernard is an existing user and is used to create a new AccountUser row
 		13: {
-			UserID:             "user_11",
-			Email:              "bernard.marx@test.com",
-			PortalAppRoles:     map[types.PortalAppID]types.RoleName{},
-			PortalAppsAccepted: map[types.PortalAppID]bool{},
+			ID:    "user_11",
+			Email: "bernard.marx@test.com",
 		},
 		// Winston has not signed up yet and is used to create a new AccountUser row
 		14: {
@@ -424,10 +374,10 @@ var (
 					Federated:      true,
 				},
 			},
-			Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-				"test_app_1": types.PortalAppPermissions{
-					AccountID: "account_1",
-					RoleName:  types.RoleOwner,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_1": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleOwner,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 						types.PermWriteEndpoint,
@@ -461,18 +411,18 @@ var (
 					Federated:      true,
 				},
 			},
-			Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-				"test_app_1": types.PortalAppPermissions{
-					AccountID: "account_1",
-					RoleName:  types.RoleAdmin,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_1": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleAdmin,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 						types.PermWriteEndpoint,
 					},
 				},
-				"test_app_2": types.PortalAppPermissions{
-					AccountID: "account_2",
-					RoleName:  types.RoleMember,
+				"account_2": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleMember,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 					},
@@ -497,10 +447,10 @@ var (
 					Federated:      false,
 				},
 			},
-			Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-				"test_app_2": types.PortalAppPermissions{
-					AccountID: "account_2",
-					RoleName:  types.RoleOwner,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_2": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleOwner,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 						types.PermWriteEndpoint,
@@ -528,10 +478,10 @@ var (
 					Federated:      false,
 				},
 			},
-			Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-				"test_app_2": types.PortalAppPermissions{
-					AccountID: "account_2",
-					RoleName:  types.RoleMember,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_2": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleMember,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 					},
@@ -556,10 +506,10 @@ var (
 					Federated:      false,
 				},
 			},
-			Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-				"test_app_3": types.PortalAppPermissions{
-					AccountID: "account_3",
-					RoleName:  types.RoleOwner,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_3": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleOwner,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 						types.PermWriteEndpoint,
@@ -587,10 +537,10 @@ var (
 					Federated:      false,
 				},
 			},
-			Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-				"test_app_3": types.PortalAppPermissions{
-					AccountID: "account_3",
-					RoleName:  types.RoleAdmin,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_3": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleAdmin,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 						types.PermWriteEndpoint,
@@ -616,10 +566,10 @@ var (
 					Federated:      false,
 				},
 			},
-			Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-				"test_app_3": types.PortalAppPermissions{
-					AccountID: "account_3",
-					RoleName:  types.RoleMember,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_3": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleMember,
 					Permissions: []types.Permissions{
 						types.PermReadEndpoint,
 					},
@@ -1003,81 +953,6 @@ var (
 		},
 	}
 
-	PortalAppUsers = map[types.PortalAppID]map[types.UserID]types.PortalAppUser{
-		"test_app_1": {
-			"user_1": {
-				ID:       "user_1",
-				Email:    "james.holden123@test.com",
-				RoleName: "OWNER",
-				Accepted: true,
-			},
-			"user_2": {
-				ID:       "user_2",
-				Email:    "paul.atreides456@test.com",
-				RoleName: "ADMIN",
-				Accepted: true,
-			},
-			"user_8": {
-				ID:       "user_8",
-				Email:    "rick.deckard456@test.com",
-				RoleName: "ADMIN",
-				Accepted: false,
-			},
-		},
-		"test_app_2": {
-			"user_2": {
-				ID:       "user_2",
-				Email:    "paul.atreides456@test.com",
-				RoleName: "MEMBER",
-				Accepted: true,
-			},
-			"user_3": {
-				ID:       "user_3",
-				Email:    "ellen.ripley789@test.com",
-				RoleName: "OWNER",
-				Accepted: true,
-			},
-			"user_4": {
-				ID:       "user_4",
-				Email:    "ulfric.stormcloak123@test.com",
-				RoleName: "MEMBER",
-				Accepted: true,
-			},
-			"user_9": {
-				ID:       "user_9",
-				Email:    "tyrion.lannister789@test.com",
-				RoleName: "MEMBER",
-				Accepted: false,
-			},
-		},
-		"test_app_3": {
-			"user_10": {
-				ID:       "user_10",
-				Email:    "daenerys.targaryen123@test.com",
-				RoleName: "MEMBER",
-				Accepted: false,
-			},
-			"user_5": {
-				ID:       "user_5",
-				Email:    "chrisjen.avasarala1@test.com",
-				RoleName: "OWNER",
-				Accepted: true,
-			},
-			"user_6": {
-				ID:       "user_6",
-				Email:    "amos.burton789@test.com",
-				RoleName: "ADMIN",
-				Accepted: true,
-			},
-			"user_7": {
-				ID:       "user_7",
-				Email:    "frodo.baggins123@test.com",
-				RoleName: "MEMBER",
-				Accepted: true,
-			},
-		},
-	}
-
 	GigastakeApps = map[types.GigastakeAppID]*types.GigastakeApp{
 		"test_gigastake_app_1": {
 			ID:              "test_gigastake_app_1",
@@ -1330,12 +1205,6 @@ var (
 			CustomLimit:    0,
 			RequestTimeout: 15_000,
 		},
-		PortalAppUsers: map[types.UserID]types.PortalAppUser{
-			"user_4": {
-				ID:    "user_4",
-				Email: "ulfric.stormcloak123@test.com",
-			},
-		},
 	}
 
 	TestCreatePortalAppByNonOwner = &types.PortalApp{
@@ -1369,12 +1238,6 @@ var (
 			DailyLimit:     250_000,
 			CustomLimit:    0,
 			RequestTimeout: 15_000,
-		},
-		PortalAppUsers: map[types.UserID]types.PortalAppUser{
-			"user_2": {
-				ID:    "user_2",
-				Email: "paul.atreides456@test.com",
-			},
 		},
 	}
 

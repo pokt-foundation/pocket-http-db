@@ -96,16 +96,6 @@ type (
 		// TODO - remove when v2 migration finished
 		// Fields required for compatibility with the old Portal API and Services (temporary)
 		LegacyFields LegacyFields `json:"legacyFields"`
-
-		// Users assigned in PHD from PortalApp's Account when PortalApp fetched from PUB
-		PortalAppUsers map[UserID]PortalAppUser `json:"portalAppUsers"`
-	}
-
-	PortalAppUser struct {
-		ID       UserID   `json:"id"`
-		Email    Email    `json:"email"`
-		RoleName RoleName `json:"roleName"`
-		Accepted bool     `json:"accepted"`
 	}
 
 	// TODO - remove when v2 migration finished
@@ -278,55 +268,6 @@ func (a *PortalApp) SubscriptionID() string {
 // MonthlyLimit returns the monthly relay limit for a given portal app
 func (a *PortalApp) MonthlyLimit() int32 {
 	return a.Settings.MonthlyRelayLimit
-}
-
-// GetUsers returns all the PortalApp's Users as a slice
-func (a *PortalApp) GetUsers() []PortalAppUser {
-	users := []PortalAppUser{}
-	for _, user := range a.PortalAppUsers {
-		users = append(users, user)
-	}
-	return users
-}
-
-// GetUserIDs returns all the PortalApp's Users' IDs as a slice
-func (a *PortalApp) GetUserIDs() []UserID {
-	users := []UserID{}
-	for _, user := range a.PortalAppUsers {
-		users = append(users, user.ID)
-	}
-	return users
-}
-
-// Owner ID returns the UserID of the PortalApp's owner
-func (a *PortalApp) OwnerID() UserID {
-	for _, user := range a.PortalAppUsers {
-		if user.RoleName == RoleOwner {
-			return user.ID
-		}
-	}
-	return ""
-}
-
-// AssignUsers assigns the Account's AccountUsers to the PortalApp's PortalAppUsers field
-// Only assigns users that have a role for the PortalApp
-func (a *PortalApp) AssignUsers(account *Account) {
-	if account.AccountUsers != nil && len(account.AccountUsers) > 0 {
-		portalAppUsers := map[UserID]PortalAppUser{}
-
-		for _, accountUser := range account.AccountUsers {
-			if _, ok := accountUser.PortalAppRoles[a.ID]; ok {
-				portalAppUsers[accountUser.UserID] = PortalAppUser{
-					ID:       accountUser.UserID,
-					Email:    accountUser.Email,
-					RoleName: accountUser.PortalAppRoles[a.ID],
-					Accepted: accountUser.PortalAppsAccepted[a.ID],
-				}
-			}
-		}
-
-		a.PortalAppUsers = portalAppUsers
-	}
 }
 
 // AddWhitelist adds a whitelist to the PortalApp pointer's Whitelists field

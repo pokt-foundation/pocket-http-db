@@ -335,67 +335,11 @@ SET deleted = true,
     deleted_at = $2
 WHERE id = $1;
 -- name: SelectAccounts :many
-WITH filtered_portal_applications AS (
-    SELECT *
-    FROM portal_applications
-    WHERE deleted = false
-),
-app_role_agg_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(fpa.id, 'OWNER') AS portal_application_roles,
-        jsonb_object_agg(fpa.id, aua.accepted) AS portal_applications_accepted
-    FROM account_user_access AS aua
-        JOIN filtered_portal_applications AS fpa ON aua.account_id = fpa.account_id
-    WHERE aua.owner = true
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg_non_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(aua.portal_application_id, aua.role_name) AS portal_application_roles,
-        jsonb_object_agg(aua.portal_application_id, aua.accepted) AS portal_applications_accepted
-    FROM account_user_access AS aua
-        JOIN filtered_portal_applications AS fpa ON aua.portal_application_id = fpa.id
-    WHERE aua.owner = false
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg AS (
-    SELECT COALESCE(aro.user_id, aroo.user_id) as user_id,
-        COALESCE(aro.account_id, aroo.account_id) as account_id,
-        COALESCE(aro.portal_application_roles, '{}'::jsonb) || COALESCE(aroo.portal_application_roles, '{}'::jsonb) as portal_application_roles,
-        COALESCE(aro.portal_applications_accepted, '{}'::jsonb) || COALESCE(aroo.portal_applications_accepted, '{}'::jsonb) as portal_applications_accepted
-    FROM app_role_agg_owner aro
-        FULL JOIN app_role_agg_non_owner aroo ON aro.user_id = aroo.user_id
-        AND aro.account_id = aroo.account_id
-)
 SELECT a.*,
     ai.covalent_api_key_free,
-    ai.covalent_api_key_paid,
-    json_agg(
-        json_build_object(
-            'user_id',
-            u.id,
-            'email',
-            u.email,
-            'owner',
-            aua.owner,
-            'portal_application_roles',
-            ara.portal_application_roles,
-            'portal_applications_accepted',
-            ara.portal_applications_accepted
-        )
-    ) AS users
+    ai.covalent_api_key_paid
 FROM accounts AS a
-    LEFT JOIN account_user_access AS aua ON a.id = aua.account_id
-    LEFT JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
-    LEFT JOIN users AS u ON aua.user_id = u.id
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN app_role_agg AS ara ON u.id = ara.user_id
-    AND a.id = ara.account_id
 WHERE (
         $1::BOOLEAN
         OR a.deleted = false
@@ -496,32 +440,17 @@ SET covalent_api_key_free = CASE
     updated_at = EXCLUDED.updated_at
 RETURNING *;
 -- name: SelectUserPermissions :many
-WITH filtered_portal_applications AS (
-    SELECT *
-    FROM portal_applications
-    WHERE deleted = false
-)
-SELECT aua.user_id,
-    aua.account_id,
-    aua.role_name,
-    aua.owner,
-    ur.permissions::permissions [] AS permissions,
-    CASE
-        WHEN aua.owner THEN array_agg(fpa.id)::VARCHAR []
-        ELSE ARRAY [aua.portal_application_id]::VARCHAR []
-    END AS portal_application_ids
-FROM account_user_access AS aua
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN filtered_portal_applications AS fpa ON aua.account_id = fpa.account_id
-WHERE aua.accepted = true
-    AND aua.user_id IS NOT NULL
-    AND fpa.id IS NOT NULL
-GROUP BY aua.user_id,
-    aua.account_id,
-    aua.role_name,
-    aua.owner,
-    ur.permissions,
-    aua.portal_application_id;
+SELECT au.user_id,
+    au.account_id,
+    au.role_name,
+    au.accepted,
+    ur.permissions::permissions [] AS permissions
+FROM account_users AS au
+    LEFT JOIN user_roles AS ur ON au.role_name = ur.role_name
+GROUP BY au.user_id,
+    au.account_id,
+    au.role_name,
+    ur.permissions;
 -- name: SelectUserIDs :many
 SELECT user_id,
     provider_user_id

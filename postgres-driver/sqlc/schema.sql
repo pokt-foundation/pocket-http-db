@@ -90,6 +90,16 @@ CREATE TABLE IF NOT EXISTS account_integrations (
     updated_at TIMESTAMPTZ NULL,
     PRIMARY KEY (id)
 );
+CREATE TABLE account_users (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(10) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id VARCHAR(10) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    role_name VARCHAR(25) NOT NULL REFERENCES user_roles(role_name),
+    accepted BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, account_id)
+);
 -- Chains Tables
 CREATE TABLE chains (
     id VARCHAR(4) PRIMARY KEY,
@@ -240,7 +250,7 @@ CREATE TABLE IF NOT EXISTS portal_application_aats (
     private_key VARCHAR(400) NULL,
     version VARCHAR(10) NOT NULL
 );
--- Account User Access Table
+-- DEPRECATED - Account User Access Table
 CREATE TABLE account_user_access (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(10) NOT NULL REFERENCES users(id) ON DELETE CASCADE,

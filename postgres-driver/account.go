@@ -2,7 +2,6 @@ package postgresdriver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -12,17 +11,9 @@ import (
 )
 
 type (
-	userAccessDBRow struct {
-		UserID             string                               `json:"user_id"`
-		Email              string                               `json:"email"`
-		IconURL            string                               `json:"icon_url"`
-		Owner              bool                                 `json:"owner"`
-		Accepted           bool                                 `json:"accepted"`
-		UpdatesMarketing   bool                                 `json:"updates_marketing"`
-		UpdatesProduct     bool                                 `json:"updates_product"`
-		BetaTester         bool                                 `json:"beta_tester"`
-		PortalAppRoles     map[types.PortalAppID]types.RoleName `json:"portal_application_roles"`
-		PortalAppsAccepted map[types.PortalAppID]bool           `json:"portal_applications_accepted"`
+	accountUserDBRow struct {
+		UserID         string `json:"user_id"`
+		types.RoleName `json:"role_name"`
 	}
 )
 
@@ -83,17 +74,11 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 		}
 	}
 
-	accountUsers, err := a.toAccountUsers()
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", errUnmarshallingWhitelists, err)
-	}
-
 	return &types.Account{
 		ID:                     a.ID,
 		Name:                   a.Name.String,
 		IconURL:                a.IconURL.String,
 		PlanType:               types.PayPlanType(a.PlanType.String),
-		AccountUsers:           accountUsers,
 		PartnerChainIDs:        partnerChainIDs,
 		PartnerThroughputLimit: a.PartnerThroughputLimit.Int32,
 		PartnerAppLimit:        a.PartnerApplicationLimit.Int32,
@@ -101,44 +86,15 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 			CovalentAPIKeyFree: a.CovalentAPIKeyFree.String,
 			CovalentAPIKeyPaid: a.CovalentAPIKeyPaid.String,
 		},
-		// PortalApps map set in PHD
+		CreatedAt: a.CreatedAt.Time.UTC(),
+		UpdatedAt: a.UpdatedAt.Time.UTC(),
+		Deleted:   a.Deleted,
+
+		// PortalApps map set in cache when cache is set
 		PortalApps: map[types.PortalAppID]*types.PortalApp{},
-		CreatedAt:  a.CreatedAt.Time.UTC(),
-		UpdatedAt:  a.UpdatedAt.Time.UTC(),
-		Deleted:    a.Deleted,
+		// Users map set in cache when Account is fetched
+		Users: map[types.UserID]types.AccountUser{},
 	}, nil
-}
-
-// toAccountUsers converts users from DB rows to map-based Account.AccountUsers struct
-func (a *SelectAccountsRow) toAccountUsers() (map[types.UserID]types.AccountUser, error) {
-	var users map[types.UserID]types.AccountUser
-
-	var userRows []userAccessDBRow
-	if err := json.Unmarshal(a.Users, &userRows); err != nil {
-		return users, err
-	}
-
-	users = make(map[types.UserID]types.AccountUser)
-
-	for _, user := range userRows {
-		if user.UserID != "" {
-			if user.PortalAppRoles == nil {
-				user.PortalAppRoles = make(map[types.PortalAppID]types.RoleName)
-			}
-			if user.PortalAppsAccepted == nil {
-				user.PortalAppsAccepted = make(map[types.PortalAppID]bool)
-			}
-			users[types.UserID(user.UserID)] = types.AccountUser{
-				UserID:             types.UserID(user.UserID),
-				Email:              types.Email(user.Email),
-				Owner:              user.Owner,
-				PortalAppRoles:     user.PortalAppRoles,
-				PortalAppsAccepted: user.PortalAppsAccepted,
-			}
-		}
-	}
-
-	return users, nil
 }
 
 /* ----- postgresdriver Account Create Methods ----- */
@@ -206,13 +162,12 @@ func (pg *PostgresDriver) WriteAccount(ctx context.Context, creatorID types.User
 	}
 
 	// Assign OWNER to returned Account struct
-	account.AccountUsers = map[types.UserID]types.AccountUser{
+	account.Users = map[types.UserID]types.AccountUser{
 		types.UserID(creatorID): {
-			UserID:             types.UserID(creatorID),
-			Email:              types.Email(user.Email),
-			Owner:              true,
-			PortalAppRoles:     map[types.PortalAppID]types.RoleName{},
-			PortalAppsAccepted: map[types.PortalAppID]bool{},
+			ID:       types.UserID(creatorID),
+			Email:    types.Email(user.Email),
+			RoleName: types.RoleOwner,
+			Accepted: true,
 		},
 	}
 
@@ -304,7 +259,6 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		PartnerApplicationLimit: accountResult.PartnerApplicationLimit,
 		CovalentAPIKeyFree:      accountResult.CovalentAPIKeyFree,
 		CovalentAPIKeyPaid:      accountResult.CovalentAPIKeyPaid,
-		Users:                   accountResult.Users,
 		CreatedAt:               accountResult.CreatedAt,
 		UpdatedAt:               accountResult.UpdatedAt,
 		Deleted:                 accountResult.Deleted,
@@ -783,22 +737,12 @@ func (json dbAccount) toOutput() *types.Account {
 	}
 }
 
-func (json dbAccountUserAccess) toOutput() *types.AccountUser {
-	portalAppRoles := make(map[types.PortalAppID]types.RoleName)
-	if json.PortalApplicationID != "" && json.RoleName != "" {
-		portalAppRoles[json.PortalApplicationID] = json.RoleName
-	}
-	portalAppsAccepted := make(map[types.PortalAppID]bool)
-	if json.PortalApplicationID != "" {
-		portalAppsAccepted[json.PortalApplicationID] = json.Accepted
-	}
-
+func (json dbAccountUser) toOutput() *types.AccountUser {
 	return &types.AccountUser{
-		AccountID:          json.AccountID,
-		UserID:             json.UserID,
-		Owner:              json.Owner,
-		PortalAppRoles:     portalAppRoles,
-		PortalAppsAccepted: portalAppsAccepted,
+		AccountID: json.AccountID,
+		ID:        json.UserID,
+		RoleName:  json.RoleName,
+		Accepted:  json.Accepted,
 	}
 }
 
@@ -833,14 +777,12 @@ type dbAccountIntegration struct {
 	UpdatedAt          time.Time       `json:"updated_at"`
 }
 
-type dbAccountUserAccess struct {
-	ID                  int32             `json:"id"`
-	UserID              types.UserID      `json:"user_id"`
-	AccountID           types.AccountID   `json:"account_id"`
-	Owner               bool              `json:"owner"`
-	PortalApplicationID types.PortalAppID `json:"portal_application_id"`
-	RoleName            types.RoleName    `json:"role_name"`
-	Accepted            bool              `json:"accepted"`
-	CreatedAt           time.Time         `json:"created_at"`
-	UpdatedAt           time.Time         `json:"updated_at"`
+type dbAccountUser struct {
+	ID        int32           `json:"id"`
+	UserID    types.UserID    `json:"user_id"`
+	AccountID types.AccountID `json:"account_id"`
+	RoleName  types.RoleName  `json:"role_name"`
+	Accepted  bool            `json:"accepted"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }

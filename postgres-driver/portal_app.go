@@ -310,33 +310,6 @@ func (pg *PostgresDriver) WritePortalApp(ctx context.Context, portalApp types.Po
 		},
 	}
 
-	// if user who created app is not account owner then create an `account_user_access` row for them
-	var createUser types.PortalAppUser
-	for _, user := range portalApp.PortalAppUsers {
-		createUser = user
-		break
-	}
-	accountUserIsOwner, err := qtx.CheckAccountUserIsOwner(ctx, CheckAccountUserIsOwnerParams{
-		AccountID: portalApp.AccountID,
-		UserID:    createUser.ID,
-	})
-	if err == nil && !accountUserIsOwner {
-		_, err := qtx.InsertAccountUserAccess(ctx, InsertAccountUserAccessParams{
-			UserID:              createUser.ID,
-			Email:               createUser.Email,
-			AccountID:           portalApp.AccountID,
-			PortalApplicationID: string(portalApp.ID),
-			RoleName:            types.RoleAdmin, // Only admins and owners can create portal apps for an account
-			Owner:               false,
-			Accepted:            true,
-			CreatedAt:           newTimestamptz(createdAt),
-			UpdatedAt:           newTimestamptz(createdAt),
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	err = tx.Commit(ctx)
 	if err != nil {
 		return nil, err
@@ -357,8 +330,6 @@ func (pg *PostgresDriver) WritePortalApp(ctx context.Context, portalApp types.Po
 	for _, aat := range portalApp.AATs {
 		aat.PrivateKey = ""
 	}
-
-	portalApp.PortalAppUsers = nil
 
 	return &portalApp, nil
 }

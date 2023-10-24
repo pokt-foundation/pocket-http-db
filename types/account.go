@@ -15,7 +15,6 @@ type (
 		Name                   string                    `json:"name"`
 		IconURL                string                    `json:"iconURL"`
 		PlanType               PayPlanType               `json:"planType"`
-		AccountUsers           map[UserID]AccountUser    `json:"users"`
 		PartnerChainIDs        map[RelayChainID]struct{} `json:"partnerBlockchainIDs"`
 		PartnerThroughputLimit int32                     `json:"partnerThroughputLimit"`
 		PartnerAppLimit        int32                     `json:"partnerAppLimit"`
@@ -24,13 +23,27 @@ type (
 		UpdatedAt              time.Time                 `json:"updatedAt"`
 		Deleted                bool                      `json:"deleted"`
 
-		// PortalApps and Plan are set inside PHD
+		// PortalApps and Plan are set in cache.go
 		PortalApps map[PortalAppID]*PortalApp `json:"portalApps"`
 		Plan       *Plan                      `json:"payPlan"`
+
+		// Users assigned when account is fetched in cache.go
+		Users map[UserID]AccountUser `json:"users"`
+
+		// DEPRECATED
+		AccountUsers map[UserID]AccountUserAccess `json:"accountUsers"`
 	}
 
-	// AccountUser represents a single Portal user for a single Account
 	AccountUser struct {
+		AccountID AccountID `json:"accountID,omitempty"` // used for listener
+		ID        UserID    `json:"id"`
+		Email     Email     `json:"email"`
+		RoleName  RoleName  `json:"roleName"`
+		Accepted  bool      `json:"accepted"`
+	}
+
+	// DEPRECATED - AccountUser represents a single Portal user for a single Account
+	AccountUserAccess struct {
 		AccountID          AccountID                `json:"id,omitempty"` // used for listener
 		Owner              bool                     `json:"owner"`
 		UserID             UserID                   `json:"userID"`
@@ -89,8 +102,8 @@ type (
 
 // GetOwner returns the Account OWNER
 func (a *Account) GetOwner() (AccountUser, error) {
-	for _, user := range a.AccountUsers {
-		if user.Owner {
+	for _, user := range a.Users {
+		if user.RoleName == RoleOwner {
 			return user, nil
 		}
 	}
@@ -99,40 +112,12 @@ func (a *Account) GetOwner() (AccountUser, error) {
 
 // GetOwnerID returns the Account OWNER's ID
 func (a *Account) GetOwnerID() (UserID, error) {
-	for _, user := range a.AccountUsers {
-		if user.Owner {
-			return user.UserID, nil
+	for _, user := range a.Users {
+		if user.RoleName == RoleOwner {
+			return user.ID, nil
 		}
 	}
 	return UserID(""), errNoOwner
-}
-
-// GetAcceptedPortalApps returns the Account's PortalApps as a map containing
-// only the PortalApps that the user has accepted or not accepted
-func (a *Account) GetAcceptedPortalApps(userID UserID, accepted bool) map[PortalAppID]*PortalApp {
-	portalApps := make(map[PortalAppID]*PortalApp)
-
-	for _, portalApp := range a.PortalApps {
-		hasUserAccepted, ok := a.HasUserAcceptedInvite(userID, portalApp.ID)
-
-		if ok && hasUserAccepted == accepted {
-			portalApps[portalApp.ID] = portalApp
-		}
-	}
-
-	return portalApps
-}
-
-// HasAcceptedPortalApp returns true if the user has accepted the PortalApp
-func (a *Account) HasUserAcceptedInvite(userID UserID, portalAppID PortalAppID) (bool, bool) {
-	user, ok := a.AccountUsers[userID]
-	if !ok {
-		return false, false
-	}
-
-	accepted, ok := user.PortalAppsAccepted[portalAppID]
-
-	return accepted, ok
 }
 
 func (a *Account) Table() Table {
@@ -147,10 +132,14 @@ func (s *AccountIntegrations) Table() Table {
 	return TableAccountIntegrations
 }
 
-// AssignPortalAppUsers assigns all PortalApp Users to all PortalApps for the account
+// AssignAccountUsers assigns all users for the account
 // Called in the PHD cache when an account is fetched by any account endpoints
-func (a *Account) AssignPortalAppUsers() {
-	for _, portalApp := range a.PortalApps {
-		portalApp.AssignUsers(a)
+func (a *Account) AssignAccountUsers(usersForAccountID map[UserID]*User) {
+	if a.Users == nil {
+		a.Users = make(map[UserID]AccountUser)
+	}
+
+	for _, user := range usersForAccountID {
+		a.Users[user.ID] = user.ToAccountUser(a.ID)
 	}
 }

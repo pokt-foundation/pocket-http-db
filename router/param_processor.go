@@ -115,15 +115,6 @@ var (
 		},
 
 		v2PortalAppEndpoint: {
-			portalAppParams.roleNameFilters: func(v string, options *cache.Options) error {
-				roleNameFilters, err := parseRoleNameList(v)
-				if err != nil {
-					return err
-				}
-				options.FilterPortalApps = roleNameFilters
-				return nil
-			},
-
 			portalAppParams.accepted: func(v string, options *cache.Options) error {
 				val, err := parseBool(v)
 				if err != nil {
@@ -140,7 +131,7 @@ var (
 				if err != nil {
 					return err
 				}
-				options.FilterPortalApps = roleNameFilters
+				options.FilterAccounts = roleNameFilters
 				return nil
 			},
 

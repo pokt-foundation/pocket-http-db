@@ -154,7 +154,7 @@ func (n notification) parseAccountNotification() *types.Notification {
 
 func (n notification) parseAccountUserAccessNotification() *types.Notification {
 	rawData, _ := json.Marshal(n.Data)
-	var dbAccountUser dbAccountUserAccess
+	var dbAccountUser dbAccountUser
 	_ = json.Unmarshal(rawData, &dbAccountUser)
 
 	return &types.Notification{
