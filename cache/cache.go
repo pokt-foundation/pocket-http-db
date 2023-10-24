@@ -451,7 +451,7 @@ func (c *Cache) GetUserAccount(accountID types.AccountID, userID types.UserID, o
 	defer c.rwMutex.RUnlock()
 
 	if account, ok := c.accounts[accountID]; ok {
-		if userAcceptedAccountInvite(account, userID) {
+		if c.userAcceptedAccountInvite(account, userID) {
 			accountCopy := *account
 
 			if accountCopy.PortalApps == nil {
@@ -477,7 +477,7 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
-		if userAcceptedAccountInvite(account, userID) {
+		if c.userAcceptedAccountInvite(account, userID) {
 			accountCopy := *account
 
 			if accountCopy.PortalApps == nil {
@@ -498,9 +498,13 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 
 // userAcceptedAccountInvite returns a boolean indicating if the user
 // has accepted an invitation to the Account
-func userAcceptedAccountInvite(a *types.Account, userID types.UserID) bool {
-	if user, ok := a.Users[userID]; ok {
-		return user.Accepted
+func (c *Cache) userAcceptedAccountInvite(a *types.Account, userID types.UserID) bool {
+	if usersForAccount, ok := c.usersByAccountID[a.ID]; ok {
+		if user, ok := usersForAccount[userID]; ok {
+			if accountPermissions, ok := user.Permissions[a.ID]; ok {
+				return accountPermissions.Accepted
+			}
+		}
 	}
 
 	return false
