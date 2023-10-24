@@ -108,7 +108,7 @@ start_test_phd:
 	@echo "✅ Test PHD containers restarted successfully!"
 
 test_dev: reset_test_db run_driver_tests reset_test_env run_e2e_tests
-test_driver_dev: rest_test_db run_driver_tests
+test_driver_dev: reset_test_db run_driver_tests
 
 # This target install pre-commit to the repo and should be run only once, after cloning the repo for the first time.
 init-pre-commit:

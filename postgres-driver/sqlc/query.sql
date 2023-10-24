@@ -401,6 +401,7 @@ FROM account_users AS au
 GROUP BY au.user_id,
     au.account_id,
     au.role_name,
+    au.accepted,
     ur.permissions;
 -- name: SelectUserIDs :many
 SELECT user_id,
@@ -565,6 +566,13 @@ VALUES (
         $4
     )
 RETURNING user_id;
+-- name: UpdateAccountOwnerToAdmin :exec
+UPDATE account_users
+SET role_name = 'ADMIN',
+    updated_at = $3
+WHERE account_id = $1
+    AND role_name = 'OWNER'
+    AND user_id != $2;
 -- name: UpdateAccountUserRole :exec
 UPDATE account_users
 SET role_name = $3,

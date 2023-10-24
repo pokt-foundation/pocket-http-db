@@ -151,9 +151,9 @@ var (
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("basic_plan"),
 			Users: map[types.UserID]types.AccountUser{
-				"user_1": AccountUser[1],
-				"user_2": AccountUser[2],
-				"user_8": AccountUser[8],
+				"user_1": {ID: "user_1", Email: "james.holden123@test.com", RoleName: types.RoleOwner, Accepted: true},
+				"user_2": {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+				"user_8": {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: false},
 			},
 			Integrations: types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_1",
@@ -171,10 +171,10 @@ var (
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("pro_plan"),
 			Users: map[types.UserID]types.AccountUser{
-				"user_3": AccountUser[3],
-				"user_4": AccountUser[4],
-				"user_9": AccountUser[9],
-				"user_2": AccountUser[10],
+				"user_3": {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
+				"user_4": {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleMember, Accepted: true},
+				"user_9": {ID: "user_9", Email: "tyrion.lannister789@test.com", RoleName: types.RoleMember, Accepted: false},
+				"user_2": {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
 			},
 			Integrations: types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_2",
@@ -192,10 +192,10 @@ var (
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("startup_plan"),
 			Users: map[types.UserID]types.AccountUser{
-				"user_5":  AccountUser[5],
-				"user_6":  AccountUser[6],
-				"user_7":  AccountUser[7],
-				"user_10": AccountUser[12],
+				"user_5":  {ID: "user_5", Email: "chrisjen.avasarala1@test.com", RoleName: types.RoleOwner, Accepted: true},
+				"user_6":  {ID: "user_6", Email: "amos.burton789@test.com", RoleName: types.RoleAdmin, Accepted: true},
+				"user_7":  {ID: "user_7", Email: "frodo.baggins123@test.com", RoleName: types.RoleMember, Accepted: true},
+				"user_10": {ID: "user_10", Email: "daenerys.targaryen123@test.com", RoleName: types.RoleMember, Accepted: false},
 			},
 			Integrations: types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_3",
@@ -213,7 +213,7 @@ var (
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("enterprise_plan"),
 			Users: map[types.UserID]types.AccountUser{
-				"user_4": AccountUser[11],
+				"user_4": {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
 			},
 			Integrations: types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_4",
@@ -231,7 +231,7 @@ var (
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.PayPlanType("basic_plan"),
 			Users: map[types.UserID]types.AccountUser{
-				"user_4": AccountUser[11],
+				"user_4": {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
 			},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0006": {}, "0040": {}},
 			PartnerThroughputLimit: 6_000,
@@ -239,6 +239,32 @@ var (
 			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
 			CreatedAt:              MockTimestamp,
 			UpdatedAt:              MockTimestamp,
+		},
+	}
+
+	UsersForAccountIDs = map[types.AccountID]map[types.UserID]*types.User{
+		"account_1": {
+			"user_1": Users["user_1"],
+			"user_2": Users["user_2"],
+			"user_8": Users["user_8"],
+		},
+		"account_2": {
+			"user_3": Users["user_3"],
+			"user_4": Users["user_4"],
+			"user_9": Users["user_9"],
+			"user_2": Users["user_2"],
+		},
+		"account_3": {
+			"user_5":  Users["user_5"],
+			"user_6":  Users["user_6"],
+			"user_7":  Users["user_7"],
+			"user_10": Users["user_10"],
+		},
+		"account_4": {
+			"user_4": Users["user_4"],
+		},
+		"account_5": {
+			"user_4": Users["user_4"],
 		},
 	}
 
@@ -253,102 +279,25 @@ var (
 	}
 
 	AccountUser = map[int]types.AccountUser{
-		1: {
-			AccountID: "",
-			ID:        "user_1",
-			Email:     "james.holden123@test.com",
-			RoleName:  types.RoleOwner,
-			Accepted:  true,
-		},
-		2: {
-			AccountID: "",
-			ID:        "user_2",
-			Email:     "paul.atreides456@test.com",
-			RoleName:  types.RoleAdmin,
-			Accepted:  true,
-		},
-		3: {
-			AccountID: "",
-			ID:        "user_3",
-			Email:     "ellen.ripley789@test.com",
-			RoleName:  types.RoleOwner,
-			Accepted:  true,
-		},
-		4: {
-			AccountID: "",
-			ID:        "user_4",
-			Email:     "ulfric.stormcloak123@test.com",
-			RoleName:  types.RoleMember,
-			Accepted:  true,
-		},
-		5: {
-			AccountID: "",
-			ID:        "user_5",
-			Email:     "chrisjen.avasarala1@test.com",
-			RoleName:  types.RoleOwner,
-			Accepted:  true,
-		},
-		6: {
-			AccountID: "",
-			ID:        "user_6",
-			Email:     "amos.burton789@test.com",
-			RoleName:  types.RoleAdmin,
-			Accepted:  true,
-		},
-		7: {
-			AccountID: "",
-			ID:        "user_7",
-			Email:     "frodo.baggins123@test.com",
-			RoleName:  types.RoleMember,
-			Accepted:  true,
-		},
-		8: {
-			AccountID: "",
-			ID:        "user_8",
-			Email:     "rick.deckard456@test.com",
-			RoleName:  types.RoleAdmin,
-			Accepted:  true,
-		},
-		9: {
-			AccountID: "",
-			ID:        "user_9",
-			Email:     "tyrion.lannister789@test.com",
-			RoleName:  types.RoleMember,
-			Accepted:  false,
-		},
+		1: {ID: "user_1", Email: "james.holden123@test.com", RoleName: types.RoleOwner, Accepted: true},
+		2: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		3: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
+		4: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
+		5: {ID: "user_5", Email: "chrisjen.avasarala1@test.com", RoleName: types.RoleOwner, Accepted: true},
+		6: {ID: "user_6", Email: "amos.burton789@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		7: {ID: "user_7", Email: "frodo.baggins123@test.com", RoleName: types.RoleMember, Accepted: true},
+		8: {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		9: {ID: "user_9", Email: "tyrion.lannister789@test.com", RoleName: types.RoleMember, Accepted: false},
 		// Paul is an admin of Account 1 as well as a member of Account 2
-		10: {
-			AccountID: "",
-			ID:        "user_2",
-			Email:     "paul.atreides456@test.com",
-			RoleName:  types.RoleMember,
-			Accepted:  true,
-		},
+		10: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
 		// Ulfric is an admin of Account 2 as well as the owner of Accounts 4 and 5
-		11: {
-			AccountID: "",
-			ID:        "user_4",
-			Email:     "ulfric.stormcloak123@test.com",
-			RoleName:  types.RoleOwner,
-			Accepted:  true,
-		},
+		11: {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
 		// Daenerys has not signed up with an auth provider yet and is a member of Account 3
-		12: {
-			AccountID: "",
-			ID:        "user_10",
-			Email:     "daenerys.targaryen123@test.com",
-			RoleName:  types.RoleMember,
-			Accepted:  false,
-		},
+		12: {ID: "user_10", Email: "daenerys.targaryen123@test.com", RoleName: types.RoleMember, Accepted: false},
 		// Bernard is an existing user and is used to create a new AccountUser row
-		13: {
-			ID:    "user_11",
-			Email: "bernard.marx@test.com",
-		},
+		13: {ID: "user_11", Email: "bernard.marx@test.com"},
 		// Winston has not signed up yet and is used to create a new AccountUser row
-		14: {
-			Email: "winston.smith@test.com",
-		},
+		14: {Email: "winston.smith@test.com"},
 	}
 
 	Users = map[types.UserID]*types.User{
@@ -486,7 +435,28 @@ var (
 						types.PermReadEndpoint,
 					},
 				},
+				"account_4": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleOwner,
+					Permissions: []types.Permissions{
+						types.PermReadEndpoint,
+						types.PermWriteEndpoint,
+						types.PermDeleteEndpoint,
+						types.PermTransferEndpoint,
+					},
+				},
+				"account_5": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleOwner,
+					Permissions: []types.Permissions{
+						types.PermReadEndpoint,
+						types.PermWriteEndpoint,
+						types.PermDeleteEndpoint,
+						types.PermTransferEndpoint,
+					},
+				},
 			},
+
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -594,6 +564,16 @@ var (
 					Federated:      false,
 				},
 			},
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_1": types.AccountPermissions{
+					Accepted: false,
+					RoleName: types.RoleAdmin,
+					Permissions: []types.Permissions{
+						types.PermReadEndpoint,
+						types.PermWriteEndpoint,
+					},
+				},
+			},
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -613,6 +593,15 @@ var (
 					Federated:      false,
 				},
 			},
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_2": types.AccountPermissions{
+					Accepted: false,
+					RoleName: types.RoleMember,
+					Permissions: []types.Permissions{
+						types.PermReadEndpoint,
+					},
+				},
+			},
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -625,8 +614,17 @@ var (
 			UpdatesMarketing: false,
 			BetaTester:       true,
 			AuthProviders:    map[types.AuthType]types.UserAuthProvider{},
-			CreatedAt:        MockTimestamp,
-			UpdatedAt:        MockTimestamp,
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_3": types.AccountPermissions{
+					Accepted: false,
+					RoleName: types.RoleMember,
+					Permissions: []types.Permissions{
+						types.PermReadEndpoint,
+					},
+				},
+			},
+			CreatedAt: MockTimestamp,
+			UpdatedAt: MockTimestamp,
 		},
 		"user_11": {
 			ID:               "user_11",
@@ -1183,18 +1181,6 @@ var (
 			SecretKey:         "test_3e3fb7949c9e3b193cfba5348f93bb2f",
 			SecretKeyRequired: true,
 		},
-		Notifications: map[types.NotificationType]types.AppNotification{
-			types.NotificationTypeEmail: types.AppNotification{
-				Type:        types.NotificationTypeEmail,
-				Active:      true,
-				Destination: "ulfric.stormcloak123@test.com",
-				Events: map[types.NotificationEvent]bool{
-					types.NotificationEventSignedUp:      true,
-					types.NotificationEventThreeQuarters: true,
-					types.NotificationEventFull:          true,
-				},
-			},
-		},
 		FirstDateSurpassed: MockTimestamp,
 		CreatedAt:          MockTimestamp,
 		UpdatedAt:          MockTimestamp,
@@ -1216,18 +1202,6 @@ var (
 			Environment:       types.EnvironmentProduction,
 			SecretKey:         "test_83756e546134df7933bfd748b27bde51",
 			SecretKeyRequired: true,
-		},
-		Notifications: map[types.NotificationType]types.AppNotification{
-			types.NotificationTypeEmail: types.AppNotification{
-				Type:        types.NotificationTypeEmail,
-				Active:      true,
-				Destination: "james.holden123@test.com",
-				Events: map[types.NotificationEvent]bool{
-					types.NotificationEventSignedUp:      true,
-					types.NotificationEventThreeQuarters: true,
-					types.NotificationEventFull:          true,
-				},
-			},
 		},
 		FirstDateSurpassed: MockTimestamp,
 		CreatedAt:          MockTimestamp,

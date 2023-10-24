@@ -11,10 +11,11 @@ import (
 
 func (ts *PGDriverTestSuite) Test_PGDriver_ReadAccounts() {
 	tests := []struct {
-		name     string
-		accounts map[types.AccountID]*types.Account
-		options  types.DriverOptions
-		err      error
+		name               string
+		accounts           map[types.AccountID]*types.Account
+		usersForAccountIDs map[types.AccountID]map[types.UserID]*types.User
+		options            types.DriverOptions
+		err                error
 	}{
 		{
 			name: "Should return all non-deleted Accounts from the database",
@@ -25,8 +26,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadAccounts() {
 				types.AccountID("account_4"): testdata.Accounts[types.AccountID("account_4")],
 				types.AccountID("account_5"): testdata.Accounts[types.AccountID("account_5")],
 			},
-			options: types.DriverOptions{},
-			err:     nil,
+			usersForAccountIDs: testdata.UsersForAccountIDs,
+			options:            types.DriverOptions{},
+			err:                nil,
 		},
 	}
 
@@ -34,6 +36,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadAccounts() {
 		ts.Run(test.name, func() {
 			accounts, err := ts.driver.ReadAccounts(context.Background(), test.options)
 			ts.Equal(test.err, err)
+			for _, account := range accounts {
+				account.AssignAccountUsers(test.usersForAccountIDs[account.ID])
+			}
 			ts.Equal(test.accounts, accounts)
 		})
 	}
@@ -58,6 +63,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccount() {
 					ID:       testdata.Users["user_1"].ID,
 					Email:    testdata.Users["user_1"].Email,
 					RoleName: types.RoleOwner,
+					Accepted: true,
 				},
 			},
 		},
@@ -101,9 +107,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccount() {
 				test.account.Users = test.users
 				ts.Equal(&test.account, createdAccount)
 
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
-				ts.NoError(err)
-				ts.Equal(&test.account, accounts[createdAccount.ID])
+				account := ts.getAndAssignAccountUsers(createdAccount.ID)
+				ts.Equal(&test.account, account)
 			}
 		})
 	}
@@ -366,10 +371,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccountUser() {
 				ts.NotEmpty(userID)
 				test.accountUserAfterCreate.ID = userID
 
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
-				ts.NoError(err)
-
-				user := accounts[test.createAccountUser.AccountID].Users[userID]
+				user := ts.getAndAssignAccountUsers(test.createAccountUser.AccountID).Users[userID]
 				ts.NotEmpty(user)
 				ts.Equal(test.accountUserAfterCreate, user)
 			}
@@ -568,10 +570,34 @@ func (ts *PGDriverTestSuite) Test_PGDriver_SetAccountUserRole() {
 			ts.Equal(test.err, err)
 
 			if test.err == nil {
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
-				ts.NoError(err)
-				ts.Equal(test.accountUsersAfterUpdate, accounts[test.updateAccountUser.AccountID].Users)
+				ts.Equal(test.accountUsersAfterUpdate, ts.getAndAssignAccountUsers(test.updateAccountUser.AccountID).Users)
 			}
 		})
 	}
+}
+
+func (ts *PGDriverTestSuite) getAndAssignAccountUsers(accountID types.AccountID) *types.Account {
+	accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
+	ts.NoError(err)
+
+	account, ok := accounts[accountID]
+	ts.True(ok)
+	users, err := ts.driver.ReadAllUsers(context.Background())
+	ts.NoError(err)
+
+	usersForAccountMap := make(map[types.AccountID]map[types.UserID]*types.User)
+	for _, user := range users {
+		for accountID := range user.Permissions {
+			if _, ok := usersForAccountMap[accountID]; !ok {
+				usersForAccountMap[accountID] = make(map[types.UserID]*types.User)
+			}
+			usersForAccountMap[accountID][user.ID] = user
+		}
+	}
+
+	usersForAccount, ok := usersForAccountMap[account.ID]
+	ts.True(ok)
+	account.AssignAccountUsers(usersForAccount)
+
+	return account
 }

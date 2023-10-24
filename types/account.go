@@ -2,10 +2,14 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
-var errNoOwner error = errors.New("account does not have an owner")
+var (
+	errNoOwner          error = errors.New("account does not have an owner")
+	errUserDoesNotExist error = errors.New("user ID %s does not exist")
+)
 
 /* Account Struct Definition and Methods */
 type (
@@ -92,6 +96,16 @@ func (a *Account) GetOwner() (AccountUser, error) {
 		}
 	}
 	return AccountUser{}, errNoOwner
+}
+
+// GetUser returns the AccountUser for a given UserID
+func (a *Account) GetUser(userID UserID) (AccountUser, error) {
+	for _, user := range a.Users {
+		if user.ID == userID {
+			return user, nil
+		}
+	}
+	return AccountUser{}, fmt.Errorf(errUserDoesNotExist.Error(), userID)
 }
 
 // GetOwnerID returns the Account OWNER's ID

@@ -1937,6 +1937,7 @@ FROM account_users AS au
 GROUP BY au.user_id,
     au.account_id,
     au.role_name,
+    au.accepted,
     ur.permissions
 `
 
@@ -2029,6 +2030,26 @@ func (q *Queries) UpdateAccountFields(ctx context.Context, arg UpdateAccountFiel
 		arg.UpdatedAt,
 		arg.ID,
 	)
+	return err
+}
+
+const updateAccountOwnerToAdmin = `-- name: UpdateAccountOwnerToAdmin :exec
+UPDATE account_users
+SET role_name = 'ADMIN',
+    updated_at = $3
+WHERE account_id = $1
+    AND role_name = 'OWNER'
+    AND user_id != $2
+`
+
+type UpdateAccountOwnerToAdminParams struct {
+	AccountID types.AccountID    `json:"account_id"`
+	UserID    types.UserID       `json:"user_id"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateAccountOwnerToAdmin(ctx context.Context, arg UpdateAccountOwnerToAdminParams) error {
+	_, err := q.db.Exec(ctx, updateAccountOwnerToAdmin, arg.AccountID, arg.UserID, arg.UpdatedAt)
 	return err
 }
 

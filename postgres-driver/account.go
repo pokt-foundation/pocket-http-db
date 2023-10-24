@@ -452,12 +452,37 @@ func (pg *PostgresDriver) SetAccountUserRole(ctx context.Context, updateAccountU
 		return err
 	}
 
-	err = pg.UpdateAccountUserRole(ctx, UpdateAccountUserRoleParams{
+	tx, err := pg.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := pg.WithTx(tx)
+
+	// If transferring ownership, set the previous owner to ADMIN
+	if updateAccountUser.RoleName == types.RoleOwner {
+		err = qtx.UpdateAccountOwnerToAdmin(ctx, UpdateAccountOwnerToAdminParams{
+			AccountID: updateAccountUser.AccountID,
+			UserID:    updateAccountUser.UserID,
+			UpdatedAt: newTimestamptz(updatedAt),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	err = qtx.UpdateAccountUserRole(ctx, UpdateAccountUserRoleParams{
 		AccountID: updateAccountUser.AccountID,
 		UserID:    updateAccountUser.UserID,
 		RoleName:  updateAccountUser.RoleName,
 		UpdatedAt: newTimestamptz(updatedAt),
 	})
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit(ctx)
 	if err != nil {
 		return err
 	}

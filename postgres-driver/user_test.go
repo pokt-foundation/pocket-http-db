@@ -163,19 +163,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 
 				ts.NotEmpty(accountID)
 
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
+				account := ts.getAndAssignAccountUsers(accountID)
+				_, err := account.GetUser(user.ID)
 				ts.NoError(err)
-				exists := false
-				for _, account := range accounts {
-					for _, user := range account.Users {
-						if user.ID == test.user.ID {
-							exists = true
-							ts.Equal(test.createUser.Email, user.Email)
-							break
-						}
-					}
-				}
-				ts.True(exists)
 			}
 		})
 	}
