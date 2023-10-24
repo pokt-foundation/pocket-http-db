@@ -182,24 +182,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WritePortalApp() {
 			if test.err == nil {
 				test.portalApp.ID = createdPortalApp.ID
 				test.portalApp.AATs = createdPortalApp.AATs
-				var createUserID types.UserID
-				for userID := range test.portalApp.PortalAppUsers {
-					createUserID = userID
-					break
-				}
-				test.portalApp.PortalAppUsers = nil
 				ts.Equal(&test.portalApp, createdPortalApp)
-
-				// Check user was created for the account
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
-				ts.NoError(err)
-				account, ok := accounts[test.portalApp.AccountID]
-				ts.True(ok)
-				ts.NotEmpty(createUserID)
-				accountUser, ok := account.AccountUsers[createUserID]
-				ts.True(ok)
-				ts.NotEmpty(accountUser.PortalAppRoles[createdPortalApp.ID])
-				ts.True(accountUser.PortalAppsAccepted[createdPortalApp.ID])
 
 				// Check portal app can be read from driver
 				portalApps, err := ts.driver.ReadPortalApps(context.Background(), types.DriverOptions{})

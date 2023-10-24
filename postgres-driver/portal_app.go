@@ -277,38 +277,39 @@ func (pg *PostgresDriver) WritePortalApp(ctx context.Context, portalApp types.Po
 		return nil, err
 	}
 
-	accountOwner, err := qtx.GetAccountOwner(ctx, portalApp.AccountID)
-	if err != nil {
-		return nil, err
-	}
+	// TODO - Notifications will be moved to Account level
+	// accountOwner, err := qtx.GetAccountOwner(ctx, portalApp.AccountID)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	err = qtx.UpdateUpsertPortalAppNotification(ctx, UpdateUpsertPortalAppNotificationParams{
-		ApplicationID: portalApp.ID,
-		Active:        true,
-		Type:          types.NotificationTypeEmail,
-		Destination:   string(accountOwner.Email),
-		Events: []types.NotificationEvent{
-			types.NotificationEventSignedUp,
-			types.NotificationEventThreeQuarters,
-			types.NotificationEventFull,
-		},
-		UpdatedAt: newTimestamptz(portalApp.UpdatedAt),
-	})
-	if err != nil {
-		return nil, err
-	}
-	portalApp.Notifications = map[types.NotificationType]types.AppNotification{
-		types.NotificationTypeEmail: {
-			Type:        types.NotificationTypeEmail,
-			Active:      true,
-			Destination: string(accountOwner.Email),
-			Events: map[types.NotificationEvent]bool{
-				types.NotificationEventSignedUp:      true,
-				types.NotificationEventThreeQuarters: true,
-				types.NotificationEventFull:          true,
-			},
-		},
-	}
+	// err = qtx.UpdateUpsertPortalAppNotification(ctx, UpdateUpsertPortalAppNotificationParams{
+	// 	ApplicationID: portalApp.ID,
+	// 	Active:        true,
+	// 	Type:          types.NotificationTypeEmail,
+	// 	Destination:   string(accountOwner.Email),
+	// 	Events: []types.NotificationEvent{
+	// 		types.NotificationEventSignedUp,
+	// 		types.NotificationEventThreeQuarters,
+	// 		types.NotificationEventFull,
+	// 	},
+	// 	UpdatedAt: newTimestamptz(portalApp.UpdatedAt),
+	// })
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// portalApp.Notifications = map[types.NotificationType]types.AppNotification{
+	// 	types.NotificationTypeEmail: {
+	// 		Type:        types.NotificationTypeEmail,
+	// 		Active:      true,
+	// 		Destination: string(accountOwner.Email),
+	// 		Events: map[types.NotificationEvent]bool{
+	// 			types.NotificationEventSignedUp:      true,
+	// 			types.NotificationEventThreeQuarters: true,
+	// 			types.NotificationEventFull:          true,
+	// 		},
+	// 	},
+	// }
 
 	err = tx.Commit(ctx)
 	if err != nil {

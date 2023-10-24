@@ -250,13 +250,13 @@ func (_m *MockDriver) ReadPortalApps(ctx context.Context, options types.DriverOp
 	return r0, r1
 }
 
-// RemoveAccountUser provides a mock function with given fields: ctx, userID, portalAppID, accountID
-func (_m *MockDriver) RemoveAccountUser(ctx context.Context, userID types.UserID, portalAppID types.PortalAppID, accountID types.AccountID) error {
-	ret := _m.Called(ctx, userID, portalAppID, accountID)
+// RemoveAccountUser provides a mock function with given fields: ctx, userID, accountID
+func (_m *MockDriver) RemoveAccountUser(ctx context.Context, userID types.UserID, accountID types.AccountID) error {
+	ret := _m.Called(ctx, userID, accountID)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.UserID, types.PortalAppID, types.AccountID) error); ok {
-		r0 = rf(ctx, userID, portalAppID, accountID)
+	if rf, ok := ret.Get(0).(func(context.Context, types.UserID, types.AccountID) error); ok {
+		r0 = rf(ctx, userID, accountID)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -545,21 +545,21 @@ func (_m *MockDriver) WriteAccount(ctx context.Context, creatorID types.UserID, 
 }
 
 // WriteAccountUser provides a mock function with given fields: ctx, createAccountUser, createdAt
-func (_m *MockDriver) WriteAccountUser(ctx context.Context, createAccountUser types.CreateAccountUserAccess, createdAt time.Time) (types.UserID, error) {
+func (_m *MockDriver) WriteAccountUser(ctx context.Context, createAccountUser types.CreateAccountUser, createdAt time.Time) (types.UserID, error) {
 	ret := _m.Called(ctx, createAccountUser, createdAt)
 
 	var r0 types.UserID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUserAccess, time.Time) (types.UserID, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUser, time.Time) (types.UserID, error)); ok {
 		return rf(ctx, createAccountUser, createdAt)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUserAccess, time.Time) types.UserID); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUser, time.Time) types.UserID); ok {
 		r0 = rf(ctx, createAccountUser, createdAt)
 	} else {
 		r0 = ret.Get(0).(types.UserID)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, types.CreateAccountUserAccess, time.Time) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, types.CreateAccountUser, time.Time) error); ok {
 		r1 = rf(ctx, createAccountUser, createdAt)
 	} else {
 		r1 = ret.Error(1)

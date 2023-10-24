@@ -48,16 +48,12 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			userID:          "user_3",
 			accountID:       "account_1",
 			account: &types.Account{
-				AccountUsers: map[types.UserID]types.AccountUser{
+				Users: map[types.UserID]types.AccountUser{
 					"user_3": {
-						UserID: "user_3",
-						Email:  "ellen.ripley789@test.com",
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_1": types.RoleMember,
-						},
-						PortalAppsAccepted: map[types.PortalAppID]bool{
-							"test_app_1": true,
-						},
+						ID:       "user_3",
+						Email:    "ellen.ripley789@test.com",
+						RoleName: types.RoleMember,
+						Accepted: true,
 					},
 				},
 			},
@@ -68,16 +64,12 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			userID:          "user_2",
 			accountID:       "account_1",
 			account: &types.Account{
-				AccountUsers: map[types.UserID]types.AccountUser{
+				Users: map[types.UserID]types.AccountUser{
 					"user_3": {
-						UserID: "user_2",
-						Email:  "paul.atreides456@test.com",
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_1": types.RoleMember,
-						},
-						PortalAppsAccepted: map[types.PortalAppID]bool{
-							"test_app_1": true,
-						},
+						ID:       "user_2",
+						Email:    "paul.atreides456@test.com",
+						RoleName: types.RoleMember,
+						Accepted: true,
 					},
 				},
 			},
@@ -88,7 +80,7 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			userID:          "user_8",
 			accountID:       "account_1",
 			account: &types.Account{
-				AccountUsers: map[types.UserID]types.AccountUser{
+				Users: map[types.UserID]types.AccountUser{
 					"user_8": testdata.AccountUser[8],
 				},
 			},
@@ -175,12 +167,12 @@ func Test_parseAccountNotification(t *testing.T) {
 
 			test.account.ID = test.accountID
 			testAccount := test.account
-			testAccount.AccountUsers = map[types.UserID]types.AccountUser{test.user.UserID: test.user}
+			testAccount.Users = map[types.UserID]types.AccountUser{test.user.ID: test.user}
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, testAccount)
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			account := cache.GetUserAccount(test.accountID, test.user.UserID, Options{})
+			account := cache.GetUserAccount(test.accountID, test.user.ID, Options{})
 
 			if testAccount.Deleted {
 				c.Empty(account)

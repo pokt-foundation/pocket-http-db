@@ -100,6 +100,8 @@ CREATE TABLE account_users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, account_id)
 );
+CREATE UNIQUE INDEX idx_unique_owner_per_account ON account_users (account_id)
+WHERE role_name = 'OWNER';
 -- Chains Tables
 CREATE TABLE chains (
     id VARCHAR(4) PRIMARY KEY,
@@ -250,34 +252,6 @@ CREATE TABLE IF NOT EXISTS portal_application_aats (
     private_key VARCHAR(400) NULL,
     version VARCHAR(10) NOT NULL
 );
--- DEPRECATED - Account User Access Table
-CREATE TABLE account_user_access (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(10) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    account_id VARCHAR(10) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    portal_application_id VARCHAR(24) REFERENCES portal_applications(id) ON DELETE CASCADE,
-    role_name VARCHAR(25) NOT NULL REFERENCES user_roles(role_name),
-    owner BOOLEAN NOT NULL,
-    accepted BOOLEAN NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (user_id, portal_application_id),
-    CONSTRAINT check_portal_application_id_for_owner_nonowner CHECK (
-        (
-            role_name = 'OWNER'
-            AND portal_application_id IS NULL
-            AND owner = true
-        )
-        OR (
-            role_name != 'OWNER'
-            AND portal_application_id IS NOT NULL
-            AND owner = false
-        )
-    )
-);
-CREATE UNIQUE INDEX idx_unique_owner_per_account ON account_user_access (account_id)
-WHERE owner = true
-    AND role_name = 'OWNER';
 -- Gigastake Applications Table
 CREATE TABLE IF NOT EXISTS gigastake_applications (
     id VARCHAR(24) PRIMARY KEY,

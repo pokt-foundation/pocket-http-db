@@ -287,28 +287,20 @@ func Test_upsertAccountUser(t *testing.T) {
 			name:      "Should add a new Accepted user to account and user permissions",
 			accountID: "account_2",
 			accountUser: types.AccountUser{
-				UserID: "user_1",
-				Email:  "james.holden123@test.com",
-				PortalAppRoles: map[types.PortalAppID]types.RoleName{
-					"test_app_2": types.RoleMember,
-				},
-				PortalAppsAccepted: map[types.PortalAppID]bool{
-					"test_app_2": true,
-				},
+				ID:       "user_1",
+				Email:    "james.holden123@test.com",
+				RoleName: types.RoleMember,
+				Accepted: true,
 			},
 		},
 		{
 			name:      "Should add a new not-Accepted user to account",
 			accountID: "account_3",
 			accountUser: types.AccountUser{
-				UserID: "user_10",
-				Email:  "daenerys.targaryen123@test.com",
-				PortalAppRoles: map[types.PortalAppID]types.RoleName{
-					"test_app_3": types.RoleMember,
-				},
-				PortalAppsAccepted: map[types.PortalAppID]bool{
-					"test_app_3": true,
-				},
+				ID:       "user_10",
+				Email:    "daenerys.targaryen123@test.com",
+				RoleName: types.RoleMember,
+				Accepted: true,
 			},
 		},
 		{
@@ -327,40 +319,24 @@ func Test_upsertAccountUser(t *testing.T) {
 
 			cache := NewTestCache(t)
 
-			if test.updateRoles != nil {
-				for portalAppID, roleName := range test.updateRoles {
-					test.accountUser.PortalAppRoles[portalAppID] = roleName
-				}
-			}
-
 			// Upsert account user
 			testAccountUser := test.accountUser
 			testAccountUser.AccountID = test.accountID
 			cache.upsertAccountUser(testAccountUser)
 
-			account := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{})
-			accountUser, ok := account.AccountUsers[test.accountUser.UserID]
+			account := cache.GetUserAccount(test.accountID, test.accountUser.ID, Options{})
+			accountUser, ok := account.Users[test.accountUser.ID]
 			c.True(ok, "AccountUser should be present in account Users map")
 			c.Equal(test.accountUser, accountUser, "AccountUser should be added or updated in the cache")
 
-			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.ID, Options{}), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
-			var accepted bool
-			for _, portalAppAccepted := range test.accountUser.PortalAppsAccepted {
-				accepted = portalAppAccepted
-				break
-			}
-
-			if accepted {
-				user := cache.GetUserByID(test.accountUser.UserID)
-				for portalAppID, roleName := range test.accountUser.PortalAppRoles {
-					portalAppPermission, ok := user.Permissions[portalAppID]
-
-					c.True(ok, "PortalAppPermissions should be present in UserPermissions")
-					c.Equal(roleName, portalAppPermission.RoleName, "Role should be updated in UserPermissions")
-				}
-			}
+			user := cache.GetUserByID(test.accountUser.ID)
+			accountPermissions, ok := user.Permissions[test.accountID]
+			c.True(ok, "PortalAppPermissions should be present in UserPermissions")
+			c.Equal(test.accountUser.RoleName, accountPermissions.RoleName, "Role should be updated in UserPermissions")
+			c.Equal(test.accountUser.Accepted, accountPermissions.Accepted, "Accepted should be updated in UserPermissions")
 		})
 	}
 }
@@ -382,7 +358,7 @@ func Test_upsertAccount(t *testing.T) {
 			account: types.Account{
 				ID:       "account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
-				AccountUsers: map[types.UserID]types.AccountUser{
+				Users: map[types.UserID]types.AccountUser{
 					"user_1": testdata.AccountUser[1],
 					"user_2": testdata.AccountUser[2],
 					"user_8": testdata.AccountUser[8],
@@ -404,7 +380,7 @@ func Test_upsertAccount(t *testing.T) {
 			account: types.Account{
 				ID:       "account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
-				AccountUsers: map[types.UserID]types.AccountUser{
+				Users: map[types.UserID]types.AccountUser{
 					"user_7": testdata.AccountUser[7],
 					"user_1": testdata.AccountUser[1],
 					"user_2": testdata.AccountUser[2],
@@ -431,7 +407,7 @@ func Test_upsertAccount(t *testing.T) {
 			account: types.Account{
 				ID:       "account_2",
 				PlanType: types.PayPlanType("pro_plan"),
-				AccountUsers: map[types.UserID]types.AccountUser{
+				Users: map[types.UserID]types.AccountUser{
 					"user_3": testdata.AccountUser[3],
 					"user_4": testdata.AccountUser[4],
 					"user_9": testdata.AccountUser[9],
@@ -454,18 +430,6 @@ func Test_upsertAccount(t *testing.T) {
 
 			cache := NewTestCache(t)
 
-			if len(test.pendingUsers) > 0 {
-				// Add current user to the app for the current test to avoid updating the seed
-				pendingUsers := test.pendingUsers
-				for _, pending := range pendingUsers {
-					for _, userPending := range pending {
-						userPending.PortalAppRoles["test_app_1"] = types.RoleMember
-						userPending.PortalAppsAccepted["test_app_1"] = true
-					}
-				}
-				cache.pendingAccountUserAccess = pendingUsers
-			}
-
 			// Upsert account
 			cache.upsertAccount(test.account)
 			if test.account.Deleted {
@@ -473,7 +437,7 @@ func Test_upsertAccount(t *testing.T) {
 			} else {
 				if len(test.pendingUsers) > 0 {
 					for _, user := range test.pendingUsers[test.account.ID] {
-						test.account.AccountUsers[user.UserID] = user
+						test.account.Users[user.ID] = user
 					}
 				}
 
@@ -487,8 +451,8 @@ func Test_upsertAccount(t *testing.T) {
 					c.True(accountFound, "Account should be found in accounts map")
 				}
 
-				for _, user := range test.account.AccountUsers {
-					accountsForUser := cache.GetUserAccounts(user.UserID, Options{
+				for _, user := range test.account.Users {
+					accountsForUser := cache.GetUserAccounts(user.ID, Options{
 						Accepted: dbclient.BoolPtr(true),
 					})
 
@@ -497,15 +461,8 @@ func Test_upsertAccount(t *testing.T) {
 					if test.account.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {
-						accepted := false
-						for _, portalAppAccepted := range user.PortalAppsAccepted {
-							if portalAppAccepted {
-								accepted = true
-								break
-							}
-						}
-						if accepted {
-							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.UserID, accountID)
+						if user.Accepted {
+							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.ID, accountID)
 							c.Equal(test.account, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
 						} else {
 							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
@@ -544,17 +501,15 @@ func Test_deleteAccountUser(t *testing.T) {
 			cache := NewTestCache(t)
 
 			if test.existingAccount {
-				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{}).AccountUsers[test.accountUser.UserID]
+				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.ID, Options{}).Users[test.accountUser.ID]
 				c.True(ok, "AccountUser should be found in account Users map before deletion")
 
-				accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+				accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.ID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
-				user := cache.GetUserByID(test.accountUser.UserID)
-				for portalAppID := range test.accountUser.PortalAppRoles {
-					_, ok = user.Permissions[portalAppID]
-					c.True(ok, "PortalAppPermissions should be found in UserPermissions for each PortalAppRole before deletion")
-				}
+				user := cache.GetUserByID(test.accountUser.ID)
+				_, ok = user.Permissions[test.accountID]
+				c.True(ok, "PortalAppPermissions should be found in UserPermissions for each PortalAppRole before deletion")
 			}
 
 			// Delete account user
@@ -562,19 +517,17 @@ func Test_deleteAccountUser(t *testing.T) {
 			testAccountUser.AccountID = test.accountID
 			cache.deleteAccountUser(testAccountUser)
 
-			account := cache.GetUserAccount(test.accountID, testAccountUser.UserID, Options{})
+			account := cache.GetUserAccount(test.accountID, testAccountUser.ID, Options{})
 
-			_, ok := account.AccountUsers[test.accountUser.UserID]
+			_, ok := account.Users[test.accountUser.ID]
 			c.False(ok, "AccountUser should be deleted from account Users map")
 
-			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.ID, Options{}), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
-			user := cache.GetUserByID(test.accountUser.UserID)
-			for portalAppID := range test.accountUser.PortalAppRoles {
-				_, ok = user.Permissions[portalAppID]
-				c.False(ok, "PortalAppPermissions should be removed from UserPermissions for each PortalAppRole")
-			}
+			user := cache.GetUserByID(test.accountUser.ID)
+			_, ok = user.Permissions[test.accountID]
+			c.False(ok, "PortalAppPermissions should be removed from UserPermissions for each PortalAppRole")
 		})
 	}
 }
@@ -1646,9 +1599,9 @@ func Test_upsertUser(t *testing.T) {
 				SignedUp:         true,
 				UpdatesProduct:   true,
 				UpdatesMarketing: true,
-				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-					"test_app_1": {RoleName: "OWNER", AccountID: "account_1", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"test_app_2": {RoleName: "MEMBER", AccountID: "account_2", Permissions: []types.Permissions{"read:endpoint"}},
+				Permissions: map[types.AccountID]types.AccountPermissions{
+					"account_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
+					"account_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {
@@ -1681,7 +1634,7 @@ func Test_upsertUser(t *testing.T) {
 			if test.pendingAccounts {
 				accounts := cache.GetUserAccounts(test.user.ID, Options{})
 				for _, account := range accounts {
-					c.NotEmpty(account.AccountUsers[test.user.ID])
+					c.NotEmpty(account.Users[test.user.ID])
 				}
 			}
 		})
@@ -1719,9 +1672,9 @@ func Test_addUserAuthProvider(t *testing.T) {
 			expectedUser: types.User{
 				ID:    "user_1",
 				Email: "james.holden752@test.com",
-				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-					"test_app_1": {RoleName: "OWNER", AccountID: "account_1", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"test_app_2": {RoleName: "MEMBER", AccountID: "account_2", Permissions: []types.Permissions{"read:endpoint"}},
+				Permissions: map[types.AccountID]types.AccountPermissions{
+					"account_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
+					"account_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {

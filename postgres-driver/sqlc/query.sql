@@ -207,18 +207,17 @@ SELECT email,
 FROM users
 WHERE users.id = $1;
 -- name: GetAccountOwner :one
-SELECT aua.account_id,
-    aua.owner,
-    aua.user_id,
+SELECT au.account_id,
+    au.user_id,
     users.email,
     users.icon_url,
     users.updates_product,
     users.updates_marketing,
     users.beta_tester
-FROM account_user_access AS aua
-    JOIN users ON aua.user_id = users.id
-WHERE aua.account_id = $1
-    AND aua.owner = true;
+FROM account_users AS au
+    JOIN users ON au.user_id = users.id
+WHERE au.account_id = $1
+    AND au.role_name = 'OWNER';
 -- name: UpdatePortalAppFields :exec
 UPDATE portal_applications
 SET name = COALESCE(NULLIF(@name::VARCHAR, ''), name),
@@ -348,59 +347,11 @@ GROUP BY a.id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid;
 -- name: SelectAccount :one
-WITH app_role_agg_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(pa.id, 'OWNER') AS portal_application_roles
-    FROM account_user_access AS aua
-        JOIN portal_applications AS pa ON aua.account_id = pa.account_id
-    WHERE aua.owner = true
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg_non_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(aua.portal_application_id, aua.role_name) AS portal_application_roles
-    FROM account_user_access AS aua
-        JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
-    WHERE aua.owner = false
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg AS (
-    SELECT COALESCE(aro.user_id, aroo.user_id) as user_id,
-        COALESCE(aro.account_id, aroo.account_id) as account_id,
-        COALESCE(aro.portal_application_roles, '{}'::jsonb) || COALESCE(aroo.portal_application_roles, '{}'::jsonb) as portal_application_roles
-    FROM app_role_agg_owner aro
-        FULL JOIN app_role_agg_non_owner aroo ON aro.user_id = aroo.user_id
-        AND aro.account_id = aroo.account_id
-)
 SELECT a.*,
     ai.covalent_api_key_free,
-    ai.covalent_api_key_paid,
-    json_agg(
-        json_build_object(
-            'user_id',
-            u.id,
-            'email',
-            u.email,
-            'accepted',
-            aua.accepted,
-            'owner',
-            aua.owner,
-            'portal_application_roles',
-            ara.portal_application_roles
-        )
-    ) AS users
+    ai.covalent_api_key_paid
 FROM accounts AS a
-    LEFT JOIN account_user_access AS aua ON a.id = aua.account_id
-    LEFT JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
-    LEFT JOIN users AS u ON aua.user_id = u.id
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN app_role_agg AS ara ON u.id = ara.user_id
-    AND a.id = ara.account_id
 WHERE a.id = $1
 GROUP BY a.id,
     ai.covalent_api_key_free,
@@ -528,22 +479,15 @@ SELECT EXISTS(
 -- name: CheckUserAccountExists :one
 SELECT EXISTS (
         SELECT 1
-        FROM account_user_access
+        FROM account_users
         WHERE user_id = $1
     );
 -- name: CheckAccountUserExists :one
 SELECT EXISTS (
         SELECT 1
-        FROM account_user_access
-        WHERE (
-                user_id = $1
-                AND portal_application_id = $2
-            )
-            OR (
-                user_id = $1
-                AND role_name = 'OWNER'
-                AND account_id = $3
-            )
+        FROM account_users
+        WHERE user_id = $1
+            AND account_id = $2
     );
 -- name: CheckUserProviderExists :one
 SELECT EXISTS (
@@ -555,28 +499,15 @@ SELECT EXISTS (
     );
 -- name: CheckAccountUserRole :one
 SELECT role_name
-FROM account_user_access
-WHERE user_id = $1
-    AND account_id = $2;
--- name: CheckAccountUserAcceptedOrOwner :one
-SELECT accepted
-FROM account_user_access
-WHERE user_id = $1
-    AND (
-        portal_application_id = $2
-        OR owner = true
-    );
--- name: CheckAccountUserIsOwner :one
-SELECT owner
-FROM account_user_access
+FROM account_users
 WHERE user_id = $1
     AND account_id = $2;
 -- name: CheckAccountUserAccepted :one
 SELECT accepted
-FROM account_user_access
+FROM account_users
 WHERE user_id = $1
-    AND portal_application_id = $2;
--- name: InsertAccountUserAccess :one
+    AND account_id = $2;
+-- name: InsertAccountUser :one
 WITH updated_user AS (
     UPDATE users
     SET email = $7
@@ -584,12 +515,10 @@ WITH updated_user AS (
     RETURNING id,
         email
 ) -- Must update email to trigger listener notification for users table
-INSERT INTO account_user_access (
+INSERT INTO account_users (
         user_id,
         account_id,
-        portal_application_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
@@ -597,12 +526,10 @@ INSERT INTO account_user_access (
 VALUES (
         $1,
         $2,
-        NULLIF(@portal_application_id::VARCHAR, ''),
         $3,
         $4,
         $5,
-        $6,
-        $8
+        $6
     )
 RETURNING user_id;
 -- name: InsertAccountUserAccessNoUser :one
@@ -618,12 +545,10 @@ WITH inserted_user AS (
     RETURNING id,
         email
 )
-INSERT INTO account_user_access (
+INSERT INTO account_users (
         user_id,
         account_id,
-        portal_application_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
@@ -633,91 +558,19 @@ VALUES (
             SELECT id
             FROM inserted_user
         ),
-        $6,
-        $7,
         $5,
-        false,
+        $6,
         false,
         $3,
         $4
     )
 RETURNING user_id;
 -- name: UpdateAccountUserRole :exec
-UPDATE account_user_access
+UPDATE account_users
 SET role_name = $3,
     updated_at = $4
-WHERE portal_application_id = $1
+WHERE account_id = $1
     AND user_id = $2;
--- name: TransferOwnerDeleteOldRows :one
-WITH delete_old_owner_row AS (
-    DELETE FROM account_user_access
-    WHERE account_user_access.account_id = $1
-        AND role_name = 'OWNER'
-    RETURNING user_id
-),
-delete_new_owner_non_owner_rows AS (
-    DELETE FROM account_user_access
-    WHERE account_user_access.account_id = $1
-        AND user_id = @new_owner_id::VARCHAR(24)
-        AND role_name <> 'OWNER'
-)
-SELECT user_id
-FROM delete_old_owner_row;
--- name: TransferOwnerCreateRows :exec
-WITH updated_user AS (
-    UPDATE users
-    SET email = users.email
-    WHERE id = @new_owner_id::VARCHAR(24)
-),
-insert_old_owner_admin_rows AS (
-    INSERT INTO account_user_access (
-            portal_application_id,
-            user_id,
-            account_id,
-            role_name,
-            owner,
-            accepted,
-            created_at,
-            updated_at
-        )
-    SELECT DISTINCT on (pa.id) pa.id,
-        @old_owner_id::VARCHAR(24),
-        aua.account_id,
-        'ADMIN',
-        false,
-        true,
-        aua.created_at,
-        aua.updated_at
-    FROM account_user_access AS aua
-        LEFT JOIN portal_applications AS pa ON aua.account_id = pa.account_id
-    WHERE aua.account_id = $1
-        AND pa.deleted = false -- Only include non-deleted portal applications
-        AND NOT EXISTS (
-            SELECT 1
-            FROM account_user_access
-            WHERE user_id = @old_owner_id::VARCHAR(24)
-                AND portal_application_id = pa.id
-        )
-),
-insert_new_owner_row AS (
-    INSERT INTO account_user_access (
-            user_id,
-            account_id,
-            role_name,
-            owner,
-            accepted,
-            created_at,
-            updated_at
-        )
-    SELECT @new_owner_id::VARCHAR(24),
-        $1,
-        'OWNER',
-        true,
-        true,
-        $2,
-        $3
-)
-SELECT 1;
 -- name: CreateUserNewSignUp :one
 WITH inserted_user AS (
     INSERT INTO users (id, email, signed_up, created_at, updated_at)
@@ -774,13 +627,13 @@ WITH inserted_or_existing_provider AS (
     RETURNING user_id
 ),
 updated_access AS (
-    UPDATE account_user_access
+    UPDATE account_users
     SET accepted = true
     WHERE user_id = (
             SELECT user_id
             FROM inserted_or_existing_provider
         )
-        AND portal_application_id = $6
+        AND account_id = $6
 )
 UPDATE users
 SET signed_up = true
@@ -795,14 +648,14 @@ WITH user_check AS (
     WHERE uap.user_id = $1
     UNION ALL
     SELECT user_id
-    FROM account_user_access aua
-    WHERE aua.user_id = $1
-        AND aua.portal_application_id != $2
+    FROM account_users au
+    WHERE au.user_id = $1
+        AND au.account_id != $2
 ),
 delete_aua AS (
-    DELETE FROM account_user_access aua
-    WHERE aua.user_id = $1
-        AND aua.portal_application_id = $2
+    DELETE FROM account_users au
+    WHERE au.user_id = $1
+        AND au.account_id = $2
 )
 DELETE FROM users u
 WHERE u.id = $1
@@ -811,8 +664,8 @@ WHERE u.id = $1
         FROM user_check
     );
 -- name: DeleteAccountUser :exec
-DELETE FROM account_user_access
-WHERE portal_application_id = $1
+DELETE FROM account_users
+WHERE account_id = $1
     AND user_id = $2;
 -- name: GetPortalUserID :one
 SELECT user_id

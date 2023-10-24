@@ -157,18 +157,11 @@ type (
 )
 
 /* UserPermissions Struct Definition and Methods */
-var (
-	permissionsList = map[RoleName][]Permissions{
-		RoleOwner:  {PermReadEndpoint, PermWriteEndpoint, PermDeleteEndpoint, PermTransferEndpoint},
-		RoleAdmin:  {PermReadEndpoint, PermWriteEndpoint},
-		RoleMember: {PermReadEndpoint},
-	}
-	roleOrder = map[RoleName]int{
-		RoleOwner:  3,
-		RoleAdmin:  2,
-		RoleMember: 1,
-	}
-)
+var permissionsList = map[RoleName][]Permissions{
+	RoleOwner:  {PermReadEndpoint, PermWriteEndpoint, PermDeleteEndpoint, PermTransferEndpoint},
+	RoleAdmin:  {PermReadEndpoint, PermWriteEndpoint},
+	RoleMember: {PermReadEndpoint},
+}
 
 func (u *User) ToAccountUser(accountID AccountID) AccountUser {
 	return AccountUser{

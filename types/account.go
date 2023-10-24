@@ -29,9 +29,6 @@ type (
 
 		// Users assigned when account is fetched in cache.go
 		Users map[UserID]AccountUser `json:"users"`
-
-		// DEPRECATED
-		AccountUsers map[UserID]AccountUserAccess `json:"accountUsers"`
 	}
 
 	AccountUser struct {
@@ -42,16 +39,6 @@ type (
 		Accepted  bool      `json:"accepted"`
 	}
 
-	// DEPRECATED - AccountUser represents a single Portal user for a single Account
-	AccountUserAccess struct {
-		AccountID          AccountID                `json:"id,omitempty"` // used for listener
-		Owner              bool                     `json:"owner"`
-		UserID             UserID                   `json:"userID"`
-		Email              Email                    `json:"email"`
-		PortalAppRoles     map[PortalAppID]RoleName `json:"portalApplicationRoles"`
-		PortalAppsAccepted map[PortalAppID]bool     `json:"portalApplicationsAccepted"`
-	}
-
 	// AccountUser represents fields used for integrations with other platforms
 	AccountIntegrations struct {
 		AccountID          AccountID `json:"id,omitempty"` // used for listener
@@ -59,12 +46,11 @@ type (
 		CovalentAPIKeyPaid string    `json:"covalentAPIKeyPaid"`
 	}
 
-	// CreateAccountUserAccess contains all fields required to create a new Account User
-	CreateAccountUserAccess struct {
-		AccountID   AccountID   `json:"accountID"`
-		PortalAppID PortalAppID `json:"portalAppID"`
-		Email       Email       `json:"email"`
-		RoleName    RoleName    `json:"roleName"`
+	// CreateAccountUser contains all fields required to create a new Account User
+	CreateAccountUser struct {
+		AccountID AccountID `json:"accountID"`
+		Email     Email     `json:"email"`
+		RoleName  RoleName  `json:"roleName"`
 	}
 
 	// UpdateAccount contains all fields required to update an Account
@@ -77,16 +63,15 @@ type (
 
 	// UpdateAccountUserRole contains all fields required to update an Account User's Role
 	UpdateAccountUserRole struct {
-		PortalAppID PortalAppID `json:"portalAppID"`
-		UserID      UserID      `json:"userID"`
-		AccountID   AccountID   `json:"accountID"`
-		RoleName    RoleName    `json:"roleName"`
+		UserID    UserID    `json:"userID"`
+		AccountID AccountID `json:"accountID"`
+		RoleName  RoleName  `json:"roleName"`
 	}
 
 	// UpdateAccountUserRole contains all fields required to accept an Account User
 	UpdateAcceptAccountUser struct {
 		DeclinedInvite   bool           `json:"declined"`
-		PortalAppID      PortalAppID    `json:"portalAppID"`
+		AccountID        AccountID      `json:"accountID"`
 		UserID           UserID         `json:"userID"`
 		AuthProviderType AuthType       `json:"type"`
 		ProviderUserID   ProviderUserID `json:"providerUserID"`
@@ -94,9 +79,8 @@ type (
 
 	// UpdateRemoveAccountUser contains all fields required to remove an Account User's Role
 	UpdateRemoveAccountUser struct {
-		UserID      UserID      `json:"userID"`
-		PortalAppID PortalAppID `json:"portalAppID"`
-		AccountID   AccountID   `json:"accountID"`
+		UserID    UserID    `json:"userID"`
+		AccountID AccountID `json:"accountID"`
 	}
 )
 

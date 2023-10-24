@@ -244,12 +244,11 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 	}
 
 	// New user is Account OWNER
-	_, err = qtx.InsertAccountUserAccess(ctx, InsertAccountUserAccessParams{
+	_, err = qtx.InsertAccountUser(ctx, InsertAccountUserParams{
 		AccountID: accountID,
 		UserID:    createdUserID,
 		Email:     user.Email,
 		RoleName:  types.RoleOwner,
-		Owner:     true,
 		Accepted:  true,
 		CreatedAt: newTimestamptz(createdAt),
 		UpdatedAt: newTimestamptz(createdAt),

@@ -1048,15 +1048,15 @@ func (_m *MockIDBClient) UpdateUser(ctx context.Context, user types.UpdateUser) 
 }
 
 // WriteAccountUser provides a mock function with given fields: ctx, createUser, _a2
-func (_m *MockIDBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUserAccess, _a2 time.Time) (map[string]types.UserID, error) {
+func (_m *MockIDBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, _a2 time.Time) (map[string]types.UserID, error) {
 	ret := _m.Called(ctx, createUser, _a2)
 
 	var r0 map[string]types.UserID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUserAccess, time.Time) (map[string]types.UserID, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUser, time.Time) (map[string]types.UserID, error)); ok {
 		return rf(ctx, createUser, _a2)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUserAccess, time.Time) map[string]types.UserID); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUser, time.Time) map[string]types.UserID); ok {
 		r0 = rf(ctx, createUser, _a2)
 	} else {
 		if ret.Get(0) != nil {
@@ -1064,7 +1064,7 @@ func (_m *MockIDBClient) WriteAccountUser(ctx context.Context, createUser types.
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, types.CreateAccountUserAccess, time.Time) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, types.CreateAccountUser, time.Time) error); ok {
 		r1 = rf(ctx, createUser, _a2)
 	} else {
 		r1 = ret.Error(1)

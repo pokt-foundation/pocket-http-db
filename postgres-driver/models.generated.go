@@ -434,18 +434,6 @@ type AccountUser struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
-type AccountUserAccess struct {
-	ID                  int32              `json:"id"`
-	UserID              types.UserID       `json:"user_id"`
-	AccountID           types.AccountID    `json:"account_id"`
-	PortalApplicationID types.PortalAppID  `json:"portal_application_id"`
-	RoleName            types.RoleName     `json:"role_name"`
-	Owner               bool               `json:"owner"`
-	Accepted            bool               `json:"accepted"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
-}
-
 type Chain struct {
 	ID             types.RelayChainID `json:"id"`
 	Blockchain     pgtype.Text        `json:"blockchain"`

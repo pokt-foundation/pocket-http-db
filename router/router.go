@@ -836,7 +836,7 @@ func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/account/user - Create a single Account User.
 func (rt *Router) writeAccountUser(w http.ResponseWriter, r *http.Request) {
-	var createUser types.CreateAccountUserAccess
+	var createUser types.CreateAccountUser
 
 	err := json.NewDecoder(r.Body).Decode(&createUser)
 	if err != nil {
@@ -913,7 +913,7 @@ func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	err = rt.writer.RemoveAccountUser(r.Context(), removeUser.UserID, removeUser.PortalAppID, removeUser.AccountID)
+	err = rt.writer.RemoveAccountUser(r.Context(), removeUser.UserID, removeUser.AccountID)
 	if err != nil {
 		rt.handleError(w, "removeAccountUser", http.StatusInternalServerError, err)
 		return

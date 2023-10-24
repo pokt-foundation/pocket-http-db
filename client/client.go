@@ -117,7 +117,7 @@ type (
 		DeleteAccount(ctx context.Context, accountID types.AccountID) (map[string]string, error)
 
 		// WriteAccountUser creates a single Account User - POST `/v2/account/user`
-		WriteAccountUser(ctx context.Context, createUser types.CreateAccountUserAccess, time time.Time) (map[string]types.UserID, error)
+		WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, time time.Time) (map[string]types.UserID, error)
 		// SetAccountUserRole updates the role for a single Account User - PUT `/v2/account/user/update_role`
 		SetAccountUserRole(ctx context.Context, updateUser types.UpdateAccountUserRole, time time.Time) (map[string]string, error)
 		// UpdateAcceptAccountUser accepts or declines an Account User Access - PUT `/v2/account/user/accept`
@@ -818,12 +818,9 @@ func (db *DBClient) DeleteAccount(ctx context.Context, accountID types.AccountID
 /* -- Account User Write Methods -- */
 
 // WriteAccountUser creates a single Account User - POST `/v2/account/user`
-func (db *DBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUserAccess, time time.Time) (map[string]types.UserID, error) {
+func (db *DBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, time time.Time) (map[string]types.UserID, error) {
 	if createUser.AccountID == "" {
 		return nil, errNoAccountID
-	}
-	if createUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
 	}
 	if createUser.Email == "" {
 		return nil, errNoEmail
@@ -844,9 +841,6 @@ func (db *DBClient) WriteAccountUser(ctx context.Context, createUser types.Creat
 
 // SetAccountUserRole updates the role for a single Account User - PUT `/v2/account/user/update_role`
 func (db *DBClient) SetAccountUserRole(ctx context.Context, updateUser types.UpdateAccountUserRole, time time.Time) (map[string]string, error) {
-	if updateUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
-	}
 	if updateUser.UserID == "" {
 		return nil, errNoUserID
 	}
@@ -869,9 +863,6 @@ func (db *DBClient) SetAccountUserRole(ctx context.Context, updateUser types.Upd
 
 // UpdateAcceptAccountUser accepts or declines an Account User Access - PUT `/v2/account/user/accept`
 func (db *DBClient) UpdateAcceptAccountUser(ctx context.Context, acceptUser types.UpdateAcceptAccountUser, time time.Time) (map[string]string, error) {
-	if acceptUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
-	}
 	if acceptUser.UserID == "" {
 		return nil, errNoUserID
 	}
@@ -894,9 +885,6 @@ func (db *DBClient) UpdateAcceptAccountUser(ctx context.Context, acceptUser type
 
 // RemoveAccountUser removes an Account User's Role - PUT `/v2/account/user/remove`
 func (db *DBClient) RemoveAccountUser(ctx context.Context, removeUser types.UpdateRemoveAccountUser) (map[string]string, error) {
-	if removeUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
-	}
 	if removeUser.UserID == "" {
 		return nil, errNoUserID
 	}

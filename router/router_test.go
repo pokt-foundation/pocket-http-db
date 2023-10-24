@@ -545,14 +545,12 @@ func TestRouter_getPortalAppByID(t *testing.T) {
 		portalAppID       types.PortalAppID
 		expectedStatus    int
 		expectedPortalApp types.PortalApp
-		expectedAppUsers  map[types.UserID]types.PortalAppUser
 	}{
 		{
 			name:              "Should fetch a single portal application",
 			portalAppID:       "test_app_1",
 			expectedStatus:    http.StatusOK,
 			expectedPortalApp: *testdata.PortalApps["test_app_1"],
-			expectedAppUsers:  testdata.PortalAppUsers["test_app_1"],
 		},
 	}
 
@@ -571,8 +569,6 @@ func TestRouter_getPortalAppByID(t *testing.T) {
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
 
-			test.expectedPortalApp.PortalAppUsers = test.expectedAppUsers
-
 			var portalAppResp types.PortalApp
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppResp)
 			c.NoError(err)
@@ -587,13 +583,11 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 		expectedStatus     int
 		expectedPortalApps map[types.PortalAppID]*types.PortalApp
 		expectedUsers      map[types.PortalAppID]map[types.UserID]types.AccountUser
-		expectedAppUsers   map[types.PortalAppID]map[types.UserID]types.PortalAppUser
 	}{
 		{
 			name:               "Should fetch all portal applications",
 			expectedStatus:     http.StatusOK,
 			expectedPortalApps: testdata.PortalApps,
-			expectedAppUsers:   testdata.PortalAppUsers,
 		},
 	}
 
@@ -611,10 +605,6 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 
 			router.Router.ServeHTTP(rr, req)
 			c.Equal(test.expectedStatus, rr.Code)
-
-			for _, portalApp := range test.expectedPortalApps {
-				portalApp.PortalAppUsers = test.expectedAppUsers[portalApp.ID]
-			}
 
 			var portalAppsResp []types.PortalApp
 			err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
@@ -671,7 +661,6 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 		roleFilter         types.RoleName
 		expectedStatus     int
 		expectedPortalApps []types.PortalApp
-		portalAppUsers     map[types.PortalAppID]map[types.UserID]types.PortalAppUser
 	}{
 		{
 			name:               "Should fetch all portal applications for a user",
@@ -679,7 +668,6 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 			roleFilter:         "",
 			expectedStatus:     http.StatusOK,
 			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_1"]},
-			portalAppUsers:     testdata.PortalAppUsers,
 		},
 		{
 			name:               "Should fetch all portal applications for a user with a specific role",
@@ -687,7 +675,6 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 			roleFilter:         types.RoleMember,
 			expectedStatus:     http.StatusOK,
 			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_2"]},
-			portalAppUsers:     testdata.PortalAppUsers,
 		},
 		{
 			name:               "Should fail if no portal apps are found for a given user",
@@ -722,11 +709,6 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 				var portalAppsResp []types.PortalApp
 				err = json.Unmarshal(rr.Body.Bytes(), &portalAppsResp)
 				c.NoError(err)
-				for i, portalApp := range test.expectedPortalApps {
-					updatedPortalApp := portalApp
-					updatedPortalApp.PortalAppUsers = test.portalAppUsers[portalApp.ID]
-					test.expectedPortalApps[i] = updatedPortalApp
-				}
 				c.Equal(test.expectedPortalApps, portalAppsResp)
 			}
 		})
@@ -1361,17 +1343,16 @@ func TestRouter_deleteAccount(t *testing.T) {
 func TestRouter_writeAccountUser(t *testing.T) {
 	tests := []struct {
 		name            string
-		createUserInput types.CreateAccountUserAccess
+		createUserInput types.CreateAccountUser
 		expectedStatus  int
 		expectedUserID  types.UserID
 	}{
 		{
 			name: "Should create a new account user",
-			createUserInput: types.CreateAccountUserAccess{
-				AccountID:   "account_1",
-				PortalAppID: "app_1",
-				Email:       "test@example.com",
-				RoleName:    "admin",
+			createUserInput: types.CreateAccountUser{
+				AccountID: "account_1",
+				Email:     "test@example.com",
+				RoleName:  "admin",
 			},
 			expectedStatus: http.StatusOK,
 			expectedUserID: "user_1",
@@ -1469,10 +1450,9 @@ func TestRouter_updateAccountUserRole(t *testing.T) {
 		{
 			name: "Should update the role of an account user",
 			updateUserInput: types.UpdateAccountUserRole{
-				PortalAppID: "app_1",
-				UserID:      "user_1",
-				AccountID:   "account_1",
-				RoleName:    "admin",
+				UserID:    "user_1",
+				AccountID: "account_1",
+				RoleName:  "admin",
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -1517,7 +1497,6 @@ func TestRouter_acceptAccountUser(t *testing.T) {
 		{
 			name: "Should accept an account user",
 			acceptUserInput: types.UpdateAcceptAccountUser{
-				PortalAppID:      "app_1",
 				UserID:           "user_1",
 				AuthProviderType: types.AuthType("auth_type_1"),
 				ProviderUserID:   "providerUser_1",
@@ -1565,9 +1544,8 @@ func TestRouter_removeAccountUser(t *testing.T) {
 		{
 			name: "Should remove an account user",
 			removeUserInput: types.UpdateRemoveAccountUser{
-				UserID:      "user_1",
-				PortalAppID: "app_1",
-				AccountID:   "account_1",
+				UserID:    "user_1",
+				AccountID: "account_1",
 			},
 			expectedStatus: http.StatusOK,
 		},
@@ -1581,7 +1559,7 @@ func TestRouter_removeAccountUser(t *testing.T) {
 			c.NoError(err)
 
 			writerMock := driver.NewMockDriver(t)
-			writerMock.On("RemoveAccountUser", mock.Anything, test.removeUserInput.UserID, test.removeUserInput.PortalAppID, test.removeUserInput.AccountID).Return(nil).Once()
+			writerMock.On("RemoveAccountUser", mock.Anything, test.removeUserInput.UserID, test.removeUserInput.AccountID).Return(nil).Once()
 			router.writer = writerMock
 
 			rr := httptest.NewRecorder()

@@ -167,8 +167,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 				ts.NoError(err)
 				exists := false
 				for _, account := range accounts {
-					for _, user := range account.AccountUsers {
-						if user.UserID == test.user.ID {
+					for _, user := range account.Users {
+						if user.ID == test.user.ID {
 							exists = true
 							ts.Equal(test.createUser.Email, user.Email)
 							break
