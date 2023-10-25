@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgxlisten v0.0.0-20230309145146-5d7f28456dce
 	github.com/pokt-foundation/utils-go v0.11.1
 	github.com/stretchr/testify v1.8.1
-	google.golang.org/grpc v1.55.0
+	google.golang.org/grpc v1.56.3
 )
 
 require (
