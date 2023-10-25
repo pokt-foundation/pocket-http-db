@@ -146,26 +146,10 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WritePortalApp() {
 			err: fmt.Errorf(errInvalidEnvironment.Error(), "under da sea"),
 		},
 		{
-			name: "Should fail when plan does not exist",
-			portalApp: types.PortalApp{
-				AppEmoji: "1F31B",
-				Name:     "whatever",
-				LegacyFields: types.LegacyFields{
-					PlanType: "nonexistent-plan",
-				},
-				Settings: types.Settings{Environment: types.EnvironmentProduction},
-			},
-			aat: testdata.TestCreatePortalAppAAT,
-			err: fmt.Errorf(errPayPlanDoesntExist.Error(), "nonexistent-plan"),
-		},
-		{
 			name: "Should fail when account does not exist",
 			portalApp: types.PortalApp{
-				AppEmoji: "1F31B",
-				Name:     "whatever",
-				LegacyFields: types.LegacyFields{
-					PlanType: types.FreetierV0,
-				},
+				AppEmoji:  "1F31B",
+				Name:      "whatever",
 				Settings:  types.Settings{Environment: types.EnvironmentProduction},
 				AccountID: "nonexistent-account",
 			},
@@ -221,7 +205,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 				Settings:             testdata.UpdatePortalAppSettings,
 				Notifications:        testdata.UpdatePortalAppNotifications,
 				Whitelists:           testdata.UpdatePortalAppWhitelists,
-				PlanType:             testdata.UpdatePortalAppPlan.PlanType,
 				StripeSubscriptionID: testdata.UpdatePortalAppStripeSubscriptionID.StripeSubscriptionID,
 			},
 			testUpdateTime:         testdata.MockTimestamp,
@@ -278,8 +261,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 				},
 			},
 			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.FreetierV0,
-				DailyLimit:           250_000,
 				StripeSubscriptionID: "update_stripe_subscription_id",
 			},
 			err: nil,
@@ -391,57 +372,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 			},
 			testUpdateTime: testdata.MockTimestamp,
 			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.FreetierV0,
-				DailyLimit:           250_000,
 				StripeSubscriptionID: "update_stripe_subscription_id",
 			},
 			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with a new plan",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: testdata.UpdatePortalAppPlan.PlanType,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.FreetierV0,
-				DailyLimit:           250_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with another new plan",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: testdata.UpdatePortalAppPlanTwo.PlanType,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.TestPlan90k,
-				DailyLimit:           90_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with an Enterprise plan",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: testdata.UpdatePortalAppEnterprisePlan.PlanType,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.Enterprise,
-				CustomLimit:          5_600_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
-		{
-			name: "Should fail if an invalid plan type provided",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: types.PayPlanType("what_am_i_doing"),
-			},
-			err: fmt.Errorf(errPayPlanDoesntExist.Error(), "what_am_i_doing"),
 		},
 	}
 
@@ -501,18 +434,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 					ts.Equal(test.testUpdatedWhitelists, updatedPortalApp.Whitelists)
 				} else {
 					ts.Equal(createdPortalApp.Whitelists, updatedPortalApp.Whitelists)
-				}
-
-				if test.updatePortalApp.PlanType != "" {
-					ts.Equal(test.testUpdatedLegacyFields.PlanType, updatedPortalApp.LegacyFields.PlanType)
-					if test.updatePortalApp.PlanType != types.Enterprise {
-						dailyLimit, err := ts.driver.GetPlanDailyLimit(context.Background(), test.testUpdatedLegacyFields.PlanType)
-						ts.NoError(err)
-						ts.Equal(test.testUpdatedLegacyFields.DailyLimit, dailyLimit.Int32)
-					}
-				}
-				if test.updatePortalApp.CustomLimit != 0 {
-					ts.Equal(test.testUpdatedLegacyFields.CustomLimit, updatedPortalApp.LegacyFields.CustomLimit)
 				}
 			}
 		})

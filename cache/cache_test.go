@@ -328,15 +328,21 @@ func Test_upsertAccountUser(t *testing.T) {
 
 func Test_upsertAccount(t *testing.T) {
 	tests := []struct {
-		name         string
-		account      types.Account
-		userID       types.UserID
-		accountUsers AccountsForUser
-		pendingUsers map[types.AccountID][]types.AccountUser
+		name        string
+		account     types.Account
+		accountUser types.AccountUser
+		userID      types.UserID
 	}{
 		{
 			name:    "Should insert a new account",
 			account: *testdata.TestCreateAccount,
+			accountUser: types.AccountUser{
+				AccountID: "create_account_id",
+				ID:        "user_1",
+				Email:     "james.holden123@test.com",
+				RoleName:  types.RoleOwner,
+				Accepted:  true,
+			},
 		},
 		{
 			name: "Should update an existing account",
@@ -359,33 +365,6 @@ func Test_upsertAccount(t *testing.T) {
 				UpdatedAt:              testdata.MockTimestamp,
 			},
 			userID: "user_1",
-		},
-		{
-			name: "Should update an existing account when pending users found in cache",
-			account: types.Account{
-				ID:       "account_1",
-				PlanType: types.PayPlanType("enterprise_plan"),
-				Users: map[types.UserID]types.AccountUser{
-					"user_7": testdata.AccountUser[7],
-					"user_1": testdata.AccountUser[1],
-					"user_2": testdata.AccountUser[2],
-					"user_8": testdata.AccountUser[8],
-					"user_3": testdata.AccountUser[3],
-				},
-				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
-				},
-				Integrations:           types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
-				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				PartnerThroughputLimit: 2_000,
-				PartnerAppLimit:        1,
-				CreatedAt:              testdata.MockTimestamp,
-				UpdatedAt:              testdata.MockTimestamp,
-			},
-			userID: "user_1",
-			pendingUsers: map[types.AccountID][]types.AccountUser{
-				"account_1": {testdata.AccountUser[7], testdata.AccountUser[3]},
-			},
 		},
 		{
 			name: "Should update deleted account and remove from user ID accounts map",
@@ -417,17 +396,23 @@ func Test_upsertAccount(t *testing.T) {
 
 			// Upsert account
 			cache.upsertAccount(test.account)
+
+			userID := test.userID
+			if test.accountUser.ID != "" {
+				userID = test.accountUser.ID
+				cache.upsertAccountUser(test.accountUser)
+			}
+
 			if test.account.Deleted {
-				c.Empty(cache.GetUserAccount(accountID, test.userID, Options{}), "Account should be removed from cache")
+				c.Empty(cache.GetUserAccount(accountID, test.accountUser.ID, Options{}), "Account should be removed from cache")
 			} else {
-				if len(test.pendingUsers) > 0 {
-					for _, user := range test.pendingUsers[test.account.ID] {
-						test.account.Users[user.ID] = user
-					}
-				}
 
 				test.account.Plan = cache.plans[test.account.PlanType]
-				c.Equal(test.account, cache.GetUserAccount(test.account.ID, test.userID, Options{}), "Account should be present in cache and updated")
+				if test.accountUser.ID != "" {
+					test.accountUser.AccountID = ""
+					test.account.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
+				}
+				c.Equal(test.account, cache.GetUserAccount(test.account.ID, userID, Options{}), "Account should be present in cache and updated")
 
 				accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
 				if test.account.Deleted {
@@ -442,7 +427,6 @@ func Test_upsertAccount(t *testing.T) {
 					})
 
 					accountInUserAccounts := testdata.FindAccountInAccounts(accountsForUser, accountID)
-
 					if test.account.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {

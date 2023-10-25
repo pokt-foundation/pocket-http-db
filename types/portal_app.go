@@ -101,11 +101,11 @@ type (
 	// TODO - remove when v2 migration finished
 	// Fields required for compatibility with the old Portal API and Services (temporary)
 	LegacyFields struct {
-		PlanType             PayPlanType `json:"planType"`
-		DailyLimit           int32       `json:"dailyLimit"`
-		CustomLimit          int32       `json:"customLimit"`
-		RequestTimeout       int32       `json:"requestTimeout"`
-		StripeSubscriptionID string      `json:"stripeSubscriptionID"`
+		// PlanType             PayPlanType `json:"planType"`
+		// DailyLimit           int32       `json:"dailyLimit"`
+		// CustomLimit          int32       `json:"customLimit"`
+		// RequestTimeout       int32       `json:"requestTimeout"`
+		StripeSubscriptionID string `json:"stripeSubscriptionID"`
 	}
 
 	Settings struct {
@@ -209,9 +209,7 @@ type (
 		Notifications []UpdateAppNotifications `json:"notificationSettings,omitempty"`
 		Whitelists    *WhitelistsObject        `json:"whitelists,omitempty"`
 		// TODO - remove when v2 migration finished
-		PlanType             PayPlanType `json:"planType,omitempty"`
-		CustomLimit          int32       `json:"customLimit,omitempty"`
-		StripeSubscriptionID string      `json:"stripeSubscriptionID,omitempty"`
+		StripeSubscriptionID string `json:"stripeSubscriptionID,omitempty"`
 	}
 
 	UpdateAppSettings struct {
@@ -244,19 +242,10 @@ type (
 )
 
 func (u *UpdatePortalApp) IsEmpty() bool {
-	if u.Name != "" || u.PlanType != "" || u.Description != "" || u.AppEmoji != "" || u.CustomLimit != 0 || u.StripeSubscriptionID != "" {
+	if u.Name != "" || u.Description != "" || u.AppEmoji != "" || u.StripeSubscriptionID != "" {
 		return false
 	}
 	return true
-}
-
-// TODO For Legacy Fields Only
-// DailyLimit returns the daily relay limit for a given portal app
-func (a *PortalApp) DailyLimit() int32 {
-	if a.LegacyFields.PlanType == Enterprise {
-		return a.LegacyFields.CustomLimit
-	}
-	return a.LegacyFields.DailyLimit
 }
 
 // TODO For Legacy Fields Only

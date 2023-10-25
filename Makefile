@@ -39,6 +39,7 @@ test_env_up:
 test_db_up:
 	@echo "🧪 Starting up Portal HTTP DB test database only ..."
 	@docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build portal-db
+	@sleep 1
 	@echo "⏳ Waiting for test DB to be ready ..."
 	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres 1>/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🐘 Test Portal DB is up ..." || (echo "❌ Test Portal DB failed to start" && make test_env_down 1>/dev/null && exit 1)

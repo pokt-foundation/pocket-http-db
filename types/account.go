@@ -8,6 +8,7 @@ import (
 
 var (
 	errNoOwner          error = errors.New("account does not have an owner")
+	errNoUsers          error = errors.New("account users have not been assigned")
 	errUserDoesNotExist error = errors.New("user ID %s does not exist")
 )
 
@@ -88,34 +89,61 @@ type (
 	}
 )
 
+// AssignAccountUsers assigns all users for the account
+// Called in the PHD cache when an account is fetched by any account endpoints
+func (a *Account) AssignAccountUsers(usersForAccountID map[UserID]*User) {
+	if a.Users == nil {
+		a.Users = make(map[UserID]AccountUser)
+	}
+
+	for _, user := range usersForAccountID {
+		a.Users[user.ID] = user.ToAccountUser(a.ID)
+	}
+}
+
 // GetOwner returns the Account OWNER
 func (a *Account) GetOwner() (AccountUser, error) {
+	if len(a.Users) == 0 {
+		return AccountUser{}, errNoUsers
+	}
+
 	for _, user := range a.Users {
 		if user.RoleName == RoleOwner {
 			return user, nil
 		}
 	}
-	return AccountUser{}, errNoOwner
-}
 
-// GetUser returns the AccountUser for a given UserID
-func (a *Account) GetUser(userID UserID) (AccountUser, error) {
-	for _, user := range a.Users {
-		if user.ID == userID {
-			return user, nil
-		}
-	}
-	return AccountUser{}, fmt.Errorf(errUserDoesNotExist.Error(), userID)
+	return AccountUser{}, errNoOwner
 }
 
 // GetOwnerID returns the Account OWNER's ID
 func (a *Account) GetOwnerID() (UserID, error) {
+	if len(a.Users) == 0 {
+		return UserID(""), errNoUsers
+	}
+
 	for _, user := range a.Users {
 		if user.RoleName == RoleOwner {
 			return user.ID, nil
 		}
 	}
+
 	return UserID(""), errNoOwner
+}
+
+// GetUser returns the AccountUser for a given UserID
+func (a *Account) GetUser(userID UserID) (AccountUser, error) {
+	if len(a.Users) == 0 {
+		return AccountUser{}, errNoUsers
+	}
+
+	for _, user := range a.Users {
+		if user.ID == userID {
+			return user, nil
+		}
+	}
+
+	return AccountUser{}, fmt.Errorf(errUserDoesNotExist.Error(), userID)
 }
 
 func (a *Account) Table() Table {
@@ -128,16 +156,4 @@ func (a *AccountUser) Table() Table {
 
 func (s *AccountIntegrations) Table() Table {
 	return TableAccountIntegrations
-}
-
-// AssignAccountUsers assigns all users for the account
-// Called in the PHD cache when an account is fetched by any account endpoints
-func (a *Account) AssignAccountUsers(usersForAccountID map[UserID]*User) {
-	if a.Users == nil {
-		a.Users = make(map[UserID]AccountUser)
-	}
-
-	for _, user := range usersForAccountID {
-		a.Users[user.ID] = user.ToAccountUser(a.ID)
-	}
 }

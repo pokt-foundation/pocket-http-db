@@ -189,8 +189,6 @@ func portalAppInputs(mainTableAction, sideTablesAction types.Action, content typ
 				CreatedAt:            portalApp.CreatedAt,
 				UpdatedAt:            portalApp.UpdatedAt,
 				Deleted:              portalApp.Deleted,
-				RequestTimeout:       portalApp.LegacyFields.RequestTimeout,
-				CustomLimit:          portalApp.LegacyFields.CustomLimit,
 				StripeSubscriptionID: portalApp.LegacyFields.StripeSubscriptionID,
 			},
 		})

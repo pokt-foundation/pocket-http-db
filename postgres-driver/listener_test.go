@@ -62,8 +62,6 @@ func Test_PGDriver_Listen(t *testing.T) {
 						UpdatedAt:          testdata.MockTimestamp,
 						Deleted:            false,
 						LegacyFields: types.LegacyFields{
-							CustomLimit:          0,
-							RequestTimeout:       5000,
 							StripeSubscriptionID: "stripe_id_1",
 						},
 					},

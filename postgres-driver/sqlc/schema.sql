@@ -187,16 +187,7 @@ CREATE TABLE portal_applications (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
     deleted_at TIMESTAMPTZ NULL,
-    -- legacy field
-    request_timeout INT,
-    -- legacy field
     first_date_surpassed TIMESTAMPTZ,
-    -- legacy field
-    plan_type VARCHAR(25),
-    -- legacy field
-    daily_limit INT,
-    -- legacy field
-    custom_limit INT,
     -- legacy field
     stripe_subscription_id VARCHAR(255)
 );
@@ -348,12 +339,12 @@ INSERT
     OR
 UPDATE
     OR DELETE ON accounts FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER account_user_access_notify_event
+CREATE TRIGGER account_users_notify_event
 AFTER
 INSERT
     OR
 UPDATE
-    OR DELETE ON account_user_access FOR EACH ROW EXECUTE PROCEDURE notify_event();
+    OR DELETE ON account_users FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER account_integrations_notify_event
 AFTER
 INSERT

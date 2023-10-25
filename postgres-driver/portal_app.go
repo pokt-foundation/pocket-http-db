@@ -93,10 +93,6 @@ func (a *SelectPortalApplicationsRow) toPortalApp() (*types.PortalApp, error) {
 
 	// TODO remove legacy fields when migration to V2 schema complete
 	legacyFields := types.LegacyFields{
-		PlanType:             a.PlanType,
-		DailyLimit:           a.DailyLimit.Int32,
-		CustomLimit:          a.CustomLimit.Int32,
-		RequestTimeout:       a.RequestTimeout.Int32,
 		StripeSubscriptionID: a.StripeSubscriptionID.String,
 	}
 
@@ -221,32 +217,14 @@ func (pg *PostgresDriver) WritePortalApp(ctx context.Context, portalApp types.Po
 	qtx := pg.WithTx(tx)
 
 	insert := InsertPortalApplicationParams{
-		ID:          portalApp.ID,
-		AccountID:   newText(string(portalApp.AccountID)),
-		Name:        portalApp.Name,
-		Description: newText(portalApp.Description),
-		AppEmoji:    newText(string(portalApp.AppEmoji)),
-		CreatedAt:   newTimestamptz(portalApp.CreatedAt),
-		UpdatedAt:   newTimestamptz(portalApp.UpdatedAt),
-		// TODO remove legacy fields when migration to V2 schema complete
-		PlanType:           portalApp.LegacyFields.PlanType,
-		CustomLimit:        newInt4(portalApp.LegacyFields.CustomLimit, true),
-		RequestTimeout:     newInt4(portalApp.LegacyFields.RequestTimeout, true),
+		ID:                 portalApp.ID,
+		AccountID:          newText(string(portalApp.AccountID)),
+		Name:               portalApp.Name,
+		Description:        newText(portalApp.Description),
+		AppEmoji:           newText(string(portalApp.AppEmoji)),
+		CreatedAt:          newTimestamptz(portalApp.CreatedAt),
+		UpdatedAt:          newTimestamptz(portalApp.UpdatedAt),
 		FirstDateSurpassed: newTimestamptz(portalApp.FirstDateSurpassed),
-	}
-
-	if portalApp.LegacyFields.PlanType != types.Enterprise {
-		dailyLimit, err := qtx.GetPlanDailyLimit(ctx, portalApp.LegacyFields.PlanType)
-		if err != nil {
-			switch {
-			case errNoRows(err):
-				return nil, fmt.Errorf(errPayPlanDoesntExist.Error(), portalApp.LegacyFields.PlanType)
-			default:
-				return nil, err
-			}
-		}
-
-		insert.DailyLimit = newInt4(dailyLimit.Int32, false)
 	}
 
 	_, err = qtx.InsertPortalApplication(ctx, insert)
@@ -364,13 +342,6 @@ func (pg *PostgresDriver) validatePortalAppInput(ctx context.Context, portalApp 
 		return fmt.Errorf(errInvalidEnvironment.Error(), portalApp.Settings.Environment)
 	}
 
-	planExists, err := pg.CheckPlanExists(ctx, portalApp.LegacyFields.PlanType)
-	if err != nil {
-		return err
-	}
-	if !planExists {
-		return fmt.Errorf(errPayPlanDoesntExist.Error(), portalApp.LegacyFields.PlanType)
-	}
 	accountExists, err := pg.CheckAccountExists(ctx, portalApp.AccountID)
 	if err != nil {
 		return err
@@ -407,29 +378,6 @@ func (pg *PostgresDriver) UpdatePortalApp(ctx context.Context, update types.Upda
 
 		if update.AppEmoji != "" {
 			updateApp.AppEmoji = string(update.AppEmoji)
-		}
-
-		if update.PlanType != "" {
-			updateApp.PlanType = string(update.PlanType)
-			// If changing plan, pull the plan daily limit from the DB for non-enterprise plans
-			// TODO remove when change to account-based plan limits completed
-			if update.PlanType != types.Enterprise {
-				dailyLimit, err := qtx.GetPlanDailyLimit(ctx, update.PlanType)
-				if err != nil {
-					switch {
-					case errNoRows(err):
-						return fmt.Errorf(errPayPlanDoesntExist.Error(), update.PlanType)
-					default:
-						return err
-					}
-				}
-
-				updateApp.DailyLimit = newInt4(dailyLimit.Int32, false)
-			}
-		}
-
-		if update.CustomLimit != 0 {
-			updateApp.CustomLimit = newInt4(update.CustomLimit, false)
 		}
 
 		if update.StripeSubscriptionID != "" {
@@ -623,10 +571,6 @@ func (json dbPortalApplication) toOutput() *types.PortalApp {
 		UpdatedAt:          json.UpdatedAt,
 		Deleted:            json.Deleted,
 		LegacyFields: types.LegacyFields{
-			PlanType:             types.PayPlanType(json.PlanType),
-			DailyLimit:           json.DailyLimit,
-			CustomLimit:          json.CustomLimit,
-			RequestTimeout:       json.RequestTimeout,
 			StripeSubscriptionID: json.StripeSubscriptionID,
 		},
 	}

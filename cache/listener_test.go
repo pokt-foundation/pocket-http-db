@@ -242,10 +242,6 @@ func Test_parsePortalAppNotification(t *testing.T) {
 					SecretKey:         "test_849c1397586f9fb6f902576120d0d10f",
 					SecretKeyRequired: true,
 				},
-				LegacyFields: types.LegacyFields{
-					CustomLimit:    0,
-					RequestTimeout: 5_000,
-				},
 			},
 		},
 		{

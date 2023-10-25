@@ -1050,14 +1050,7 @@ INSERT INTO portal_applications (
         app_emoji,
         created_at,
         updated_at,
-        request_timeout,
-        first_date_surpassed,
-        -- legacy field
-        plan_type,
-        -- legacy field
-        daily_limit,
-        -- legacy field
-        custom_limit
+        first_date_surpassed
     )
 VALUES (
         $1,
@@ -1067,13 +1060,9 @@ VALUES (
         $5,
         $6,
         $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12
+        $8
     )
-RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, request_timeout, first_date_surpassed, plan_type, daily_limit, custom_limit, stripe_subscription_id
+RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, first_date_surpassed, stripe_subscription_id
 `
 
 type InsertPortalApplicationParams struct {
@@ -1084,11 +1073,7 @@ type InsertPortalApplicationParams struct {
 	AppEmoji           pgtype.Text        `json:"app_emoji"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
-	RequestTimeout     pgtype.Int4        `json:"request_timeout"`
 	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
-	PlanType           types.PayPlanType  `json:"plan_type"`
-	DailyLimit         pgtype.Int4        `json:"daily_limit"`
-	CustomLimit        pgtype.Int4        `json:"custom_limit"`
 }
 
 func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalApplicationParams) (PortalApplication, error) {
@@ -1100,11 +1085,7 @@ func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalA
 		arg.AppEmoji,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.RequestTimeout,
 		arg.FirstDateSurpassed,
-		arg.PlanType,
-		arg.DailyLimit,
-		arg.CustomLimit,
 	)
 	var i PortalApplication
 	err := row.Scan(
@@ -1117,11 +1098,7 @@ func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalA
 		&i.UpdatedAt,
 		&i.Deleted,
 		&i.DeletedAt,
-		&i.RequestTimeout,
 		&i.FirstDateSurpassed,
-		&i.PlanType,
-		&i.DailyLimit,
-		&i.CustomLimit,
 		&i.StripeSubscriptionID,
 	)
 	return i, err
@@ -1805,7 +1782,7 @@ whitelists_agg AS (
     FROM portal_application_whitelists paw
     GROUP BY paw.application_id
 )
-SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at, p.request_timeout, p.first_date_surpassed, p.plan_type, p.daily_limit, p.custom_limit, p.stripe_subscription_id,
+SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at, p.first_date_surpassed, p.stripe_subscription_id,
     pas.secret_key,
     pas.secret_key_required,
     pas.monthly_relay_limit,
@@ -1835,11 +1812,7 @@ type SelectPortalApplicationsRow struct {
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 	Deleted              bool               `json:"deleted"`
 	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	RequestTimeout       pgtype.Int4        `json:"request_timeout"`
 	FirstDateSurpassed   pgtype.Timestamptz `json:"first_date_surpassed"`
-	PlanType             types.PayPlanType  `json:"plan_type"`
-	DailyLimit           pgtype.Int4        `json:"daily_limit"`
-	CustomLimit          pgtype.Int4        `json:"custom_limit"`
 	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
 	SecretKey            pgtype.Text        `json:"secret_key"`
 	SecretKeyRequired    pgtype.Bool        `json:"secret_key_required"`
@@ -1870,11 +1843,7 @@ func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) (
 			&i.UpdatedAt,
 			&i.Deleted,
 			&i.DeletedAt,
-			&i.RequestTimeout,
 			&i.FirstDateSurpassed,
-			&i.PlanType,
-			&i.DailyLimit,
-			&i.CustomLimit,
 			&i.StripeSubscriptionID,
 			&i.SecretKey,
 			&i.SecretKeyRequired,
@@ -2304,40 +2273,31 @@ func (q *Queries) UpdateInsertWhitelists(ctx context.Context, arg UpdateInsertWh
 
 const updatePortalAppFields = `-- name: UpdatePortalAppFields :exec
 UPDATE portal_applications
-SET name = COALESCE(NULLIF($6::VARCHAR, ''), name),
-    description = COALESCE(NULLIF($7::VARCHAR, ''), description),
-    app_emoji = COALESCE(NULLIF($8::VARCHAR, ''), app_emoji),
-    plan_type = COALESCE(NULLIF($9::VARCHAR, ''), plan_type),
-    daily_limit = COALESCE($2, daily_limit),
-    custom_limit = COALESCE($3, custom_limit),
-    stripe_subscription_id = COALESCE($4, stripe_subscription_id),
-    updated_at = $5
+SET name = COALESCE(NULLIF($4::VARCHAR, ''), name),
+    description = COALESCE(NULLIF($5::VARCHAR, ''), description),
+    app_emoji = COALESCE(NULLIF($6::VARCHAR, ''), app_emoji),
+    stripe_subscription_id = COALESCE($2, stripe_subscription_id),
+    updated_at = $3
 WHERE id = $1
 `
 
 type UpdatePortalAppFieldsParams struct {
 	ID                   types.PortalAppID  `json:"id"`
-	DailyLimit           pgtype.Int4        `json:"daily_limit"`
-	CustomLimit          pgtype.Int4        `json:"custom_limit"`
 	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 	Name                 string             `json:"name"`
 	Description          string             `json:"description"`
 	AppEmoji             string             `json:"app_emoji"`
-	PlanType             string             `json:"plan_type"`
 }
 
 func (q *Queries) UpdatePortalAppFields(ctx context.Context, arg UpdatePortalAppFieldsParams) error {
 	_, err := q.db.Exec(ctx, updatePortalAppFields,
 		arg.ID,
-		arg.DailyLimit,
-		arg.CustomLimit,
 		arg.StripeSubscriptionID,
 		arg.UpdatedAt,
 		arg.Name,
 		arg.Description,
 		arg.AppEmoji,
-		arg.PlanType,
 	)
 	return err
 }

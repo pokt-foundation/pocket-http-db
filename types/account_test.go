@@ -142,10 +142,6 @@ var testAccount = Account{
 			UpdatedAt:          timestamp,
 			// TODO remove legacy fields when migration to V2 schema complete
 			LegacyFields: LegacyFields{
-				PlanType:             FreetierV0,
-				DailyLimit:           250_000,
-				CustomLimit:          0,
-				RequestTimeout:       5_000,
 				StripeSubscriptionID: "stripe_id_1",
 			},
 		},
@@ -201,10 +197,6 @@ var testAccount = Account{
 			UpdatedAt:          timestamp,
 			// TODO remove legacy fields when migration to V2 schema complete
 			LegacyFields: LegacyFields{
-				PlanType:             PayAsYouGoV0,
-				DailyLimit:           0,
-				CustomLimit:          0,
-				RequestTimeout:       10_000,
 				StripeSubscriptionID: "stripe_id_2",
 			},
 		},

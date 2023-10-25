@@ -34,7 +34,6 @@ type (
 
 		accounts                 map[types.AccountID]*types.Account
 		accountsByUserID         map[types.UserID]AccountsForUser
-		pendingUsers             map[types.UserID]types.User
 		pendingUserAuthProviders map[types.UserID]types.UserAuthProvider
 
 		portalApps                map[types.PortalAppID]*types.PortalApp
@@ -104,7 +103,6 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		logger: config.Logger,
 
-		pendingUsers:               make(map[types.UserID]types.User),
 		pendingUserAuthProviders:   make(map[types.UserID]types.UserAuthProvider),
 		pendingPortalAppAATs:       make(map[types.PortalAppID]types.AAT),
 		pendingSettings:            make(map[types.PortalAppID]types.Settings),
@@ -469,7 +467,6 @@ func (c *Cache) GetUserAccount(accountID types.AccountID, userID types.UserID, o
 	return types.Account{}
 }
 
-// GetUserAccounts returns all Accounts for a given user with portal apps filtered by user ID
 func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Account {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
@@ -477,20 +474,28 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
-		if c.userAcceptedAccountInvite(account, userID) {
-			accountCopy := *account
+		// Determine whether the user accepted the account invite based on internal logic
+		userAccepted := c.userAcceptedAccountInvite(account, userID)
 
-			if accountCopy.PortalApps == nil {
-				accountCopy.PortalApps = map[types.PortalAppID]*types.PortalApp{}
+		// Check if we need to filter by user acceptance
+		if options.Accepted != nil {
+			// Skip if the user acceptance doesn't match the option
+			if userAccepted != *options.Accepted {
+				continue
 			}
-
-			if usersForAccount, ok := c.usersByAccountID[account.ID]; ok {
-				accountCopy.AssignAccountUsers(usersForAccount)
-			}
-
-			accountsToReturn = append(accountsToReturn, accountCopy)
 		}
 
+		accountCopy := *account
+
+		if accountCopy.PortalApps == nil {
+			accountCopy.PortalApps = map[types.PortalAppID]*types.PortalApp{}
+		}
+
+		if usersForAccount, ok := c.usersByAccountID[account.ID]; ok {
+			accountCopy.AssignAccountUsers(usersForAccount)
+		}
+
+		accountsToReturn = append(accountsToReturn, accountCopy)
 	}
 
 	return accountsToReturn
@@ -530,6 +535,7 @@ func (c *Cache) upsertAccount(account types.Account) {
 		account.PortalApps = existingAccount.PortalApps
 		account.Integrations = existingAccount.Integrations
 	}
+
 	// Set plan in cache to latest value
 	if plan, ok := c.plans[account.PlanType]; ok {
 		account.Plan = plan
@@ -564,7 +570,6 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUser) {
 		}
 
 		// Add user to users by account ID map
-		// TODO - is this necessary? It might not be since the pointer is modified above
 		if _, ok := c.usersByAccountID[accountID]; !ok {
 			c.usersByAccountID[accountID] = make(map[types.UserID]*types.User)
 		}
@@ -685,10 +690,9 @@ func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 			var plan *types.Plan
 
 			// Direct apps have no plan associated with them
-			// TODO: REVIEW APPS WITHOUT PLANS
 			if !portalApp.IsDirectApp() {
-				if legacyPlan, ok := c.plans[portalApp.LegacyFields.PlanType]; ok {
-					plan = legacyPlan
+				if account, ok := c.accounts[portalApp.AccountID]; ok {
+					plan = account.Plan
 				}
 			}
 
@@ -1268,9 +1272,6 @@ func (c *Cache) upsertUser(user types.User) {
 	for _, userAuthProvider := range user.AuthProviders {
 		c.usersByProviderID[userAuthProvider.ProviderUserID] = &user
 	}
-
-	// Pending users map is used to update user info in accounts
-	c.pendingUsers[user.ID] = user
 
 	accountsForUser, ok := c.accountsByUserID[user.ID]
 	if !ok {

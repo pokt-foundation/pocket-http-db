@@ -150,14 +150,7 @@ INSERT INTO portal_applications (
         app_emoji,
         created_at,
         updated_at,
-        request_timeout,
-        first_date_surpassed,
-        -- legacy field
-        plan_type,
-        -- legacy field
-        daily_limit,
-        -- legacy field
-        custom_limit
+        first_date_surpassed
     )
 VALUES (
         $1,
@@ -167,11 +160,7 @@ VALUES (
         $5,
         $6,
         $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12
+        $8
     )
 RETURNING *;
 -- name: InsertPortalApplicationAAT :one
@@ -223,11 +212,8 @@ UPDATE portal_applications
 SET name = COALESCE(NULLIF(@name::VARCHAR, ''), name),
     description = COALESCE(NULLIF(@description::VARCHAR, ''), description),
     app_emoji = COALESCE(NULLIF(@app_emoji::VARCHAR, ''), app_emoji),
-    plan_type = COALESCE(NULLIF(@plan_type::VARCHAR, ''), plan_type),
-    daily_limit = COALESCE($2, daily_limit),
-    custom_limit = COALESCE($3, custom_limit),
-    stripe_subscription_id = COALESCE($4, stripe_subscription_id),
-    updated_at = $5
+    stripe_subscription_id = COALESCE($2, stripe_subscription_id),
+    updated_at = $3
 WHERE id = $1;
 -- name: GetPlanDailyLimit :one
 SELECT daily_limit

@@ -68,10 +68,6 @@ var (
 		FirstDateSurpassed: time.Date(2023, time.February, 28, 15, 15, 15, 0, time.UTC),
 		CreatedAt:          time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
 		UpdatedAt:          time.Date(2023, time.February, 27, 13, 13, 13, 0, time.UTC),
-		LegacyFields: LegacyFields{
-			CustomLimit:    0,
-			RequestTimeout: 5_000,
-		},
 	}
 
 	testPlan = &Plan{

@@ -537,11 +537,7 @@ type PortalApplication struct {
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 	Deleted              bool               `json:"deleted"`
 	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	RequestTimeout       pgtype.Int4        `json:"request_timeout"`
 	FirstDateSurpassed   pgtype.Timestamptz `json:"first_date_surpassed"`
-	PlanType             types.PayPlanType  `json:"plan_type"`
-	DailyLimit           pgtype.Int4        `json:"daily_limit"`
-	CustomLimit          pgtype.Int4        `json:"custom_limit"`
 	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
 }
 

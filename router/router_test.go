@@ -799,23 +799,6 @@ func TestRouter_updatePortalApp(t *testing.T) {
 			},
 			expectedStatus: http.StatusOK,
 		},
-		{
-			name:        "Should update PortalApp plan only",
-			portalAppID: "test_app_1",
-			portalAppUpdate: types.UpdatePortalApp{
-				PlanType: testdata.UpdatePortalAppPlan.PlanType,
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name:        "Should update PortalApp enterprise plan only",
-			portalAppID: "test_app_1",
-			portalAppUpdate: types.UpdatePortalApp{
-				PlanType:    testdata.UpdatePortalAppEnterprisePlan.PlanType,
-				CustomLimit: testdata.UpdatePortalAppEnterprisePlan.CustomLimit,
-			},
-			expectedStatus: http.StatusOK,
-		},
 	}
 
 	for _, test := range tests {

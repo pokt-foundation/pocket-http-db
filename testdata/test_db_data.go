@@ -270,6 +270,7 @@ var (
 
 	// TestCreateAccount account used to test creation of Accounts
 	TestCreateAccount = &types.Account{
+		ID:         "create_account_id",
 		Name:       "Protogen Corp",
 		IconURL:    "https://picsum.photos/200",
 		PlanType:   types.PayPlanType("developer_plan"),
@@ -733,10 +734,6 @@ var (
 			UpdatedAt:          MockTimestamp,
 			// TODO remove legacy fields when migration to V2 schema complete
 			LegacyFields: types.LegacyFields{
-				PlanType:             types.FreetierV0,
-				DailyLimit:           250_000,
-				CustomLimit:          0,
-				RequestTimeout:       5_000,
 				StripeSubscriptionID: "stripe_id_1",
 			},
 		},
@@ -792,10 +789,6 @@ var (
 			UpdatedAt:          MockTimestamp,
 			// TODO remove legacy fields when migration to V2 schema complete
 			LegacyFields: types.LegacyFields{
-				PlanType:             types.PayAsYouGoV0,
-				DailyLimit:           0,
-				CustomLimit:          0,
-				RequestTimeout:       10_000,
 				StripeSubscriptionID: "stripe_id_2",
 			},
 		},
@@ -837,10 +830,6 @@ var (
 			UpdatedAt:          MockTimestamp,
 			// TODO remove legacy fields when migration to V2 schema complete
 			LegacyFields: types.LegacyFields{
-				PlanType:             types.Enterprise,
-				DailyLimit:           0,
-				CustomLimit:          4_200_000,
-				RequestTimeout:       10_000,
 				StripeSubscriptionID: "stripe_id_3",
 			},
 		},
@@ -1184,13 +1173,6 @@ var (
 		FirstDateSurpassed: MockTimestamp,
 		CreatedAt:          MockTimestamp,
 		UpdatedAt:          MockTimestamp,
-		// TODO remove legacy fields when migration to V2 schema complete
-		LegacyFields: types.LegacyFields{
-			PlanType:       types.FreetierV0,
-			DailyLimit:     250_000,
-			CustomLimit:    0,
-			RequestTimeout: 15_000,
-		},
 	}
 
 	TestCreatePortalAppByNonOwner = &types.PortalApp{
@@ -1206,13 +1188,6 @@ var (
 		FirstDateSurpassed: MockTimestamp,
 		CreatedAt:          MockTimestamp,
 		UpdatedAt:          MockTimestamp,
-		// TODO remove legacy fields when migration to V2 schema complete
-		LegacyFields: types.LegacyFields{
-			PlanType:       types.FreetierV0,
-			DailyLimit:     250_000,
-			CustomLimit:    0,
-			RequestTimeout: 15_000,
-		},
 	}
 
 	TestCreatePortalAppAAT = types.AAT{
@@ -1367,9 +1342,6 @@ var (
 		CreatedAt:          MockTimestamp,
 		UpdatedAt:          MockTimestamp,
 		LegacyFields: types.LegacyFields{
-			PlanType:             types.FreetierV0,
-			CustomLimit:          0,
-			RequestTimeout:       5_000,
 			StripeSubscriptionID: "stripe_id_123",
 		},
 	}
@@ -1435,16 +1407,6 @@ var (
 	}
 	UpdatePortalAppStripeSubscriptionID = &types.LegacyFields{
 		StripeSubscriptionID: "update_stripe_subscription_id",
-	}
-	UpdatePortalAppPlan = &types.LegacyFields{
-		PlanType: types.FreetierV0,
-	}
-	UpdatePortalAppPlanTwo = &types.LegacyFields{
-		PlanType: types.TestPlan90k,
-	}
-	UpdatePortalAppEnterprisePlan = &types.LegacyFields{
-		PlanType:    types.Enterprise,
-		CustomLimit: 5_600_000,
 	}
 
 	UpdateChainOne = types.UpdateChain{

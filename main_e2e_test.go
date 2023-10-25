@@ -1496,11 +1496,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					FirstDateSurpassed: testdata.MockTimestamp,
 					CreatedAt:          testdata.MockTimestamp,
 					UpdatedAt:          testdata.MockTimestamp,
-					LegacyFields: types.LegacyFields{
-						PlanType:       types.FreetierV0,
-						DailyLimit:     250_000,
-						RequestTimeout: 15_000,
-					},
 				},
 			},
 			{
@@ -1509,9 +1504,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Name:      "",
 					AppEmoji:  "1F336",
 					AccountID: "account_4",
-					LegacyFields: types.LegacyFields{
-						PlanType: "basic_plan",
-					},
 					Settings: types.Settings{
 						Environment: "production",
 					},
@@ -1524,9 +1516,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Name:      "Test App",
 					AppEmoji:  "1F336",
 					AccountID: "account_4",
-					LegacyFields: types.LegacyFields{
-						PlanType: "basic_plan",
-					},
 					Settings: types.Settings{
 						Environment: "cascadia",
 					},
@@ -1539,29 +1528,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Name:      "Test App",
 					AppEmoji:  "1F336",
 					AccountID: "non_existing_account_id",
-					LegacyFields: types.LegacyFields{
-						PlanType: "basic_plan",
-					},
 					Settings: types.Settings{
 						Environment: "production",
 					},
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: error account does not exist for account ID 'non_existing_account_id'"),
-			},
-			{
-				name: "Should return an error for non-existent plan",
-				portalAppInput: &types.PortalApp{
-					Name:      "Test App",
-					AppEmoji:  "1F336",
-					AccountID: "account_4",
-					LegacyFields: types.LegacyFields{
-						PlanType: "non_existing_plan",
-					},
-					Settings: types.Settings{
-						Environment: "production",
-					},
-				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewPortalApp: error pay plan 'non_existing_plan' does not exist"),
 			},
 		}
 
@@ -1623,7 +1594,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			testUpdatedSettings      types.Settings
 			testUpdatedNotifications map[types.NotificationType]types.AppNotification
 			testUpdatedWhitelists    types.Whitelists
-			testUpdatedLegacyFields  types.LegacyFields
 			err                      error
 		}{
 			{
@@ -1633,7 +1603,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					Settings:      testdata.UpdatePortalAppSettings,
 					Notifications: testdata.UpdatePortalAppNotifications,
 					Whitelists:    testdata.UpdatePortalAppWhitelists,
-					PlanType:      testdata.UpdatePortalAppPlan.PlanType,
 				},
 				testUpdateTime:  testdata.MockTimestamp,
 				testUpdatedName: "portal-app-updated",
@@ -1685,10 +1654,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						"003E": {"GET": {}},
 						"0056": {"GET": {}, "POST": {}},
 					},
-				},
-				testUpdatedLegacyFields: types.LegacyFields{
-					PlanType:   types.FreetierV0,
-					DailyLimit: 250_000,
 				},
 				err: nil,
 			},
@@ -1774,49 +1739,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				err: nil,
 			},
-			{
-				name: "Should update a new PortalApp in the database with a new plan",
-				updatePortalApp: types.UpdatePortalApp{
-					PlanType: testdata.UpdatePortalAppPlan.PlanType,
-				},
-				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedLegacyFields: types.LegacyFields{
-					PlanType:   types.FreetierV0,
-					DailyLimit: 250_000,
-				},
-				err: nil,
-			},
-			{
-				name: "Should update a new PortalApp in the database with another new plan",
-				updatePortalApp: types.UpdatePortalApp{
-					PlanType: testdata.UpdatePortalAppPlanTwo.PlanType,
-				},
-				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedLegacyFields: types.LegacyFields{
-					PlanType:   types.TestPlan90k,
-					DailyLimit: 90_000,
-				},
-				err: nil,
-			},
-			{
-				name: "Should update a new PortalApp in the database with an Enterprise plan",
-				updatePortalApp: types.UpdatePortalApp{
-					PlanType: testdata.UpdatePortalAppEnterprisePlan.PlanType,
-				},
-				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedLegacyFields: types.LegacyFields{
-					PlanType:    types.Enterprise,
-					CustomLimit: 5_600_000,
-				},
-				err: nil,
-			},
-			{
-				name: "Should fail if an invalid plan type provided",
-				updatePortalApp: types.UpdatePortalApp{
-					PlanType: types.PayPlanType("what_am_i_doing"),
-				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updatePortalApp: error pay plan 'what_am_i_doing' does not exist"),
-			},
 		}
 
 		for i, test := range tests {
@@ -1851,16 +1773,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.Equal(test.testUpdatedWhitelists, updatedPortalApp.Whitelists)
 					} else {
 						ts.Equal(createdPortalApp.Whitelists, updatedPortalApp.Whitelists)
-					}
-
-					if test.updatePortalApp.PlanType != "" {
-						ts.Equal(test.testUpdatedLegacyFields.PlanType, updatedPortalApp.LegacyFields.PlanType)
-						if test.updatePortalApp.PlanType != types.Enterprise {
-							ts.Equal(test.testUpdatedLegacyFields.DailyLimit, updatedPortalApp.DailyLimit())
-						}
-					}
-					if test.updatePortalApp.CustomLimit != 0 {
-						ts.Equal(test.testUpdatedLegacyFields.CustomLimit, updatedPortalApp.LegacyFields.CustomLimit)
 					}
 				}
 
