@@ -15,7 +15,6 @@ func Test_paramProcessor(t *testing.T) {
 		commonParams.includeDeleted:      {required: false},
 		chainParams.includeInactive:      {required: false},
 		chainParams.excludeGigastakeApps: {required: false},
-		portalAppParams.roleNameFilters:  {required: false},
 	}
 
 	tests := []struct {
@@ -94,14 +93,6 @@ func Test_paramProcessor(t *testing.T) {
 			},
 			path:          v2ChainEndpoint,
 			expectedError: "failed to parse bool value",
-		},
-		{
-			name: "Should return error for invalid param for path",
-			params: url.Values{
-				string(portalAppParams.roleNameFilters): []string{"role1,role2"},
-			},
-			path:          v2ChainEndpoint,
-			expectedError: "invalid parameter",
 		},
 		{
 			name: "Should return error for invalid param for different path",
@@ -186,46 +177,34 @@ func Test_pathMatcher(t *testing.T) {
 
 func Test_QueryParamMethods(t *testing.T) {
 	tests := []struct {
-		name            string
-		param           queryParam
-		expectCommon    bool
-		expectChain     bool
-		expectPortalApp bool
+		name         string
+		param        queryParam
+		expectCommon bool
+		expectChain  bool
 	}{
 		{
-			name:            "Test includeDeleted param",
-			param:           commonParams.includeDeleted,
-			expectCommon:    true,
-			expectChain:     false,
-			expectPortalApp: false,
+			name:         "Test includeDeleted param",
+			param:        commonParams.includeDeleted,
+			expectCommon: true,
+			expectChain:  false,
 		},
 		{
-			name:            "Test includeInactive param",
-			param:           chainParams.includeInactive,
-			expectCommon:    false,
-			expectChain:     true,
-			expectPortalApp: false,
+			name:         "Test includeInactive param",
+			param:        chainParams.includeInactive,
+			expectCommon: false,
+			expectChain:  true,
 		},
 		{
-			name:            "Test excludeGigastakeApps param",
-			param:           chainParams.excludeGigastakeApps,
-			expectCommon:    false,
-			expectChain:     true,
-			expectPortalApp: false,
+			name:         "Test excludeGigastakeApps param",
+			param:        chainParams.excludeGigastakeApps,
+			expectCommon: false,
+			expectChain:  true,
 		},
 		{
-			name:            "Test roleNameFilters param",
-			param:           portalAppParams.roleNameFilters,
-			expectCommon:    false,
-			expectChain:     false,
-			expectPortalApp: true,
-		},
-		{
-			name:            "Test unknown param",
-			param:           "unknown_param",
-			expectCommon:    false,
-			expectChain:     false,
-			expectPortalApp: false,
+			name:         "Test unknown param",
+			param:        "unknown_param",
+			expectCommon: false,
+			expectChain:  false,
 		},
 	}
 
@@ -234,7 +213,6 @@ func Test_QueryParamMethods(t *testing.T) {
 			c := require.New(t)
 			c.Equal(test.expectCommon, test.param.isCommon())
 			c.Equal(test.expectChain, test.param.isChain())
-			c.Equal(test.expectPortalApp, test.param.isPortalApp())
 		})
 	}
 }

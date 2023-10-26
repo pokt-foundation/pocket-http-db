@@ -15,297 +15,10 @@ If/when adding new data to the `seed_test_db.sql` file it should also be updated
 This means all E2E tests that use `pocketfoundation/test-portal-postgres` only need to be kept updated in one place.
 */
 
-var (
-	MockTimestamp = time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC)
+var MockTimestamp = time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC)
 
-	/* ----- Read Data ----- */
-
-	PayPlans = map[types.PayPlanType]*types.Plan{
-		types.PayPlanType("FREETIER_V0"): {
-			Type:              types.PayPlanType("FREETIER_V0"),
-			Name:              "Free Tier",
-			Description:       "Ideal for small projects and testing",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 5_000_000,
-			ThroughputLimit:   5_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  250_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("PAY_AS_YOU_GO_V0"): {
-			Type:              types.PayPlanType("PAY_AS_YOU_GO_V0"),
-			Name:              "Pay As You Go",
-			Description:       "Pay only for what you use",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 10_000_000,
-			ThroughputLimit:   10_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  0,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("ENTERPRISE"): {
-			Type:              types.PayPlanType("ENTERPRISE"),
-			Name:              "Enterprise",
-			Description:       "Premium plan for large businesses",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 10_000_000,
-			ThroughputLimit:   10_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  0,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("TEST_PLAN_V0"): {
-			Type:              types.PayPlanType("TEST_PLAN_V0"),
-			Name:              "Test Plan",
-			Description:       "For testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 10_000_000,
-			ThroughputLimit:   10_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  0,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("TEST_PLAN_10K"): {
-			Type:              types.PayPlanType("TEST_PLAN_10K"),
-			Name:              "Test Plan 10K",
-			Description:       "Test plan with 10K daily limit for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 10_000_000,
-			ThroughputLimit:   10_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  10_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("TEST_PLAN_90K"): {
-			Type:              types.PayPlanType("TEST_PLAN_90K"),
-			Name:              "Test Plan 90K",
-			Description:       "Test plan with 90K daily limit for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 90_000_000,
-			ThroughputLimit:   10_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  90_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("basic_plan"): {
-			Type:              types.PayPlanType("basic_plan"),
-			Name:              "Basic Plan",
-			Description:       "Basic plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 5_000_000,
-			ThroughputLimit:   5_000,
-			AppLimit:          2,
-			LegacyDailyLimit:  1_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("pro_plan"): {
-			Type:              types.PayPlanType("pro_plan"),
-			Name:              "Pro Plan",
-			Description:       "Pro plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
-			MonthlyRelayLimit: 10_000_000,
-			ThroughputLimit:   10_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  5_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("enterprise_plan"): {
-			Type:              types.PayPlanType("enterprise_plan"),
-			Name:              "Enterprise Plan",
-			Description:       "Enterprise plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}, "0034": {}},
-			MonthlyRelayLimit: 20_000_000,
-			ThroughputLimit:   20_000,
-			AppLimit:          10,
-			LegacyDailyLimit:  10_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("developer_plan"): {
-			Type:              types.PayPlanType("developer_plan"),
-			Name:              "Developer Plan",
-			Description:       "Developer plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
-			MonthlyRelayLimit: 500_000,
-			ThroughputLimit:   500,
-			AppLimit:          1,
-			LegacyDailyLimit:  100,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("startup_plan"): {
-			Type:              types.PayPlanType("startup_plan"),
-			Name:              "Startup Plan",
-			Description:       "Startup plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
-			MonthlyRelayLimit: 1_000_000,
-			ThroughputLimit:   1_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  500,
-			CreatedAt:         MockTimestamp,
-		},
-	}
-
-	Accounts = map[types.AccountID]*types.Account{
-		"account_1": {
-			ID:       "account_1",
-			Name:     "The Brave Voyager",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("basic_plan"),
-			Users: map[types.UserID]types.AccountUser{
-				"user_1": {ID: "user_1", Email: "james.holden123@test.com", RoleName: types.RoleOwner, Accepted: true},
-				"user_2": {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleAdmin, Accepted: true},
-				"user_8": {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: false},
-			},
-			Integrations: types.AccountIntegrations{
-				StripeSubscriptionID: "stripe_id_1",
-				CovalentAPIKeyFree:   "covalent_api_key_1",
-			},
-			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			PartnerThroughputLimit: 2_000,
-			PartnerAppLimit:        1,
-			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
-			CreatedAt:              MockTimestamp,
-			UpdatedAt:              MockTimestamp,
-		},
-		"account_2": {
-			ID:       "account_2",
-			Name:     "Dragonborn Explorer",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("pro_plan"),
-			Users: map[types.UserID]types.AccountUser{
-				"user_3": {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
-				"user_4": {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleMember, Accepted: true},
-				"user_9": {ID: "user_9", Email: "tyrion.lannister789@test.com", RoleName: types.RoleMember, Accepted: false},
-				"user_2": {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
-			},
-			Integrations: types.AccountIntegrations{
-				StripeSubscriptionID: "stripe_id_2",
-				CovalentAPIKeyFree:   "covalent_api_key_2",
-			},
-			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
-			PartnerThroughputLimit: 5_000,
-			PartnerAppLimit:        3,
-			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
-			CreatedAt:              MockTimestamp,
-			UpdatedAt:              MockTimestamp,
-		},
-		"account_3": {
-			ID:       "account_3",
-			Name:     "Fellowship Startup",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("startup_plan"),
-			Users: map[types.UserID]types.AccountUser{
-				"user_5":  {ID: "user_5", Email: "chrisjen.avasarala1@test.com", RoleName: types.RoleOwner, Accepted: true},
-				"user_6":  {ID: "user_6", Email: "amos.burton789@test.com", RoleName: types.RoleAdmin, Accepted: true},
-				"user_7":  {ID: "user_7", Email: "frodo.baggins123@test.com", RoleName: types.RoleMember, Accepted: true},
-				"user_10": {ID: "user_10", Email: "daenerys.targaryen123@test.com", RoleName: types.RoleMember, Accepted: false},
-			},
-			Integrations: types.AccountIntegrations{
-				StripeSubscriptionID: "stripe_id_3",
-				CovalentAPIKeyFree:   "covalent_api_key_3",
-			},
-			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
-			PartnerThroughputLimit: 1_000,
-			PartnerAppLimit:        2,
-			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
-			CreatedAt:              MockTimestamp,
-			UpdatedAt:              MockTimestamp,
-		},
-		"account_4": {
-			ID:       "account_4",
-			Name:     "Iron Throne Enterprise",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("enterprise_plan"),
-			Users: map[types.UserID]types.AccountUser{
-				"user_4": {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
-			},
-			Integrations: types.AccountIntegrations{
-				StripeSubscriptionID: "stripe_id_4",
-				CovalentAPIKeyFree:   "covalent_api_key_4",
-			},
-			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-			PartnerThroughputLimit: 1_000,
-			PartnerAppLimit:        2,
-			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
-			CreatedAt:              MockTimestamp,
-			UpdatedAt:              MockTimestamp,
-		},
-		"account_5": {
-			ID:       "account_5",
-			Name:     "Nomad Wanderer",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("basic_plan"),
-			Users: map[types.UserID]types.AccountUser{
-				"user_4": {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
-			},
-			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0006": {}, "0040": {}},
-			PartnerThroughputLimit: 6_000,
-			PartnerAppLimit:        1,
-			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
-			CreatedAt:              MockTimestamp,
-			UpdatedAt:              MockTimestamp,
-		},
-	}
-
-	UsersForAccountIDs = map[types.AccountID]map[types.UserID]*types.User{
-		"account_1": {
-			"user_1": Users["user_1"],
-			"user_2": Users["user_2"],
-			"user_8": Users["user_8"],
-		},
-		"account_2": {
-			"user_3": Users["user_3"],
-			"user_4": Users["user_4"],
-			"user_9": Users["user_9"],
-			"user_2": Users["user_2"],
-		},
-		"account_3": {
-			"user_5":  Users["user_5"],
-			"user_6":  Users["user_6"],
-			"user_7":  Users["user_7"],
-			"user_10": Users["user_10"],
-		},
-		"account_4": {
-			"user_4": Users["user_4"],
-		},
-		"account_5": {
-			"user_4": Users["user_4"],
-		},
-	}
-
-	// TestCreateAccount account used to test creation of Accounts
-	TestCreateAccount = &types.Account{
-		ID:         "create_account_id",
-		Name:       "Protogen Corp",
-		IconURL:    "https://picsum.photos/200",
-		PlanType:   types.PayPlanType("developer_plan"),
-		PortalApps: map[types.PortalAppID]*types.PortalApp{},
-		CreatedAt:  MockTimestamp,
-		UpdatedAt:  MockTimestamp,
-	}
-
-	AccountUser = map[int]types.AccountUser{
-		1: {ID: "user_1", Email: "james.holden123@test.com", RoleName: types.RoleOwner, Accepted: true},
-		2: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleAdmin, Accepted: true},
-		3: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
-		4: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
-		5: {ID: "user_5", Email: "chrisjen.avasarala1@test.com", RoleName: types.RoleOwner, Accepted: true},
-		6: {ID: "user_6", Email: "amos.burton789@test.com", RoleName: types.RoleAdmin, Accepted: true},
-		7: {ID: "user_7", Email: "frodo.baggins123@test.com", RoleName: types.RoleMember, Accepted: true},
-		8: {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: true},
-		9: {ID: "user_9", Email: "tyrion.lannister789@test.com", RoleName: types.RoleMember, Accepted: false},
-		// Paul is an admin of Account 1 as well as a member of Account 2
-		10: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
-		// Ulfric is an admin of Account 2 as well as the owner of Accounts 4 and 5
-		11: {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
-		// Daenerys has not signed up with an auth provider yet and is a member of Account 3
-		12: {ID: "user_10", Email: "daenerys.targaryen123@test.com", RoleName: types.RoleMember, Accepted: false},
-		// Bernard is an existing user and is used to create a new AccountUser row
-		13: {ID: "user_11", Email: "bernard.marx@test.com"},
-		// Winston has not signed up yet and is used to create a new AccountUser row
-		14: {Email: "winston.smith@test.com"},
-	}
-
-	Users = map[types.UserID]*types.User{
+func Users() map[types.UserID]*types.User {
+	return map[types.UserID]*types.User{
 		"user_1": {
 			ID:               "user_1",
 			Email:            "james.holden123@test.com",
@@ -663,13 +376,10 @@ var (
 			UpdatedAt:        MockTimestamp,
 		},
 	}
+}
 
-	TestCreateUser = types.CreateUser{
-		Email:          "commander.data@example.com",
-		ProviderUserID: "auth0|commander_data",
-	}
-
-	UserIDs = map[types.ProviderUserID]types.UserID{
+func UserIDs() map[types.ProviderUserID]types.UserID {
+	return map[types.ProviderUserID]types.UserID{
 		"auth0|amos_burton":        "user_6",
 		"auth0|bernard_marx":       "user_11",
 		"auth0|chrisjen_avasarala": "user_5",
@@ -683,8 +393,174 @@ var (
 		"github|james_holden":      "user_1",
 		"github|paul_atreides":     "user_2",
 	}
+}
 
-	PortalApps = map[types.PortalAppID]*types.PortalApp{
+func AccountUsers() map[int]types.AccountUser {
+	return map[int]types.AccountUser{
+		1: {ID: "user_1", Email: "james.holden123@test.com", RoleName: types.RoleOwner, Accepted: true},
+		2: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		3: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
+		4: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
+		5: {ID: "user_5", Email: "chrisjen.avasarala1@test.com", RoleName: types.RoleOwner, Accepted: true},
+		6: {ID: "user_6", Email: "amos.burton789@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		7: {ID: "user_7", Email: "frodo.baggins123@test.com", RoleName: types.RoleMember, Accepted: true},
+		8: {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		9: {ID: "user_9", Email: "tyrion.lannister789@test.com", RoleName: types.RoleMember, Accepted: false},
+		// Paul is an admin of Account 1 as well as a member of Account 2
+		10: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
+		// Ulfric is an admin of Account 2 as well as the owner of Accounts 4 and 5
+		11: {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
+		// Daenerys has not signed up with an auth provider yet and is a member of Account 3
+		12: {ID: "user_10", Email: "daenerys.targaryen123@test.com", RoleName: types.RoleMember, Accepted: false},
+		// Bernard is an existing user and is used to create a new AccountUser row
+		13: {ID: "user_11", Email: "bernard.marx@test.com"},
+		// Winston has not signed up yet and is used to create a new AccountUser row
+		14: {Email: "winston.smith@test.com"},
+	}
+}
+
+type AccountOptions struct {
+	IncludePortalApps bool
+	IncludePlans      bool
+	AssignUsers       bool
+}
+
+func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
+	accounts := map[types.AccountID]*types.Account{
+		"account_1": {
+			ID:       "account_1",
+			Name:     "The Brave Voyager",
+			IconURL:  "https://picsum.photos/200",
+			PlanType: types.PayPlanType("basic_plan"),
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_1",
+				CovalentAPIKeyFree:   "covalent_api_key_1",
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			PartnerThroughputLimit: 2_000,
+			PartnerAppLimit:        1,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_2": {
+			ID:       "account_2",
+			Name:     "Dragonborn Explorer",
+			IconURL:  "https://picsum.photos/200",
+			PlanType: types.PayPlanType("pro_plan"),
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_2",
+				CovalentAPIKeyFree:   "covalent_api_key_2",
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
+			PartnerThroughputLimit: 5_000,
+			PartnerAppLimit:        3,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_3": {
+			ID:       "account_3",
+			Name:     "Fellowship Startup",
+			IconURL:  "https://picsum.photos/200",
+			PlanType: types.PayPlanType("startup_plan"),
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_3",
+				CovalentAPIKeyFree:   "covalent_api_key_3",
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
+			PartnerThroughputLimit: 1_000,
+			PartnerAppLimit:        2,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_4": {
+			ID:       "account_4",
+			Name:     "Iron Throne Enterprise",
+			IconURL:  "https://picsum.photos/200",
+			PlanType: types.PayPlanType("enterprise_plan"),
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_4",
+				CovalentAPIKeyFree:   "covalent_api_key_4",
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
+			PartnerThroughputLimit: 1_000,
+			PartnerAppLimit:        2,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_5": {
+			ID:                     "account_5",
+			Name:                   "Nomad Wanderer",
+			IconURL:                "https://picsum.photos/200",
+			PlanType:               types.PayPlanType("basic_plan"),
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0006": {}, "0040": {}},
+			PartnerThroughputLimit: 6_000,
+			PartnerAppLimit:        1,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+	}
+
+	if len(opts) > 0 {
+		if opts[0].IncludePortalApps {
+			for _, app := range PortalApps() {
+				accounts[app.AccountID].PortalApps[app.ID] = app
+			}
+		}
+		if opts[0].IncludePlans {
+			for _, account := range accounts {
+				account.Plan = PayPlans()[account.PlanType]
+			}
+		}
+		if opts[0].AssignUsers {
+			usersForAccountIDs := map[types.AccountID]map[types.UserID]*types.User{
+				"account_1": {
+					"user_1": Users()["user_1"],
+					"user_2": Users()["user_2"],
+					"user_8": Users()["user_8"],
+				},
+				"account_2": {
+					"user_3": Users()["user_3"],
+					"user_4": Users()["user_4"],
+					"user_9": Users()["user_9"],
+					"user_2": Users()["user_2"],
+				},
+				"account_3": {
+					"user_5":  Users()["user_5"],
+					"user_6":  Users()["user_6"],
+					"user_7":  Users()["user_7"],
+					"user_10": Users()["user_10"],
+				},
+				"account_4": {
+					"user_4": Users()["user_4"],
+				},
+				"account_5": {
+					"user_4": Users()["user_4"],
+				},
+			}
+
+			for _, account := range accounts {
+				if usersForAccount, ok := usersForAccountIDs[account.ID]; ok {
+					account.AssignAccountUsers(usersForAccount)
+				}
+			}
+		}
+	}
+
+	return accounts
+}
+
+func PortalApps() map[types.PortalAppID]*types.PortalApp {
+	return map[types.PortalAppID]*types.PortalApp{
 		"test_app_1": {
 			ID:          "test_app_1",
 			AccountID:   "account_1",
@@ -826,10 +702,12 @@ var (
 			UpdatedAt:          MockTimestamp,
 		},
 	}
+}
 
-	// This is used for testing the converted values of the above Portal Apps
-	// Does not exist in the test DB seed data as it is never stored in the DB.
-	PortalAppLites = map[types.PortalAppID]*types.PortalAppLite{
+// This is used for testing the converted values of the above Portal Apps
+// Does not exist in the test DB seed data as it is never stored in the DB.
+func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
+	return map[types.PortalAppID]*types.PortalAppLite{
 		"test_app_1": {
 			ID: "test_app_1",
 			PublicKeys: []types.PortalAppPublicKey{
@@ -861,7 +739,7 @@ var (
 				},
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.FreetierV0,
+				PlanType:        types.PayPlanType("basic_plan"),
 				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				ThroughputLimit: 5_000,
 			},
@@ -893,8 +771,8 @@ var (
 				},
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.PayAsYouGoV0,
-				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+				PlanType:        types.PayPlanType("pro_plan"),
+				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
 				ThroughputLimit: 10_000,
 			},
 		},
@@ -905,73 +783,146 @@ var (
 				"test_f6a5d8690ecb669865bd752b7796a920",
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.Enterprise,
-				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				ThroughputLimit: 10_000,
+				PlanType:        types.PayPlanType("startup_plan"),
+				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
+				ThroughputLimit: 1_000,
 			},
 		},
 	}
+}
 
-	AccountUsers = map[types.PortalAppID]map[types.UserID]types.AccountUser{
-		"test_app_1": {
-			"user_1": AccountUser[1],
-			"user_2": AccountUser[2],
-			"user_8": AccountUser[8],
+func PayPlans() map[types.PayPlanType]*types.Plan {
+	return map[types.PayPlanType]*types.Plan{
+		types.PayPlanType("FREETIER_V0"): {
+			Type:              types.PayPlanType("FREETIER_V0"),
+			Name:              "Free Tier",
+			Description:       "Ideal for small projects and testing",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			MonthlyRelayLimit: 5_000_000,
+			ThroughputLimit:   5_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  250_000,
+			CreatedAt:         MockTimestamp,
 		},
-		"test_app_2": {
-			"user_3": AccountUser[3],
-			"user_4": AccountUser[4],
-			"user_9": AccountUser[9],
-			"user_2": AccountUser[10],
+		types.PayPlanType("PAY_AS_YOU_GO_V0"): {
+			Type:              types.PayPlanType("PAY_AS_YOU_GO_V0"),
+			Name:              "Pay As You Go",
+			Description:       "Pay only for what you use",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			MonthlyRelayLimit: 10_000_000,
+			ThroughputLimit:   10_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  0,
+			CreatedAt:         MockTimestamp,
 		},
-		"test_app_3": {
-			"user_5":  AccountUser[5],
-			"user_6":  AccountUser[6],
-			"user_7":  AccountUser[7],
-			"user_10": AccountUser[12],
+		types.PayPlanType("ENTERPRISE"): {
+			Type:              types.PayPlanType("ENTERPRISE"),
+			Name:              "Enterprise",
+			Description:       "Premium plan for large businesses",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			MonthlyRelayLimit: 10_000_000,
+			ThroughputLimit:   10_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  0,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("TEST_PLAN_V0"): {
+			Type:              types.PayPlanType("TEST_PLAN_V0"),
+			Name:              "Test Plan",
+			Description:       "For testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			MonthlyRelayLimit: 10_000_000,
+			ThroughputLimit:   10_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  0,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("TEST_PLAN_10K"): {
+			Type:              types.PayPlanType("TEST_PLAN_10K"),
+			Name:              "Test Plan 10K",
+			Description:       "Test plan with 10K daily limit for testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			MonthlyRelayLimit: 10_000_000,
+			ThroughputLimit:   10_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  10_000,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("TEST_PLAN_90K"): {
+			Type:              types.PayPlanType("TEST_PLAN_90K"),
+			Name:              "Test Plan 90K",
+			Description:       "Test plan with 90K daily limit for testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			MonthlyRelayLimit: 90_000_000,
+			ThroughputLimit:   10_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  90_000,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("basic_plan"): {
+			Type:              types.PayPlanType("basic_plan"),
+			Name:              "Basic Plan",
+			Description:       "Basic plan for testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			MonthlyRelayLimit: 5_000_000,
+			ThroughputLimit:   5_000,
+			AppLimit:          2,
+			LegacyDailyLimit:  1_000,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("pro_plan"): {
+			Type:              types.PayPlanType("pro_plan"),
+			Name:              "Pro Plan",
+			Description:       "Pro plan for testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
+			MonthlyRelayLimit: 10_000_000,
+			ThroughputLimit:   10_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  5_000,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("enterprise_plan"): {
+			Type:              types.PayPlanType("enterprise_plan"),
+			Name:              "Enterprise Plan",
+			Description:       "Enterprise plan for testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}, "0034": {}},
+			MonthlyRelayLimit: 20_000_000,
+			ThroughputLimit:   20_000,
+			AppLimit:          10,
+			LegacyDailyLimit:  10_000,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("developer_plan"): {
+			Type:              types.PayPlanType("developer_plan"),
+			Name:              "Developer Plan",
+			Description:       "Developer plan for testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
+			MonthlyRelayLimit: 500_000,
+			ThroughputLimit:   500,
+			AppLimit:          1,
+			LegacyDailyLimit:  100,
+			CreatedAt:         MockTimestamp,
+		},
+		types.PayPlanType("startup_plan"): {
+			Type:              types.PayPlanType("startup_plan"),
+			Name:              "Startup Plan",
+			Description:       "Startup plan for testing purposes",
+			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
+			MonthlyRelayLimit: 1_000_000,
+			ThroughputLimit:   1_000,
+			AppLimit:          5,
+			LegacyDailyLimit:  500,
+			CreatedAt:         MockTimestamp,
 		},
 	}
+}
 
-	GigastakeApps = map[types.GigastakeAppID]*types.GigastakeApp{
-		"test_gigastake_app_1": {
-			ID:              "test_gigastake_app_1",
-			ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-			Name:            "pokt_gigastake",
-			Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
-			PublicKey:       types.GigastakeAppPublicKey("test_37a0e8437f5149dc98a9a5b207efc2d0"),
-			ClientPublicKey: "test_65c29f0cc82e418b81a528a0c0682a9f",
-			Signature:       "test_f22651fb566346fca30b605e5f46e3ca",
-			Version:         "0.0.1",
-			CreatedAt:       MockTimestamp,
-			UpdatedAt:       MockTimestamp,
-		},
-		"test_gigastake_app_2": {
-			ID:              "test_gigastake_app_2",
-			ChainIDs:        map[types.RelayChainID]struct{}{"0053": {}},
-			Name:            "optimism_gigastake",
-			Address:         "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
-			PublicKey:       types.GigastakeAppPublicKey("test_a7e28f8d716541a0a332a5dc6b7e4e6e"),
-			ClientPublicKey: "test_ba4e53dada8f4f939048e56dc8f88f37",
-			Signature:       "test_52e991c26da841bc882ad3a3ee9ee964",
-			Version:         "0.0.1",
-			CreatedAt:       MockTimestamp,
-			UpdatedAt:       MockTimestamp,
-		},
-		"test_gigastake_app_3": {
-			ID:              "test_gigastake_app_3",
-			ChainIDs:        map[types.RelayChainID]struct{}{"0040": {}},
-			Name:            "harmony_gigastake",
-			Address:         "test_e570c841d5cd4f6197e0428ed7c517fd",
-			PublicKey:       types.GigastakeAppPublicKey("test_4f805bbbf96c4a649efc3f4f95616f2e"),
-			ClientPublicKey: "test_789f9d6adcc846f1a079bf68237b5f5c",
-			Signature:       "test_01eac46efc9242a2be73879f1d09f1dc",
-			Version:         "0.0.1",
-			CreatedAt:       MockTimestamp,
-			UpdatedAt:       MockTimestamp,
-		},
-	}
+type ChainOptions struct {
+	IncludeGigastakeApps bool
+}
 
-	Chains = map[types.RelayChainID]*types.Chain{
+func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
+	chains := map[types.RelayChainID]*types.Chain{
 		"0001": {
 			ID:            "0001",
 			IconURL:       "https://picsum.photos/200",
@@ -1149,9 +1100,91 @@ var (
 		},
 	}
 
+	if len(opts) > 0 && opts[0].IncludeGigastakeApps {
+		for _, gigastakeApp := range GigastakeApps() {
+			for chainID := range gigastakeApp.ChainIDs {
+				if chains[chainID].GigastakeApps == nil {
+					chains[chainID].GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
+				}
+				chains[chainID].GigastakeApps[gigastakeApp.ID] = gigastakeApp
+			}
+		}
+	}
+
+	return chains
+}
+
+func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
+	return map[types.GigastakeAppID]*types.GigastakeApp{
+		"test_gigastake_app_1": {
+			ID:              "test_gigastake_app_1",
+			ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
+			Name:            "pokt_gigastake",
+			Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
+			PublicKey:       types.GigastakeAppPublicKey("test_37a0e8437f5149dc98a9a5b207efc2d0"),
+			ClientPublicKey: "test_65c29f0cc82e418b81a528a0c0682a9f",
+			Signature:       "test_f22651fb566346fca30b605e5f46e3ca",
+			Version:         "0.0.1",
+			CreatedAt:       MockTimestamp,
+			UpdatedAt:       MockTimestamp,
+		},
+		"test_gigastake_app_2": {
+			ID:              "test_gigastake_app_2",
+			ChainIDs:        map[types.RelayChainID]struct{}{"0053": {}},
+			Name:            "optimism_gigastake",
+			Address:         "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
+			PublicKey:       types.GigastakeAppPublicKey("test_a7e28f8d716541a0a332a5dc6b7e4e6e"),
+			ClientPublicKey: "test_ba4e53dada8f4f939048e56dc8f88f37",
+			Signature:       "test_52e991c26da841bc882ad3a3ee9ee964",
+			Version:         "0.0.1",
+			CreatedAt:       MockTimestamp,
+			UpdatedAt:       MockTimestamp,
+		},
+		"test_gigastake_app_3": {
+			ID:              "test_gigastake_app_3",
+			ChainIDs:        map[types.RelayChainID]struct{}{"0040": {}},
+			Name:            "harmony_gigastake",
+			Address:         "test_e570c841d5cd4f6197e0428ed7c517fd",
+			PublicKey:       types.GigastakeAppPublicKey("test_4f805bbbf96c4a649efc3f4f95616f2e"),
+			ClientPublicKey: "test_789f9d6adcc846f1a079bf68237b5f5c",
+			Signature:       "test_01eac46efc9242a2be73879f1d09f1dc",
+			Version:         "0.0.1",
+			CreatedAt:       MockTimestamp,
+			UpdatedAt:       MockTimestamp,
+		},
+	}
+}
+
+func GlobalBlockedContracts() types.GlobalBlockedContracts {
+	return types.GlobalBlockedContracts{
+		BlockedAddresses: map[types.BlockedAddress]struct{}{
+			"0xtest_6789abcdef0123456789abcdef01234567":   {},
+			"0xtest_f0123456789abcdef0123456789abcdef01":  {},
+			"0xtest_cdef0123456789abcdef0123456789abcdef": {},
+			"0xtest_56789abcdef0123456789abcdef01234567":  {},
+			"0xtest_789abcdef0123456789abcdef0123456789":  {},
+		},
+	}
+}
+
+var (
 	/* ----- Create Data ----- */
 
-	// TestCreatePortalApp app used to test creation of PortalApps
+	TestCreateAccount = &types.Account{
+		ID:         "create_account_id",
+		Name:       "Protogen Corp",
+		IconURL:    "https://picsum.photos/200",
+		PlanType:   types.PayPlanType("developer_plan"),
+		PortalApps: map[types.PortalAppID]*types.PortalApp{},
+		CreatedAt:  MockTimestamp,
+		UpdatedAt:  MockTimestamp,
+	}
+
+	TestCreateUser = types.CreateUser{
+		Email:          "commander.data@example.com",
+		ProviderUserID: "auth0|commander_data",
+	}
+
 	TestCreatePortalAppByOwner = &types.PortalApp{
 		AccountID:   "account_4",
 		Name:        "create_pokt_app_1",
@@ -1202,7 +1235,6 @@ var (
 		Version:         "0.0.1",
 	}
 
-	// TestCreateChain used to test creation of Chains
 	TestCreateChain = &types.Chain{
 		ID:            "0006",
 		IconURL:       "https://picsum.photos/200",
@@ -1302,16 +1334,6 @@ var (
 				Signature:       "test_4ef8e2a7b4f74bc989d0f3b4962efce1",
 				Version:         "0.0.1",
 			},
-		},
-	}
-
-	GlobalBlockedContracts = types.GlobalBlockedContracts{
-		BlockedAddresses: map[types.BlockedAddress]struct{}{
-			"0xtest_6789abcdef0123456789abcdef01234567":   {},
-			"0xtest_f0123456789abcdef0123456789abcdef01":  {},
-			"0xtest_cdef0123456789abcdef0123456789abcdef": {},
-			"0xtest_56789abcdef0123456789abcdef01234567":  {},
-			"0xtest_789abcdef0123456789abcdef0123456789":  {},
 		},
 	}
 
@@ -1518,14 +1540,6 @@ var (
 		IconURL: newString("i-am-not-a-url"),
 	}
 )
-
-func boolToPointer(boolVar bool) *bool {
-	return &boolVar
-}
-
-func intToPointer(intVar int) *int {
-	return &intVar
-}
 
 func newString(s string) *string {
 	return &s

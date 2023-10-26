@@ -157,7 +157,7 @@ func (a *Account) Table() Table {
 }
 
 func (a *AccountUser) Table() Table {
-	return TableAccountUserAccess
+	return TableAccountUsers
 }
 
 func (s *AccountIntegrations) Table() Table {

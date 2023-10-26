@@ -19,7 +19,7 @@ func Test_PGDriver_Listen(t *testing.T) {
 	}{
 		{
 			name:    "Should process Account notifications",
-			content: testdata.Accounts["account_4"],
+			content: testdata.Accounts(testdata.AccountOptions{AssignUsers: true})["account_4"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TableAccounts: {
 					Table:  types.TableAccounts,
@@ -34,8 +34,8 @@ func Test_PGDriver_Listen(t *testing.T) {
 						UpdatedAt:              testdata.MockTimestamp,
 					},
 				},
-				types.TableAccountUserAccess: {
-					Table:  types.TableAccountUserAccess,
+				types.TableAccountUsers: {
+					Table:  types.TableAccountUsers,
 					Action: types.ActionUpdate,
 					Data: &types.AccountUser{
 						AccountID: "account_4",
@@ -48,7 +48,7 @@ func Test_PGDriver_Listen(t *testing.T) {
 		},
 		{
 			name:    "Should process PortalApp notifications",
-			content: testdata.PortalApps["test_app_1"],
+			content: testdata.PortalApps()["test_app_1"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TablePortalApps: {
 					Table:  types.TablePortalApps,
@@ -114,7 +114,7 @@ func Test_PGDriver_Listen(t *testing.T) {
 		},
 		{
 			name:    "Should process GigastakeApp notifications",
-			content: testdata.GigastakeApps["test_gigastake_app_1"],
+			content: testdata.GigastakeApps()["test_gigastake_app_1"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TableGigastakeApps: {
 					Table:  types.TableGigastakeApps,
@@ -144,7 +144,7 @@ func Test_PGDriver_Listen(t *testing.T) {
 		},
 		{
 			name:    "Should process Chain notifications",
-			content: testdata.Chains["0001"],
+			content: testdata.Chains()["0001"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TableChains: {
 					Table:  types.TableChains,
@@ -250,5 +250,4 @@ func Test_PGDriver_Listen(t *testing.T) {
 			c.Equal(test.expectedNotifications, notificationsMap)
 		})
 	}
-
 }

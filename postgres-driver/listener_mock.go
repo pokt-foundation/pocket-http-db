@@ -157,7 +157,7 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 		for _, user := range account.Users {
 			inputs = append(inputs, inputStruct{
 				action: sideTablesAction,
-				table:  types.TableAccountUserAccess,
+				table:  types.TableAccountUsers,
 				input: dbAccountUser{
 					AccountID: account.ID,
 					UserID:    user.ID,

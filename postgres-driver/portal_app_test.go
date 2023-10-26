@@ -19,9 +19,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadPortalApps() {
 		{
 			name: "Should return all non-deleted PortalApps from the database",
 			portalApps: map[types.PortalAppID]*types.PortalApp{
-				testdata.PortalApps["test_app_1"].ID: testdata.PortalApps["test_app_1"],
-				testdata.PortalApps["test_app_2"].ID: testdata.PortalApps["test_app_2"],
-				testdata.PortalApps["test_app_3"].ID: testdata.PortalApps["test_app_3"],
+				testdata.PortalApps()["test_app_1"].ID: testdata.PortalApps()["test_app_1"],
+				testdata.PortalApps()["test_app_2"].ID: testdata.PortalApps()["test_app_2"],
+				testdata.PortalApps()["test_app_3"].ID: testdata.PortalApps()["test_app_3"],
 			},
 			options: types.DriverOptions{},
 			err:     nil,
@@ -47,16 +47,16 @@ func (ts *PGDriverTestSuite) Test_PGDriver_Z_SetPortalAppDeleted() {
 		{
 			name: "Should set a PortalApp's deleted field to true, causing it to not appear in the ReadPortalApps query",
 			deleteParams: DeletePortalAppParams{
-				ID: testdata.PortalApps["test_app_3"].ID, DeletedAt: newTimestamptz(testdata.MockTimestamp),
+				ID: testdata.PortalApps()["test_app_3"].ID, DeletedAt: newTimestamptz(testdata.MockTimestamp),
 			},
 			portalAppsBeforeDelete: map[types.PortalAppID]*types.PortalApp{
-				testdata.PortalApps["test_app_1"].ID: testdata.PortalApps["test_app_1"],
-				testdata.PortalApps["test_app_2"].ID: testdata.PortalApps["test_app_2"],
-				testdata.PortalApps["test_app_3"].ID: testdata.PortalApps["test_app_3"],
+				testdata.PortalApps()["test_app_1"].ID: testdata.PortalApps()["test_app_1"],
+				testdata.PortalApps()["test_app_2"].ID: testdata.PortalApps()["test_app_2"],
+				testdata.PortalApps()["test_app_3"].ID: testdata.PortalApps()["test_app_3"],
 			},
 			portalAppsAfterDelete: map[types.PortalAppID]*types.PortalApp{
-				testdata.PortalApps["test_app_1"].ID: testdata.PortalApps["test_app_1"],
-				testdata.PortalApps["test_app_2"].ID: testdata.PortalApps["test_app_2"],
+				testdata.PortalApps()["test_app_1"].ID: testdata.PortalApps()["test_app_1"],
+				testdata.PortalApps()["test_app_2"].ID: testdata.PortalApps()["test_app_2"],
 			},
 			err: nil,
 		},
@@ -433,7 +433,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalAppsFirstDateSurpassed() 
 		{
 			name: "Should update multiple PortalApps in the database with a FirstDateSurpassed timestamp ",
 			update: &types.UpdateFirstDateSurpassed{
-				PortalAppIDs:       []types.PortalAppID{testdata.PortalApps["test_app_1"].ID, testdata.PortalApps["test_app_2"].ID},
+				PortalAppIDs:       []types.PortalAppID{testdata.PortalApps()["test_app_1"].ID, testdata.PortalApps()["test_app_2"].ID},
 				FirstDateSurpassed: time.Date(2023, time.February, 14, 0, 0, 0, 0, time.UTC),
 			},
 			err: nil,

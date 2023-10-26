@@ -46,8 +46,8 @@ func (c *Cache) parseNotification(n types.Notification) {
 	switch n.Table {
 	case types.TableAccounts:
 		c.parseAccountNotification(n)
-	case types.TableAccountUserAccess:
-		c.parseAccountUserAccessNotification(n)
+	case types.TableAccountUsers:
+		c.parseAccountUserNotification(n)
 	case types.TableAccountIntegrations:
 		c.parseAccountIntegrationsNotification(n)
 
@@ -104,10 +104,10 @@ func (c *Cache) parseAccountNotification(n types.Notification) {
 	}
 }
 
-func (c *Cache) parseAccountUserAccessNotification(n types.Notification) {
+func (c *Cache) parseAccountUserNotification(n types.Notification) {
 	accountUserAccess, ok := n.Data.(*types.AccountUser)
 	if !ok {
-		c.logger.Error("parseAccountUserAccessNotification failed")
+		c.logger.Error("parseAccountUserNotification failed")
 		return
 	}
 

@@ -165,7 +165,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	appsData, err := c.fetchAppsData(ctx)
+	appsData, err := c.fetchAppsData(ctx, userData.usersByAccountID)
 	if err != nil {
 		return err
 	}
@@ -231,7 +231,7 @@ func (c *Cache) fetchUserData(ctx context.Context) (userData, error) {
 // fetchAppsData reads Plans, Accounts and PortalApps from the database,
 // sets each Account's Plan and PortalApps and creates a map of Accounts by UserID.
 // also creates a map of PortalApps by ProtocolAppID
-func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
+func (c *Cache) fetchAppsData(ctx context.Context, usersByAccountID map[types.AccountID]UsersForAccount) (appsData, error) {
 	// Fetch Plans, Accounts and PortalApps
 	plans, err := c.reader.ReadPlans(ctx)
 	if err != nil {
@@ -281,16 +281,18 @@ func (c *Cache) fetchAppsData(ctx context.Context) (appsData, error) {
 
 	// Create map of Accounts by UserID for all Account team members
 	accountsByUserID := make(map[types.UserID]AccountsForUser)
-	for _, account := range accounts {
-		if account.Deleted {
-			continue
-		}
-
-		for _, user := range account.Users {
-			if _, ok := accountsByUserID[user.ID]; !ok {
-				accountsByUserID[user.ID] = make(map[types.AccountID]*types.Account)
+	for accountID, usersForAccount := range usersByAccountID {
+		if account, ok := accounts[accountID]; ok {
+			if account.Deleted {
+				continue
 			}
-			accountsByUserID[user.ID][account.ID] = account
+
+			for userID := range usersForAccount {
+				if _, ok := accountsByUserID[userID]; !ok {
+					accountsByUserID[userID] = make(map[types.AccountID]*types.Account)
+				}
+				accountsByUserID[userID][account.ID] = account
+			}
 		}
 	}
 
@@ -521,6 +523,7 @@ func (c *Cache) upsertAccount(account types.Account) {
 	defer c.rwMutex.Unlock()
 
 	// If marked as deleted, remove Account from map
+
 	// and from all user ID maps of all Account users
 	if account.Deleted {
 		delete(c.accounts, account.ID)
@@ -703,13 +706,13 @@ func (c *Cache) GetPortalAppsForMiddleware() []types.PortalAppLite {
 	return portalAppLites
 }
 
-func (c *Cache) GetPortalAppsByUserID(userID types.UserID, options Options) []types.PortalApp {
+func (c *Cache) GetPortalAppsByUserID(userID types.UserID) []types.PortalApp {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	var portalAppsToReturn []types.PortalApp
 
-	for _, account := range c.GetUserAccounts(userID, options) {
+	for _, account := range c.GetUserAccounts(userID, Options{}) {
 		var portalApps []types.PortalApp
 
 		for _, portalApp := range account.PortalApps {

@@ -93,8 +93,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:          "Should get chain by ID",
 				chainID:       "0001",
-				expectedChain: testdata.Chains["0001"],
-				gigastakeApp:  testdata.GigastakeApps["test_gigastake_app_1"],
+				expectedChain: testdata.Chains()["0001"],
+				gigastakeApp:  testdata.GigastakeApps()["test_gigastake_app_1"],
 			},
 			{
 				name:    "Should return error if chain ID is empty",
@@ -138,7 +138,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:           "Should get GigastakeApp by ID",
 				gigastakeAppID: "test_gigastake_app_1",
-				expectedApp:    testdata.GigastakeApps["test_gigastake_app_1"],
+				expectedApp:    testdata.GigastakeApps()["test_gigastake_app_1"],
 			},
 			{
 				name:           "Should return error if GigastakeApp ID is empty",
@@ -177,13 +177,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:           "Should get all active chains",
-				expectedChains: testdata.FilterActiveChains(testdata.Chains),
-				gigastakeApps:  testdata.GigastakeApps,
+				expectedChains: testdata.FilterActiveChains(testdata.Chains()),
+				gigastakeApps:  testdata.GigastakeApps(),
 			},
 			{
 				name:           "Should get all chains including inactive",
-				expectedChains: testdata.Chains,
-				gigastakeApps:  testdata.GigastakeApps,
+				expectedChains: testdata.Chains(),
+				gigastakeApps:  testdata.GigastakeApps(),
 				options: dbClient.ChainOptions{
 					IncludeInactive: dbClient.BoolPtr(true),
 				},
@@ -237,7 +237,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:         "Should get all GigastakeApps",
-				expectedApps: testdata.GigastakeApps,
+				expectedApps: testdata.GigastakeApps(),
 			},
 		}
 
@@ -268,7 +268,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:    "Should get all GigastakeApps by chain ID",
 				chainID: "0001",
 				expectedApps: []*types.GigastakeApp{
-					testdata.GigastakeApps["test_gigastake_app_1"],
+					testdata.GigastakeApps()["test_gigastake_app_1"],
 				},
 			},
 			{
@@ -311,7 +311,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:        "Should get portal app by ID",
 				portalAppID: "test_app_1",
-				expectedApp: testdata.PortalApps["test_app_1"],
+				expectedApp: testdata.PortalApps()["test_app_1"],
 			},
 			{
 				name:        "Should return error if app ID is empty",
@@ -349,7 +349,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:         "Should get all portal apps",
-				expectedApps: testdata.PortalApps,
+				expectedApps: testdata.PortalApps(),
 			},
 		}
 
@@ -381,7 +381,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should get all portal apps for user_4 with no role filter",
 				userID: "user_4",
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_2": testdata.PortalApps["test_app_2"],
+					"test_app_2": testdata.PortalApps()["test_app_2"],
 				},
 			},
 			{
@@ -393,7 +393,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
+					"test_app_1": testdata.PortalApps()["test_app_1"],
 				},
 			},
 			{
@@ -405,7 +405,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_3": testdata.PortalApps["test_app_3"],
+					"test_app_3": testdata.PortalApps()["test_app_3"],
 				},
 			},
 			{
@@ -417,7 +417,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_3": testdata.PortalApps["test_app_3"],
+					"test_app_3": testdata.PortalApps()["test_app_3"],
 				},
 			},
 			{
@@ -430,8 +430,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
-					"test_app_2": testdata.PortalApps["test_app_2"],
+					"test_app_1": testdata.PortalApps()["test_app_1"],
+					"test_app_2": testdata.PortalApps()["test_app_2"],
 				},
 			},
 			{
@@ -441,7 +441,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(false),
 				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_3": testdata.PortalApps["test_app_3"],
+					"test_app_3": testdata.PortalApps()["test_app_3"],
 				},
 			},
 			{
@@ -451,8 +451,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(true),
 				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
-					"test_app_2": testdata.PortalApps["test_app_2"],
+					"test_app_1": testdata.PortalApps()["test_app_1"],
+					"test_app_2": testdata.PortalApps()["test_app_2"],
 				},
 			},
 			{
@@ -465,7 +465,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_2": testdata.PortalApps["test_app_2"],
+					"test_app_2": testdata.PortalApps()["test_app_2"],
 				},
 			},
 		}
@@ -494,7 +494,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:         "Should get all portal app lites for middleware",
-				expectedApps: testdata.PortalAppLites,
+				expectedApps: testdata.PortalAppLites(),
 			},
 		}
 
@@ -558,16 +558,16 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:   "Should get accounts for user_2 with no role filter",
 				userID: "user_2",
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
-					"account_2": testdata.Accounts["account_2"],
+					"account_1": testdata.Accounts()["account_1"],
+					"account_2": testdata.Accounts()["account_2"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
-					"account_2": testdata.PayPlans["pro_plan"],
+					"account_1": testdata.PayPlans()["basic_plan"],
+					"account_2": testdata.PayPlans()["pro_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
-					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
+					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
+					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
 				},
 			},
 			{
@@ -580,16 +580,16 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
-					"account_2": testdata.Accounts["account_2"],
+					"account_1": testdata.Accounts()["account_1"],
+					"account_2": testdata.Accounts()["account_2"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
-					"account_2": testdata.PayPlans["pro_plan"],
+					"account_1": testdata.PayPlans()["basic_plan"],
+					"account_2": testdata.PayPlans()["pro_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
-					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
+					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
+					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
 				},
 			},
 			{
@@ -602,26 +602,26 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(true),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
+					"account_1": testdata.Accounts()["account_1"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
+					"account_1": testdata.PayPlans()["basic_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
+					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
 				},
 			},
 			{
 				name:   "Should get accounts for user_1 with no role filter",
 				userID: "user_1",
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
+					"account_1": testdata.Accounts()["account_1"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
+					"account_1": testdata.PayPlans()["basic_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
+					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
 				},
 			},
 			{
@@ -633,13 +633,13 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
+					"account_1": testdata.Accounts()["account_1"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
+					"account_1": testdata.PayPlans()["basic_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
+					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
 				},
 			},
 			{
@@ -649,16 +649,16 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(true),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts["account_1"],
-					"account_2": testdata.Accounts["account_2"],
+					"account_1": testdata.Accounts()["account_1"],
+					"account_2": testdata.Accounts()["account_2"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans["basic_plan"],
-					"account_2": testdata.PayPlans["pro_plan"],
+					"account_1": testdata.PayPlans()["basic_plan"],
+					"account_2": testdata.PayPlans()["pro_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps["test_app_1"]},
-					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
+					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
+					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
 				},
 			},
 			{
@@ -668,17 +668,17 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(true),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_2": testdata.Accounts["account_2"],
-					"account_4": testdata.Accounts["account_4"],
-					"account_5": testdata.Accounts["account_5"],
+					"account_2": testdata.Accounts()["account_2"],
+					"account_4": testdata.Accounts()["account_4"],
+					"account_5": testdata.Accounts()["account_5"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_2": testdata.PayPlans["pro_plan"],
-					"account_4": testdata.PayPlans["enterprise_plan"],
-					"account_5": testdata.PayPlans["basic_plan"],
+					"account_2": testdata.PayPlans()["pro_plan"],
+					"account_4": testdata.PayPlans()["enterprise_plan"],
+					"account_5": testdata.PayPlans()["basic_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_2": {"test_app_2": testdata.PortalApps["test_app_2"]},
+					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
 					"account_4": {},
 					"account_5": {},
 				},
@@ -690,14 +690,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(false),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_2": testdata.Accounts["account_2"],
-					"account_4": testdata.Accounts["account_4"],
-					"account_5": testdata.Accounts["account_5"],
+					"account_2": testdata.Accounts()["account_2"],
+					"account_4": testdata.Accounts()["account_4"],
+					"account_5": testdata.Accounts()["account_5"],
 				},
 				plans: map[types.AccountID]*types.Plan{
-					"account_2": testdata.PayPlans["pro_plan"],
-					"account_4": testdata.PayPlans["enterprise_plan"],
-					"account_5": testdata.PayPlans["basic_plan"],
+					"account_2": testdata.PayPlans()["pro_plan"],
+					"account_4": testdata.PayPlans()["enterprise_plan"],
+					"account_5": testdata.PayPlans()["basic_plan"],
 				},
 				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
 					"account_2": {},
@@ -750,17 +750,17 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				name:        "Should get an account by its account ID",
 				accountID:   "account_1",
 				userID:      "user_1",
-				assignPlan:  testdata.PayPlans["basic_plan"],
-				assignApp:   testdata.PortalApps["test_app_1"],
-				expectedAcc: testdata.Accounts["account_1"],
+				assignPlan:  testdata.PayPlans()["basic_plan"],
+				assignApp:   testdata.PortalApps()["test_app_1"],
+				expectedAcc: testdata.Accounts()["account_1"],
 			},
 			{
 				name:        "Should get another account by its account ID",
 				accountID:   "account_2",
 				userID:      "user_2",
-				assignPlan:  testdata.PayPlans["pro_plan"],
-				assignApp:   testdata.PortalApps["test_app_2"],
-				expectedAcc: testdata.Accounts["account_2"],
+				assignPlan:  testdata.PayPlans()["pro_plan"],
+				assignApp:   testdata.PortalApps()["test_app_2"],
+				expectedAcc: testdata.Accounts()["account_2"],
 			},
 		}
 
@@ -799,72 +799,72 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:               "Should get Portal User for provider user_1",
 				userID:             "auth0|james_holden",
-				expectedPortalUser: testdata.Users["user_1"],
+				expectedPortalUser: testdata.Users()["user_1"],
 			},
 			{
 				name:               "Should get Portal User for provider user_2",
 				userID:             "auth0|paul_atreides",
-				expectedPortalUser: testdata.Users["user_2"],
+				expectedPortalUser: testdata.Users()["user_2"],
 			},
 			{
 				name:               "Should get Portal User for provider user_3",
 				userID:             "auth0|ellen_ripley",
-				expectedPortalUser: testdata.Users["user_3"],
+				expectedPortalUser: testdata.Users()["user_3"],
 			},
 			{
 				name:               "Should get Portal User for provider user_4",
 				userID:             "auth0|ulfric_stormcloak",
-				expectedPortalUser: testdata.Users["user_4"],
+				expectedPortalUser: testdata.Users()["user_4"],
 			},
 			{
 				name:               "Should get Portal User for provider user_5",
 				userID:             "auth0|chrisjen_avasarala",
-				expectedPortalUser: testdata.Users["user_5"],
+				expectedPortalUser: testdata.Users()["user_5"],
 			},
 			{
 				name:               "Should get Portal User for provider user_6",
 				userID:             "auth0|amos_burton",
-				expectedPortalUser: testdata.Users["user_6"],
+				expectedPortalUser: testdata.Users()["user_6"],
 			},
 			{
 				name:               "Should get Portal User for provider user_7",
 				userID:             "auth0|frodo_baggins",
-				expectedPortalUser: testdata.Users["user_7"],
+				expectedPortalUser: testdata.Users()["user_7"],
 			},
 			{
 				name:               "Should get Portal User for portal user_1",
 				userID:             "user_1",
-				expectedPortalUser: testdata.Users["user_1"],
+				expectedPortalUser: testdata.Users()["user_1"],
 			},
 			{
 				name:               "Should get Portal User for portal user_2",
 				userID:             "user_2",
-				expectedPortalUser: testdata.Users["user_2"],
+				expectedPortalUser: testdata.Users()["user_2"],
 			},
 			{
 				name:               "Should get Portal User for portal user_3",
 				userID:             "user_3",
-				expectedPortalUser: testdata.Users["user_3"],
+				expectedPortalUser: testdata.Users()["user_3"],
 			},
 			{
 				name:               "Should get Portal User for portal user_4",
 				userID:             "user_4",
-				expectedPortalUser: testdata.Users["user_4"],
+				expectedPortalUser: testdata.Users()["user_4"],
 			},
 			{
 				name:               "Should get Portal User for portal user_5",
 				userID:             "user_5",
-				expectedPortalUser: testdata.Users["user_5"],
+				expectedPortalUser: testdata.Users()["user_5"],
 			},
 			{
 				name:               "Should get Portal User for portal user_6",
 				userID:             "user_6",
-				expectedPortalUser: testdata.Users["user_6"],
+				expectedPortalUser: testdata.Users()["user_6"],
 			},
 			{
 				name:               "Should get Portal User for portal user_7",
 				userID:             "user_7",
-				expectedPortalUser: testdata.Users["user_7"],
+				expectedPortalUser: testdata.Users()["user_7"],
 			},
 			{
 				name:   "Should error when user does not exist",
@@ -979,7 +979,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:     "Should get all plans",
-				expected: testdata.PayPlans,
+				expected: testdata.PayPlans(),
 				err:      nil,
 			},
 		}
@@ -1010,7 +1010,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:               "Should get all blocked contracts",
-				expectedBlockedCon: testdata.GlobalBlockedContracts,
+				expectedBlockedCon: testdata.GlobalBlockedContracts(),
 			},
 		}
 
@@ -1971,7 +1971,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name:         "Should fail if input User does not exist in the db",
 				ownerID:      "user_451",
-				accountInput: testdata.Accounts[types.AccountID("account_5")],
+				accountInput: testdata.Accounts()[types.AccountID("account_5")],
 				err:          fmt.Errorf("Response not OK. 500 Internal Server Error: error in createAccount: error user does not exist for portal ID 'user_451'"),
 			},
 		}
@@ -2020,7 +2020,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}{
 			{
 				name:                "Should update the account's PlanType field",
-				accountBeforeUpdate: testdata.Accounts["account_1"],
+				accountBeforeUpdate: testdata.Accounts()["account_1"],
 				update: types.UpdateAccount{
 					AccountID: "account_1",
 					PlanType:  types.Enterprise,
@@ -2374,9 +2374,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				userID: "user_5",
 				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-					"user_5":  testdata.AccountUser[5],
-					"user_6":  testdata.AccountUser[6],
-					"user_10": testdata.AccountUser[12],
+					"user_5":  testdata.AccountUsers()[5],
+					"user_6":  testdata.AccountUsers()[6],
+					"user_10": testdata.AccountUsers()[12],
 					"user_7": {
 						ID:       "user_7",
 						Email:    "frodo.baggins123@test.com",
@@ -2396,9 +2396,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				userID: "user_5",
 				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-					"user_5":  testdata.AccountUser[5],
-					"user_6":  testdata.AccountUser[6],
-					"user_10": testdata.AccountUser[12],
+					"user_5":  testdata.AccountUsers()[5],
+					"user_6":  testdata.AccountUsers()[6],
+					"user_10": testdata.AccountUsers()[12],
 					"user_7": {
 						ID:       "user_7",
 						Email:    "frodo.baggins123@test.com",
@@ -2418,8 +2418,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				userID: "user_3",
 				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-					"user_9": testdata.AccountUser[9],
-					"user_2": testdata.AccountUser[10],
+					"user_9": testdata.AccountUsers()[9],
+					"user_2": testdata.AccountUsers()[10],
 					"user_3": {
 						ID:       "user_3",
 						Email:    "ellen.ripley789@test.com",
@@ -2445,8 +2445,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				userID: "user_3",
 				accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-					"user_9": testdata.AccountUser[9],
-					"user_2": testdata.AccountUser[10],
+					"user_9": testdata.AccountUsers()[9],
+					"user_2": testdata.AccountUsers()[10],
 					"user_4": {
 						ID:       "user_4",
 						Email:    "ulfric.stormcloak123@test.com",
@@ -2709,9 +2709,9 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				userID: "user_5",
 				accountUsersAfterDelete: map[types.UserID]types.AccountUser{
-					"user_1": testdata.AccountUser[1],
-					"user_2": testdata.AccountUser[2],
-					"user_8": testdata.AccountUser[8],
+					"user_1": testdata.AccountUsers()[1],
+					"user_2": testdata.AccountUsers()[2],
+					"user_8": testdata.AccountUsers()[8],
 				},
 				err: nil,
 			},

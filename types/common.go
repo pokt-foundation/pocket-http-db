@@ -67,7 +67,7 @@ const (
 	TableGigastakeApps Table = "gigastake_applications"
 
 	TableAccounts            Table = "accounts"
-	TableAccountUserAccess   Table = "account_user_access"
+	TableAccountUsers        Table = "account_users"
 	TableAccountIntegrations Table = "account_integrations"
 
 	TableUsers             Table = "users"

@@ -22,14 +22,14 @@ func NewTestCache(t *testing.T) *Cache {
 
 	readerMock, _ := NewReaderMock(t)
 
-	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
-	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
-	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
-	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains, nil)
-	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
-	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users[types.UserID("usertest")], nil)
+	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
+	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans(), nil)
+	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts(), nil)
+	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps(), nil)
+	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps(), nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
+	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
+	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users()[types.UserID("usertest")], nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
@@ -46,6 +46,9 @@ func NewTestCache(t *testing.T) *Cache {
 func Test_SetCache(t *testing.T) {
 	cache := NewTestCache(t)
 
+	setAccountOpts := testdata.AccountOptions{IncludePortalApps: true, IncludePlans: true, AssignUsers: true}
+	setChainOpts := testdata.ChainOptions{IncludeGigastakeApps: true}
+
 	tests := []struct {
 		name             string
 		actual, expected interface{}
@@ -53,30 +56,30 @@ func Test_SetCache(t *testing.T) {
 		{
 			name:     "Should return a user for a given provider user ID",
 			actual:   cache.GetUserByProviderID("auth0|chrisjen_avasarala"),
-			expected: *testdata.Users["user_5"],
+			expected: *testdata.Users()["user_5"],
 		},
 		{
 			name:     "Should return a user for a given portal user ID",
 			actual:   cache.GetUserByID("user_5"),
-			expected: *testdata.Users["user_5"],
+			expected: *testdata.Users()["user_5"],
 		},
 		{
 			name:     "Should return all accounts",
 			actual:   testdata.AccountsToMap(cache.GetAccounts(Options{})),
-			expected: testdata.ModifiedAccountToTest(),
+			expected: testdata.Accounts(setAccountOpts),
 		},
 		{
 			name:     "Should return account by ID",
 			actual:   cache.GetUserAccount("account_1", "user_1", Options{}),
-			expected: *testdata.Accounts["account_1"],
+			expected: *testdata.Accounts(setAccountOpts)["account_1"],
 		},
 		{
 			name:   "Should return accounts by user ID where accepted param not provided",
 			actual: testdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{})),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": testdata.ModifiedAccountToTest()["account_2"],
-				"account_4": testdata.ModifiedAccountToTest()["account_4"],
-				"account_5": testdata.ModifiedAccountToTest()["account_5"],
+				"account_2": testdata.Accounts(setAccountOpts)["account_2"],
+				"account_4": testdata.Accounts(setAccountOpts)["account_4"],
+				"account_5": testdata.Accounts(setAccountOpts)["account_5"],
 			},
 		},
 		{
@@ -85,65 +88,65 @@ func Test_SetCache(t *testing.T) {
 				Accepted: dbclient.BoolPtr(true),
 			})),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": testdata.ModifiedAccountToTest()["account_2"],
-				"account_4": testdata.ModifiedAccountToTest()["account_4"],
-				"account_5": testdata.ModifiedAccountToTest()["account_5"],
+				"account_2": testdata.Accounts(setAccountOpts)["account_2"],
+				"account_4": testdata.Accounts(setAccountOpts)["account_4"],
+				"account_5": testdata.Accounts(setAccountOpts)["account_5"],
 			},
 		},
 		{
 			name:     "Should return portal app by ID",
 			actual:   cache.GetPortalApp("test_app_1"),
-			expected: *testdata.PortalApps["test_app_1"],
+			expected: *testdata.PortalApps()["test_app_1"],
 		},
 		{
 			name:     "Should return all portal apps",
 			actual:   testdata.PortalAppsToMap(cache.GetPortalApps(Options{})),
-			expected: testdata.PortalApps,
+			expected: testdata.PortalApps(),
 		},
 		{
 			name:     "Should return all portal app lites for middleware",
 			actual:   testdata.PortalAppLitesToMap(cache.GetPortalAppsForMiddleware()),
-			expected: testdata.PortalAppLites,
+			expected: testdata.PortalAppLites(),
 		},
 		{
 			name:     "Should return gigastake app by AAT ID",
 			actual:   cache.GetGigastakeAppByID("test_gigastake_app_1"),
-			expected: *testdata.GigastakeApps["test_gigastake_app_1"],
+			expected: *testdata.GigastakeApps()["test_gigastake_app_1"],
 		},
 		{
 			name:     "Should return all gigastake apps",
 			actual:   testdata.GigastakeAppsToMap(cache.GetGigastakeApps(Options{})),
-			expected: testdata.GigastakeApps,
+			expected: testdata.GigastakeApps(),
 		},
 		{
 			name:     "Should return chain by ID",
 			actual:   cache.GetChain("0001", Options{}),
-			expected: *testdata.Chains["0001"],
+			expected: *testdata.Chains(setChainOpts)["0001"],
 		},
 		{
 			name:     "Should return all active chains",
 			actual:   testdata.ChainsToMap(cache.GetChains(Options{})),
-			expected: testdata.FilterActiveChains(testdata.Chains),
+			expected: testdata.FilterActiveChains(testdata.Chains(setChainOpts)),
 		},
 		{
 			name:     "Should return all chains inclouding inactive",
 			actual:   testdata.ChainsToMap(cache.GetChains(Options{IncludeInactiveChains: true})),
-			expected: testdata.Chains,
+			expected: testdata.Chains(setChainOpts),
 		},
 		{
 			name:     "Should return plan by type",
 			actual:   cache.GetPlan("basic_plan"),
-			expected: *testdata.PayPlans["basic_plan"],
+			expected: *testdata.PayPlans()["basic_plan"],
 		},
 		{
 			name:     "Should return all pay plans",
 			actual:   testdata.PayPlansToMap(cache.GetPlans()),
-			expected: testdata.PayPlans,
+			expected: testdata.PayPlans(),
 		},
 		{
 			name:     "Should return all global blocked contracts",
 			actual:   cache.GetBlockedContracts(),
-			expected: testdata.GlobalBlockedContracts,
+			expected: testdata.GlobalBlockedContracts(),
 		},
 	}
 
@@ -211,36 +214,36 @@ func TestCache_SetCache_Failure(t *testing.T) {
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
 			case "ReadPlans":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
 			case "ReadAccounts":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadPortalApps":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadChains":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadGigastakeApps":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
 
 			case "ReadBlockedContracts":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
@@ -291,7 +294,7 @@ func Test_upsertAccountUser(t *testing.T) {
 		{
 			name:        "Should update an existing account User's roles",
 			accountID:   "account_1",
-			accountUser: testdata.AccountUser[2],
+			accountUser: testdata.AccountUsers()[2],
 			updateRoles: map[types.PortalAppID]types.RoleName{
 				"test_app_1": types.RoleMember,
 			},
@@ -350,14 +353,17 @@ func Test_upsertAccount(t *testing.T) {
 				ID:       "account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
 				Users: map[types.UserID]types.AccountUser{
-					"user_1": testdata.AccountUser[1],
-					"user_2": testdata.AccountUser[2],
-					"user_8": testdata.AccountUser[8],
+					"user_1": testdata.AccountUsers()[1],
+					"user_2": testdata.AccountUsers()[2],
+					"user_8": testdata.AccountUsers()[8],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
+					"test_app_1": testdata.PortalApps()["test_app_1"],
 				},
-				Integrations:           types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
+				Integrations: types.AccountIntegrations{
+					StripeSubscriptionID: "stripe_id_1",
+					CovalentAPIKeyFree:   "covalent_api_key_1",
+				},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
 				PartnerAppLimit:        1,
@@ -372,13 +378,13 @@ func Test_upsertAccount(t *testing.T) {
 				ID:       "account_2",
 				PlanType: types.PayPlanType("pro_plan"),
 				Users: map[types.UserID]types.AccountUser{
-					"user_3": testdata.AccountUser[3],
-					"user_4": testdata.AccountUser[4],
-					"user_9": testdata.AccountUser[9],
-					"user_2": testdata.AccountUser[10],
+					"user_3": testdata.AccountUsers()[3],
+					"user_4": testdata.AccountUsers()[4],
+					"user_9": testdata.AccountUsers()[9],
+					"user_2": testdata.AccountUsers()[10],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_2": testdata.PortalApps["test_app_2"],
+					"test_app_2": testdata.PortalApps()["test_app_2"],
 				},
 				Integrations: types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
 				Deleted:      true,
@@ -453,13 +459,13 @@ func Test_deleteAccountUser(t *testing.T) {
 		{
 			name:            "Should delete an existing user access and update permissions",
 			accountID:       "account_1",
-			accountUser:     testdata.AccountUser[2],
+			accountUser:     testdata.AccountUsers()[2],
 			existingAccount: true,
 		},
 		{
 			name:        "Should not fail when deleting a non-existing user access",
 			accountID:   "account_5",
-			accountUser: testdata.AccountUser[12],
+			accountUser: testdata.AccountUsers()[12],
 		},
 	}
 
@@ -596,7 +602,7 @@ func Test_upsertPortalApp(t *testing.T) {
 		},
 		{
 			name:       "Should update an existing PortalApp in cache with all side tables",
-			portalApp:  *testdata.PortalApps["test_app_1"],
+			portalApp:  *testdata.PortalApps()["test_app_1"],
 			pendingAAT: nil, // AAT is never updated
 			pendingSettings: map[types.PortalAppID]types.Settings{
 				"test_app_1": testApp.Settings,
@@ -628,7 +634,7 @@ func Test_upsertPortalApp(t *testing.T) {
 		},
 		{
 			name:      "Should delete an existing PortalApp in cache",
-			portalApp: *testdata.PortalApps["test_app_3"],
+			portalApp: *testdata.PortalApps()["test_app_3"],
 			delete:    true,
 		},
 	}
@@ -1046,7 +1052,7 @@ func Test_upsertGigastakeApp(t *testing.T) {
 		},
 		{
 			name:         "Should update an existing GigastakeApp in cache with pending AAT",
-			gigastakeApp: *testdata.GigastakeApps["test_gigastake_app_1"],
+			gigastakeApp: *testdata.GigastakeApps()["test_gigastake_app_1"],
 			pendingChainsGigastakeApps: map[types.GigastakeAppID]types.ChainGigastakeApp{
 				testdata.TestCreateGigastakeApp.ID: {
 					ChainID:        "0001",
@@ -1058,7 +1064,7 @@ func Test_upsertGigastakeApp(t *testing.T) {
 		},
 		{
 			name:                       "Should delete an existing GigastakeApp in cache",
-			gigastakeApp:               *testdata.GigastakeApps["test_gigastake_app_3"],
+			gigastakeApp:               *testdata.GigastakeApps()["test_gigastake_app_3"],
 			pendingChainsGigastakeApps: nil,
 			update:                     false,
 			delete:                     true,
@@ -1189,7 +1195,7 @@ func Test_upsertChain(t *testing.T) {
 		},
 		{
 			name:  "Should update an existing Chain in cache with all side tables",
-			chain: *testdata.Chains["0021"],
+			chain: *testdata.Chains()["0021"],
 			pendingAltruists: map[types.RelayChainID][]types.Altruist{
 				"0021": {
 					{
@@ -1229,7 +1235,7 @@ func Test_upsertChain(t *testing.T) {
 		},
 		{
 			name:   "Should delete an existing Chain in cache",
-			chain:  *testdata.Chains["0064"],
+			chain:  *testdata.Chains()["0064"],
 			delete: true,
 		},
 	}
@@ -1545,8 +1551,8 @@ func Test_upsertUser(t *testing.T) {
 		},
 		{
 			name:            "Should insert a new Portal User with pending accounts",
-			user:            *testdata.Users["user_10"],
-			expectedUser:    *testdata.Users["user_10"],
+			user:            *testdata.Users()["user_10"],
+			expectedUser:    *testdata.Users()["user_10"],
 			pendingAccounts: true,
 			err:             nil,
 		},
@@ -1569,8 +1575,7 @@ func Test_upsertUser(t *testing.T) {
 				UpdatesProduct:   true,
 				UpdatesMarketing: true,
 				Permissions: map[types.AccountID]types.AccountPermissions{
-					"account_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"account_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
+					"account_1": {Accepted: true, RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {
@@ -1642,8 +1647,7 @@ func Test_addUserAuthProvider(t *testing.T) {
 				ID:    "user_1",
 				Email: "james.holden752@test.com",
 				Permissions: map[types.AccountID]types.AccountPermissions{
-					"account_1": {RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"account_2": {RoleName: "MEMBER", Permissions: []types.Permissions{"read:endpoint"}},
+					"account_1": {Accepted: true, RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {

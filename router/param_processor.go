@@ -25,10 +25,6 @@ type (
 		includeInactive      queryParam
 		excludeGigastakeApps queryParam
 	}
-	portalAppQueryParams struct {
-		roleNameFilters queryParam
-		accepted        queryParam
-	}
 	accountQueryParams struct {
 		roleNameFilters queryParam
 		accepted        queryParam
@@ -65,10 +61,6 @@ var (
 	chainParams = chainQueryParams{
 		includeInactive:      "include_inactive",
 		excludeGigastakeApps: "exclude_gigastake_apps",
-	}
-	portalAppParams = portalAppQueryParams{
-		roleNameFilters: "filters",
-		accepted:        "accepted",
 	}
 	accountParams = accountQueryParams{
 		roleNameFilters: "filters",
@@ -110,17 +102,6 @@ var (
 					return err
 				}
 				options.IncludeInactiveChains = val
-				return nil
-			},
-		},
-
-		v2PortalAppEndpoint: {
-			portalAppParams.accepted: func(v string, options *cache.Options) error {
-				val, err := parseBool(v)
-				if err != nil {
-					return err
-				}
-				options.Accepted = &val
 				return nil
 			},
 		},
@@ -208,7 +189,7 @@ func paramProcessor(url *url.URL, queryParams map[queryParam]queryParamDetail) (
 		switch {
 		case param.isCommon():
 			path = ""
-		case param.isChain() || param.isPortalApp() || param.isUser() || param.isAccount():
+		case param.isChain() || param.isUser() || param.isAccount():
 			path = pathMatcher(url.Path)
 		default:
 			return cache.Options{}, fmt.Errorf("invalid parameter %s", param)
@@ -254,10 +235,6 @@ func (qp queryParam) isCommon() bool {
 
 func (qp queryParam) isChain() bool {
 	return qp == chainParams.includeInactive || qp == chainParams.excludeGigastakeApps
-}
-
-func (qp queryParam) isPortalApp() bool {
-	return qp == portalAppParams.roleNameFilters || qp == portalAppParams.accepted
 }
 
 func (qp queryParam) isAccount() bool {

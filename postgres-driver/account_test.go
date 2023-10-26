@@ -11,24 +11,16 @@ import (
 
 func (ts *PGDriverTestSuite) Test_PGDriver_ReadAccounts() {
 	tests := []struct {
-		name               string
-		accounts           map[types.AccountID]*types.Account
-		usersForAccountIDs map[types.AccountID]map[types.UserID]*types.User
-		options            types.DriverOptions
-		err                error
+		name     string
+		accounts map[types.AccountID]*types.Account
+		options  types.DriverOptions
+		err      error
 	}{
 		{
-			name: "Should return all non-deleted Accounts from the database",
-			accounts: map[types.AccountID]*types.Account{
-				types.AccountID("account_1"): testdata.Accounts[types.AccountID("account_1")],
-				types.AccountID("account_2"): testdata.Accounts[types.AccountID("account_2")],
-				types.AccountID("account_3"): testdata.Accounts[types.AccountID("account_3")],
-				types.AccountID("account_4"): testdata.Accounts[types.AccountID("account_4")],
-				types.AccountID("account_5"): testdata.Accounts[types.AccountID("account_5")],
-			},
-			usersForAccountIDs: testdata.UsersForAccountIDs,
-			options:            types.DriverOptions{},
-			err:                nil,
+			name:     "Should return all non-deleted Accounts from the database",
+			accounts: testdata.Accounts(),
+			options:  types.DriverOptions{},
+			err:      nil,
 		},
 	}
 
@@ -36,9 +28,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadAccounts() {
 		ts.Run(test.name, func() {
 			accounts, err := ts.driver.ReadAccounts(context.Background(), test.options)
 			ts.Equal(test.err, err)
-			for _, account := range accounts {
-				account.AssignAccountUsers(test.usersForAccountIDs[account.ID])
-			}
 			ts.Equal(test.accounts, accounts)
 		})
 	}
@@ -60,8 +49,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccount() {
 			testCreatedTime: testdata.MockTimestamp,
 			users: map[types.UserID]types.AccountUser{
 				"user_1": {
-					ID:       testdata.Users["user_1"].ID,
-					Email:    testdata.Users["user_1"].Email,
+					ID:       testdata.Users()["user_1"].ID,
+					Email:    testdata.Users()["user_1"].Email,
 					RoleName: types.RoleOwner,
 					Accepted: true,
 				},
@@ -91,7 +80,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccount() {
 		{
 			name:            "Should fail if input User does not exist in the db",
 			ownerID:         "user_451",
-			account:         *testdata.Accounts[types.AccountID("account_5")],
+			account:         *testdata.Accounts()[types.AccountID("account_5")],
 			testCreatedTime: testdata.MockTimestamp,
 			err:             fmt.Errorf(errUserDoesntExist.Error(), "user_451"),
 		},
@@ -212,7 +201,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				AccountID: "account_1",
 				PlanType:  types.Enterprise,
 			},
-			account: testdata.Accounts["account_1"],
+			account: testdata.Accounts()["account_1"],
 			err:     nil,
 		},
 		{
@@ -221,7 +210,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				AccountID: "account_1",
 				Name:      "I Can Show You the World",
 			},
-			account: testdata.Accounts["account_1"],
+			account: testdata.Accounts()["account_1"],
 			err:     nil,
 		},
 		{
@@ -230,7 +219,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				AccountID: "account_1",
 				IconURL:   "https://picsum.photos/222",
 			},
-			account: testdata.Accounts["account_1"],
+			account: testdata.Accounts()["account_1"],
 			err:     nil,
 		},
 		{
@@ -241,7 +230,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				Name:      "Willy Wonka",
 				IconURL:   "https://picsum.photos/444",
 			},
-			account: testdata.Accounts["account_1"],
+			account: testdata.Accounts()["account_1"],
 			err:     nil,
 		},
 		{
@@ -307,7 +296,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccountUser() {
 				Email:     "bernard.marx@test.com",
 				RoleName:  types.RoleMember,
 			},
-			accountUser: testdata.AccountUser[13],
+			accountUser: testdata.AccountUsers()[13],
 			accountUserAfterCreate: types.AccountUser{
 				ID:       "user_11",
 				Email:    "bernard.marx@test.com",
@@ -325,7 +314,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccountUser() {
 				Email:     "winston.smith@test.com",
 				RoleName:  types.RoleAdmin,
 			},
-			accountUser: testdata.AccountUser[14],
+			accountUser: testdata.AccountUsers()[14],
 			accountUserAfterCreate: types.AccountUser{
 				ID:       "", // UserID created when user created
 				Email:    "winston.smith@test.com",
@@ -430,9 +419,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_SetAccountUserRole() {
 				RoleName:  types.RoleAdmin,
 			},
 			accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-				"user_5":  testdata.AccountUser[5],
-				"user_6":  testdata.AccountUser[6],
-				"user_10": testdata.AccountUser[12],
+				"user_5":  testdata.AccountUsers()[5],
+				"user_6":  testdata.AccountUsers()[6],
+				"user_10": testdata.AccountUsers()[12],
 				"user_7": {
 					ID:       "user_7",
 					Email:    "frodo.baggins123@test.com",
@@ -451,9 +440,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_SetAccountUserRole() {
 				RoleName:  types.RoleMember,
 			},
 			accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-				"user_5":  testdata.AccountUser[5],
-				"user_6":  testdata.AccountUser[6],
-				"user_10": testdata.AccountUser[12],
+				"user_5":  testdata.AccountUsers()[5],
+				"user_6":  testdata.AccountUsers()[6],
+				"user_10": testdata.AccountUsers()[12],
 				"user_7": {
 					ID:       "user_7",
 					Email:    "frodo.baggins123@test.com",
@@ -472,8 +461,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_SetAccountUserRole() {
 				RoleName:  types.RoleOwner,
 			},
 			accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-				"user_9": testdata.AccountUser[9],
-				"user_2": testdata.AccountUser[10],
+				"user_9": testdata.AccountUsers()[9],
+				"user_2": testdata.AccountUsers()[10],
 				"user_3": {
 					ID:       "user_3",
 					Email:    "ellen.ripley789@test.com",
@@ -498,8 +487,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_SetAccountUserRole() {
 				RoleName:  types.RoleOwner,
 			},
 			accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-				"user_9": testdata.AccountUser[9],
-				"user_2": testdata.AccountUser[10],
+				"user_9": testdata.AccountUsers()[9],
+				"user_2": testdata.AccountUsers()[10],
 				"user_3": {
 					ID:       "user_3",
 					Email:    "ellen.ripley789@test.com",
@@ -524,9 +513,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_SetAccountUserRole() {
 				RoleName:  types.RoleMember,
 			},
 			accountUsersAfterUpdate: map[types.UserID]types.AccountUser{
-				"user_5": testdata.AccountUser[5],
-				"user_6": testdata.AccountUser[6],
-				"user_7": testdata.AccountUser[7],
+				"user_5": testdata.AccountUsers()[5],
+				"user_6": testdata.AccountUsers()[6],
+				"user_7": testdata.AccountUsers()[7],
 				"user_10": {
 					ID:       "user_10",
 					Email:    "daenerys.targaryen123@test.com",

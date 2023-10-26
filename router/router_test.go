@@ -34,15 +34,15 @@ func newTestRouter(t *testing.T) (*Router, error) {
 
 	readerMock, _ := cache.NewReaderMock(t)
 
-	readerMock.On("ReadUserIDsMap", context.Background()).Return(testdata.UserIDs, nil)
-	readerMock.On("ReadAllUsers", context.Background()).Return(testdata.Users, nil)
-	readerMock.On("ReadPlans", context.Background()).Return(testdata.PayPlans, nil)
-	readerMock.On("ReadAccounts", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
-	readerMock.On("ReadAccounts", mock.Anything, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
-	readerMock.On("ReadPortalApps", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadGigastakeApps", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps, nil)
-	readerMock.On("ReadChains", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains, nil)
-	readerMock.On("ReadBlockedContracts", context.Background()).Return(testdata.GlobalBlockedContracts, nil)
+	readerMock.On("ReadUserIDsMap", context.Background()).Return(testdata.UserIDs(), nil)
+	readerMock.On("ReadAllUsers", context.Background()).Return(testdata.Users(), nil)
+	readerMock.On("ReadPlans", context.Background()).Return(testdata.PayPlans(), nil)
+	readerMock.On("ReadAccounts", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts(), nil)
+	readerMock.On("ReadAccounts", mock.Anything, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts(), nil)
+	readerMock.On("ReadPortalApps", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps(), nil)
+	readerMock.On("ReadGigastakeApps", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps(), nil)
+	readerMock.On("ReadChains", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
+	readerMock.On("ReadBlockedContracts", context.Background()).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUser, nil)
 
 	logger := logger.New()
@@ -76,8 +76,8 @@ func TestRouter_getChainByID(t *testing.T) {
 			name:                   "Should fetch a single chain",
 			chainID:                "0001",
 			expectedStatus:         http.StatusOK,
-			expectedChain:          *testdata.Chains["0001"],
-			expectedChainGigastake: testdata.GigastakeApps["test_gigastake_app_1"],
+			expectedChain:          *testdata.Chains()["0001"],
+			expectedChainGigastake: testdata.GigastakeApps()["test_gigastake_app_1"],
 		},
 	}
 
@@ -118,7 +118,7 @@ func TestRouter_getGigastakeAppByID(t *testing.T) {
 			name:                 "Should fetch a single gigastake app",
 			gigastakeAppID:       "test_gigastake_app_1",
 			expectedStatus:       http.StatusOK,
-			expectedGigastakeApp: *testdata.GigastakeApps["test_gigastake_app_1"],
+			expectedGigastakeApp: *testdata.GigastakeApps()["test_gigastake_app_1"],
 		},
 	}
 
@@ -147,6 +147,8 @@ func TestRouter_getGigastakeAppByID(t *testing.T) {
 }
 
 func TestRouter_getAllChains(t *testing.T) {
+	setChainOpts := testdata.ChainOptions{IncludeGigastakeApps: true}
+
 	tests := []struct {
 		name            string
 		chainID         types.RelayChainID
@@ -159,14 +161,14 @@ func TestRouter_getAllChains(t *testing.T) {
 			chainID:         "0001",
 			includeInactive: "false",
 			expectedStatus:  http.StatusOK,
-			expectedChains:  testdata.FilterActiveChains(testdata.Chains),
+			expectedChains:  testdata.FilterActiveChains(testdata.Chains(setChainOpts)),
 		},
 		{
 			name:            "Should fetch all chains including inactive",
 			chainID:         "0001",
 			includeInactive: "true",
 			expectedStatus:  http.StatusOK,
-			expectedChains:  testdata.Chains,
+			expectedChains:  testdata.Chains(setChainOpts),
 		},
 	}
 
@@ -210,7 +212,7 @@ func TestRouter_getAllGigastakeApps(t *testing.T) {
 			name:           "Should fetch all gigastake apps",
 			includeDeleted: false,
 			expectedStatus: http.StatusOK,
-			expectedApps:   testdata.GigastakeApps,
+			expectedApps:   testdata.GigastakeApps(),
 		},
 	}
 
@@ -253,7 +255,7 @@ func TestRouter_getAllGigastakeAppsByChain(t *testing.T) {
 			chainID:        "0001",
 			expectedStatus: http.StatusOK,
 			expectedApps: map[types.GigastakeAppID]*types.GigastakeApp{
-				"test_gigastake_app_1": testdata.GigastakeApps["test_gigastake_app_1"],
+				"test_gigastake_app_1": testdata.GigastakeApps()["test_gigastake_app_1"],
 			},
 		},
 	}
@@ -550,7 +552,7 @@ func TestRouter_getPortalAppByID(t *testing.T) {
 			name:              "Should fetch a single portal application",
 			portalAppID:       "test_app_1",
 			expectedStatus:    http.StatusOK,
-			expectedPortalApp: *testdata.PortalApps["test_app_1"],
+			expectedPortalApp: *testdata.PortalApps()["test_app_1"],
 		},
 	}
 
@@ -587,7 +589,7 @@ func TestRouter_getAllPortalApps(t *testing.T) {
 		{
 			name:               "Should fetch all portal applications",
 			expectedStatus:     http.StatusOK,
-			expectedPortalApps: testdata.PortalApps,
+			expectedPortalApps: testdata.PortalApps(),
 		},
 	}
 
@@ -627,7 +629,7 @@ func TestRouter_getPortalAppsForMiddleware(t *testing.T) {
 		{
 			name:               "Should fetch all portal applications for middleware",
 			expectedStatus:     http.StatusOK,
-			expectedPortalApps: testdata.PortalAppLites,
+			expectedPortalApps: testdata.PortalAppLites(),
 		},
 	}
 
@@ -658,28 +660,18 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 	tests := []struct {
 		name               string
 		userID             types.UserID
-		roleFilter         types.RoleName
 		expectedStatus     int
 		expectedPortalApps []types.PortalApp
 	}{
 		{
 			name:               "Should fetch all portal applications for a user",
 			userID:             "user_1",
-			roleFilter:         "",
 			expectedStatus:     http.StatusOK,
-			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_1"]},
-		},
-		{
-			name:               "Should fetch all portal applications for a user with a specific role",
-			userID:             "user_4",
-			roleFilter:         types.RoleMember,
-			expectedStatus:     http.StatusOK,
-			expectedPortalApps: []types.PortalApp{*testdata.PortalApps["test_app_2"]},
+			expectedPortalApps: []types.PortalApp{*testdata.PortalApps()["test_app_1"]},
 		},
 		{
 			name:               "Should fail if no portal apps are found for a given user",
-			userID:             "user_4",
-			roleFilter:         types.RoleAdmin,
+			userID:             "user_11",
 			expectedStatus:     http.StatusNotFound,
 			expectedPortalApps: []types.PortalApp{},
 		},
@@ -695,9 +687,6 @@ func TestRouter_getPortalAppsByUser(t *testing.T) {
 			rr := httptest.NewRecorder()
 
 			endpoint := fmt.Sprintf("/v2/user/%s/portal_app", test.userID)
-			if test.roleFilter != "" {
-				endpoint += fmt.Sprintf("?filters=%s", test.roleFilter)
-			}
 
 			req, err := http.NewRequest(http.MethodGet, endpoint, nil)
 			c.NoError(err)
@@ -973,23 +962,21 @@ func TestRouter_getAccounts(t *testing.T) {
 }
 
 func TestRouter_getUserAccounts(t *testing.T) {
+	setAccountOpts := testdata.AccountOptions{IncludePortalApps: true, IncludePlans: true, AssignUsers: true}
+
 	tests := []struct {
-		name             string
-		userID           types.UserID
-		expectedStatus   int
-		expectedData     []types.Account
-		accountPlan      *types.Plan
-		accountPortalApp *types.PortalApp
+		name           string
+		userID         types.UserID
+		expectedStatus int
+		expectedData   []types.Account
 	}{
 		{
 			name:           "Should fetch all accounts for a given user ID",
 			userID:         "user_1",
 			expectedStatus: http.StatusOK,
 			expectedData: []types.Account{
-				*testdata.Accounts["account_1"],
+				*testdata.Accounts(setAccountOpts)["account_1"],
 			},
-			accountPlan:      testdata.PayPlans["basic_plan"],
-			accountPortalApp: testdata.PortalApps["test_app_1"],
 		},
 	}
 
@@ -1011,32 +998,27 @@ func TestRouter_getUserAccounts(t *testing.T) {
 			var accountsResp []types.Account
 			err = json.Unmarshal(rr.Body.Bytes(), &accountsResp)
 			c.NoError(err)
-			test.expectedData[0].Plan = test.accountPlan
-			test.expectedData[0].PortalApps = make(map[types.PortalAppID]*types.PortalApp)
-			test.expectedData[0].PortalApps[test.accountPortalApp.ID] = test.accountPortalApp
 			c.Equal(test.expectedData, accountsResp)
 		})
 	}
 }
 
 func TestRouter_getUserAccount(t *testing.T) {
+	setAccountOpts := testdata.AccountOptions{IncludePortalApps: true, IncludePlans: true, AssignUsers: true}
+
 	tests := []struct {
-		name             string
-		accountID        types.AccountID
-		userID           types.UserID
-		expectedStatus   int
-		expectedAccount  types.Account
-		accountPlan      *types.Plan
-		accountPortalApp *types.PortalApp
+		name            string
+		accountID       types.AccountID
+		userID          types.UserID
+		expectedStatus  int
+		expectedAccount types.Account
 	}{
 		{
-			name:             "Should get one user account by ID",
-			accountID:        "account_1",
-			userID:           "user_1",
-			expectedStatus:   http.StatusOK,
-			expectedAccount:  *testdata.Accounts["account_1"],
-			accountPlan:      testdata.PayPlans["basic_plan"],
-			accountPortalApp: testdata.PortalApps["test_app_1"],
+			name:            "Should get one user account by ID",
+			accountID:       "account_1",
+			userID:          "user_1",
+			expectedStatus:  http.StatusOK,
+			expectedAccount: *testdata.Accounts(setAccountOpts)["account_1"],
 		},
 	}
 
@@ -1058,9 +1040,6 @@ func TestRouter_getUserAccount(t *testing.T) {
 			var accountResp types.Account
 			err = json.Unmarshal(rr.Body.Bytes(), &accountResp)
 			c.NoError(err)
-			test.expectedAccount.Plan = test.accountPlan
-			test.expectedAccount.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
-			test.expectedAccount.PortalApps[test.accountPortalApp.ID] = test.accountPortalApp
 			c.Equal(test.expectedAccount, accountResp)
 		})
 	}
@@ -1579,14 +1558,14 @@ func TestRouter_getPortalUser(t *testing.T) {
 		{
 			name:           "Should fetch Portal User for a given auth provider user ID if `full_details` is true",
 			providerUserID: "auth0|ellen_ripley",
-			expectedUser:   *testdata.Users["user_3"],
+			expectedUser:   *testdata.Users()["user_3"],
 			fullDetails:    true,
 			expectedStatus: http.StatusOK,
 		},
 		{
 			name:           "Should fetch Portal User ID for a given portal user ID if `full_details` is true",
 			portalUserID:   "user_3",
-			expectedUser:   *testdata.Users["user_3"],
+			expectedUser:   *testdata.Users()["user_3"],
 			fullDetails:    true,
 			expectedStatus: http.StatusOK,
 		},
@@ -1777,7 +1756,7 @@ func TestRouter_getPlans(t *testing.T) {
 		{
 			name:           "Should fetch all pay plans",
 			expectedStatus: http.StatusOK,
-			expectedPlans:  testdata.PayPlans,
+			expectedPlans:  testdata.PayPlans(),
 		},
 	}
 
@@ -1823,7 +1802,7 @@ func TestRouter_getBlockedContracts(t *testing.T) {
 		{
 			name:                "Should fetch all blocked contracts",
 			expectedStatus:      http.StatusOK,
-			expectedBlockedCons: testdata.GlobalBlockedContracts.BlockedAddresses,
+			expectedBlockedCons: testdata.GlobalBlockedContracts().BlockedAddresses,
 		},
 	}
 

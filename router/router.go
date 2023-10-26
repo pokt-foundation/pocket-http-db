@@ -508,18 +508,7 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 		rt.handleError(w, "getPortalAppsByUser", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
 	}
 
-	queryParams := map[queryParam]queryParamDetail{
-		portalAppParams.roleNameFilters: {required: false},
-		portalAppParams.accepted:        {required: false},
-	}
-
-	options, err := paramProcessor(r.URL, queryParams)
-	if err != nil {
-		rt.handleError(w, "getPortalAppsByUser", http.StatusBadRequest, err)
-		return
-	}
-
-	portalAppsForUser := rt.cache.GetPortalAppsByUserID(userID, options)
+	portalAppsForUser := rt.cache.GetPortalAppsByUserID(userID)
 	if len(portalAppsForUser) == 0 {
 		rt.handleError(w, "getPortalAppsByUser", http.StatusNotFound, errNoPortalAppsFound)
 		return

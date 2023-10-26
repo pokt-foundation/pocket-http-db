@@ -88,8 +88,8 @@ func (n notification) parseNotification() *types.Notification {
 	switch n.Table {
 	case types.TableAccounts:
 		return n.parseAccountNotification()
-	case types.TableAccountUserAccess:
-		return n.parseAccountUserAccessNotification()
+	case types.TableAccountUsers:
+		return n.parseAccountUserNotification()
 	case types.TableAccountIntegrations:
 		return n.parseAccountIntegrationsNotification()
 
@@ -152,7 +152,7 @@ func (n notification) parseAccountNotification() *types.Notification {
 	}
 }
 
-func (n notification) parseAccountUserAccessNotification() *types.Notification {
+func (n notification) parseAccountUserNotification() *types.Notification {
 	rawData, _ := json.Marshal(n.Data)
 	var dbAccountUser dbAccountUser
 	_ = json.Unmarshal(rawData, &dbAccountUser)
