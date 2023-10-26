@@ -8,10 +8,8 @@ import (
 
 /* Enums */
 type (
-	Environment       string
-	NotificationEvent string
-	NotificationType  string
-	WhitelistType     string
+	Environment   string
+	WhitelistType string
 
 	PortalAppPublicKey string
 	PortalAppOrigin    string
@@ -23,16 +21,6 @@ const (
 	EnvironmentProduction Environment = "production"
 	EnvironmentTest       Environment = "test"
 
-	NotificationEventFull          NotificationEvent = "full"
-	NotificationEventHalf          NotificationEvent = "half"
-	NotificationEventQuarter       NotificationEvent = "quarter"
-	NotificationEventSignedUp      NotificationEvent = "signedUp"
-	NotificationEventThreeQuarters NotificationEvent = "threeQuarters"
-
-	NotificationTypeEmail   NotificationType = "email"
-	NotificationTypePortal  NotificationType = "portal"
-	NotificationTypeWebhook NotificationType = "webhook"
-
 	WhitelistTypeOrigins     WhitelistType = "origins"
 	WhitelistTypeBlockchains WhitelistType = "blockchains"
 	WhitelistTypeUserAgents  WhitelistType = "userAgents"
@@ -43,24 +31,6 @@ const (
 func (e Environment) IsValid() bool {
 	switch e {
 	case EnvironmentProduction, EnvironmentTest:
-		return true
-	default:
-		return false
-	}
-}
-
-func (n NotificationEvent) IsValid() bool {
-	switch n {
-	case NotificationEventFull, NotificationEventHalf, NotificationEventQuarter, NotificationEventSignedUp, NotificationEventThreeQuarters:
-		return true
-	default:
-		return false
-	}
-}
-
-func (n NotificationType) IsValid() bool {
-	switch n {
-	case NotificationTypeEmail, NotificationTypePortal, NotificationTypeWebhook:
 		return true
 	default:
 		return false
@@ -80,19 +50,18 @@ func (w WhitelistType) IsValid() bool {
 type (
 	// PortalApp represents a single application in the Portal
 	PortalApp struct {
-		ID                 PortalAppID                          `json:"id"`
-		Name               string                               `json:"name"`
-		Description        string                               `json:"description"`
-		AppEmoji           AppEmoji                             `json:"appEmoji"`
-		AccountID          AccountID                            `json:"accountID"`
-		Settings           Settings                             `json:"settings"`
-		Whitelists         Whitelists                           `json:"whitelists"`
-		AATs               map[ProtocolAppID]AAT                `json:"aat"`
-		Notifications      map[NotificationType]AppNotification `json:"notifications"`
-		FirstDateSurpassed time.Time                            `json:"firstDateSurpassed"`
-		CreatedAt          time.Time                            `json:"createdAt"`
-		UpdatedAt          time.Time                            `json:"updatedAt"`
-		Deleted            bool                                 `json:"deleted"`
+		ID                 PortalAppID           `json:"id"`
+		Name               string                `json:"name"`
+		Description        string                `json:"description"`
+		AppEmoji           AppEmoji              `json:"appEmoji"`
+		AccountID          AccountID             `json:"accountID"`
+		Settings           Settings              `json:"settings"`
+		Whitelists         Whitelists            `json:"whitelists"`
+		AATs               map[ProtocolAppID]AAT `json:"aat"`
+		FirstDateSurpassed time.Time             `json:"firstDateSurpassed"`
+		CreatedAt          time.Time             `json:"createdAt"`
+		UpdatedAt          time.Time             `json:"updatedAt"`
+		Deleted            bool                  `json:"deleted"`
 	}
 
 	Settings struct {
@@ -138,15 +107,6 @@ type (
 		ChainID RelayChainID  `json:"chain_id"`
 	}
 
-	AppNotification struct {
-		AppID       PortalAppID                `json:"appID,omitempty"`
-		Type        NotificationType           `json:"type"`
-		Active      bool                       `json:"active"`
-		Destination string                     `json:"destination"`
-		Trigger     string                     `json:"trigger"`
-		Events      map[NotificationEvent]bool `json:"events"`
-	}
-
 	// PortalAppLite contains only the PortalApp fields actually used in the Portal Middleware.
 	PortalAppLite struct {
 		ID         PortalAppID          `json:"id"`
@@ -188,13 +148,12 @@ type (
 
 	// UpdatePortalApp Struct Definition and Methods
 	UpdatePortalApp struct {
-		AppID         PortalAppID              `json:"appID,omitempty"`
-		Name          string                   `json:"name,omitempty"`
-		Description   string                   `json:"description,omitempty"`
-		AppEmoji      AppEmoji                 `json:"appEmoji,omitempty"`
-		Settings      *UpdateAppSettings       `json:"appSettings,omitempty"`
-		Notifications []UpdateAppNotifications `json:"notificationSettings,omitempty"`
-		Whitelists    *WhitelistsObject        `json:"whitelists,omitempty"`
+		AppID       PortalAppID        `json:"appID,omitempty"`
+		Name        string             `json:"name,omitempty"`
+		Description string             `json:"description,omitempty"`
+		AppEmoji    AppEmoji           `json:"appEmoji,omitempty"`
+		Settings    *UpdateAppSettings `json:"appSettings,omitempty"`
+		Whitelists  *WhitelistsObject  `json:"whitelists,omitempty"`
 	}
 
 	UpdateAppSettings struct {
@@ -204,15 +163,6 @@ type (
 		SecretKeyRequired bool        `json:"secretKeyRequired"`
 		MonthlyRelayLimit int32       `json:"monthlyRelayLimit"`
 		FavoritedChainIDs []string    `json:"favoritedChainIDs"`
-	}
-
-	UpdateAppNotifications struct {
-		AppID            PortalAppID         `json:"appID,omitempty"`
-		NotificationType NotificationType    `json:"notificationType"`
-		Active           bool                `json:"active"`
-		Destination      string              `json:"destination"`
-		Trigger          string              `json:"trigger"`
-		Events           []NotificationEvent `json:"events"`
 	}
 
 	UpdateFirstDateSurpassed struct {
@@ -506,10 +456,6 @@ func (a *Settings) Table() Table {
 
 func (a *Whitelist) Table() Table {
 	return TableAppWhitelists
-}
-
-func (a *AppNotification) Table() Table {
-	return TableAppNotifications
 }
 
 func (a *AAT) Table() Table {

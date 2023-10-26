@@ -155,14 +155,40 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 
 	if sideTablesAction != "" {
 		for _, user := range account.Users {
+			// listener mock only allows one side table so must hardcode user here
+			if user.ID == "user_1" {
+				inputs = append(inputs, inputStruct{
+					action: sideTablesAction,
+					table:  types.TableAccountUsers,
+					input: dbAccountUser{
+						AccountID: account.ID,
+						UserID:    user.ID,
+						RoleName:  user.RoleName,
+						Accepted:  user.Accepted,
+					},
+				})
+				break
+			}
+		}
+
+		for _, notification := range account.Notifications {
+			events := []types.NotificationEvent{}
+			for event, active := range notification.Events {
+				if active {
+					events = append(events, event)
+				}
+			}
+
 			inputs = append(inputs, inputStruct{
 				action: sideTablesAction,
-				table:  types.TableAccountUsers,
-				input: dbAccountUser{
-					AccountID: account.ID,
-					UserID:    user.ID,
-					RoleName:  user.RoleName,
-					Accepted:  user.Accepted,
+				table:  types.TableAccountNotifications,
+				input: dbAccountNotification{
+					AccountID:   account.ID,
+					Active:      notification.Active,
+					Type:        notification.Type,
+					Destination: notification.Destination,
+					Trigger:     notification.Trigger,
+					Events:      events,
 				},
 			})
 		}
@@ -240,28 +266,6 @@ func portalAppInputs(mainTableAction, sideTablesAction types.Action, content typ
 					ApplicationID: portalApp.ID,
 					Type:          types.WhitelistTypeBlockchains,
 					Value:         string(chainID),
-				},
-			})
-		}
-
-		for _, notification := range portalApp.Notifications {
-			events := []types.NotificationEvent{}
-			for event, active := range notification.Events {
-				if active {
-					events = append(events, event)
-				}
-			}
-
-			inputs = append(inputs, inputStruct{
-				action: sideTablesAction,
-				table:  types.TableAppNotifications,
-				input: dbPortalApplicationNotification{
-					ApplicationID: portalApp.ID,
-					Active:        notification.Active,
-					Type:          notification.Type,
-					Destination:   notification.Destination,
-					Trigger:       notification.Trigger,
-					Events:        events,
 				},
 			})
 		}

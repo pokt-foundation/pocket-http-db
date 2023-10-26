@@ -62,6 +62,19 @@ var testAccount = Account{
 		StripeSubscriptionID: "stripe_id_1",
 		CovalentAPIKeyFree:   "covalent_api_key_1",
 	},
+	Notifications: map[NotificationType]AccountNotification{
+		NotificationTypeEmail: {
+			Type:        NotificationTypeEmail,
+			Active:      true,
+			Destination: "test@test.com",
+			Trigger:     "trigger123",
+			Events: map[NotificationEvent]bool{
+				NotificationEventFull:          true,
+				NotificationEventQuarter:       true,
+				NotificationEventThreeQuarters: true,
+			},
+		},
+	},
 	Users: map[UserID]AccountUser{
 		"user_1": {
 			AccountID: "",
@@ -128,19 +141,6 @@ var testAccount = Account{
 					"0001": {"GET": {}},
 				},
 			},
-			Notifications: map[NotificationType]AppNotification{
-				NotificationTypeEmail: {
-					Type:        NotificationTypeEmail,
-					Active:      true,
-					Destination: "test@test.com",
-					Trigger:     "trigger123",
-					Events: map[NotificationEvent]bool{
-						NotificationEventFull:          true,
-						NotificationEventQuarter:       true,
-						NotificationEventThreeQuarters: true,
-					},
-				},
-			},
 			FirstDateSurpassed: timestamp,
 			CreatedAt:          timestamp,
 			UpdatedAt:          timestamp,
@@ -178,18 +178,6 @@ var testAccount = Account{
 				},
 				Methods: map[RelayChainID]map[Method]struct{}{
 					"0064": {"POST": {}},
-				},
-			},
-			Notifications: map[NotificationType]AppNotification{
-				NotificationTypeEmail: {
-					Type:        NotificationTypeEmail,
-					Active:      true,
-					Destination: "email@pokt.network",
-					Trigger:     "trigger456",
-					Events: map[NotificationEvent]bool{
-						NotificationEventHalf: true,
-						NotificationEventFull: true,
-					},
 				},
 			},
 			FirstDateSurpassed: timestamp,

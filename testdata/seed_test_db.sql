@@ -493,6 +493,33 @@ VALUES (
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
+INSERT INTO account_notifications (
+        account_id,
+        active,
+        type,
+        destination,
+        trigger,
+        events,
+        updated_at
+    )
+VALUES (
+        'account_1',
+        true,
+        'email',
+        'james.holden123@test.com',
+        'trigger123',
+        ARRAY ['quarter'::notification_event,'threeQuarters'::notification_event,'full'::notification_event],
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'account_2',
+        true,
+        'email',
+        'ellen.ripley789@test.com',
+        'trigger456',
+        ARRAY ['full'::notification_event,'half'::notification_event],
+        '2022-11-11 11:11:11.000000'
+    );
 -- Insert user_roles
 INSERT INTO user_roles (
         role_name,
@@ -782,33 +809,6 @@ VALUES (
         'userAgents',
         'Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
         NULL,
-        '2022-11-11 11:11:11.000000'
-    );
-INSERT INTO portal_application_notifications (
-        application_id,
-        active,
-        type,
-        destination,
-        trigger,
-        events,
-        updated_at
-    )
-VALUES (
-        'test_app_1',
-        true,
-        'email',
-        'test@test.com',
-        'trigger123',
-        ARRAY ['quarter'::notification_event,'threeQuarters'::notification_event,'full'::notification_event],
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
-        'test_app_2',
-        true,
-        'email',
-        'email@pokt.network',
-        'trigger456',
-        ARRAY ['full'::notification_event,'half'::notification_event],
         '2022-11-11 11:11:11.000000'
     );
 INSERT INTO portal_application_aats (

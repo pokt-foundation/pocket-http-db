@@ -190,10 +190,11 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpsertAccountIntegration() {
 
 func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 	tests := []struct {
-		name    string
-		update  types.UpdateAccount
-		account *types.Account
-		err     error
+		name                     string
+		update                   types.UpdateAccount
+		account                  *types.Account
+		testUpdatedNotifications map[types.NotificationType]types.AccountNotification
+		err                      error
 	}{
 		{
 			name: "Should update the account's PlanType field",
@@ -218,6 +219,44 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			update: types.UpdateAccount{
 				AccountID: "account_1",
 				IconURL:   "https://picsum.photos/222",
+			},
+			account: testdata.Accounts()["account_1"],
+			err:     nil,
+		},
+		{
+			name: "Should update the account's Notifications field",
+			update: types.UpdateAccount{
+				AccountID: "account_1",
+				Notifications: []types.UpdateAccountNotifications{
+					{
+						NotificationType: types.NotificationTypeEmail,
+						Active:           true,
+						Destination:      "user@example.com",
+						Trigger:          "daily",
+						Events: []types.NotificationEvent{
+							types.NotificationEventSignedUp,
+							types.NotificationEventHalf,
+							types.NotificationEventQuarter,
+							types.NotificationEventThreeQuarters,
+							types.NotificationEventFull,
+						},
+					},
+				},
+			},
+			testUpdatedNotifications: map[types.NotificationType]types.AccountNotification{
+				types.NotificationTypeEmail: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "user@example.com",
+					Trigger:     "daily",
+					Events: map[types.NotificationEvent]bool{
+						types.NotificationEventSignedUp:      true,
+						types.NotificationEventHalf:          true,
+						types.NotificationEventQuarter:       true,
+						types.NotificationEventThreeQuarters: true,
+						types.NotificationEventFull:          true,
+					},
+				},
 			},
 			account: testdata.Accounts()["account_1"],
 			err:     nil,
@@ -274,6 +313,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				}
 				if test.update.IconURL != "" {
 					ts.Equal(test.update.IconURL, account.IconURL)
+				}
+				if test.update.Notifications != nil {
+					ts.Equal(test.testUpdatedNotifications, account.Notifications)
 				}
 			}
 		})

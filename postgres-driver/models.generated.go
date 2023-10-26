@@ -425,6 +425,17 @@ type AccountIntegration struct {
 	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
+type AccountNotification struct {
+	ID          int32                  `json:"id"`
+	AccountID   types.AccountID        `json:"account_id"`
+	Active      bool                   `json:"active"`
+	Type        types.NotificationType `json:"type"`
+	Destination pgtype.Text            `json:"destination"`
+	Trigger     pgtype.Text            `json:"trigger"`
+	Events      []string               `json:"events"`
+	UpdatedAt   pgtype.Timestamptz     `json:"updated_at"`
+}
+
 type AccountUser struct {
 	ID        int32              `json:"id"`
 	UserID    types.UserID       `json:"user_id"`
@@ -550,17 +561,6 @@ type PortalApplicationAat struct {
 	Signature           string                   `json:"signature"`
 	PrivateKey          pgtype.Text              `json:"private_key"`
 	Version             string                   `json:"version"`
-}
-
-type PortalApplicationNotification struct {
-	ID            int32                  `json:"id"`
-	ApplicationID types.PortalAppID      `json:"application_id"`
-	Active        bool                   `json:"active"`
-	Type          types.NotificationType `json:"type"`
-	Destination   pgtype.Text            `json:"destination"`
-	Trigger       pgtype.Text            `json:"trigger"`
-	Events        []string               `json:"events"`
-	UpdatedAt     pgtype.Timestamptz     `json:"updated_at"`
 }
 
 type PortalApplicationSetting struct {

@@ -103,6 +103,17 @@ CREATE TABLE account_users (
 );
 CREATE UNIQUE INDEX idx_unique_owner_per_account ON account_users (account_id)
 WHERE role_name = 'OWNER';
+CREATE TABLE account_notifications (
+    id SERIAL PRIMARY KEY,
+    account_id VARCHAR(24) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    active BOOLEAN NOT NULL,
+    type notification_type NOT NULL,
+    destination VARCHAR(255),
+    trigger VARCHAR(255),
+    events VARCHAR(100) ARRAY,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (account_id, type)
+);
 -- Chains Tables
 CREATE TABLE chains (
     id VARCHAR(4) PRIMARY KEY,
@@ -199,17 +210,6 @@ CREATE TABLE portal_application_settings (
     secret_key VARCHAR(64),
     secret_key_required BOOLEAN,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE TABLE portal_application_notifications (
-    id SERIAL PRIMARY KEY,
-    application_id VARCHAR(24) NOT NULL REFERENCES portal_applications(id) ON DELETE CASCADE,
-    active BOOLEAN NOT NULL,
-    type notification_type NOT NULL,
-    destination VARCHAR(255),
-    trigger VARCHAR(255),
-    events VARCHAR(100) ARRAY,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (application_id, type)
 );
 CREATE TABLE portal_application_whitelists (
     id SERIAL PRIMARY KEY,
@@ -314,12 +314,6 @@ INSERT
     OR
 UPDATE
     OR DELETE ON portal_application_whitelists FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER portal_application_notifications_notify_event
-AFTER
-INSERT
-    OR
-UPDATE
-    OR DELETE ON portal_application_notifications FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER portal_application_aats_notify_event
 AFTER
 INSERT
@@ -350,6 +344,12 @@ INSERT
     OR
 UPDATE
     OR DELETE ON account_integrations FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER account_notifications_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON account_notifications FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER users_notify_event
 AFTER
 INSERT

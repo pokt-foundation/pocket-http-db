@@ -19,17 +19,17 @@ func Test_PGDriver_Listen(t *testing.T) {
 	}{
 		{
 			name:    "Should process Account notifications",
-			content: testdata.Accounts(testdata.AccountOptions{AssignUsers: true})["account_4"],
+			content: testdata.Accounts(testdata.AccountOptions{AssignUsers: true})["account_1"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TableAccounts: {
 					Table:  types.TableAccounts,
 					Action: types.ActionInsert,
 					Data: &types.Account{
-						ID:                     "account_4",
-						PlanType:               "enterprise_plan",
-						PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-						PartnerThroughputLimit: 1_000,
-						PartnerAppLimit:        2,
+						ID:                     "account_1",
+						PlanType:               "basic_plan",
+						PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+						PartnerThroughputLimit: 2_000,
+						PartnerAppLimit:        1,
 						CreatedAt:              testdata.MockTimestamp,
 						UpdatedAt:              testdata.MockTimestamp,
 					},
@@ -38,10 +38,22 @@ func Test_PGDriver_Listen(t *testing.T) {
 					Table:  types.TableAccountUsers,
 					Action: types.ActionUpdate,
 					Data: &types.AccountUser{
-						AccountID: "account_4",
-						ID:        "user_4",
+						AccountID: "account_1",
+						ID:        "user_1",
 						RoleName:  types.RoleOwner,
 						Accepted:  true,
+					},
+				},
+				types.TableAccountNotifications: {
+					Table:  types.TableAccountNotifications,
+					Action: types.ActionUpdate,
+					Data: &types.AccountNotification{
+						AccountID:   "account_1",
+						Type:        types.NotificationTypeEmail,
+						Active:      true,
+						Destination: "james.holden123@test.com",
+						Trigger:     "trigger123",
+						Events:      map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true},
 					},
 				},
 			},
@@ -96,18 +108,6 @@ func Test_PGDriver_Listen(t *testing.T) {
 						AppID: "test_app_1",
 						Type:  "blockchains",
 						Value: "0053",
-					},
-				},
-				types.TableAppNotifications: {
-					Table:  types.TableAppNotifications,
-					Action: types.ActionUpdate,
-					Data: &types.AppNotification{
-						AppID:       "test_app_1",
-						Type:        types.NotificationTypeEmail,
-						Active:      true,
-						Destination: "test@test.com",
-						Trigger:     "trigger123",
-						Events:      map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true},
 					},
 				},
 			},

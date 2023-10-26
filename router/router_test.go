@@ -773,14 +773,6 @@ func TestRouter_updatePortalApp(t *testing.T) {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name:        "Should update PortalApp notifications only",
-			portalAppID: "test_app_1",
-			portalAppUpdate: types.UpdatePortalApp{
-				Notifications: testdata.UpdatePortalAppNotifications,
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
 			name:        "Should update PortalApp whitelists only",
 			portalAppID: "test_app_1",
 			portalAppUpdate: types.UpdatePortalApp{
@@ -1111,11 +1103,41 @@ func TestRouter_updateAccount(t *testing.T) {
 			updateAccountInput: types.UpdateAccount{
 				AccountID: "account_1",
 				PlanType:  types.TestPlan10K,
+				Notifications: []types.UpdateAccountNotifications{
+					{
+						NotificationType: types.NotificationTypeEmail,
+						Active:           true,
+						Destination:      "user@example.com",
+						Trigger:          "daily",
+						Events: []types.NotificationEvent{
+							types.NotificationEventSignedUp,
+							types.NotificationEventHalf,
+							types.NotificationEventQuarter,
+							types.NotificationEventThreeQuarters,
+							types.NotificationEventFull,
+						},
+					},
+				},
 			},
 			expectedStatus: http.StatusOK,
 			expectedAccount: &types.Account{
 				ID:       "account_1",
 				PlanType: types.TestPlan10K,
+				Notifications: map[types.NotificationType]types.AccountNotification{
+					types.NotificationTypeEmail: {
+						Type:        types.NotificationTypeEmail,
+						Active:      true,
+						Destination: "user@example.com",
+						Trigger:     "daily",
+						Events: map[types.NotificationEvent]bool{
+							types.NotificationEventSignedUp:      true,
+							types.NotificationEventHalf:          true,
+							types.NotificationEventQuarter:       true,
+							types.NotificationEventThreeQuarters: true,
+							types.NotificationEventFull:          true,
+						},
+					},
+				},
 			},
 		},
 	}

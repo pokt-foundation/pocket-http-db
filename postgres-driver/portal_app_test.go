@@ -184,26 +184,25 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WritePortalApp() {
 
 func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 	tests := []struct {
-		name                     string
-		updatePortalApp          types.UpdatePortalApp
-		testUpdateTime           time.Time
-		testUpdatedName          string
-		testUpdatedDescription   string
-		testUpdatedAppEmoji      types.AppEmoji
-		testUpdatedSettings      types.Settings
-		testUpdatedNotifications map[types.NotificationType]types.AppNotification
-		testUpdatedWhitelists    types.Whitelists
-		err                      error
+		name                   string
+		updatePortalApp        types.UpdatePortalApp
+		testUpdateTime         time.Time
+		testUpdatedName        string
+		testUpdatedDescription string
+		testUpdatedAppEmoji    types.AppEmoji
+		testUpdatedSettings    types.Settings
+
+		testUpdatedWhitelists types.Whitelists
+		err                   error
 	}{
 		{
 			name: "Should update a new PortalApp in the database with all fields",
 			updatePortalApp: types.UpdatePortalApp{
-				Name:          testdata.UpdatePortalAppName,
-				Description:   testdata.UpdatePortalAppDescription,
-				AppEmoji:      testdata.UpdatePortalAppEmoji,
-				Settings:      testdata.UpdatePortalAppSettings,
-				Notifications: testdata.UpdatePortalAppNotifications,
-				Whitelists:    testdata.UpdatePortalAppWhitelists,
+				Name:        testdata.UpdatePortalAppName,
+				Description: testdata.UpdatePortalAppDescription,
+				AppEmoji:    testdata.UpdatePortalAppEmoji,
+				Settings:    testdata.UpdatePortalAppSettings,
+				Whitelists:  testdata.UpdatePortalAppWhitelists,
 			},
 			testUpdateTime:         testdata.MockTimestamp,
 			testUpdatedName:        "portal-app-updated",
@@ -216,31 +215,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 				MonthlyRelayLimit: 2_500_000,
 				FavoritedChainIDs: map[types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
 			},
-			testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-				types.NotificationTypeEmail: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "user@example.com",
-					Trigger:     "daily",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventSignedUp:      true,
-						types.NotificationEventHalf:          true,
-						types.NotificationEventQuarter:       true,
-						types.NotificationEventThreeQuarters: true,
-						types.NotificationEventFull:          true,
-					},
-				},
-				types.NotificationTypeWebhook: {
-					Type:        types.NotificationTypeWebhook,
-					Active:      true,
-					Destination: "https://example.com/webhook",
-					Trigger:     "hourly",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventHalf: true,
-						types.NotificationEventFull: true,
-					},
-				},
-			},
+
 			testUpdatedWhitelists: types.Whitelists{
 				Origins:     map[types.Origin]struct{}{"https://portalgun.io": {}, "https://subdomain.example.com": {}, "https://www.example.com": {}},
 				UserAgents:  map[types.UserAgent]struct{}{"Brave": {}, "Google Chrome": {}, "Mozilla Firefox": {}, "Netscape Navigator": {}, "Safari": {}},
@@ -299,39 +274,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 				SecretKeyRequired: true,
 				MonthlyRelayLimit: 2_500_000,
 				FavoritedChainIDs: map[types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
-			},
-			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with only new Notifications",
-			updatePortalApp: types.UpdatePortalApp{
-				Notifications: testdata.UpdatePortalAppNotifications,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-				types.NotificationTypeEmail: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "user@example.com",
-					Trigger:     "daily",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventSignedUp:      true,
-						types.NotificationEventHalf:          true,
-						types.NotificationEventQuarter:       true,
-						types.NotificationEventThreeQuarters: true,
-						types.NotificationEventFull:          true,
-					},
-				},
-				types.NotificationTypeWebhook: {
-					Type:        types.NotificationTypeWebhook,
-					Active:      true,
-					Destination: "https://example.com/webhook",
-					Trigger:     "hourly",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventHalf: true,
-						types.NotificationEventFull: true,
-					},
-				},
 			},
 			err: nil,
 		},
@@ -406,12 +348,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 					ts.Equal(test.testUpdatedWhitelists, updatedPortalApp.Whitelists)
 				} else {
 					ts.Equal(createdPortalApp.Settings, updatedPortalApp.Settings)
-				}
-
-				if len(test.testUpdatedNotifications) != 0 {
-					ts.Equal(test.testUpdatedNotifications, updatedPortalApp.Notifications)
-				} else {
-					ts.Equal(createdPortalApp.Notifications, updatedPortalApp.Notifications)
 				}
 
 				if len(test.testUpdatedWhitelists.Origins) != 0 {

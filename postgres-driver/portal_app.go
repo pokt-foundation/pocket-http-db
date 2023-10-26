@@ -27,11 +27,10 @@ type (
 )
 
 var (
-	errEmptyPortalAppName         = errors.New("portal app name cannot be empty")
-	errInvalidEnvironment         = errors.New("invalid portal app environment provided: %s")
-	errUnmarshallingWhitelists    = errors.New("error unmarshalling whitelists")
-	errUnmarshallingNotifications = errors.New("error unmarshalling notifications")
-	errUnmarshallingAATs          = errors.New("error unmarshalling AATs")
+	errEmptyPortalAppName      = errors.New("portal app name cannot be empty")
+	errInvalidEnvironment      = errors.New("invalid portal app environment provided: %s")
+	errUnmarshallingWhitelists = errors.New("error unmarshalling whitelists")
+	errUnmarshallingAATs       = errors.New("error unmarshalling AATs")
 )
 
 /* ----- postgresdriver PortalApp Read Methods ----- */
@@ -76,13 +75,6 @@ func (a *SelectPortalApplicationsRow) toPortalApp() (*types.PortalApp, error) {
 		appWhitelists = whitelists
 	}
 
-	var notifications map[types.NotificationType]types.AppNotification
-	if len(string(a.Notifications)) > 2 { // length of empty JSON array in bytes
-		if err := json.Unmarshal(a.Notifications, &notifications); err != nil {
-			return nil, fmt.Errorf("%s: %w", errUnmarshallingNotifications, err)
-		}
-	}
-
 	var favoritedChainIDs map[types.RelayChainID]struct{}
 	if len(a.FavoritedChainIDs) != 0 {
 		favoritedChainIDs = make(map[types.RelayChainID]struct{})
@@ -106,7 +98,6 @@ func (a *SelectPortalApplicationsRow) toPortalApp() (*types.PortalApp, error) {
 		},
 		AATs:               appAATs,
 		Whitelists:         appWhitelists,
-		Notifications:      notifications,
 		FirstDateSurpassed: a.FirstDateSurpassed.Time.UTC(),
 		CreatedAt:          a.CreatedAt.Time.UTC(),
 		UpdatedAt:          a.UpdatedAt.Time.UTC(),
@@ -248,40 +239,6 @@ func (pg *PostgresDriver) WritePortalApp(ctx context.Context, portalApp types.Po
 		return nil, err
 	}
 
-	// TODO - Notifications will be moved to Account level
-	// accountOwner, err := qtx.GetAccountOwner(ctx, portalApp.AccountID)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// err = qtx.UpdateUpsertPortalAppNotification(ctx, UpdateUpsertPortalAppNotificationParams{
-	// 	ApplicationID: portalApp.ID,
-	// 	Active:        true,
-	// 	Type:          types.NotificationTypeEmail,
-	// 	Destination:   string(accountOwner.Email),
-	// 	Events: []types.NotificationEvent{
-	// 		types.NotificationEventSignedUp,
-	// 		types.NotificationEventThreeQuarters,
-	// 		types.NotificationEventFull,
-	// 	},
-	// 	UpdatedAt: newTimestamptz(portalApp.UpdatedAt),
-	// })
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// portalApp.Notifications = map[types.NotificationType]types.AppNotification{
-	// 	types.NotificationTypeEmail: {
-	// 		Type:        types.NotificationTypeEmail,
-	// 		Active:      true,
-	// 		Destination: string(accountOwner.Email),
-	// 		Events: map[types.NotificationEvent]bool{
-	// 			types.NotificationEventSignedUp:      true,
-	// 			types.NotificationEventThreeQuarters: true,
-	// 			types.NotificationEventFull:          true,
-	// 		},
-	// 	},
-	// }
-
 	err = tx.Commit(ctx)
 	if err != nil {
 		return nil, err
@@ -384,12 +341,7 @@ func (pg *PostgresDriver) UpdatePortalApp(ctx context.Context, update types.Upda
 			return err
 		}
 	}
-	if update.Notifications != nil && len(update.Notifications) > 0 {
-		err := pg.updateNotifications(ctx, qtx, update, updatedAt)
-		if err != nil {
-			return err
-		}
-	}
+
 	if update.Whitelists != nil {
 		err := pg.updateWhitelists(ctx, qtx, update, updatedAt)
 		if err != nil {
@@ -420,39 +372,6 @@ func (pg *PostgresDriver) updateSettings(ctx context.Context, qtx *Queries, upda
 	err := qtx.UpdatePortalAppSettings(ctx, updateSettings)
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// updateNotifications updates the PortalApp's notifications rows in the portal_application_notifications table
-func (pg *PostgresDriver) updateNotifications(ctx context.Context, qtx *Queries, update types.UpdatePortalApp, updatedAt time.Time) error {
-	for _, appNotification := range update.Notifications {
-		updateNotification := UpdateUpsertPortalAppNotificationParams{
-			ApplicationID: update.AppID,
-			Type:          appNotification.NotificationType,
-			Active:        appNotification.Active,
-			Destination:   appNotification.Destination,
-			Trigger:       appNotification.Trigger,
-			Events:        appNotification.Events,
-			UpdatedAt:     newTimestamptz(updatedAt),
-		}
-
-		// Upsert notification row for application_id & type if active: true in update struct
-		err := qtx.UpdateUpsertPortalAppNotification(ctx, updateNotification)
-		if err != nil {
-			return err
-		}
-
-		// Delete notification row for application_id & type in DB if active: false in update struct
-		if !appNotification.Active {
-			err := qtx.UpdateDeletePortalAppNotification(ctx, UpdateDeletePortalAppNotificationParams{
-				ApplicationID: update.AppID, Type: appNotification.NotificationType,
-			})
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	return nil
@@ -591,25 +510,6 @@ func (json dbPortalApplicationWhitelist) toOutput() *types.Whitelist {
 	}
 }
 
-func (json dbPortalApplicationNotification) toOutput() *types.AppNotification {
-	return &types.AppNotification{
-		AppID:       json.ApplicationID,
-		Type:        json.Type,
-		Active:      json.Active,
-		Destination: json.Destination,
-		Trigger:     json.Trigger,
-		Events:      json.mapEvents(),
-	}
-}
-
-func (json dbPortalApplicationNotification) mapEvents() map[types.NotificationEvent]bool {
-	events := make(map[types.NotificationEvent]bool)
-	for _, event := range json.Events {
-		events[event] = true
-	}
-	return events
-}
-
 func (json dbPortalApplicationAAT) toOutput() *types.AAT {
 	return &types.AAT{
 		AppID:           json.PortalAppID,
@@ -638,17 +538,6 @@ type dbPortalApplication struct {
 	DailyLimit           int32             `json:"daily_limit"`
 	CustomLimit          int32             `json:"custom_limit"`
 	StripeSubscriptionID string            `json:"stripe_subscription_id"`
-}
-
-type dbPortalApplicationNotification struct {
-	ID            int32                     `json:"id"`
-	ApplicationID types.PortalAppID         `json:"application_id"`
-	Active        bool                      `json:"active"`
-	Type          types.NotificationType    `json:"type"`
-	Destination   string                    `json:"destination"`
-	Trigger       string                    `json:"trigger"`
-	Events        []types.NotificationEvent `json:"events"`
-	UpdatedAt     time.Time                 `json:"updated_at"`
 }
 
 type dbPortalApplicationSetting struct {

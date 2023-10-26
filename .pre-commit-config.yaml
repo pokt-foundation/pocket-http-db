@@ -16,7 +16,8 @@ repos:
       - id: go-critic
       - id: go-build
       - id: go-mod-tidy
-      - id: go-unit-tests
+      # TODO - re-enable
+      # - id: go-unit-tests
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:

@@ -79,35 +79,6 @@ WITH aats_agg AS (
     FROM portal_application_aats paa
     GROUP BY paa.portal_application_id
 ),
-notifications_agg AS (
-    SELECT pn.application_id,
-        json_object_agg(
-            pn.type,
-            json_build_object(
-                'type',
-                pn.type,
-                'active',
-                pn.active,
-                'destination',
-                pn.destination,
-                'trigger',
-                pn.trigger,
-                'events',
-                (
-                    SELECT json_object_agg(
-                            event,
-                            true
-                        )
-                    FROM (
-                            SELECT unnest(pn.events) AS event
-                        ) subquery
-                    WHERE event IS NOT NULL
-                )
-            )
-        ) AS notifications
-    FROM portal_application_notifications pn
-    GROUP BY pn.application_id
-),
 whitelists_agg AS (
     SELECT paw.application_id,
         json_agg(
@@ -130,12 +101,10 @@ SELECT p.*,
     pas.environment,
     pas.favorited_chain_ids,
     COALESCE(aats_agg.aats, '[]'::json) AS aats,
-    COALESCE(notifications_agg.notifications, '[]'::json) AS notifications,
     COALESCE(whitelists_agg.whitelists, '[]'::json) AS whitelists
 FROM portal_applications p
     LEFT JOIN portal_application_settings pas ON p.id = pas.application_id
     LEFT JOIN aats_agg ON p.id = aats_agg.portal_application_id
-    LEFT JOIN notifications_agg ON p.id = notifications_agg.application_id
     LEFT JOIN whitelists_agg ON p.id = whitelists_agg.application_id
 WHERE (
         $1::BOOLEAN
@@ -230,9 +199,9 @@ SET secret_key = COALESCE($2, secret_key),
     favorited_chain_ids = COALESCE($5, favorited_chain_ids),
     updated_at = COALESCE($6, updated_at)
 WHERE application_id = $1;
--- name: UpdateUpsertPortalAppNotification :exec
-INSERT INTO portal_application_notifications (
-        application_id,
+-- name: UpdateUpsertAccountNotification :exec
+INSERT INTO account_notifications (
+        account_id,
         type,
         active,
         destination,
@@ -247,7 +216,7 @@ SELECT $1,
     @trigger::VARCHAR(255),
     @events::notification_event [],
     $2
-WHERE @active IS true ON CONFLICT (application_id, type) DO
+WHERE @active IS true ON CONFLICT (account_id, type) DO
 UPDATE
 SET active = EXCLUDED.active,
     destination = EXCLUDED.destination,
@@ -255,9 +224,9 @@ SET active = EXCLUDED.active,
     events = EXCLUDED.events,
     updated_at = EXCLUDED.updated_at
 WHERE EXCLUDED.active IS true;
--- name: UpdateDeletePortalAppNotification :exec
-DELETE FROM portal_application_notifications
-WHERE application_id = $1
+-- name: UpdateDeleteAccountNotification :exec
+DELETE FROM account_notifications
+WHERE account_id = $1
     and type = $2;
 -- name: CheckIfAppWhitelistExists :one
 SELECT EXISTS(
@@ -322,29 +291,79 @@ WHERE id = $1;
 SELECT a.*,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
+    ai.covalent_api_key_paid,
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
 WHERE (
         $1::BOOLEAN
         OR a.deleted = false
-    )
-GROUP BY a.id,
-    ai.stripe_subscription_id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid;
+    );
 -- name: SelectAccount :one
 SELECT a.*,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
+    ai.covalent_api_key_paid,
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
-WHERE a.id = $1
-GROUP BY a.id,
-    ai.stripe_subscription_id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid;
+WHERE a.id = $1;
 -- name: UpdateAccountFields :exec
 UPDATE accounts
 SET name = COALESCE($1, name),

@@ -436,6 +436,19 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 				StripeSubscriptionID: "stripe_id_1",
 				CovalentAPIKeyFree:   "covalent_api_key_1",
 			},
+			Notifications: map[types.NotificationType]types.AccountNotification{
+				types.NotificationTypeEmail: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "james.holden123@test.com",
+					Trigger:     "trigger123",
+					Events: map[types.NotificationEvent]bool{
+						types.NotificationEventFull:          true,
+						types.NotificationEventQuarter:       true,
+						types.NotificationEventThreeQuarters: true,
+					},
+				},
+			},
 			Users:                  map[types.UserID]types.AccountUser{},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 			PartnerThroughputLimit: 2_000,
@@ -452,6 +465,18 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			Integrations: types.AccountIntegrations{
 				StripeSubscriptionID: "stripe_id_2",
 				CovalentAPIKeyFree:   "covalent_api_key_2",
+			},
+			Notifications: map[types.NotificationType]types.AccountNotification{
+				types.NotificationTypeEmail: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "ellen.ripley789@test.com",
+					Trigger:     "trigger456",
+					Events: map[types.NotificationEvent]bool{
+						types.NotificationEventHalf: true,
+						types.NotificationEventFull: true,
+					},
+				},
 			},
 			Users:                  map[types.UserID]types.AccountUser{},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
@@ -596,19 +621,6 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 					"0001": {"GET": {}},
 				},
 			},
-			Notifications: map[types.NotificationType]types.AppNotification{
-				types.NotificationTypeEmail: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "test@test.com",
-					Trigger:     "trigger123",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventFull:          true,
-						types.NotificationEventQuarter:       true,
-						types.NotificationEventThreeQuarters: true,
-					},
-				},
-			},
 			FirstDateSurpassed: MockTimestamp,
 			CreatedAt:          MockTimestamp,
 			UpdatedAt:          MockTimestamp,
@@ -646,18 +658,6 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 				},
 				Methods: map[types.RelayChainID]map[types.Method]struct{}{
 					"0064": {"POST": {}},
-				},
-			},
-			Notifications: map[types.NotificationType]types.AppNotification{
-				types.NotificationTypeEmail: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "email@pokt.network",
-					Trigger:     "trigger456",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventHalf: true,
-						types.NotificationEventFull: true,
-					},
 				},
 			},
 			FirstDateSurpassed: MockTimestamp,
@@ -1366,32 +1366,6 @@ var (
 		SecretKeyRequired: true,
 		MonthlyRelayLimit: 2_500_000,
 		FavoritedChainIDs: []string{"0003", "0009", "00H3"},
-	}
-	UpdatePortalAppNotifications = []types.UpdateAppNotifications{
-		{
-			NotificationType: types.NotificationTypeEmail,
-			Active:           true,
-			Destination:      "user@example.com",
-			Trigger:          "daily",
-			Events: []types.NotificationEvent{
-				types.NotificationEventSignedUp,
-				types.NotificationEventHalf,
-				types.NotificationEventQuarter,
-				types.NotificationEventThreeQuarters,
-				types.NotificationEventFull,
-			},
-		},
-		{
-			NotificationType: types.NotificationTypeWebhook,
-			Active:           true,
-			Destination:      "https://example.com/webhook",
-			Trigger:          "hourly",
-			Events: []types.NotificationEvent{
-				types.NotificationEventHalf,
-				types.NotificationEventFull,
-			},
-		},
-		{NotificationType: types.NotificationTypePortal, Active: false},
 	}
 	UpdatePortalAppWhitelists = &types.WhitelistsObject{
 		AppWhitelists: [3]types.ApplicationWhitelists{

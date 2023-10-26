@@ -1484,22 +1484,20 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdatePortalApp", func() {
 		tests := []struct {
-			name                     string
-			updatePortalApp          types.UpdatePortalApp
-			testUpdateTime           time.Time
-			testUpdatedName          string
-			testUpdatedSettings      types.Settings
-			testUpdatedNotifications map[types.NotificationType]types.AppNotification
-			testUpdatedWhitelists    types.Whitelists
-			err                      error
+			name                  string
+			updatePortalApp       types.UpdatePortalApp
+			testUpdateTime        time.Time
+			testUpdatedName       string
+			testUpdatedSettings   types.Settings
+			testUpdatedWhitelists types.Whitelists
+			err                   error
 		}{
 			{
 				name: "Should update a new PortalApp in the database with all fields",
 				updatePortalApp: types.UpdatePortalApp{
-					Name:          testdata.UpdatePortalAppName,
-					Settings:      testdata.UpdatePortalAppSettings,
-					Notifications: testdata.UpdatePortalAppNotifications,
-					Whitelists:    testdata.UpdatePortalAppWhitelists,
+					Name:       testdata.UpdatePortalAppName,
+					Settings:   testdata.UpdatePortalAppSettings,
+					Whitelists: testdata.UpdatePortalAppWhitelists,
 				},
 				testUpdateTime:  testdata.MockTimestamp,
 				testUpdatedName: "portal-app-updated",
@@ -1509,31 +1507,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					SecretKeyRequired: true,
 					MonthlyRelayLimit: 2_500_000,
 					FavoritedChainIDs: map[types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
-				},
-				testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-					types.NotificationTypeEmail: {
-						Type:        types.NotificationTypeEmail,
-						Active:      true,
-						Destination: "user@example.com",
-						Trigger:     "daily",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventSignedUp:      true,
-							types.NotificationEventHalf:          true,
-							types.NotificationEventQuarter:       true,
-							types.NotificationEventThreeQuarters: true,
-							types.NotificationEventFull:          true,
-						},
-					},
-					types.NotificationTypeWebhook: {
-						Type:        types.NotificationTypeWebhook,
-						Active:      true,
-						Destination: "https://example.com/webhook",
-						Trigger:     "hourly",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventHalf: true,
-							types.NotificationEventFull: true,
-						},
-					},
 				},
 				testUpdatedWhitelists: types.Whitelists{
 					Origins:     map[types.Origin]struct{}{"https://portalgun.io": {}, "https://subdomain.example.com": {}, "https://www.example.com": {}},
@@ -1575,39 +1548,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					SecretKeyRequired: true,
 					MonthlyRelayLimit: 2_500_000,
 					FavoritedChainIDs: map[types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
-				},
-				err: nil,
-			},
-			{
-				name: "Should update a new PortalApp in the database with only new Notifications",
-				updatePortalApp: types.UpdatePortalApp{
-					Notifications: testdata.UpdatePortalAppNotifications,
-				},
-				testUpdateTime: testdata.MockTimestamp,
-				testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-					types.NotificationTypeEmail: {
-						Type:        types.NotificationTypeEmail,
-						Active:      true,
-						Destination: "user@example.com",
-						Trigger:     "daily",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventSignedUp:      true,
-							types.NotificationEventHalf:          true,
-							types.NotificationEventQuarter:       true,
-							types.NotificationEventThreeQuarters: true,
-							types.NotificationEventFull:          true,
-						},
-					},
-					types.NotificationTypeWebhook: {
-						Type:        types.NotificationTypeWebhook,
-						Active:      true,
-						Destination: "https://example.com/webhook",
-						Trigger:     "hourly",
-						Events: map[types.NotificationEvent]bool{
-							types.NotificationEventHalf: true,
-							types.NotificationEventFull: true,
-						},
-					},
 				},
 				err: nil,
 			},
@@ -1658,12 +1598,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						ts.Equal(test.testUpdatedWhitelists, updatedPortalApp.Whitelists)
 					} else {
 						ts.Equal(createdPortalApp.Settings, updatedPortalApp.Settings)
-					}
-
-					if len(test.testUpdatedNotifications) != 0 {
-						ts.Equal(test.testUpdatedNotifications, updatedPortalApp.Notifications)
-					} else {
-						ts.Equal(createdPortalApp.Notifications, updatedPortalApp.Notifications)
 					}
 
 					if len(test.testUpdatedWhitelists.Origins) != 0 {
@@ -1929,6 +1863,47 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name:                "Should update the account's Notifications field",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
+				update: types.UpdateAccount{
+					AccountID: "account_1",
+					Notifications: []types.UpdateAccountNotifications{
+						{
+							NotificationType: types.NotificationTypeEmail,
+							Active:           true,
+							Destination:      "user@example.com",
+							Trigger:          "daily",
+							Events: []types.NotificationEvent{
+								types.NotificationEventSignedUp,
+								types.NotificationEventHalf,
+								types.NotificationEventQuarter,
+								types.NotificationEventThreeQuarters,
+								types.NotificationEventFull,
+							},
+						},
+					},
+				},
+				userID: "user_1",
+				expected: &types.Account{
+					ID: "account_1",
+					Notifications: map[types.NotificationType]types.AccountNotification{
+						types.NotificationTypeEmail: {
+							Type:        types.NotificationTypeEmail,
+							Active:      true,
+							Destination: "user@example.com",
+							Trigger:     "daily",
+							Events: map[types.NotificationEvent]bool{
+								types.NotificationEventSignedUp:      true,
+								types.NotificationEventHalf:          true,
+								types.NotificationEventQuarter:       true,
+								types.NotificationEventThreeQuarters: true,
+								types.NotificationEventFull:          true,
+							},
+						},
+					},
+				},
+			},
+			{
 				name: "Should fail if an invalid account ID is provided",
 				update: types.UpdateAccount{
 					AccountID: "account_8823",
@@ -1941,11 +1916,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				if test.err == nil {
-					accountBeforeUpdate, err := ts.client1.GetUserAccount(context.Background(), test.accountBeforeUpdate.ID, test.userID)
-					ts.NoError(err)
-					ts.Equal(test.accountBeforeUpdate.PlanType, accountBeforeUpdate.PlanType)
-				}
+				accountBeforeUpdate, err := ts.client1.GetUserAccount(context.Background(), test.accountBeforeUpdate.ID, test.userID)
+				ts.NoError(err)
 
 				updatedAccount, err := ts.client1.UpdateAccount(context.Background(), test.update)
 				ts.Equal(test.err, err)
@@ -1957,7 +1929,19 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					accountAfterUpdate, err := ts.client1.GetUserAccount(context.Background(), updatedAccount.ID, test.userID)
 					ts.NoError(err)
-					ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
+
+					if test.update.PlanType != "" {
+						ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
+					} else {
+						ts.Equal(accountBeforeUpdate.PlanType, accountAfterUpdate.PlanType)
+					}
+
+					if len(test.update.Notifications) != 0 {
+						ts.Equal(test.expected.Notifications, accountAfterUpdate.Notifications)
+					} else {
+						ts.Equal(accountBeforeUpdate.Notifications, accountAfterUpdate.Notifications)
+					}
+
 				}
 			})
 		}

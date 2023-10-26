@@ -331,10 +331,11 @@ func Test_upsertAccountUser(t *testing.T) {
 
 func Test_upsertAccount(t *testing.T) {
 	tests := []struct {
-		name        string
-		account     types.Account
-		accountUser types.AccountUser
-		userID      types.UserID
+		name                        string
+		account                     types.Account
+		accountUser                 types.AccountUser
+		pendingAccountNotifications map[types.AccountID]types.AccountNotification
+		userID                      types.UserID
 	}{
 		{
 			name:    "Should insert a new account",
@@ -345,6 +346,19 @@ func Test_upsertAccount(t *testing.T) {
 				Email:     "james.holden123@test.com",
 				RoleName:  types.RoleOwner,
 				Accepted:  true,
+			},
+		},
+		{
+			name:    "Should add a new Account to cache with pending AppNotifications",
+			account: *testdata.TestCreateAccount,
+			pendingAccountNotifications: map[types.AccountID]types.AccountNotification{
+				"create_account_id": {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "email@pokt.network",
+					Trigger:     "trigger456",
+					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
+				},
 			},
 		},
 		{
@@ -412,38 +426,124 @@ func Test_upsertAccount(t *testing.T) {
 			if test.account.Deleted {
 				c.Empty(cache.GetUserAccount(accountID, test.accountUser.ID, Options{}), "Account should be removed from cache")
 			} else {
+				expectedAccount := test.account
 
-				test.account.Plan = cache.plans[test.account.PlanType]
+				if appNotification, ok := test.pendingAccountNotifications[test.account.ID]; ok {
+					if expectedAccount.Notifications == nil {
+						expectedAccount.Notifications = make(map[types.NotificationType]types.AccountNotification)
+					}
+					expectedAccount.Notifications[appNotification.Type] = appNotification
+				}
+
+				cache.pendingAccountNotifications = test.pendingAccountNotifications
+
+				expectedAccount.Plan = cache.plans[expectedAccount.PlanType]
 				if test.accountUser.ID != "" {
 					test.accountUser.AccountID = ""
-					test.account.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
+					expectedAccount.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
 				}
-				c.Equal(test.account, cache.GetUserAccount(test.account.ID, userID, Options{}), "Account should be present in cache and updated")
+				c.Equal(expectedAccount, cache.GetUserAccount(expectedAccount.ID, userID, Options{}), "Account should be present in cache and updated")
 
 				accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
-				if test.account.Deleted {
+				if expectedAccount.Deleted {
 					c.False(accountFound, "Account should be removed from accounts map")
 				} else {
 					c.True(accountFound, "Account should be found in accounts map")
 				}
 
-				for _, user := range test.account.Users {
+				for _, user := range expectedAccount.Users {
 					accountsForUser := cache.GetUserAccounts(user.ID, Options{
 						Accepted: dbclient.BoolPtr(true),
 					})
 
 					accountInUserAccounts := testdata.FindAccountInAccounts(accountsForUser, accountID)
-					if test.account.Deleted {
+					if expectedAccount.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {
 						if user.Accepted {
 							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.ID, accountID)
-							c.Equal(test.account, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+							c.Equal(expectedAccount, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
 						} else {
 							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
 						}
 					}
 				}
+
+				_, ok := cache.pendingAccountNotifications[expectedAccount.ID]
+				c.False(ok, "Pending AccountNotifications should be removed from cache")
+			}
+		})
+	}
+}
+
+func Test_addAccountNotification(t *testing.T) {
+	tests := []struct {
+		name         string
+		notification types.AccountNotification
+		userID       types.UserID
+		accountID    types.AccountID
+		account      *types.Account
+	}{
+		{
+			name: "Should add AccountNotification to an existing PortalApp in cache",
+			notification: types.AccountNotification{
+				AccountID:   "account_3",
+				Type:        "test_type_1",
+				Active:      true,
+				Destination: "test_destination_1",
+				Trigger:     "test_trigger_1",
+				Events: map[types.NotificationEvent]bool{
+					types.NotificationEventFull: true,
+					types.NotificationEventHalf: false,
+				},
+			},
+			userID:    "user_5",
+			accountID: "test_app_new_3450he46fhs7",
+			account: &types.Account{
+				ID:            "account_3",
+				Name:          "new_pokt_app_1",
+				Notifications: make(map[types.NotificationType]types.AccountNotification),
+			},
+		},
+		{
+			name: "Should store AccountNotification in pendingAppNotifications map if Account not in cache",
+			notification: types.AccountNotification{
+				AccountID:   "test_account_nope",
+				Type:        "test_type_2",
+				Active:      false,
+				Destination: "test_destination_2",
+				Trigger:     "test_trigger_2",
+				Events: map[types.NotificationEvent]bool{
+					types.NotificationEventQuarter:  true,
+					types.NotificationEventSignedUp: false,
+				},
+			},
+			accountID: "test_account_nope",
+			account:   nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			cache := NewTestCache(t)
+
+			if test.account != nil {
+				cache.upsertAccount(*test.account)
+			}
+
+			cache.addAccountNotification(test.notification)
+			test.notification.AccountID = "" // is unset in the cache TODO will be changed soon
+
+			if test.account != nil {
+				storedAccount := cache.GetUserAccount(test.accountID, test.userID, Options{})
+				storedNotification := storedAccount.Notifications[test.notification.Type]
+				c.Equal(test.notification, storedNotification, "AccountNotification should be added to the PortalApp in cache")
+			} else {
+				storedNotification, ok := cache.pendingAccountNotifications[test.accountID]
+				c.True(ok, "AccountNotification should be stored in pendingAccountNotifications map")
+				c.Equal(test.notification, storedNotification, "AccountNotification should be equal to the pending AccountNotification")
 			}
 		})
 	}
@@ -518,13 +618,12 @@ func Test_upsertPortalApp(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                    string
-		portalApp               types.PortalApp
-		pendingAAT              map[types.PortalAppID]types.AAT
-		pendingSettings         map[types.PortalAppID]types.Settings
-		pendingAppNotifications map[types.PortalAppID]types.AppNotification
-		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
-		update, delete          bool
+		name              string
+		portalApp         types.PortalApp
+		pendingAAT        map[types.PortalAppID]types.AAT
+		pendingSettings   map[types.PortalAppID]types.Settings
+		pendingWhitelists map[types.PortalAppID][]types.Whitelist
+		update, delete    bool
 	}{
 		{
 			name:      "Should add a new PortalApp to cache with no pending side table data",
@@ -540,25 +639,6 @@ func Test_upsertPortalApp(t *testing.T) {
 		{
 			name:      "Should add a new PortalApp to cache with pending Settings",
 			portalApp: testBaseApp,
-			pendingSettings: map[types.PortalAppID]types.Settings{
-				testBaseApp.ID: testApp.Settings,
-			},
-			pendingAAT: map[types.PortalAppID]types.AAT{
-				testBaseApp.ID: testdata.TestCreatePortalAppAAT,
-			},
-		},
-		{
-			name:      "Should add a new PortalApp to cache with pending AppNotifications",
-			portalApp: testBaseApp,
-			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
-				testBaseApp.ID: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "email@pokt.network",
-					Trigger:     "trigger456",
-					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
-				},
-			},
 			pendingSettings: map[types.PortalAppID]types.Settings{
 				testBaseApp.ID: testApp.Settings,
 			},
@@ -587,15 +667,6 @@ func Test_upsertPortalApp(t *testing.T) {
 					},
 				},
 			},
-			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
-				testBaseApp.ID: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "email@pokt.network",
-					Trigger:     "trigger456",
-					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
-				},
-			},
 			pendingAAT: map[types.PortalAppID]types.AAT{
 				testBaseApp.ID: testdata.TestCreatePortalAppAAT,
 			},
@@ -606,15 +677,6 @@ func Test_upsertPortalApp(t *testing.T) {
 			pendingAAT: nil, // AAT is never updated
 			pendingSettings: map[types.PortalAppID]types.Settings{
 				"test_app_1": testApp.Settings,
-			},
-			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
-				"test_app_1": {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "user@example.network",
-					Trigger:     "12345",
-					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
-				},
 			},
 			pendingWhitelists: map[types.PortalAppID][]types.Whitelist{
 				"test_app_1": {
@@ -663,12 +725,6 @@ func Test_upsertPortalApp(t *testing.T) {
 			if settings, ok := test.pendingSettings[test.portalApp.ID]; ok {
 				expectedPortalApp.Settings = settings
 			}
-			if appNotification, ok := test.pendingAppNotifications[test.portalApp.ID]; ok {
-				if expectedPortalApp.Notifications == nil {
-					expectedPortalApp.Notifications = make(map[types.NotificationType]types.AppNotification)
-				}
-				expectedPortalApp.Notifications[appNotification.Type] = appNotification
-			}
 			if whitelists, ok := test.pendingWhitelists[test.portalApp.ID]; ok {
 				for _, whitelist := range whitelists {
 					expectedPortalApp.AddWhitelist((whitelist))
@@ -678,7 +734,6 @@ func Test_upsertPortalApp(t *testing.T) {
 			// Add pending data to cache
 			cache.pendingPortalAppAATs = test.pendingAAT
 			cache.pendingSettings = test.pendingSettings
-			cache.pendingAppNotifications = test.pendingAppNotifications
 			cache.pendingWhitelists = test.pendingWhitelists
 
 			// Add, update or delete PortalApp
@@ -699,8 +754,6 @@ func Test_upsertPortalApp(t *testing.T) {
 			c.False(ok, "Pending AAT should be removed from cache")
 			_, ok = cache.pendingSettings[test.portalApp.ID]
 			c.False(ok, "Pending Settings should be removed from cache")
-			_, ok = cache.pendingAppNotifications[test.portalApp.ID]
-			c.False(ok, "Pending AppNotifications should be removed from cache")
 			_, ok = cache.pendingWhitelists[test.portalApp.ID]
 			c.False(ok, "Pending Whitelists should be removed from cache")
 		})
@@ -829,78 +882,6 @@ func Test_addPortalAppSettings(t *testing.T) {
 				storedSettings, ok := cache.pendingSettings[test.portalAppID]
 				c.True(ok, "Settings should be stored in pendingSettings map")
 				c.Equal(test.settings, storedSettings, "Settings should be equal to the pending Settings")
-			}
-		})
-	}
-}
-
-func Test_addAppNotification(t *testing.T) {
-	tests := []struct {
-		name         string
-		notification types.AppNotification
-		portalAppID  types.PortalAppID
-		portalApp    *types.PortalApp
-	}{
-		{
-			name: "Should add AppNotification to an existing PortalApp in cache",
-			notification: types.AppNotification{
-				AppID:       "test_app_new_3450he46fhs7",
-				Type:        "test_type_1",
-				Active:      true,
-				Destination: "test_destination_1",
-				Trigger:     "test_trigger_1",
-				Events: map[types.NotificationEvent]bool{
-					types.NotificationEventFull: true,
-					types.NotificationEventHalf: false,
-				},
-			},
-			portalAppID: "test_app_new_3450he46fhs7",
-			portalApp: &types.PortalApp{
-				ID:            "test_app_new_3450he46fhs7",
-				Name:          "new_pokt_app_1",
-				AccountID:     "account_3",
-				Notifications: make(map[types.NotificationType]types.AppNotification),
-			},
-		},
-		{
-			name: "Should store AppNotification in pendingAppNotifications map if PortalApp not in cache",
-			notification: types.AppNotification{
-				AppID:       "test_app_nope_345he46fhs7",
-				Type:        "test_type_2",
-				Active:      false,
-				Destination: "test_destination_2",
-				Trigger:     "test_trigger_2",
-				Events: map[types.NotificationEvent]bool{
-					types.NotificationEventQuarter:  true,
-					types.NotificationEventSignedUp: false,
-				},
-			},
-			portalAppID: "test_app_nope_345he46fhs7",
-			portalApp:   nil,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			cache := NewTestCache(t)
-
-			if test.portalApp != nil {
-				cache.upsertPortalApp(*test.portalApp)
-			}
-
-			cache.addAppNotification(test.notification)
-			test.notification.AppID = "" // is unset in the cache TODO will be changed soon
-
-			if test.portalApp != nil {
-				storedPortalApp := cache.GetPortalApp(test.portalAppID)
-				storedNotification := storedPortalApp.Notifications[test.notification.Type]
-				c.Equal(test.notification, storedNotification, "AppNotification should be added to the PortalApp in cache")
-			} else {
-				storedNotification, ok := cache.pendingAppNotifications[test.portalAppID]
-				c.True(ok, "AppNotification should be stored in pendingAppNotifications map")
-				c.Equal(test.notification, storedNotification, "AppNotification should be equal to the pending AppNotification")
 			}
 		})
 	}

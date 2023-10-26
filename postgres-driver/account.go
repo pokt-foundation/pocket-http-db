@@ -2,6 +2,7 @@ package postgresdriver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -23,6 +24,7 @@ var (
 	errAcceptNoAccountID            = errors.New("error must provide account ID when accepting user")
 	errCannotTransferNotAccepted    = errors.New("error cannot transfer ownership to user ID '%s' for account ID '%s' because the user has not accepted their invite")
 	errCannotDeclineAlreadyAccepted = errors.New("error user ID '%s' cannot decline invite for account ID '%s' because they have already accepted it")
+	errUnmarshallingNotifications   = errors.New("error unmarshalling notifications")
 )
 
 /* ----- postgresdriver Account Read Methods ----- */
@@ -65,6 +67,13 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 		}
 	}
 
+	var notifications map[types.NotificationType]types.AccountNotification
+	if len(string(a.Notifications)) > 2 { // length of empty JSON array in bytes
+		if err := json.Unmarshal(a.Notifications, &notifications); err != nil {
+			return nil, fmt.Errorf("%s: %w", errUnmarshallingNotifications, err)
+		}
+	}
+
 	return &types.Account{
 		ID:                     a.ID,
 		Name:                   a.Name.String,
@@ -78,9 +87,10 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 			CovalentAPIKeyFree:   a.CovalentAPIKeyFree.String,
 			CovalentAPIKeyPaid:   a.CovalentAPIKeyPaid.String,
 		},
-		CreatedAt: a.CreatedAt.Time.UTC(),
-		UpdatedAt: a.UpdatedAt.Time.UTC(),
-		Deleted:   a.Deleted,
+		Notifications: notifications,
+		CreatedAt:     a.CreatedAt.Time.UTC(),
+		UpdatedAt:     a.UpdatedAt.Time.UTC(),
+		Deleted:       a.Deleted,
 
 		// PortalApps map set in cache when cache is set
 		PortalApps: map[types.PortalAppID]*types.PortalApp{},
@@ -226,13 +236,54 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		return nil, err
 	}
 
-	err = pg.UpdateAccountFields(ctx, UpdateAccountFieldsParams{
+	tx, err := pg.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := pg.WithTx(tx)
+
+	err = qtx.UpdateAccountFields(ctx, UpdateAccountFieldsParams{
 		ID:        update.AccountID,
 		Name:      newText(update.Name),
 		IconURL:   newText(update.IconURL),
 		PlanType:  newText(string(update.PlanType)),
 		UpdatedAt: newTimestamptz(updatedAt),
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	if update.Notifications != nil && len(update.Notifications) > 0 {
+		for _, appNotification := range update.Notifications {
+			// Upsert notification row for application_id & type if active: true in update struct
+			err := qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
+				AccountID:   update.AccountID,
+				Type:        appNotification.NotificationType,
+				Active:      appNotification.Active,
+				Destination: appNotification.Destination,
+				Trigger:     appNotification.Trigger,
+				Events:      appNotification.Events,
+				UpdatedAt:   newTimestamptz(updatedAt),
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			// Delete notification row for application_id & type in DB if active: false in update struct
+			if !appNotification.Active {
+				err := qtx.UpdateDeleteAccountNotification(ctx, UpdateDeleteAccountNotificationParams{
+					AccountID: update.AccountID, Type: appNotification.NotificationType,
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	err = tx.Commit(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -252,6 +303,7 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		PartnerApplicationLimit: accountResult.PartnerApplicationLimit,
 		CovalentAPIKeyFree:      accountResult.CovalentAPIKeyFree,
 		CovalentAPIKeyPaid:      accountResult.CovalentAPIKeyPaid,
+		Notifications:           accountResult.Notifications,
 		CreatedAt:               accountResult.CreatedAt,
 		UpdatedAt:               accountResult.UpdatedAt,
 		Deleted:                 accountResult.Deleted,
@@ -680,6 +732,25 @@ func (j dbAccountIntegration) toOutput() *types.AccountIntegrations {
 	}
 }
 
+func (json dbAccountNotification) toOutput() *types.AccountNotification {
+	return &types.AccountNotification{
+		AccountID:   json.AccountID,
+		Type:        json.Type,
+		Active:      json.Active,
+		Destination: json.Destination,
+		Trigger:     json.Trigger,
+		Events:      json.mapEvents(),
+	}
+}
+
+func (json dbAccountNotification) mapEvents() map[types.NotificationEvent]bool {
+	events := make(map[types.NotificationEvent]bool)
+	for _, event := range json.Events {
+		events[event] = true
+	}
+	return events
+}
+
 type dbAccount struct {
 	ID                      types.AccountID   `json:"id"`
 	Name                    string            `json:"name"`
@@ -701,6 +772,17 @@ type dbAccountIntegration struct {
 	CovalentAPIKeyPaid string          `json:"covalent_api_key_paid"`
 	CreatedAt          time.Time       `json:"created_at"`
 	UpdatedAt          time.Time       `json:"updated_at"`
+}
+
+type dbAccountNotification struct {
+	ID          int32                     `json:"id"`
+	AccountID   types.AccountID           `json:"account_id"`
+	Active      bool                      `json:"active"`
+	Type        types.NotificationType    `json:"type"`
+	Destination string                    `json:"destination"`
+	Trigger     string                    `json:"trigger"`
+	Events      []types.NotificationEvent `json:"events"`
+	UpdatedAt   time.Time                 `json:"updated_at"`
 }
 
 type dbAccountUser struct {

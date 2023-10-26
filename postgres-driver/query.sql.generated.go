@@ -1213,14 +1213,39 @@ const selectAccount = `-- name: SelectAccount :one
 SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
+    ai.covalent_api_key_paid,
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
 WHERE a.id = $1
-GROUP BY a.id,
-    ai.stripe_subscription_id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
 `
 
 type SelectAccountRow struct {
@@ -1238,6 +1263,7 @@ type SelectAccountRow struct {
 	StripeSubscriptionID    pgtype.Text        `json:"stripe_subscription_id"`
 	CovalentAPIKeyFree      pgtype.Text        `json:"covalent_api_key_free"`
 	CovalentAPIKeyPaid      pgtype.Text        `json:"covalent_api_key_paid"`
+	Notifications           []byte             `json:"notifications"`
 }
 
 func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (SelectAccountRow, error) {
@@ -1258,6 +1284,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 		&i.StripeSubscriptionID,
 		&i.CovalentAPIKeyFree,
 		&i.CovalentAPIKeyPaid,
+		&i.Notifications,
 	)
 	return i, err
 }
@@ -1266,17 +1293,42 @@ const selectAccounts = `-- name: SelectAccounts :many
 SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
+    ai.covalent_api_key_paid,
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
 WHERE (
         $1::BOOLEAN
         OR a.deleted = false
     )
-GROUP BY a.id,
-    ai.stripe_subscription_id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
 `
 
 type SelectAccountsRow struct {
@@ -1294,6 +1346,7 @@ type SelectAccountsRow struct {
 	StripeSubscriptionID    pgtype.Text        `json:"stripe_subscription_id"`
 	CovalentAPIKeyFree      pgtype.Text        `json:"covalent_api_key_free"`
 	CovalentAPIKeyPaid      pgtype.Text        `json:"covalent_api_key_paid"`
+	Notifications           []byte             `json:"notifications"`
 }
 
 func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAccountsRow, error) {
@@ -1320,6 +1373,7 @@ func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAc
 			&i.StripeSubscriptionID,
 			&i.CovalentAPIKeyFree,
 			&i.CovalentAPIKeyPaid,
+			&i.Notifications,
 		); err != nil {
 			return nil, err
 		}
@@ -1745,35 +1799,6 @@ WITH aats_agg AS (
     FROM portal_application_aats paa
     GROUP BY paa.portal_application_id
 ),
-notifications_agg AS (
-    SELECT pn.application_id,
-        json_object_agg(
-            pn.type,
-            json_build_object(
-                'type',
-                pn.type,
-                'active',
-                pn.active,
-                'destination',
-                pn.destination,
-                'trigger',
-                pn.trigger,
-                'events',
-                (
-                    SELECT json_object_agg(
-                            event,
-                            true
-                        )
-                    FROM (
-                            SELECT unnest(pn.events) AS event
-                        ) subquery
-                    WHERE event IS NOT NULL
-                )
-            )
-        ) AS notifications
-    FROM portal_application_notifications pn
-    GROUP BY pn.application_id
-),
 whitelists_agg AS (
     SELECT paw.application_id,
         json_agg(
@@ -1796,12 +1821,10 @@ SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.u
     pas.environment,
     pas.favorited_chain_ids,
     COALESCE(aats_agg.aats, '[]'::json) AS aats,
-    COALESCE(notifications_agg.notifications, '[]'::json) AS notifications,
     COALESCE(whitelists_agg.whitelists, '[]'::json) AS whitelists
 FROM portal_applications p
     LEFT JOIN portal_application_settings pas ON p.id = pas.application_id
     LEFT JOIN aats_agg ON p.id = aats_agg.portal_application_id
-    LEFT JOIN notifications_agg ON p.id = notifications_agg.application_id
     LEFT JOIN whitelists_agg ON p.id = whitelists_agg.application_id
 WHERE (
         $1::BOOLEAN
@@ -1826,7 +1849,6 @@ type SelectPortalApplicationsRow struct {
 	Environment        NullEnvironment    `json:"environment"`
 	FavoritedChainIDs  []string           `json:"favorited_chain_ids"`
 	AATs               []byte             `json:"aats"`
-	Notifications      []byte             `json:"notifications"`
 	Whitelists         []byte             `json:"whitelists"`
 }
 
@@ -1856,7 +1878,6 @@ func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) (
 			&i.Environment,
 			&i.FavoritedChainIDs,
 			&i.AATs,
-			&i.Notifications,
 			&i.Whitelists,
 		); err != nil {
 			return nil, err
@@ -2122,19 +2143,19 @@ func (q *Queries) UpdateChainActive(ctx context.Context, arg UpdateChainActivePa
 	return active, err
 }
 
-const updateDeletePortalAppNotification = `-- name: UpdateDeletePortalAppNotification :exec
-DELETE FROM portal_application_notifications
-WHERE application_id = $1
+const updateDeleteAccountNotification = `-- name: UpdateDeleteAccountNotification :exec
+DELETE FROM account_notifications
+WHERE account_id = $1
     and type = $2
 `
 
-type UpdateDeletePortalAppNotificationParams struct {
-	ApplicationID types.PortalAppID      `json:"application_id"`
-	Type          types.NotificationType `json:"type"`
+type UpdateDeleteAccountNotificationParams struct {
+	AccountID types.AccountID        `json:"account_id"`
+	Type      types.NotificationType `json:"type"`
 }
 
-func (q *Queries) UpdateDeletePortalAppNotification(ctx context.Context, arg UpdateDeletePortalAppNotificationParams) error {
-	_, err := q.db.Exec(ctx, updateDeletePortalAppNotification, arg.ApplicationID, arg.Type)
+func (q *Queries) UpdateDeleteAccountNotification(ctx context.Context, arg UpdateDeleteAccountNotificationParams) error {
+	_, err := q.db.Exec(ctx, updateDeleteAccountNotification, arg.AccountID, arg.Type)
 	return err
 }
 
@@ -2341,9 +2362,9 @@ func (q *Queries) UpdatePortalAppSettings(ctx context.Context, arg UpdatePortalA
 	return err
 }
 
-const updateUpsertPortalAppNotification = `-- name: UpdateUpsertPortalAppNotification :exec
-INSERT INTO portal_application_notifications (
-        application_id,
+const updateUpsertAccountNotification = `-- name: UpdateUpsertAccountNotification :exec
+INSERT INTO account_notifications (
+        account_id,
         type,
         active,
         destination,
@@ -2358,7 +2379,7 @@ SELECT $1,
     $6::VARCHAR(255),
     $7::notification_event [],
     $2
-WHERE $4 IS true ON CONFLICT (application_id, type) DO
+WHERE $4 IS true ON CONFLICT (account_id, type) DO
 UPDATE
 SET active = EXCLUDED.active,
     destination = EXCLUDED.destination,
@@ -2368,19 +2389,19 @@ SET active = EXCLUDED.active,
 WHERE EXCLUDED.active IS true
 `
 
-type UpdateUpsertPortalAppNotificationParams struct {
-	ApplicationID types.PortalAppID         `json:"application_id"`
-	UpdatedAt     pgtype.Timestamptz        `json:"updated_at"`
-	Type          types.NotificationType    `json:"type"`
-	Active        bool                      `json:"active"`
-	Destination   string                    `json:"destination"`
-	Trigger       string                    `json:"trigger"`
-	Events        []types.NotificationEvent `json:"events"`
+type UpdateUpsertAccountNotificationParams struct {
+	AccountID   types.AccountID           `json:"account_id"`
+	UpdatedAt   pgtype.Timestamptz        `json:"updated_at"`
+	Type        types.NotificationType    `json:"type"`
+	Active      bool                      `json:"active"`
+	Destination string                    `json:"destination"`
+	Trigger     string                    `json:"trigger"`
+	Events      []types.NotificationEvent `json:"events"`
 }
 
-func (q *Queries) UpdateUpsertPortalAppNotification(ctx context.Context, arg UpdateUpsertPortalAppNotificationParams) error {
-	_, err := q.db.Exec(ctx, updateUpsertPortalAppNotification,
-		arg.ApplicationID,
+func (q *Queries) UpdateUpsertAccountNotification(ctx context.Context, arg UpdateUpsertAccountNotificationParams) error {
+	_, err := q.db.Exec(ctx, updateUpsertAccountNotification,
+		arg.AccountID,
 		arg.UpdatedAt,
 		arg.Type,
 		arg.Active,

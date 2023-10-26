@@ -33,16 +33,16 @@ type (
 		usersByProviderID map[types.ProviderUserID]*types.User
 		usersByAccountID  map[types.AccountID]UsersForAccount
 
-		accounts                 map[types.AccountID]*types.Account
-		accountsByUserID         map[types.UserID]AccountsForUser
-		pendingAccountUsers      map[types.UserID][]types.AccountUser
-		pendingUserAuthProviders map[types.UserID]types.UserAuthProvider
+		accounts                    map[types.AccountID]*types.Account
+		pendingAccountNotifications map[types.AccountID]types.AccountNotification
+		accountsByUserID            map[types.UserID]AccountsForUser
+		pendingAccountUsers         map[types.UserID][]types.AccountUser
+		pendingUserAuthProviders    map[types.UserID]types.UserAuthProvider
 
 		portalApps                map[types.PortalAppID]*types.PortalApp
 		portalAppsByProtocolAppID map[types.ProtocolAppID]*types.PortalApp
 		pendingPortalAppAATs      map[types.PortalAppID]types.AAT
 		pendingSettings           map[types.PortalAppID]types.Settings
-		pendingAppNotifications   map[types.PortalAppID]types.AppNotification
 		pendingWhitelists         map[types.PortalAppID][]types.Whitelist
 
 		gigastakeApps              map[types.GigastakeAppID]*types.GigastakeApp
@@ -105,15 +105,15 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		logger: config.Logger,
 
-		pendingAccountUsers:        make(map[types.UserID][]types.AccountUser),
-		pendingUserAuthProviders:   make(map[types.UserID]types.UserAuthProvider),
-		pendingPortalAppAATs:       make(map[types.PortalAppID]types.AAT),
-		pendingSettings:            make(map[types.PortalAppID]types.Settings),
-		pendingAppNotifications:    make(map[types.PortalAppID]types.AppNotification),
-		pendingWhitelists:          make(map[types.PortalAppID][]types.Whitelist),
-		pendingAltruists:           make(map[types.RelayChainID][]types.Altruist),
-		pendingChainsGigastakeApps: make(map[types.GigastakeAppID]types.ChainGigastakeApp),
-		pendingAliases:             make(map[types.RelayChainID][]types.ChainAlias),
+		pendingAccountNotifications: make(map[types.AccountID]types.AccountNotification),
+		pendingAccountUsers:         make(map[types.UserID][]types.AccountUser),
+		pendingUserAuthProviders:    make(map[types.UserID]types.UserAuthProvider),
+		pendingPortalAppAATs:        make(map[types.PortalAppID]types.AAT),
+		pendingSettings:             make(map[types.PortalAppID]types.Settings),
+		pendingWhitelists:           make(map[types.PortalAppID][]types.Whitelist),
+		pendingAltruists:            make(map[types.RelayChainID][]types.Altruist),
+		pendingChainsGigastakeApps:  make(map[types.GigastakeAppID]types.ChainGigastakeApp),
+		pendingAliases:              make(map[types.RelayChainID][]types.ChainAlias),
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		pendingAliasDomains:  make(map[types.RelayChainID][]types.AliasDomains),
 		pendingChecks:        make(map[types.RelayChainID][]types.Check),
@@ -548,6 +548,15 @@ func (c *Cache) upsertAccount(account types.Account) {
 	if existingAccount, ok := c.accounts[account.ID]; ok {
 		account.PortalApps = existingAccount.PortalApps
 		account.Integrations = existingAccount.Integrations
+		account.Notifications = existingAccount.Notifications
+	}
+
+	if pendingNotification, ok := c.pendingAccountNotifications[account.ID]; ok {
+		if account.Notifications == nil {
+			account.Notifications = make(map[types.NotificationType]types.AccountNotification)
+		}
+		account.Notifications[pendingNotification.Type] = pendingNotification
+		delete(c.pendingAccountNotifications, account.ID)
 	}
 
 	// Set plan in cache to latest value
@@ -562,6 +571,27 @@ func (c *Cache) upsertAccount(account types.Account) {
 		}
 		c.accountsByUserID[user.ID][account.ID] = &account
 	}
+}
+
+// addAccountNotification adds or updates the AccountNotifications for an Account in cache
+func (c *Cache) addAccountNotification(notification types.AccountNotification) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	accountID := notification.AccountID
+	notification.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
+
+	c.pendingAccountNotifications[accountID] = notification
+
+	account, ok := c.accounts[accountID]
+	if !ok {
+		return
+	}
+
+	if account.Notifications == nil {
+		account.Notifications = make(map[types.NotificationType]types.AccountNotification)
+	}
+	account.Notifications[notification.Type] = notification
 }
 
 // upsertAccount adds or updates AccountUser in cache
@@ -750,7 +780,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	if existingPortalApp, ok := c.portalApps[portalApp.ID]; ok {
 		portalApp.AATs = existingPortalApp.AATs
 		portalApp.Settings = existingPortalApp.Settings
-		portalApp.Notifications = existingPortalApp.Notifications
 		portalApp.Whitelists = existingPortalApp.Whitelists
 	}
 
@@ -778,14 +807,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	if pendingSettings, ok := c.pendingSettings[portalApp.ID]; ok {
 		portalApp.Settings = pendingSettings
 		delete(c.pendingSettings, portalApp.ID)
-	}
-
-	if pendingNotification, ok := c.pendingAppNotifications[portalApp.ID]; ok {
-		if portalApp.Notifications == nil {
-			portalApp.Notifications = make(map[types.NotificationType]types.AppNotification)
-		}
-		portalApp.Notifications[pendingNotification.Type] = pendingNotification
-		delete(c.pendingAppNotifications, portalApp.ID)
 	}
 
 	if pendingWhitelists, ok := c.pendingWhitelists[portalApp.ID]; ok {
@@ -846,27 +867,6 @@ func (c *Cache) addPortalAppSettings(settings types.Settings) {
 	}
 
 	portalApp.Settings = settings
-}
-
-// addPortalAppSettings adds or updates the AppNotifications for a PortalApp in cache
-func (c *Cache) addAppNotification(notification types.AppNotification) {
-	c.rwMutex.Lock()
-	defer c.rwMutex.Unlock()
-
-	appID := notification.AppID
-	notification.AppID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
-
-	c.pendingAppNotifications[appID] = notification
-
-	portalApp, ok := c.portalApps[appID]
-	if !ok {
-		return
-	}
-
-	if portalApp.Notifications == nil {
-		portalApp.Notifications = make(map[types.NotificationType]types.AppNotification)
-	}
-	portalApp.Notifications[notification.Type] = notification
 }
 
 // Adds or updates a Whitelist for a PortalApp in cache
