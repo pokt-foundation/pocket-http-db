@@ -10,13 +10,6 @@ import (
 	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
-type (
-	accountUserDBRow struct {
-		UserID         string `json:"user_id"`
-		types.RoleName `json:"role_name"`
-	}
-)
-
 var (
 	errNoRoleName                   = errors.New("error no role name set")
 	errInvalidRoleName              = errors.New("error invalid role name set")
@@ -346,9 +339,7 @@ func (pg *PostgresDriver) WriteAccountUser(ctx context.Context, createAccountUse
 	// determine if user for a given email already exists
 	userID, err := pg.CheckUserIDFromEmail(ctx, createAccountUser.Email)
 	if err != nil {
-		switch {
-
-		case errNoRows(err):
+		if errNoRows(err) {
 			// user with provided email does not exist in DB so create a new User and AccountUser entry
 			createdUserID, err := pg.writeAccountUserAccessNoUser(ctx, createAccountUser, createdAt)
 			if err != nil {
@@ -356,10 +347,9 @@ func (pg *PostgresDriver) WriteAccountUser(ctx context.Context, createAccountUse
 			}
 
 			return createdUserID, nil
-
-		default:
-			return "", err
 		}
+
+		return "", err
 	}
 
 	// user with provided email already exists in DB so create a new AccountUser entry

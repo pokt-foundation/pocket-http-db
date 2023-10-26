@@ -863,6 +863,9 @@ func (db *DBClient) SetAccountUserRole(ctx context.Context, updateUser types.Upd
 
 // UpdateAcceptAccountUser accepts or declines an Account User Access - PUT `/v2/account/user/accept`
 func (db *DBClient) UpdateAcceptAccountUser(ctx context.Context, acceptUser types.UpdateAcceptAccountUser, time time.Time) (map[string]string, error) {
+	if acceptUser.AccountID == "" {
+		return nil, errNoAccountID
+	}
 	if acceptUser.UserID == "" {
 		return nil, errNoUserID
 	}

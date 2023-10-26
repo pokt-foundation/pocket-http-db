@@ -59,7 +59,6 @@ var (
 	errInvalidDomain        = errors.New("error domain '%s' for alias '%s' is invalid")
 	errChainExists          = errors.New("error chain already exists for chain ID '%s'")
 	errChainDoesntExist     = errors.New("error chain does not exist for chain ID '%s'")
-	errPortalAppDoesntExist = errors.New("error portal app does not exist for ID '%s'")
 	errUnmarshallingDomains = errors.New("error unmarshalling domains: %w")
 )
 

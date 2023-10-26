@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ type (
 
 		accounts                 map[types.AccountID]*types.Account
 		accountsByUserID         map[types.UserID]AccountsForUser
+		pendingAccountUsers      map[types.UserID][]types.AccountUser
 		pendingUserAuthProviders map[types.UserID]types.UserAuthProvider
 
 		portalApps                map[types.PortalAppID]*types.PortalApp
@@ -103,6 +105,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		logger: config.Logger,
 
+		pendingAccountUsers:        make(map[types.UserID][]types.AccountUser),
 		pendingUserAuthProviders:   make(map[types.UserID]types.UserAuthProvider),
 		pendingPortalAppAATs:       make(map[types.PortalAppID]types.AAT),
 		pendingSettings:            make(map[types.PortalAppID]types.Settings),
@@ -476,14 +479,22 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 	var accountsToReturn []types.Account
 
 	for _, account := range c.accountsByUserID[userID] {
-		// Determine whether the user accepted the account invite based on internal logic
-		userAccepted := c.userAcceptedAccountInvite(account, userID)
-
-		// Check if we need to filter by user acceptance
+		// Skip if the accepted filter is passed and user's accepted status doesn't match
 		if options.Accepted != nil {
-			// Skip if the user acceptance doesn't match the option
-			if userAccepted != *options.Accepted {
+			if c.userAcceptedAccountInvite(account, userID) != *options.Accepted {
 				continue
+			}
+		}
+
+		// Skip if role name filters are passed and the user's role isn't in the filters slice
+		if options.FilterAccounts != nil && len(options.FilterAccounts) > 0 {
+			if accountUsers, ok := c.usersByAccountID[account.ID]; ok {
+				if user, ok := accountUsers[userID]; ok {
+					userRole := user.GetAccountRole(account.ID)
+					if !slices.Contains(options.FilterAccounts, userRole) {
+						continue
+					}
+				}
 			}
 		}
 
@@ -558,26 +569,32 @@ func (c *Cache) upsertAccountUser(accountUser types.AccountUser) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	accountID := accountUser.AccountID
-	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
-
-	// Add user to permissions map
 	if user, ok := c.users[accountUser.ID]; ok {
-		if user.ArePermissionsEmpty() {
-			user.Permissions = make(map[types.AccountID]types.AccountPermissions)
-		}
-
-		_, err := user.UpsertPermissions(accountID, accountUser.RoleName, accountUser.Accepted)
-		if err != nil {
-			c.logger.Error(fmt.Sprintf("error upserting user permissions: %v\n", err))
-		}
-
-		// Add user to users by account ID map
-		if _, ok := c.usersByAccountID[accountID]; !ok {
-			c.usersByAccountID[accountID] = make(map[types.UserID]*types.User)
-		}
-		c.usersByAccountID[accountID][user.ID] = user
+		c.updateUserAccountData(accountUser, user)
+		return
 	}
+
+	c.pendingAccountUsers[accountUser.ID] = append(c.pendingAccountUsers[accountUser.ID], accountUser)
+}
+
+func (c *Cache) updateUserAccountData(accountUser types.AccountUser, user *types.User) {
+	accountID := accountUser.AccountID
+	accountUser.AccountID = ""
+
+	if user.ArePermissionsEmpty() {
+		user.Permissions = make(map[types.AccountID]types.AccountPermissions)
+	}
+
+	_, err := user.UpsertPermissions(accountID, accountUser.RoleName, accountUser.Accepted)
+	if err != nil {
+		c.logger.Error(fmt.Sprintf("error upserting user permissions: %v\n", err))
+	}
+
+	// Add user to users by account ID map
+	if _, ok := c.usersByAccountID[accountID]; !ok {
+		c.usersByAccountID[accountID] = make(map[types.UserID]*types.User)
+	}
+	c.usersByAccountID[accountID][user.ID] = user
 
 	// Add or update user's Accounts
 	if account, ok := c.accounts[accountID]; ok {
@@ -1271,22 +1288,16 @@ func (c *Cache) upsertUser(user types.User) {
 		delete(c.pendingUserAuthProviders, user.ID)
 	}
 
+	if pendingAccountUsers, ok := c.pendingAccountUsers[user.ID]; ok {
+		for _, accountUser := range pendingAccountUsers {
+			c.updateUserAccountData(accountUser, &user)
+		}
+		delete(c.pendingAccountUsers, user.ID)
+	}
+
 	c.users[user.ID] = &user
 	for _, userAuthProvider := range user.AuthProviders {
 		c.usersByProviderID[userAuthProvider.ProviderUserID] = &user
-	}
-
-	accountsForUser, ok := c.accountsByUserID[user.ID]
-	if !ok {
-		return
-	}
-
-	for accountID, account := range accountsForUser {
-		if accountUser, ok := account.Users[user.ID]; ok {
-			accountUser.Email = user.Email
-			account.Users[user.ID] = accountUser
-			c.accountsByUserID[user.ID][accountID] = account
-		}
 	}
 }
 

@@ -550,24 +550,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			userID       types.UserID
 			options      dbClient.AccountOptions
 			expectedAccs map[types.AccountID]*types.Account
-			plans        map[types.AccountID]*types.Plan
-			portalApps   map[types.AccountID]map[types.PortalAppID]*types.PortalApp
 			err          error
 		}{
 			{
 				name:   "Should get accounts for user_2 with no role filter",
 				userID: "user_2",
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts()["account_1"],
-					"account_2": testdata.Accounts()["account_2"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans()["basic_plan"],
-					"account_2": testdata.PayPlans()["pro_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
-					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
+					"account_1": testdata.Accounts(setAccountOpts)["account_1"],
+					"account_2": testdata.Accounts(setAccountOpts)["account_2"],
 				},
 			},
 			{
@@ -580,16 +570,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts()["account_1"],
-					"account_2": testdata.Accounts()["account_2"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans()["basic_plan"],
-					"account_2": testdata.PayPlans()["pro_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
-					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
+					"account_1": testdata.Accounts(setAccountOpts)["account_1"],
+					"account_2": testdata.Accounts(setAccountOpts)["account_2"],
 				},
 			},
 			{
@@ -602,26 +584,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(true),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts()["account_1"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans()["basic_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
+					"account_1": testdata.Accounts(setAccountOpts)["account_1"],
 				},
 			},
 			{
 				name:   "Should get accounts for user_1 with no role filter",
 				userID: "user_1",
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts()["account_1"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans()["basic_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
+					"account_1": testdata.Accounts(setAccountOpts)["account_1"],
 				},
 			},
 			{
@@ -633,13 +603,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts()["account_1"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans()["basic_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
+					"account_1": testdata.Accounts(setAccountOpts)["account_1"],
 				},
 			},
 			{
@@ -649,16 +613,8 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(true),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_1": testdata.Accounts()["account_1"],
-					"account_2": testdata.Accounts()["account_2"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_1": testdata.PayPlans()["basic_plan"],
-					"account_2": testdata.PayPlans()["pro_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_1": {"test_app_1": testdata.PortalApps()["test_app_1"]},
-					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
+					"account_1": testdata.Accounts(setAccountOpts)["account_1"],
+					"account_2": testdata.Accounts(setAccountOpts)["account_2"],
 				},
 			},
 			{
@@ -668,41 +624,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Accepted: dbClient.BoolPtr(true),
 				},
 				expectedAccs: map[types.AccountID]*types.Account{
-					"account_2": testdata.Accounts()["account_2"],
-					"account_4": testdata.Accounts()["account_4"],
-					"account_5": testdata.Accounts()["account_5"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_2": testdata.PayPlans()["pro_plan"],
-					"account_4": testdata.PayPlans()["enterprise_plan"],
-					"account_5": testdata.PayPlans()["basic_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_2": {"test_app_2": testdata.PortalApps()["test_app_2"]},
-					"account_4": {},
-					"account_5": {},
-				},
-			},
-			{
-				name:   "Should get accounts for user_4 with accepted = false",
-				userID: "user_4",
-				options: dbClient.AccountOptions{
-					Accepted: dbClient.BoolPtr(false),
-				},
-				expectedAccs: map[types.AccountID]*types.Account{
-					"account_2": testdata.Accounts()["account_2"],
-					"account_4": testdata.Accounts()["account_4"],
-					"account_5": testdata.Accounts()["account_5"],
-				},
-				plans: map[types.AccountID]*types.Plan{
-					"account_2": testdata.PayPlans()["pro_plan"],
-					"account_4": testdata.PayPlans()["enterprise_plan"],
-					"account_5": testdata.PayPlans()["basic_plan"],
-				},
-				portalApps: map[types.AccountID]map[types.PortalAppID]*types.PortalApp{
-					"account_2": {},
-					"account_4": {},
-					"account_5": {},
+					"account_2": testdata.Accounts(setAccountOpts)["account_2"],
+					"account_4": testdata.Accounts(setAccountOpts)["account_4"],
+					"account_5": testdata.Accounts(setAccountOpts)["account_5"],
 				},
 			},
 			{
@@ -714,8 +638,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					},
 				},
 				expectedAccs: map[types.AccountID]*types.Account{},
-				plans:        map[types.AccountID]*types.Plan{},
-				portalApps:   map[types.AccountID]map[types.PortalAppID]*types.PortalApp{},
 				err:          fmt.Errorf("Response not OK. 404 Not Found: error in getUserAccounts: no accounts were found for user ID"),
 			},
 		}
@@ -742,37 +664,24 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			accountID   types.AccountID
 			userID      types.UserID
 			expectedAcc *types.Account
-			assignPlan  *types.Plan
-			assignApp   *types.PortalApp
 			err         error
 		}{
 			{
 				name:        "Should get an account by its account ID",
 				accountID:   "account_1",
 				userID:      "user_1",
-				assignPlan:  testdata.PayPlans()["basic_plan"],
-				assignApp:   testdata.PortalApps()["test_app_1"],
-				expectedAcc: testdata.Accounts()["account_1"],
+				expectedAcc: testdata.Accounts(setAccountOpts)["account_1"],
 			},
 			{
 				name:        "Should get another account by its account ID",
 				accountID:   "account_2",
 				userID:      "user_2",
-				assignPlan:  testdata.PayPlans()["pro_plan"],
-				assignApp:   testdata.PortalApps()["test_app_2"],
-				expectedAcc: testdata.Accounts()["account_2"],
+				expectedAcc: testdata.Accounts(setAccountOpts)["account_2"],
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				// Assign plan and portal app to the account
-				test.expectedAcc.Plan = test.assignPlan
-				if test.expectedAcc.PortalApps == nil {
-					test.expectedAcc.PortalApps = make(map[types.PortalAppID]*types.PortalApp)
-				}
-				test.expectedAcc.PortalApps[test.assignApp.ID] = test.assignApp
-
 				account, err := ts.client1.GetUserAccount(context.Background(), test.accountID, test.userID)
 				ts.Equal(test.err, err)
 
@@ -1481,18 +1390,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AATs: map[types.ProtocolAppID]types.AAT{
 						"test_protocol_app_5": testdata.TestCreatePortalAppAAT,
 					},
-					Notifications: map[types.NotificationType]types.AppNotification{
-						types.NotificationTypeEmail: {
-							Type:        types.NotificationTypeEmail,
-							Active:      true,
-							Destination: "ulfric.stormcloak123@test.com",
-							Events: map[types.NotificationEvent]bool{
-								types.NotificationEventFull:          true,
-								types.NotificationEventSignedUp:      true,
-								types.NotificationEventThreeQuarters: true,
-							},
-						},
-					},
 					FirstDateSurpassed: testdata.MockTimestamp,
 					CreatedAt:          testdata.MockTimestamp,
 					UpdatedAt:          testdata.MockTimestamp,
@@ -2020,7 +1917,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}{
 			{
 				name:                "Should update the account's PlanType field",
-				accountBeforeUpdate: testdata.Accounts()["account_1"],
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID: "account_1",
 					PlanType:  types.Enterprise,
@@ -2292,15 +2189,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				err: fmt.Errorf("no email"),
 			},
 			{
-				name: "Should fail if an empty PortalAppID string is provided",
-				createAccountUserInput: types.CreateAccountUser{
-					AccountID: "account_1",
-					Email:     "valid.email@test.com",
-					RoleName:  types.RoleAdmin,
-				},
-				err: fmt.Errorf("no portal app ID"),
-			},
-			{
 				name: "Should fail if an empty AccountID string is provided",
 				createAccountUserInput: types.CreateAccountUser{
 					AccountID: "",
@@ -2402,7 +2290,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					"user_7": {
 						ID:       "user_7",
 						Email:    "frodo.baggins123@test.com",
-						RoleName: types.RoleAdmin,
+						RoleName: types.RoleMember,
 						Accepted: true,
 					},
 				},
@@ -2481,7 +2369,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:  types.RoleMember,
 				},
 				testCreatedTime: testdata.MockTimestamp,
-				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error user ID 'user_512' does not exist for portal app ID 'account_2'"),
+				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error user ID 'user_512' does not exist for account ID 'account_2'"),
 			},
 			{
 				name: "Should fail if RoleName is empty",
@@ -2521,7 +2409,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					RoleName:  types.RoleMember,
 				},
 				testCreatedTime: testdata.MockTimestamp,
-				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error user ID 'non_member_user' does not exist for portal app ID 'account_3'"),
+				err:             fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccountUserRole: error user ID 'non_member_user' does not exist for account ID 'account_3'"),
 			},
 		}
 
@@ -2551,7 +2439,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_UpdateAcceptAccountUser", func() {
 		tests := []struct {
 			name                   string
-			accountID              types.AccountID
 			userID                 types.UserID
 			acceptAccountUserInput types.UpdateAcceptAccountUser
 			createUser             types.CreateUser
@@ -2559,10 +2446,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			err                    error
 		}{
 			{
-				name:      "Should create a new AccountUser row if a user accepts their invitation",
-				accountID: "account_3",
-				userID:    "user_10",
+				name:   "Should create a new AccountUser row if a user accepts their invitation",
+				userID: "user_10",
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					AccountID:        "account_3",
 					UserID:           "user_10",
 					AuthProviderType: types.AuthTypeAuth0Username,
 					ProviderUserID:   "auth0|daenerys_targaryen",
@@ -2577,11 +2464,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				err: nil,
 			},
 			{
-				name:      "Should delete the AccountUser row if a user declines their invitation",
-				accountID: "account_3",
-				userID:    "user_5", // owner of account; used to fetch account in test
+				name:   "Should delete the AccountUser row if a user declines their invitation",
+				userID: "user_5", // owner of account; used to fetch account in test
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
 					DeclinedInvite:   true,
+					AccountID:        "account_3",
 					UserID:           "", // set in test case
 					AuthProviderType: types.AuthTypeAuth0Username,
 					ProviderUserID:   "auth0|rand_althor",
@@ -2600,8 +2487,17 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				err: nil,
 			},
 			{
+				name: "Should fail if no account ID provided",
+				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					UserID:           "user_10",
+					AuthProviderType: types.AuthType("ask_jeeves"),
+				},
+				err: fmt.Errorf("no account ID"),
+			},
+			{
 				name: "Should fail if no provider user ID provided",
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					AccountID:        "account_10",
 					UserID:           "user_10",
 					AuthProviderType: types.AuthType("ask_jeeves"),
 				},
@@ -2610,6 +2506,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should fail if an invalid auth provider type provided",
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					AccountID:        "account_10",
 					UserID:           "user_10",
 					AuthProviderType: types.AuthType("ask_jeeves"),
 					ProviderUserID:   "auth0|daenerys_targaryen",
@@ -2619,6 +2516,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should fail if AuthProviderType is not provided",
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					AccountID:        "account_10",
 					UserID:           "user_10",
 					AuthProviderType: "",
 				},
@@ -2627,11 +2525,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			{
 				name: "Should fail if user does not exist",
 				acceptAccountUserInput: types.UpdateAcceptAccountUser{
+					AccountID:        "account_10",
 					UserID:           "user_123",
 					AuthProviderType: types.AuthTypeAuth0Username,
 					ProviderUserID:   "auth0|who_dis",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in acceptAccountUser: error user ID 'user_123' does not exist for portal app ID 'account_3'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in acceptAccountUser: error user ID 'user_123' does not exist for account ID 'account_10'"),
 			},
 		}
 
@@ -2647,13 +2546,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					test.expected.AccountID = ""
 
 					_, err = ts.client1.WriteAccountUser(context.Background(), types.CreateAccountUser{
-						AccountID: test.accountID,
+						AccountID: test.acceptAccountUserInput.AccountID,
 						Email:     test.createUser.Email,
 						RoleName:  types.RoleMember,
 					}, testdata.MockTimestamp)
 					ts.NoError(err)
 
-					account, err := ts.client1.GetUserAccount(context.Background(), test.accountID, test.userID)
+					account, err := ts.client1.GetUserAccount(context.Background(), test.acceptAccountUserInput.AccountID, test.userID)
 					ts.NoError(err)
 					ts.Equal(*test.expected, account.Users[test.acceptAccountUserInput.UserID])
 				}
@@ -2664,7 +2563,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					accountID := test.accountID
+					accountID := test.acceptAccountUserInput.AccountID
 					test.expected.AccountID = ""
 
 					account, err := ts.client1.GetUserAccount(context.Background(), accountID, test.userID)
@@ -2690,51 +2589,29 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	ts.Run("Test_RemoveAccountUser", func() {
 		tests := []struct {
 			name                    string
-			createAccountUserInput  types.CreateAccountUser
 			updateRemoveAccountUser types.UpdateRemoveAccountUser
 			userID                  types.UserID
-			accountUsersAfterDelete map[types.UserID]types.AccountUser
 			err                     error
 		}{
 			{
 				name: "Should delete a single AccountUser row",
-				createAccountUserInput: types.CreateAccountUser{
-					AccountID: "account_3",
-					Email:     "user_5@test.com",
-					RoleName:  types.RoleMember,
-				},
 				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
 					AccountID: "account_3",
-					UserID:    "user_5",
+					UserID:    "user_10",
 				},
-				userID: "user_5",
-				accountUsersAfterDelete: map[types.UserID]types.AccountUser{
-					"user_1": testdata.AccountUsers()[1],
-					"user_2": testdata.AccountUsers()[2],
-					"user_8": testdata.AccountUsers()[8],
-				},
-				err: nil,
+				userID: "user_10",
+				err:    nil,
 			},
 			{
 				name: "Should fail if provided a UserID that doesn't exist for the Account",
-				createAccountUserInput: types.CreateAccountUser{
-					AccountID: "account_3",
-					Email:     "nonexistent_user@test.com",
-					RoleName:  types.RoleMember,
-				},
 				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
 					AccountID: "account_3",
 					UserID:    "user_789",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeAccountUser: error user ID 'user_789' does not exist for portal app ID 'test_app_3'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeAccountUser: error user ID 'user_789' does not exist for account ID 'account_3'"),
 			},
 			{
 				name: "Should fail if attempting to delete the current Account OWNER",
-				createAccountUserInput: types.CreateAccountUser{
-					AccountID: "account_1",
-					Email:     "user_1@test.com",
-					RoleName:  types.RoleOwner,
-				},
 				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
 					AccountID: "account_1",
 					UserID:    "user_1",
@@ -2743,51 +2620,29 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			},
 			{
 				name: "Should fail if provided a UserID that doesn't exist for the Account",
-				createAccountUserInput: types.CreateAccountUser{
-					AccountID: "account_1",
-					Email:     "nonexistent_user@test.com",
-					RoleName:  types.RoleMember,
-				},
 				updateRemoveAccountUser: types.UpdateRemoveAccountUser{
 					AccountID: "account_1",
 					UserID:    "user_nonexistent",
 				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeAccountUser: error user ID 'user_nonexistent' does not exist for portal app ID 'test_app_1'"),
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in removeAccountUser: error user ID 'user_nonexistent' does not exist for account ID 'account_1'"),
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				var userID types.UserID
-
-				if test.updateRemoveAccountUser.UserID == types.UserID("") {
-					userIDResp, err := ts.client1.WriteAccountUser(context.Background(), test.createAccountUserInput, testdata.MockTimestamp)
-					ts.NoError(err)
-
-					<-time.After(50 * time.Millisecond)
-					ts.NotEmpty(userIDResp["userID"])
-
-					userID = userIDResp["userID"]
-
-					test.updateRemoveAccountUser.UserID = userID
-					account, err := ts.client1.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
-					ts.NoError(err)
-					ts.Contains(account.Users, userID)
-				}
-
 				_, err := ts.client1.RemoveAccountUser(context.Background(), test.updateRemoveAccountUser)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
 					<-time.After(50 * time.Millisecond)
 
-					account, err := ts.client1.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
-					ts.NoError(err)
-					ts.NotContains(account.Users, userID)
+					account, err := ts.client1.GetUserAccount(context.Background(), test.updateRemoveAccountUser.AccountID, test.userID)
+					ts.Error(err)
+					ts.Empty(account)
 
-					account, err = ts.client2.GetUserAccount(context.Background(), test.createAccountUserInput.AccountID, test.userID)
-					ts.NoError(err)
-					ts.NotContains(account.Users, userID)
+					account, err = ts.client2.GetUserAccount(context.Background(), test.updateRemoveAccountUser.AccountID, test.userID)
+					ts.Error(err)
+					ts.Empty(account)
 				}
 			})
 		}
@@ -2906,6 +2761,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					},
 					Permissions: map[types.AccountID]types.AccountPermissions{
 						"account_3": {
+							Accepted: true,
 							RoleName: types.RoleOwner,
 							Permissions: []types.Permissions{
 								types.PermReadEndpoint,
@@ -2937,6 +2793,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					},
 					Permissions: map[types.AccountID]types.AccountPermissions{
 						"account_3": {
+							Accepted: true,
 							RoleName: types.RoleOwner,
 							Permissions: []types.Permissions{
 								types.PermReadEndpoint,
@@ -3234,6 +3091,10 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 	})
 
 }
+
+var (
+	setAccountOpts = testdata.AccountOptions{IncludePortalApps: true, IncludePlans: true, AssignUsers: true}
+)
 
 /* ---------- Test Suite Util Interfaces ---------- */
 type phdE2EReadTestSuite struct {
