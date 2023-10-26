@@ -416,12 +416,13 @@ type Account struct {
 }
 
 type AccountIntegration struct {
-	ID                 int32              `json:"id"`
-	AccountID          types.AccountID    `json:"account_id"`
-	CovalentAPIKeyFree pgtype.Text        `json:"covalent_api_key_free"`
-	CovalentAPIKeyPaid pgtype.Text        `json:"covalent_api_key_paid"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	ID                   int32              `json:"id"`
+	AccountID            types.AccountID    `json:"account_id"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	CovalentAPIKeyFree   pgtype.Text        `json:"covalent_api_key_free"`
+	CovalentAPIKeyPaid   pgtype.Text        `json:"covalent_api_key_paid"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
 type AccountUser struct {
@@ -528,17 +529,16 @@ type PayPlan struct {
 }
 
 type PortalApplication struct {
-	ID                   types.PortalAppID  `json:"id"`
-	AccountID            pgtype.Text        `json:"account_id"`
-	Name                 string             `json:"name"`
-	AppEmoji             pgtype.Text        `json:"app_emoji"`
-	Description          pgtype.Text        `json:"description"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	Deleted              bool               `json:"deleted"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	FirstDateSurpassed   pgtype.Timestamptz `json:"first_date_surpassed"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	ID                 types.PortalAppID  `json:"id"`
+	AccountID          pgtype.Text        `json:"account_id"`
+	Name               string             `json:"name"`
+	AppEmoji           pgtype.Text        `json:"app_emoji"`
+	Description        pgtype.Text        `json:"description"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	Deleted            bool               `json:"deleted"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
 }
 
 type PortalApplicationAat struct {

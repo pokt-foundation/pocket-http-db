@@ -460,30 +460,35 @@ VALUES (
     );
 INSERT INTO account_integrations (
         account_id,
+        stripe_subscription_id,
         covalent_api_key_free,
         created_at,
         updated_at
     )
 VALUES (
         'account_1',
+        'stripe_id_1',
         'covalent_api_key_1',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
         'account_2',
+        'stripe_id_2',
         'covalent_api_key_2',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
         'account_3',
+        'stripe_id_3',
         'covalent_api_key_3',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
         'account_4',
+        'stripe_id_4',
         'covalent_api_key_4',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
@@ -520,7 +525,6 @@ INSERT INTO portal_applications (
         app_emoji,
         description,
         first_date_surpassed,
-        stripe_subscription_id,
         created_at,
         updated_at
     )
@@ -531,7 +535,6 @@ VALUES (
         '1F336',
         'Embark on an interstellar journey with our powerful application.',
         '2022-11-11 11:11:11.000000',
-        'stripe_id_1',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -542,7 +545,6 @@ VALUES (
         '1F336',
         'Unveil the mysteries of the multiverse with our enchanting application.',
         '2022-11-11 11:11:11.000000',
-        'stripe_id_2',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -553,7 +555,6 @@ VALUES (
         '1F336',
         'Harness the power of a connected world with our revolutionary application.',
         '2022-11-11 11:11:11.000000',
-        'stripe_id_3',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );

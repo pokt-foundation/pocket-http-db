@@ -1062,7 +1062,7 @@ VALUES (
         $7,
         $8
     )
-RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, first_date_surpassed, stripe_subscription_id
+RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, first_date_surpassed
 `
 
 type InsertPortalApplicationParams struct {
@@ -1099,7 +1099,6 @@ func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalA
 		&i.Deleted,
 		&i.DeletedAt,
 		&i.FirstDateSurpassed,
-		&i.StripeSubscriptionID,
 	)
 	return i, err
 }
@@ -1212,12 +1211,14 @@ func (q *Queries) RemoveGlobalBlockedContract(ctx context.Context, blockedAddres
 
 const selectAccount = `-- name: SelectAccount :one
 SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid
 FROM accounts AS a
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
 WHERE a.id = $1
 GROUP BY a.id,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid
 `
@@ -1234,6 +1235,7 @@ type SelectAccountRow struct {
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
 	DeletedAt               pgtype.Timestamptz `json:"deleted_at"`
+	StripeSubscriptionID    pgtype.Text        `json:"stripe_subscription_id"`
 	CovalentAPIKeyFree      pgtype.Text        `json:"covalent_api_key_free"`
 	CovalentAPIKeyPaid      pgtype.Text        `json:"covalent_api_key_paid"`
 }
@@ -1253,6 +1255,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 		&i.UpdatedAt,
 		&i.Deleted,
 		&i.DeletedAt,
+		&i.StripeSubscriptionID,
 		&i.CovalentAPIKeyFree,
 		&i.CovalentAPIKeyPaid,
 	)
@@ -1261,6 +1264,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 
 const selectAccounts = `-- name: SelectAccounts :many
 SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid
 FROM accounts AS a
@@ -1270,6 +1274,7 @@ WHERE (
         OR a.deleted = false
     )
 GROUP BY a.id,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid
 `
@@ -1286,6 +1291,7 @@ type SelectAccountsRow struct {
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
 	DeletedAt               pgtype.Timestamptz `json:"deleted_at"`
+	StripeSubscriptionID    pgtype.Text        `json:"stripe_subscription_id"`
 	CovalentAPIKeyFree      pgtype.Text        `json:"covalent_api_key_free"`
 	CovalentAPIKeyPaid      pgtype.Text        `json:"covalent_api_key_paid"`
 }
@@ -1311,6 +1317,7 @@ func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAc
 			&i.UpdatedAt,
 			&i.Deleted,
 			&i.DeletedAt,
+			&i.StripeSubscriptionID,
 			&i.CovalentAPIKeyFree,
 			&i.CovalentAPIKeyPaid,
 		); err != nil {
@@ -1782,7 +1789,7 @@ whitelists_agg AS (
     FROM portal_application_whitelists paw
     GROUP BY paw.application_id
 )
-SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at, p.first_date_surpassed, p.stripe_subscription_id,
+SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at, p.first_date_surpassed,
     pas.secret_key,
     pas.secret_key_required,
     pas.monthly_relay_limit,
@@ -1803,25 +1810,24 @@ WHERE (
 `
 
 type SelectPortalApplicationsRow struct {
-	ID                   types.PortalAppID  `json:"id"`
-	AccountID            pgtype.Text        `json:"account_id"`
-	Name                 string             `json:"name"`
-	AppEmoji             pgtype.Text        `json:"app_emoji"`
-	Description          pgtype.Text        `json:"description"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	Deleted              bool               `json:"deleted"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	FirstDateSurpassed   pgtype.Timestamptz `json:"first_date_surpassed"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	SecretKey            pgtype.Text        `json:"secret_key"`
-	SecretKeyRequired    pgtype.Bool        `json:"secret_key_required"`
-	MonthlyRelayLimit    pgtype.Int4        `json:"monthly_relay_limit"`
-	Environment          NullEnvironment    `json:"environment"`
-	FavoritedChainIDs    []string           `json:"favorited_chain_ids"`
-	AATs                 []byte             `json:"aats"`
-	Notifications        []byte             `json:"notifications"`
-	Whitelists           []byte             `json:"whitelists"`
+	ID                 types.PortalAppID  `json:"id"`
+	AccountID          pgtype.Text        `json:"account_id"`
+	Name               string             `json:"name"`
+	AppEmoji           pgtype.Text        `json:"app_emoji"`
+	Description        pgtype.Text        `json:"description"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	Deleted            bool               `json:"deleted"`
+	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
+	SecretKey          pgtype.Text        `json:"secret_key"`
+	SecretKeyRequired  pgtype.Bool        `json:"secret_key_required"`
+	MonthlyRelayLimit  pgtype.Int4        `json:"monthly_relay_limit"`
+	Environment        NullEnvironment    `json:"environment"`
+	FavoritedChainIDs  []string           `json:"favorited_chain_ids"`
+	AATs               []byte             `json:"aats"`
+	Notifications      []byte             `json:"notifications"`
+	Whitelists         []byte             `json:"whitelists"`
 }
 
 func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) ([]SelectPortalApplicationsRow, error) {
@@ -1844,7 +1850,6 @@ func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) (
 			&i.Deleted,
 			&i.DeletedAt,
 			&i.FirstDateSurpassed,
-			&i.StripeSubscriptionID,
 			&i.SecretKey,
 			&i.SecretKeyRequired,
 			&i.MonthlyRelayLimit,
@@ -2273,27 +2278,24 @@ func (q *Queries) UpdateInsertWhitelists(ctx context.Context, arg UpdateInsertWh
 
 const updatePortalAppFields = `-- name: UpdatePortalAppFields :exec
 UPDATE portal_applications
-SET name = COALESCE(NULLIF($4::VARCHAR, ''), name),
-    description = COALESCE(NULLIF($5::VARCHAR, ''), description),
-    app_emoji = COALESCE(NULLIF($6::VARCHAR, ''), app_emoji),
-    stripe_subscription_id = COALESCE($2, stripe_subscription_id),
-    updated_at = $3
+SET name = COALESCE(NULLIF($3::VARCHAR, ''), name),
+    description = COALESCE(NULLIF($4::VARCHAR, ''), description),
+    app_emoji = COALESCE(NULLIF($5::VARCHAR, ''), app_emoji),
+    updated_at = $2
 WHERE id = $1
 `
 
 type UpdatePortalAppFieldsParams struct {
-	ID                   types.PortalAppID  `json:"id"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	Name                 string             `json:"name"`
-	Description          string             `json:"description"`
-	AppEmoji             string             `json:"app_emoji"`
+	ID          types.PortalAppID  `json:"id"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	AppEmoji    string             `json:"app_emoji"`
 }
 
 func (q *Queries) UpdatePortalAppFields(ctx context.Context, arg UpdatePortalAppFieldsParams) error {
 	_, err := q.db.Exec(ctx, updatePortalAppFields,
 		arg.ID,
-		arg.StripeSubscriptionID,
 		arg.UpdatedAt,
 		arg.Name,
 		arg.Description,
@@ -2509,14 +2511,19 @@ func (q *Queries) UpdateUserFields(ctx context.Context, arg UpdateUserFieldsPara
 const upsertAccountIntegrations = `-- name: UpsertAccountIntegrations :one
 INSERT INTO account_integrations (
         account_id,
+        stripe_subscription_id,
         covalent_api_key_free,
         covalent_api_key_paid,
         created_at,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5) ON CONFLICT (account_id) DO
+VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (account_id) DO
 UPDATE
-SET covalent_api_key_free = CASE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id IS NOT NULL THEN EXCLUDED.stripe_subscription_id
+        ELSE account_integrations.stripe_subscription_id
+    END,
+    covalent_api_key_free = CASE
         WHEN EXCLUDED.covalent_api_key_free IS NOT NULL THEN EXCLUDED.covalent_api_key_free
         ELSE account_integrations.covalent_api_key_free
     END,
@@ -2529,20 +2536,22 @@ SET covalent_api_key_free = CASE
         ELSE account_integrations.created_at
     END,
     updated_at = EXCLUDED.updated_at
-RETURNING id, account_id, covalent_api_key_free, covalent_api_key_paid, created_at, updated_at
+RETURNING id, account_id, stripe_subscription_id, covalent_api_key_free, covalent_api_key_paid, created_at, updated_at
 `
 
 type UpsertAccountIntegrationsParams struct {
-	AccountID          types.AccountID    `json:"account_id"`
-	CovalentAPIKeyFree pgtype.Text        `json:"covalent_api_key_free"`
-	CovalentAPIKeyPaid pgtype.Text        `json:"covalent_api_key_paid"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	AccountID            types.AccountID    `json:"account_id"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	CovalentAPIKeyFree   pgtype.Text        `json:"covalent_api_key_free"`
+	CovalentAPIKeyPaid   pgtype.Text        `json:"covalent_api_key_paid"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) UpsertAccountIntegrations(ctx context.Context, arg UpsertAccountIntegrationsParams) (AccountIntegration, error) {
 	row := q.db.QueryRow(ctx, upsertAccountIntegrations,
 		arg.AccountID,
+		arg.StripeSubscriptionID,
 		arg.CovalentAPIKeyFree,
 		arg.CovalentAPIKeyPaid,
 		arg.CreatedAt,
@@ -2552,6 +2561,7 @@ func (q *Queries) UpsertAccountIntegrations(ctx context.Context, arg UpsertAccou
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
+		&i.StripeSubscriptionID,
 		&i.CovalentAPIKeyFree,
 		&i.CovalentAPIKeyPaid,
 		&i.CreatedAt,

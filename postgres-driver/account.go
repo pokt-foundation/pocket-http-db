@@ -81,8 +81,9 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 		PartnerThroughputLimit: a.PartnerThroughputLimit.Int32,
 		PartnerAppLimit:        a.PartnerApplicationLimit.Int32,
 		Integrations: types.AccountIntegrations{
-			CovalentAPIKeyFree: a.CovalentAPIKeyFree.String,
-			CovalentAPIKeyPaid: a.CovalentAPIKeyPaid.String,
+			StripeSubscriptionID: a.StripeSubscriptionID.String,
+			CovalentAPIKeyFree:   a.CovalentAPIKeyFree.String,
+			CovalentAPIKeyPaid:   a.CovalentAPIKeyPaid.String,
 		},
 		CreatedAt: a.CreatedAt.Time.UTC(),
 		UpdatedAt: a.UpdatedAt.Time.UTC(),
@@ -204,20 +205,22 @@ func (pg *PostgresDriver) UpsertAccountIntegration(ctx context.Context, integrat
 	time := time.Now()
 
 	accountIntegrations, err := pg.UpsertAccountIntegrations(ctx, UpsertAccountIntegrationsParams{
-		AccountID:          integrations.AccountID,
-		CovalentAPIKeyFree: newText(integrations.CovalentAPIKeyFree),
-		CovalentAPIKeyPaid: newText(integrations.CovalentAPIKeyPaid),
-		CreatedAt:          newTimestamptz(time),
-		UpdatedAt:          newTimestamptz(time),
+		AccountID:            integrations.AccountID,
+		StripeSubscriptionID: newText(integrations.StripeSubscriptionID),
+		CovalentAPIKeyFree:   newText(integrations.CovalentAPIKeyFree),
+		CovalentAPIKeyPaid:   newText(integrations.CovalentAPIKeyPaid),
+		CreatedAt:            newTimestamptz(time),
+		UpdatedAt:            newTimestamptz(time),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &types.AccountIntegrations{
-		AccountID:          accountIntegrations.AccountID,
-		CovalentAPIKeyFree: accountIntegrations.CovalentAPIKeyFree.String,
-		CovalentAPIKeyPaid: accountIntegrations.CovalentAPIKeyPaid.String,
+		AccountID:            accountIntegrations.AccountID,
+		StripeSubscriptionID: accountIntegrations.StripeSubscriptionID.String,
+		CovalentAPIKeyFree:   accountIntegrations.CovalentAPIKeyFree.String,
+		CovalentAPIKeyPaid:   accountIntegrations.CovalentAPIKeyPaid.String,
 	}, nil
 }
 

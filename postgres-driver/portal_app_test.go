@@ -193,19 +193,17 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 		testUpdatedSettings      types.Settings
 		testUpdatedNotifications map[types.NotificationType]types.AppNotification
 		testUpdatedWhitelists    types.Whitelists
-		testUpdatedLegacyFields  types.LegacyFields
 		err                      error
 	}{
 		{
 			name: "Should update a new PortalApp in the database with all fields",
 			updatePortalApp: types.UpdatePortalApp{
-				Name:                 testdata.UpdatePortalAppName,
-				Description:          testdata.UpdatePortalAppDescription,
-				AppEmoji:             testdata.UpdatePortalAppEmoji,
-				Settings:             testdata.UpdatePortalAppSettings,
-				Notifications:        testdata.UpdatePortalAppNotifications,
-				Whitelists:           testdata.UpdatePortalAppWhitelists,
-				StripeSubscriptionID: testdata.UpdatePortalAppStripeSubscriptionID.StripeSubscriptionID,
+				Name:          testdata.UpdatePortalAppName,
+				Description:   testdata.UpdatePortalAppDescription,
+				AppEmoji:      testdata.UpdatePortalAppEmoji,
+				Settings:      testdata.UpdatePortalAppSettings,
+				Notifications: testdata.UpdatePortalAppNotifications,
+				Whitelists:    testdata.UpdatePortalAppWhitelists,
 			},
 			testUpdateTime:         testdata.MockTimestamp,
 			testUpdatedName:        "portal-app-updated",
@@ -259,9 +257,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 					"003E": {"GET": {}},
 					"0056": {"GET": {}, "POST": {}},
 				},
-			},
-			testUpdatedLegacyFields: types.LegacyFields{
-				StripeSubscriptionID: "update_stripe_subscription_id",
 			},
 			err: nil,
 		},
@@ -365,17 +360,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 			},
 			err: nil,
 		},
-		{
-			name: "Should update a new PortalApp in the database with a new stripe subscription ID",
-			updatePortalApp: types.UpdatePortalApp{
-				StripeSubscriptionID: testdata.UpdatePortalAppStripeSubscriptionID.StripeSubscriptionID,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
 	}
 
 	for i, test := range tests {
@@ -447,7 +431,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalAppsFirstDateSurpassed() 
 		err    error
 	}{
 		{
-			name: "Should update multiple PortalApps in the database with a LegacyFields.FirstDateSurpassed timestamp ",
+			name: "Should update multiple PortalApps in the database with a FirstDateSurpassed timestamp ",
 			update: &types.UpdateFirstDateSurpassed{
 				PortalAppIDs:       []types.PortalAppID{testdata.PortalApps["test_app_1"].ID, testdata.PortalApps["test_app_2"].ID},
 				FirstDateSurpassed: time.Date(2023, time.February, 14, 0, 0, 0, 0, time.UTC),

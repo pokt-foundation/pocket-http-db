@@ -58,6 +58,10 @@ var testAccount = Account{
 	Name:     "The Brave Voyager",
 	IconURL:  "https://picsum.photos/200",
 	PlanType: PayPlanType("basic_plan"),
+	Integrations: AccountIntegrations{
+		StripeSubscriptionID: "stripe_id_1",
+		CovalentAPIKeyFree:   "covalent_api_key_1",
+	},
 	Users: map[UserID]AccountUser{
 		"user_1": {
 			AccountID: "",
@@ -140,10 +144,6 @@ var testAccount = Account{
 			FirstDateSurpassed: timestamp,
 			CreatedAt:          timestamp,
 			UpdatedAt:          timestamp,
-			// TODO remove legacy fields when migration to V2 schema complete
-			LegacyFields: LegacyFields{
-				StripeSubscriptionID: "stripe_id_1",
-			},
 		},
 		"test_app_2": {
 			ID:          "test_app_2",
@@ -195,14 +195,7 @@ var testAccount = Account{
 			FirstDateSurpassed: timestamp,
 			CreatedAt:          timestamp,
 			UpdatedAt:          timestamp,
-			// TODO remove legacy fields when migration to V2 schema complete
-			LegacyFields: LegacyFields{
-				StripeSubscriptionID: "stripe_id_2",
-			},
 		},
-	},
-	Integrations: AccountIntegrations{
-		CovalentAPIKeyFree: "covalent_api_key_1",
 	},
 	PartnerChainIDs:        map[RelayChainID]struct{}{"0001": {}, "0053": {}},
 	PartnerThroughputLimit: 2_000,

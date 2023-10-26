@@ -46,9 +46,10 @@ type (
 
 	// AccountUser represents fields used for integrations with other platforms
 	AccountIntegrations struct {
-		AccountID          AccountID `json:"id,omitempty"` // used for listener
-		CovalentAPIKeyFree string    `json:"covalentAPIKeyFree"`
-		CovalentAPIKeyPaid string    `json:"covalentAPIKeyPaid"`
+		AccountID            AccountID `json:"id,omitempty"` // used for listener
+		StripeSubscriptionID string    `json:"stripeSubscriptionID"`
+		CovalentAPIKeyFree   string    `json:"covalentAPIKeyFree"`
+		CovalentAPIKeyPaid   string    `json:"covalentAPIKeyPaid"`
 	}
 
 	// CreateAccountUser contains all fields required to create a new Account User
@@ -144,6 +145,11 @@ func (a *Account) GetUser(userID UserID) (AccountUser, error) {
 	}
 
 	return AccountUser{}, fmt.Errorf(errUserDoesNotExist.Error(), userID)
+}
+
+// SubscriptionID returns the Stripe Subscription ID
+func (a *Account) SubscriptionID() string {
+	return a.Integrations.StripeSubscriptionID
 }
 
 func (a *Account) Table() Table {

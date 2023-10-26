@@ -91,11 +91,6 @@ func (a *SelectPortalApplicationsRow) toPortalApp() (*types.PortalApp, error) {
 		}
 	}
 
-	// TODO remove legacy fields when migration to V2 schema complete
-	legacyFields := types.LegacyFields{
-		StripeSubscriptionID: a.StripeSubscriptionID.String,
-	}
-
 	return &types.PortalApp{
 		ID:          types.PortalAppID(a.ID),
 		AccountID:   types.AccountID(a.AccountID.String),
@@ -116,8 +111,6 @@ func (a *SelectPortalApplicationsRow) toPortalApp() (*types.PortalApp, error) {
 		CreatedAt:          a.CreatedAt.Time.UTC(),
 		UpdatedAt:          a.UpdatedAt.Time.UTC(),
 		Deleted:            a.Deleted,
-		// TODO remove legacy fields when migration to V2 schema complete
-		LegacyFields: legacyFields,
 	}, nil
 }
 
@@ -380,10 +373,6 @@ func (pg *PostgresDriver) UpdatePortalApp(ctx context.Context, update types.Upda
 			updateApp.AppEmoji = string(update.AppEmoji)
 		}
 
-		if update.StripeSubscriptionID != "" {
-			updateApp.StripeSubscriptionID = newText(update.StripeSubscriptionID)
-		}
-
 		err := qtx.UpdatePortalAppFields(ctx, updateApp)
 		if err != nil {
 			return err
@@ -524,7 +513,7 @@ func (pg *PostgresDriver) updateWhitelists(ctx context.Context, qtx *Queries, up
 	return nil
 }
 
-// UpdatePortalAppsFirstDateSurpassed updates multiple PortalApps' LegacyFields.FirstDateSurpassed fields
+// UpdatePortalAppsFirstDateSurpassed updates multiple PortalApps' FirstDateSurpassed fields
 func (pg *PostgresDriver) UpdatePortalAppsFirstDateSurpassed(ctx context.Context, update *types.UpdateFirstDateSurpassed) error {
 	portalAppIDs := []string{}
 	for _, portalAppID := range update.PortalAppIDs {
@@ -570,9 +559,6 @@ func (json dbPortalApplication) toOutput() *types.PortalApp {
 		CreatedAt:          json.CreatedAt,
 		UpdatedAt:          json.UpdatedAt,
 		Deleted:            json.Deleted,
-		LegacyFields: types.LegacyFields{
-			StripeSubscriptionID: json.StripeSubscriptionID,
-		},
 	}
 }
 

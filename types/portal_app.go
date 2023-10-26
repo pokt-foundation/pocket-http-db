@@ -89,23 +89,10 @@ type (
 		Whitelists         Whitelists                           `json:"whitelists"`
 		AATs               map[ProtocolAppID]AAT                `json:"aat"`
 		Notifications      map[NotificationType]AppNotification `json:"notifications"`
+		FirstDateSurpassed time.Time                            `json:"firstDateSurpassed"`
 		CreatedAt          time.Time                            `json:"createdAt"`
 		UpdatedAt          time.Time                            `json:"updatedAt"`
 		Deleted            bool                                 `json:"deleted"`
-		FirstDateSurpassed time.Time                            `json:"firstDateSurpassed"`
-		// TODO - remove when v2 migration finished
-		// Fields required for compatibility with the old Portal API and Services (temporary)
-		LegacyFields LegacyFields `json:"legacyFields"`
-	}
-
-	// TODO - remove when v2 migration finished
-	// Fields required for compatibility with the old Portal API and Services (temporary)
-	LegacyFields struct {
-		// PlanType             PayPlanType `json:"planType"`
-		// DailyLimit           int32       `json:"dailyLimit"`
-		// CustomLimit          int32       `json:"customLimit"`
-		// RequestTimeout       int32       `json:"requestTimeout"`
-		StripeSubscriptionID string `json:"stripeSubscriptionID"`
 	}
 
 	Settings struct {
@@ -208,8 +195,6 @@ type (
 		Settings      *UpdateAppSettings       `json:"appSettings,omitempty"`
 		Notifications []UpdateAppNotifications `json:"notificationSettings,omitempty"`
 		Whitelists    *WhitelistsObject        `json:"whitelists,omitempty"`
-		// TODO - remove when v2 migration finished
-		StripeSubscriptionID string `json:"stripeSubscriptionID,omitempty"`
 	}
 
 	UpdateAppSettings struct {
@@ -242,16 +227,10 @@ type (
 )
 
 func (u *UpdatePortalApp) IsEmpty() bool {
-	if u.Name != "" || u.Description != "" || u.AppEmoji != "" || u.StripeSubscriptionID != "" {
+	if u.Name != "" || u.Description != "" || u.AppEmoji != "" {
 		return false
 	}
 	return true
-}
-
-// TODO For Legacy Fields Only
-// SubscriptionID returns the stripe subscription ID
-func (a *PortalApp) SubscriptionID() string {
-	return a.LegacyFields.StripeSubscriptionID
 }
 
 // MonthlyLimit returns the monthly relay limit for a given portal app

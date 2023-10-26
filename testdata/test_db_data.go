@@ -156,7 +156,8 @@ var (
 				"user_8": {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: false},
 			},
 			Integrations: types.AccountIntegrations{
-				CovalentAPIKeyFree: "covalent_api_key_1",
+				StripeSubscriptionID: "stripe_id_1",
+				CovalentAPIKeyFree:   "covalent_api_key_1",
 			},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 			PartnerThroughputLimit: 2_000,
@@ -177,7 +178,8 @@ var (
 				"user_2": {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
 			},
 			Integrations: types.AccountIntegrations{
-				CovalentAPIKeyFree: "covalent_api_key_2",
+				StripeSubscriptionID: "stripe_id_2",
+				CovalentAPIKeyFree:   "covalent_api_key_2",
 			},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
 			PartnerThroughputLimit: 5_000,
@@ -198,7 +200,8 @@ var (
 				"user_10": {ID: "user_10", Email: "daenerys.targaryen123@test.com", RoleName: types.RoleMember, Accepted: false},
 			},
 			Integrations: types.AccountIntegrations{
-				CovalentAPIKeyFree: "covalent_api_key_3",
+				StripeSubscriptionID: "stripe_id_3",
+				CovalentAPIKeyFree:   "covalent_api_key_3",
 			},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
 			PartnerThroughputLimit: 1_000,
@@ -216,7 +219,8 @@ var (
 				"user_4": {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
 			},
 			Integrations: types.AccountIntegrations{
-				CovalentAPIKeyFree: "covalent_api_key_4",
+				StripeSubscriptionID: "stripe_id_4",
+				CovalentAPIKeyFree:   "covalent_api_key_4",
 			},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 			PartnerThroughputLimit: 1_000,
@@ -732,10 +736,6 @@ var (
 			FirstDateSurpassed: MockTimestamp,
 			CreatedAt:          MockTimestamp,
 			UpdatedAt:          MockTimestamp,
-			// TODO remove legacy fields when migration to V2 schema complete
-			LegacyFields: types.LegacyFields{
-				StripeSubscriptionID: "stripe_id_1",
-			},
 		},
 		"test_app_2": {
 			ID:          "test_app_2",
@@ -787,10 +787,6 @@ var (
 			FirstDateSurpassed: MockTimestamp,
 			CreatedAt:          MockTimestamp,
 			UpdatedAt:          MockTimestamp,
-			// TODO remove legacy fields when migration to V2 schema complete
-			LegacyFields: types.LegacyFields{
-				StripeSubscriptionID: "stripe_id_2",
-			},
 		},
 		"test_app_3": {
 			ID:          "test_app_3",
@@ -828,10 +824,6 @@ var (
 			FirstDateSurpassed: MockTimestamp,
 			CreatedAt:          MockTimestamp,
 			UpdatedAt:          MockTimestamp,
-			// TODO remove legacy fields when migration to V2 schema complete
-			LegacyFields: types.LegacyFields{
-				StripeSubscriptionID: "stripe_id_3",
-			},
 		},
 	}
 
@@ -1341,9 +1333,6 @@ var (
 		FirstDateSurpassed: MockTimestamp,
 		CreatedAt:          MockTimestamp,
 		UpdatedAt:          MockTimestamp,
-		LegacyFields: types.LegacyFields{
-			StripeSubscriptionID: "stripe_id_123",
-		},
 	}
 
 	UpdatePortalAppName        = "portal-app-updated"
@@ -1404,9 +1393,6 @@ var (
 			},
 			},
 		},
-	}
-	UpdatePortalAppStripeSubscriptionID = &types.LegacyFields{
-		StripeSubscriptionID: "update_stripe_subscription_id",
 	}
 
 	UpdateChainOne = types.UpdateChain{

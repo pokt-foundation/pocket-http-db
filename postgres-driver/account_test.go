@@ -116,51 +116,86 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccount() {
 
 func (ts *PGDriverTestSuite) Test_PGDriver_UpsertAccountIntegration() {
 	tests := []struct {
-		name              string
-		integrationsInput types.AccountIntegrations
-		expectedAPIKeyRow string
-		err               error
+		name                 string
+		integrationsInput    types.AccountIntegrations
+		expectedIntegrations types.AccountIntegrations
+		err                  error
 	}{
 		{
-			name: "Should create a single account integrations row",
+			name: "Should create a single account integrations row with both values",
 			integrationsInput: types.AccountIntegrations{
-				AccountID:          "account_5",
-				CovalentAPIKeyFree: "created_covalent_api_key_1",
+				AccountID:            "account_5",
+				CovalentAPIKeyFree:   "covalent_api_key_5",
+				StripeSubscriptionID: "stripe_id_5",
 			},
-			expectedAPIKeyRow: "created_covalent_api_key_1",
-			err:               nil,
+			expectedIntegrations: types.AccountIntegrations{
+				AccountID:            "account_5",
+				CovalentAPIKeyFree:   "covalent_api_key_5",
+				StripeSubscriptionID: "stripe_id_5",
+			},
 		},
 		{
-			name: "Should update an existing account integrations row",
+			name: "Should update an existing account integrations row with covalent API key",
 			integrationsInput: types.AccountIntegrations{
 				AccountID:          "account_1",
 				CovalentAPIKeyFree: "updated_covalent_api_key_1",
 			},
-			expectedAPIKeyRow: "updated_covalent_api_key_1",
-			err:               nil,
+			expectedIntegrations: types.AccountIntegrations{
+				AccountID:            "account_1",
+				StripeSubscriptionID: "stripe_id_1",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_1",
+			},
+		},
+		{
+			name: "Should update an existing account integrations row with Stripe subscription ID",
+			integrationsInput: types.AccountIntegrations{
+				AccountID:            "account_2",
+				StripeSubscriptionID: "updated_stripe_id_2",
+			},
+			expectedIntegrations: types.AccountIntegrations{
+				AccountID:            "account_2",
+				StripeSubscriptionID: "updated_stripe_id_2",
+				CovalentAPIKeyFree:   "covalent_api_key_2",
+			},
+		},
+		{
+			name: "Should update an existing account integrations row with both values",
+			integrationsInput: types.AccountIntegrations{
+				AccountID:            "account_3",
+				StripeSubscriptionID: "updated_stripe_id_3",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_3",
+			},
+			expectedIntegrations: types.AccountIntegrations{
+				AccountID:            "account_3",
+				StripeSubscriptionID: "updated_stripe_id_3",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_3",
+			},
 		},
 	}
 
 	for _, test := range tests {
-		createdIntegrations, err := ts.driver.UpsertAccountIntegration(context.Background(), test.integrationsInput)
-		ts.Equal(test.err, err)
-		if err == nil {
-			ts.Equal(test.integrationsInput, *createdIntegrations)
+		ts.Run(test.name, func() {
+			createdIntegrations, err := ts.driver.UpsertAccountIntegration(context.Background(), test.integrationsInput)
+			ts.Equal(test.err, err)
+			if err == nil {
+				ts.Equal(test.expectedIntegrations, *createdIntegrations)
 
-			if test.err == nil {
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{IncludeDeleted: false})
-				ts.NoError(err)
-				exists := false
-				for _, account := range accounts {
-					if account.ID == test.integrationsInput.AccountID {
-						exists = true
-						ts.Equal(test.expectedAPIKeyRow, account.Integrations.CovalentAPIKeyFree)
-						break
+				if test.err == nil {
+					accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{IncludeDeleted: false})
+					ts.NoError(err)
+					exists := false
+					for _, account := range accounts {
+						if account.ID == test.integrationsInput.AccountID {
+							exists = true
+							test.expectedIntegrations.AccountID = ""
+							ts.Equal(test.expectedIntegrations, account.Integrations)
+							break
+						}
 					}
+					ts.True(exists)
 				}
-				ts.True(exists)
 			}
-		}
+		})
 	}
 }
 

@@ -61,9 +61,6 @@ func Test_PGDriver_Listen(t *testing.T) {
 						CreatedAt:          testdata.MockTimestamp,
 						UpdatedAt:          testdata.MockTimestamp,
 						Deleted:            false,
-						LegacyFields: types.LegacyFields{
-							StripeSubscriptionID: "stripe_id_1",
-						},
 					},
 				},
 				types.TablePortalAppAATs: {

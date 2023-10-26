@@ -84,6 +84,7 @@ CREATE TABLE accounts (
 CREATE TABLE IF NOT EXISTS account_integrations (
     id INT GENERATED ALWAYS AS IDENTITY,
     account_id VARCHAR(10) NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+    stripe_subscription_id VARCHAR(255) UNIQUE,
     covalent_api_key_free VARCHAR(255) UNIQUE,
     covalent_api_key_paid VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ NULL,
@@ -187,9 +188,7 @@ CREATE TABLE portal_applications (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
     deleted_at TIMESTAMPTZ NULL,
-    first_date_surpassed TIMESTAMPTZ,
-    -- legacy field
-    stripe_subscription_id VARCHAR(255)
+    first_date_surpassed TIMESTAMPTZ
 );
 CREATE TABLE portal_application_settings (
     id SERIAL PRIMARY KEY,

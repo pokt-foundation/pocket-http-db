@@ -182,14 +182,13 @@ func portalAppInputs(mainTableAction, sideTablesAction types.Action, content typ
 			action: mainTableAction,
 			table:  types.TablePortalApps,
 			input: dbPortalApplication{
-				ID:                   portalApp.ID,
-				AccountID:            string(portalApp.AccountID),
-				Name:                 portalApp.Name,
-				FirstDateSurpassed:   portalApp.FirstDateSurpassed,
-				CreatedAt:            portalApp.CreatedAt,
-				UpdatedAt:            portalApp.UpdatedAt,
-				Deleted:              portalApp.Deleted,
-				StripeSubscriptionID: portalApp.LegacyFields.StripeSubscriptionID,
+				ID:                 portalApp.ID,
+				AccountID:          string(portalApp.AccountID),
+				Name:               portalApp.Name,
+				FirstDateSurpassed: portalApp.FirstDateSurpassed,
+				CreatedAt:          portalApp.CreatedAt,
+				UpdatedAt:          portalApp.UpdatedAt,
+				Deleted:            portalApp.Deleted,
 			},
 		})
 	}

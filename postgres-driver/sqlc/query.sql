@@ -212,8 +212,7 @@ UPDATE portal_applications
 SET name = COALESCE(NULLIF(@name::VARCHAR, ''), name),
     description = COALESCE(NULLIF(@description::VARCHAR, ''), description),
     app_emoji = COALESCE(NULLIF(@app_emoji::VARCHAR, ''), app_emoji),
-    stripe_subscription_id = COALESCE($2, stripe_subscription_id),
-    updated_at = $3
+    updated_at = $2
 WHERE id = $1;
 -- name: GetPlanDailyLimit :one
 SELECT daily_limit
@@ -321,6 +320,7 @@ SET deleted = true,
 WHERE id = $1;
 -- name: SelectAccounts :many
 SELECT a.*,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid
 FROM accounts AS a
@@ -330,16 +330,19 @@ WHERE (
         OR a.deleted = false
     )
 GROUP BY a.id,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid;
 -- name: SelectAccount :one
 SELECT a.*,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid
 FROM accounts AS a
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
 WHERE a.id = $1
 GROUP BY a.id,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid;
 -- name: UpdateAccountFields :exec
@@ -355,14 +358,19 @@ WHERE id = $8;
 -- name: UpsertAccountIntegrations :one
 INSERT INTO account_integrations (
         account_id,
+        stripe_subscription_id,
         covalent_api_key_free,
         covalent_api_key_paid,
         created_at,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5) ON CONFLICT (account_id) DO
+VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (account_id) DO
 UPDATE
-SET covalent_api_key_free = CASE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id IS NOT NULL THEN EXCLUDED.stripe_subscription_id
+        ELSE account_integrations.stripe_subscription_id
+    END,
+    covalent_api_key_free = CASE
         WHEN EXCLUDED.covalent_api_key_free IS NOT NULL THEN EXCLUDED.covalent_api_key_free
         ELSE account_integrations.covalent_api_key_free
     END,
