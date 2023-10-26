@@ -1916,18 +1916,43 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				accountBeforeUpdate, err := ts.client1.GetUserAccount(context.Background(), test.accountBeforeUpdate.ID, test.userID)
-				ts.NoError(err)
+				var accountBeforeUpdate *types.Account
+				if test.err == nil {
+					account, err := ts.client1.GetUserAccount(context.Background(), test.update.AccountID, test.userID)
+					ts.NoError(err)
+					accountBeforeUpdate = account
+				}
 
 				updatedAccount, err := ts.client1.UpdateAccount(context.Background(), test.update)
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
+					if test.update.PlanType != "" {
+						ts.Equal(test.expected.PlanType, updatedAccount.PlanType)
+					}
+
+					if len(test.update.Notifications) != 0 {
+						ts.Equal(test.expected.Notifications, updatedAccount.Notifications)
+					}
+
 					<-time.After(50 * time.Millisecond)
 
-					ts.Equal(test.expected.PlanType, updatedAccount.PlanType)
+					accountAfterUpdate, err := ts.client1.GetUserAccount(context.Background(), test.update.AccountID, test.userID)
+					ts.NoError(err)
 
-					accountAfterUpdate, err := ts.client1.GetUserAccount(context.Background(), updatedAccount.ID, test.userID)
+					if test.update.PlanType != "" {
+						ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
+					} else {
+						ts.Equal(accountBeforeUpdate.PlanType, accountAfterUpdate.PlanType)
+					}
+
+					if len(test.update.Notifications) != 0 {
+						ts.Equal(test.expected.Notifications, accountAfterUpdate.Notifications)
+					} else {
+						ts.Equal(accountBeforeUpdate.Notifications, accountAfterUpdate.Notifications)
+					}
+
+					accountAfterUpdate, err = ts.client2.GetUserAccount(context.Background(), test.update.AccountID, test.userID)
 					ts.NoError(err)
 
 					if test.update.PlanType != "" {

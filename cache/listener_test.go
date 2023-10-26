@@ -34,7 +34,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 
 /* ---------- Accounts ---------- */
 
-func Test_parseAccountUserAccessNotification(t *testing.T) {
+func Test_parseAccountUserNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
@@ -45,15 +45,16 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		{
 			name:            "Should insert AccountUser in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
-			userID:          "user_3",
-			accountID:       "account_1",
+			userID:          "user_1",
+			accountID:       "account_2",
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUser{
-					"user_3": {
-						ID:       "user_3",
-						Email:    "ellen.ripley789@test.com",
-						RoleName: types.RoleMember,
-						Accepted: true,
+					"user_1": {
+						ID:        "user_1",
+						AccountID: "account_2",
+						Email:     "james.holden123@test.com",
+						RoleName:  types.RoleMember,
+						Accepted:  true,
 					},
 				},
 			},
@@ -77,11 +78,11 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		{
 			name:            "Should delete AccountUser from cache when receiving a delete notification",
 			sideTableAction: types.ActionDelete,
-			userID:          "user_8",
-			accountID:       "account_1",
+			userID:          "user_9",
+			accountID:       "account_2",
 			account: &types.Account{
 				Users: map[types.UserID]types.AccountUser{
-					"user_8": testdata.AccountUsers()[8],
+					"user_9": testdata.AccountUsers()[9],
 				},
 			},
 		},

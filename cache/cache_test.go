@@ -331,11 +331,11 @@ func Test_upsertAccountUser(t *testing.T) {
 
 func Test_upsertAccount(t *testing.T) {
 	tests := []struct {
-		name                        string
-		account                     types.Account
-		accountUser                 types.AccountUser
-		pendingAccountNotifications map[types.AccountID]types.AccountNotification
-		userID                      types.UserID
+		name                string
+		account             types.Account
+		accountUser         types.AccountUser
+		accountNotification types.AccountNotification
+		userID              types.UserID
 	}{
 		{
 			name:    "Should insert a new account",
@@ -351,14 +351,20 @@ func Test_upsertAccount(t *testing.T) {
 		{
 			name:    "Should add a new Account to cache with pending AppNotifications",
 			account: *testdata.TestCreateAccount,
-			pendingAccountNotifications: map[types.AccountID]types.AccountNotification{
-				"create_account_id": {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "email@pokt.network",
-					Trigger:     "trigger456",
-					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
-				},
+			accountUser: types.AccountUser{
+				AccountID: "create_account_id",
+				ID:        "user_1",
+				Email:     "james.holden123@test.com",
+				RoleName:  types.RoleOwner,
+				Accepted:  true,
+			},
+			accountNotification: types.AccountNotification{
+				AccountID:   "create_account_id",
+				Type:        types.NotificationTypeEmail,
+				Active:      true,
+				Destination: "email@pokt.network",
+				Trigger:     "trigger456",
+				Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
 			},
 		},
 		{
@@ -378,6 +384,7 @@ func Test_upsertAccount(t *testing.T) {
 					StripeSubscriptionID: "stripe_id_1",
 					CovalentAPIKeyFree:   "covalent_api_key_1",
 				},
+				Notifications:          map[types.NotificationType]types.AccountNotification{"email": types.AccountNotification{AccountID: "", Type: "email", Active: true, Destination: "james.holden123@test.com", Trigger: "trigger123", Events: map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true}}},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
 				PartnerAppLimit:        1,
@@ -417,31 +424,32 @@ func Test_upsertAccount(t *testing.T) {
 			// Upsert account
 			cache.upsertAccount(test.account)
 
+			expectedAccount := test.account
+
 			userID := test.userID
 			if test.accountUser.ID != "" {
 				userID = test.accountUser.ID
 				cache.upsertAccountUser(test.accountUser)
 			}
+			if test.accountNotification.Type != "" {
+				cache.addAccountNotification(test.accountNotification)
+				if expectedAccount.Notifications == nil {
+					expectedAccount.Notifications = make(map[types.NotificationType]types.AccountNotification)
+				}
+				test.accountNotification.AccountID = "" // is unset in the cache TODO will be changed soon
+				expectedAccount.Notifications[test.accountNotification.Type] = test.accountNotification
+			}
 
 			if test.account.Deleted {
 				c.Empty(cache.GetUserAccount(accountID, test.accountUser.ID, Options{}), "Account should be removed from cache")
 			} else {
-				expectedAccount := test.account
-
-				if appNotification, ok := test.pendingAccountNotifications[test.account.ID]; ok {
-					if expectedAccount.Notifications == nil {
-						expectedAccount.Notifications = make(map[types.NotificationType]types.AccountNotification)
-					}
-					expectedAccount.Notifications[appNotification.Type] = appNotification
-				}
-
-				cache.pendingAccountNotifications = test.pendingAccountNotifications
 
 				expectedAccount.Plan = cache.plans[expectedAccount.PlanType]
 				if test.accountUser.ID != "" {
 					test.accountUser.AccountID = ""
 					expectedAccount.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
 				}
+
 				c.Equal(expectedAccount, cache.GetUserAccount(expectedAccount.ID, userID, Options{}), "Account should be present in cache and updated")
 
 				accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
@@ -485,7 +493,7 @@ func Test_addAccountNotification(t *testing.T) {
 		account      *types.Account
 	}{
 		{
-			name: "Should add AccountNotification to an existing PortalApp in cache",
+			name: "Should add AccountNotification to an existing Account in cache",
 			notification: types.AccountNotification{
 				AccountID:   "account_3",
 				Type:        "test_type_1",
@@ -498,7 +506,7 @@ func Test_addAccountNotification(t *testing.T) {
 				},
 			},
 			userID:    "user_5",
-			accountID: "test_app_new_3450he46fhs7",
+			accountID: "account_3",
 			account: &types.Account{
 				ID:            "account_3",
 				Name:          "new_pokt_app_1",
@@ -539,7 +547,7 @@ func Test_addAccountNotification(t *testing.T) {
 			if test.account != nil {
 				storedAccount := cache.GetUserAccount(test.accountID, test.userID, Options{})
 				storedNotification := storedAccount.Notifications[test.notification.Type]
-				c.Equal(test.notification, storedNotification, "AccountNotification should be added to the PortalApp in cache")
+				c.Equal(test.notification, storedNotification, "AccountNotification should be added to the Account in cache")
 			} else {
 				storedNotification, ok := cache.pendingAccountNotifications[test.accountID]
 				c.True(ok, "AccountNotification should be stored in pendingAccountNotifications map")

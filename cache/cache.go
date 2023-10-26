@@ -581,17 +581,15 @@ func (c *Cache) addAccountNotification(notification types.AccountNotification) {
 	accountID := notification.AccountID
 	notification.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
-	c.pendingAccountNotifications[accountID] = notification
-
-	account, ok := c.accounts[accountID]
-	if !ok {
+	if account, ok := c.accounts[accountID]; ok {
+		if account.Notifications == nil {
+			account.Notifications = make(map[types.NotificationType]types.AccountNotification)
+		}
+		account.Notifications[notification.Type] = notification
 		return
 	}
 
-	if account.Notifications == nil {
-		account.Notifications = make(map[types.NotificationType]types.AccountNotification)
-	}
-	account.Notifications[notification.Type] = notification
+	c.pendingAccountNotifications[accountID] = notification
 }
 
 // upsertAccount adds or updates AccountUser in cache
@@ -659,6 +657,7 @@ func (c *Cache) deleteAccountUser(accountUser types.AccountUser) {
 	accountUser.AccountID = "" // to avoid multiple sources of truth TODO: update this by sending row ID in notification struct and passing as param
 
 	if accountUser.RoleName == types.RoleOwner {
+		c.logger.Warn("cannot delete owner from account")
 		return
 	}
 

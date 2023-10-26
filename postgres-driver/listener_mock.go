@@ -156,7 +156,7 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 	if sideTablesAction != "" {
 		for _, user := range account.Users {
 			// listener mock only allows one side table so must hardcode user here
-			if user.ID == "user_1" {
+			if user.ID == "user_1" || user.ID == "user_9" {
 				inputs = append(inputs, inputStruct{
 					action: sideTablesAction,
 					table:  types.TableAccountUsers,
