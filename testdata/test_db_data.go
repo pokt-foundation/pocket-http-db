@@ -431,7 +431,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			ID:       "account_1",
 			Name:     "The Brave Voyager",
 			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("basic_plan"),
+			PlanType: types.FreetierV0,
 			Integrations: types.AccountIntegrations{
 				StripeSubscriptionID: "stripe_id_1",
 				CovalentAPIKeyFree:   "covalent_api_key_1",
@@ -461,7 +461,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			ID:       "account_2",
 			Name:     "Dragonborn Explorer",
 			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("pro_plan"),
+			PlanType: types.Enterprise,
 			Integrations: types.AccountIntegrations{
 				StripeSubscriptionID: "stripe_id_2",
 				CovalentAPIKeyFree:   "covalent_api_key_2",
@@ -490,7 +490,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			ID:       "account_3",
 			Name:     "Fellowship Startup",
 			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("startup_plan"),
+			PlanType: types.PayAsYouGoV0,
 			Integrations: types.AccountIntegrations{
 				StripeSubscriptionID: "stripe_id_3",
 				CovalentAPIKeyFree:   "covalent_api_key_3",
@@ -520,7 +520,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			ID:       "account_4",
 			Name:     "Iron Throne Enterprise",
 			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PayPlanType("enterprise_plan"),
+			PlanType: types.FreetierV0,
 			Integrations: types.AccountIntegrations{
 				StripeSubscriptionID: "stripe_id_4",
 				CovalentAPIKeyFree:   "covalent_api_key_4",
@@ -537,7 +537,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			ID:                     "account_5",
 			Name:                   "Nomad Wanderer",
 			IconURL:                "https://picsum.photos/200",
-			PlanType:               types.PayPlanType("basic_plan"),
+			PlanType:               types.PayAsYouGoV0,
 			Users:                  map[types.UserID]types.AccountUser{},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0006": {}, "0040": {}},
 			PartnerThroughputLimit: 6_000,
@@ -752,7 +752,7 @@ func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
 				},
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.PayPlanType("basic_plan"),
+				PlanType:        types.FreetierV0,
 				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				ThroughputLimit: 5_000,
 			},
@@ -784,8 +784,8 @@ func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
 				},
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.PayPlanType("pro_plan"),
-				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
+				PlanType:        types.Enterprise,
+				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				ThroughputLimit: 10_000,
 			},
 		},
@@ -796,9 +796,9 @@ func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
 				"test_f6a5d8690ecb669865bd752b7796a920",
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.PayPlanType("startup_plan"),
-				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
-				ThroughputLimit: 1_000,
+				PlanType:        types.PayAsYouGoV0,
+				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+				ThroughputLimit: 10_000,
 			},
 		},
 	}
@@ -806,8 +806,8 @@ func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
 
 func PayPlans() map[types.PayPlanType]*types.Plan {
 	return map[types.PayPlanType]*types.Plan{
-		types.PayPlanType("FREETIER_V0"): {
-			Type:              types.PayPlanType("FREETIER_V0"),
+		types.FreetierV0: {
+			Type:              types.FreetierV0,
 			Name:              "Free Tier",
 			Description:       "Ideal for small projects and testing",
 			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
@@ -817,8 +817,8 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			LegacyDailyLimit:  250_000,
 			CreatedAt:         MockTimestamp,
 		},
-		types.PayPlanType("PAY_AS_YOU_GO_V0"): {
-			Type:              types.PayPlanType("PAY_AS_YOU_GO_V0"),
+		types.PayAsYouGoV0: {
+			Type:              types.PayAsYouGoV0,
 			Name:              "Pay As You Go",
 			Description:       "Pay only for what you use",
 			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
@@ -828,8 +828,8 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			LegacyDailyLimit:  0,
 			CreatedAt:         MockTimestamp,
 		},
-		types.PayPlanType("ENTERPRISE"): {
-			Type:              types.PayPlanType("ENTERPRISE"),
+		types.Enterprise: {
+			Type:              types.Enterprise,
 			Name:              "Enterprise",
 			Description:       "Premium plan for large businesses",
 			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
@@ -839,8 +839,8 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			LegacyDailyLimit:  0,
 			CreatedAt:         MockTimestamp,
 		},
-		types.PayPlanType("TEST_PLAN_V0"): {
-			Type:              types.PayPlanType("TEST_PLAN_V0"),
+		types.TestPlanV0: {
+			Type:              types.TestPlanV0,
 			Name:              "Test Plan",
 			Description:       "For testing purposes",
 			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
@@ -850,8 +850,8 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			LegacyDailyLimit:  0,
 			CreatedAt:         MockTimestamp,
 		},
-		types.PayPlanType("TEST_PLAN_10K"): {
-			Type:              types.PayPlanType("TEST_PLAN_10K"),
+		types.TestPlan10K: {
+			Type:              types.TestPlan10K,
 			Name:              "Test Plan 10K",
 			Description:       "Test plan with 10K daily limit for testing purposes",
 			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
@@ -861,8 +861,8 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			LegacyDailyLimit:  10_000,
 			CreatedAt:         MockTimestamp,
 		},
-		types.PayPlanType("TEST_PLAN_90K"): {
-			Type:              types.PayPlanType("TEST_PLAN_90K"),
+		types.TestPlan90k: {
+			Type:              types.TestPlan90k,
 			Name:              "Test Plan 90K",
 			Description:       "Test plan with 90K daily limit for testing purposes",
 			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
@@ -870,61 +870,6 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			ThroughputLimit:   10_000,
 			AppLimit:          5,
 			LegacyDailyLimit:  90_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("basic_plan"): {
-			Type:              types.PayPlanType("basic_plan"),
-			Name:              "Basic Plan",
-			Description:       "Basic plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-			MonthlyRelayLimit: 5_000_000,
-			ThroughputLimit:   5_000,
-			AppLimit:          2,
-			LegacyDailyLimit:  1_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("pro_plan"): {
-			Type:              types.PayPlanType("pro_plan"),
-			Name:              "Pro Plan",
-			Description:       "Pro plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
-			MonthlyRelayLimit: 10_000_000,
-			ThroughputLimit:   10_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  5_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("enterprise_plan"): {
-			Type:              types.PayPlanType("enterprise_plan"),
-			Name:              "Enterprise Plan",
-			Description:       "Enterprise plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}, "0034": {}},
-			MonthlyRelayLimit: 20_000_000,
-			ThroughputLimit:   20_000,
-			AppLimit:          10,
-			LegacyDailyLimit:  10_000,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("developer_plan"): {
-			Type:              types.PayPlanType("developer_plan"),
-			Name:              "Developer Plan",
-			Description:       "Developer plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
-			MonthlyRelayLimit: 500_000,
-			ThroughputLimit:   500,
-			AppLimit:          1,
-			LegacyDailyLimit:  100,
-			CreatedAt:         MockTimestamp,
-		},
-		types.PayPlanType("startup_plan"): {
-			Type:              types.PayPlanType("startup_plan"),
-			Name:              "Startup Plan",
-			Description:       "Startup plan for testing purposes",
-			ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
-			MonthlyRelayLimit: 1_000_000,
-			ThroughputLimit:   1_000,
-			AppLimit:          5,
-			LegacyDailyLimit:  500,
 			CreatedAt:         MockTimestamp,
 		},
 	}
@@ -1187,7 +1132,7 @@ var (
 		ID:         "create_account_id",
 		Name:       "Protogen Corp",
 		IconURL:    "https://picsum.photos/200",
-		PlanType:   types.PayPlanType("developer_plan"),
+		PlanType:   types.FreetierV0,
 		PortalApps: map[types.PortalAppID]*types.PortalApp{},
 		CreatedAt:  MockTimestamp,
 		UpdatedAt:  MockTimestamp,

@@ -26,7 +26,7 @@ func Test_PGDriver_Listen(t *testing.T) {
 					Action: types.ActionInsert,
 					Data: &types.Account{
 						ID:                     "account_1",
-						PlanType:               "basic_plan",
+						PlanType:               types.FreetierV0,
 						PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 						PartnerThroughputLimit: 2_000,
 						PartnerAppLimit:        1,

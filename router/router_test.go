@@ -1052,7 +1052,7 @@ func TestRouter_createAccount(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedAccount: &types.Account{
 				ID:        "account_77",
-				PlanType:  types.PayPlanType("developer_plan"),
+				PlanType:  types.FreetierV0,
 				CreatedAt: testdata.MockTimestamp,
 				UpdatedAt: testdata.MockTimestamp,
 			},

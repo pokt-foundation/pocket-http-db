@@ -57,7 +57,7 @@ var testAccount = Account{
 	ID:       "account_1",
 	Name:     "The Brave Voyager",
 	IconURL:  "https://picsum.photos/200",
-	PlanType: PayPlanType("basic_plan"),
+	PlanType: FreetierV0,
 	Integrations: AccountIntegrations{
 		StripeSubscriptionID: "stripe_id_1",
 		CovalentAPIKeyFree:   "covalent_api_key_1",

@@ -135,8 +135,8 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return plan by type",
-			actual:   cache.GetPlan("basic_plan"),
-			expected: *testdata.PayPlans()["basic_plan"],
+			actual:   cache.GetPlan(types.FreetierV0),
+			expected: *testdata.PayPlans()[types.FreetierV0],
 		},
 		{
 			name:     "Should return all pay plans",
