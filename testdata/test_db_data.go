@@ -495,6 +495,19 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 				StripeSubscriptionID: "stripe_id_3",
 				CovalentAPIKeyFree:   "covalent_api_key_3",
 			},
+			Notifications: map[types.NotificationType]types.AccountNotification{
+				types.NotificationTypeEmail: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "chrisjen.avasarala1@test.com",
+					Trigger:     "trigger789",
+					Events: map[types.NotificationEvent]bool{
+						types.NotificationEventHalf:    true,
+						types.NotificationEventFull:    true,
+						types.NotificationEventQuarter: true,
+					},
+				},
+			},
 			Users:                  map[types.UserID]types.AccountUser{},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
 			PartnerThroughputLimit: 1_000,

@@ -519,6 +519,15 @@ VALUES (
         'trigger456',
         ARRAY ['full'::notification_event,'half'::notification_event],
         '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'account_3',
+        true,
+        'email',
+        'chrisjen.avasarala1@test.com',
+        'trigger789',
+        ARRAY ['full'::notification_event,'half'::notification_event,'quarter'::notification_event],
+        '2022-11-11 11:11:11.000000'
     );
 -- Insert user_roles
 INSERT INTO user_roles (

@@ -206,7 +206,7 @@ func (a *Account) GetUser(userID UserID) (AccountUser, error) {
 // GetEmailSettings returns the Account email and notification thresholds
 func (a *Account) GetEmailSettings() (Email, map[NotificationEvent]bool, error) {
 	emailNotifications, ok := a.Notifications[NotificationTypeEmail]
-	if !ok {
+	if !ok || emailNotifications.Destination == "" || len(emailNotifications.Events) == 0 {
 		return "", nil, errors.New("email notifications not set")
 	}
 
