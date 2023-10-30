@@ -454,14 +454,16 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			PartnerThroughputLimit: 2_000,
 			PartnerAppLimit:        1,
 			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			FirstDateSurpassed:     MockTimestamp,
 			CreatedAt:              MockTimestamp,
 			UpdatedAt:              MockTimestamp,
 		},
 		"account_2": {
-			ID:       "account_2",
-			Name:     "Dragonborn Explorer",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.Enterprise,
+			ID:              "account_2",
+			Name:            "Dragonborn Explorer",
+			IconURL:         "https://picsum.photos/200",
+			PlanType:        types.Enterprise,
+			EnterpriseLimit: 3_000_000,
 			Integrations: types.AccountIntegrations{
 				StripeSubscriptionID: "stripe_id_2",
 				CovalentAPIKeyFree:   "covalent_api_key_2",
@@ -634,9 +636,8 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 					"0001": {"GET": {}},
 				},
 			},
-			FirstDateSurpassed: MockTimestamp,
-			CreatedAt:          MockTimestamp,
-			UpdatedAt:          MockTimestamp,
+			CreatedAt: MockTimestamp,
+			UpdatedAt: MockTimestamp,
 		},
 		"test_app_2": {
 			ID:          "test_app_2",
@@ -673,9 +674,8 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 					"0064": {"POST": {}},
 				},
 			},
-			FirstDateSurpassed: MockTimestamp,
-			CreatedAt:          MockTimestamp,
-			UpdatedAt:          MockTimestamp,
+			CreatedAt: MockTimestamp,
+			UpdatedAt: MockTimestamp,
 		},
 		"test_app_3": {
 			ID:          "test_app_3",
@@ -710,9 +710,8 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 				MonthlyRelayLimit: 4_500_000,
 				FavoritedChainIDs: map[types.RelayChainID]struct{}{"0001": {}, "0034": {}},
 			},
-			FirstDateSurpassed: MockTimestamp,
-			CreatedAt:          MockTimestamp,
-			UpdatedAt:          MockTimestamp,
+			CreatedAt: MockTimestamp,
+			UpdatedAt: MockTimestamp,
 		},
 	}
 }
@@ -1153,9 +1152,8 @@ var (
 			SecretKey:         "test_3e3fb7949c9e3b193cfba5348f93bb2f",
 			SecretKeyRequired: true,
 		},
-		FirstDateSurpassed: MockTimestamp,
-		CreatedAt:          MockTimestamp,
-		UpdatedAt:          MockTimestamp,
+		CreatedAt: MockTimestamp,
+		UpdatedAt: MockTimestamp,
 	}
 
 	TestCreatePortalAppByNonOwner = &types.PortalApp{
@@ -1168,9 +1166,8 @@ var (
 			SecretKey:         "test_83756e546134df7933bfd748b27bde51",
 			SecretKeyRequired: true,
 		},
-		FirstDateSurpassed: MockTimestamp,
-		CreatedAt:          MockTimestamp,
-		UpdatedAt:          MockTimestamp,
+		CreatedAt: MockTimestamp,
+		UpdatedAt: MockTimestamp,
 	}
 
 	TestCreatePortalAppAAT = types.AAT{
@@ -1310,9 +1307,8 @@ var (
 			SecretKey:         "test_849c1397586f9fb6f902576120d0d10f",
 			SecretKeyRequired: true,
 		},
-		FirstDateSurpassed: MockTimestamp,
-		CreatedAt:          MockTimestamp,
-		UpdatedAt:          MockTimestamp,
+		CreatedAt: MockTimestamp,
+		UpdatedAt: MockTimestamp,
 	}
 
 	UpdatePortalAppName        = "portal-app-updated"

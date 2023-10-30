@@ -409,6 +409,8 @@ type Account struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
+	FirstDateSurpassed      pgtype.Timestamptz `json:"first_date_surpassed"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -540,16 +542,15 @@ type PayPlan struct {
 }
 
 type PortalApplication struct {
-	ID                 types.PortalAppID  `json:"id"`
-	AccountID          pgtype.Text        `json:"account_id"`
-	Name               string             `json:"name"`
-	AppEmoji           pgtype.Text        `json:"app_emoji"`
-	Description        pgtype.Text        `json:"description"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
-	Deleted            bool               `json:"deleted"`
-	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
-	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
+	ID          types.PortalAppID  `json:"id"`
+	AccountID   pgtype.Text        `json:"account_id"`
+	Name        string             `json:"name"`
+	AppEmoji    pgtype.Text        `json:"app_emoji"`
+	Description pgtype.Text        `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Deleted     bool               `json:"deleted"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type PortalApplicationAat struct {

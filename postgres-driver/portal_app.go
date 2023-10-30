@@ -96,12 +96,11 @@ func (a *SelectPortalApplicationsRow) toPortalApp() (*types.PortalApp, error) {
 			MonthlyRelayLimit: a.MonthlyRelayLimit.Int32,
 			FavoritedChainIDs: favoritedChainIDs,
 		},
-		AATs:               appAATs,
-		Whitelists:         appWhitelists,
-		FirstDateSurpassed: a.FirstDateSurpassed.Time.UTC(),
-		CreatedAt:          a.CreatedAt.Time.UTC(),
-		UpdatedAt:          a.UpdatedAt.Time.UTC(),
-		Deleted:            a.Deleted,
+		AATs:       appAATs,
+		Whitelists: appWhitelists,
+		CreatedAt:  a.CreatedAt.Time.UTC(),
+		UpdatedAt:  a.UpdatedAt.Time.UTC(),
+		Deleted:    a.Deleted,
 	}, nil
 }
 
@@ -201,14 +200,13 @@ func (pg *PostgresDriver) WritePortalApp(ctx context.Context, portalApp types.Po
 	qtx := pg.WithTx(tx)
 
 	insert := InsertPortalApplicationParams{
-		ID:                 portalApp.ID,
-		AccountID:          newText(string(portalApp.AccountID)),
-		Name:               portalApp.Name,
-		Description:        newText(portalApp.Description),
-		AppEmoji:           newText(string(portalApp.AppEmoji)),
-		CreatedAt:          newTimestamptz(portalApp.CreatedAt),
-		UpdatedAt:          newTimestamptz(portalApp.UpdatedAt),
-		FirstDateSurpassed: newTimestamptz(portalApp.FirstDateSurpassed),
+		ID:          portalApp.ID,
+		AccountID:   newText(string(portalApp.AccountID)),
+		Name:        portalApp.Name,
+		Description: newText(portalApp.Description),
+		AppEmoji:    newText(string(portalApp.AppEmoji)),
+		CreatedAt:   newTimestamptz(portalApp.CreatedAt),
+		UpdatedAt:   newTimestamptz(portalApp.UpdatedAt),
 	}
 
 	_, err = qtx.InsertPortalApplication(ctx, insert)
@@ -432,26 +430,6 @@ func (pg *PostgresDriver) updateWhitelists(ctx context.Context, qtx *Queries, up
 	return nil
 }
 
-// UpdatePortalAppsFirstDateSurpassed updates multiple PortalApps' FirstDateSurpassed fields
-func (pg *PostgresDriver) UpdatePortalAppsFirstDateSurpassed(ctx context.Context, update *types.UpdateFirstDateSurpassed) error {
-	portalAppIDs := []string{}
-	for _, portalAppID := range update.PortalAppIDs {
-		portalAppIDs = append(portalAppIDs, string(portalAppID))
-	}
-
-	params := UpdateFirstDatesSurpassedParams{
-		PortalAppIds:       portalAppIDs,
-		FirstDateSurpassed: newTimestamptz(update.FirstDateSurpassed),
-	}
-
-	err := pg.UpdateFirstDatesSurpassed(ctx, params)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 /* ----- postgresdriver PortalApp Delete Methods ----- */
 
 // SetPortalAppDeleted updates a single PortalApp in the database's Deleted field to true
@@ -469,15 +447,14 @@ func (pg *PostgresDriver) SetPortalAppDeleted(ctx context.Context, portalAppID t
 /* ----- Used by Listener ----- */
 func (json dbPortalApplication) toOutput() *types.PortalApp {
 	return &types.PortalApp{
-		ID:                 json.ID,
-		AccountID:          types.AccountID(json.AccountID),
-		Name:               json.Name,
-		Description:        json.Description,
-		AppEmoji:           types.AppEmoji(json.AppEmoji),
-		FirstDateSurpassed: json.FirstDateSurpassed,
-		CreatedAt:          json.CreatedAt,
-		UpdatedAt:          json.UpdatedAt,
-		Deleted:            json.Deleted,
+		ID:          json.ID,
+		AccountID:   types.AccountID(json.AccountID),
+		Name:        json.Name,
+		Description: json.Description,
+		AppEmoji:    types.AppEmoji(json.AppEmoji),
+		CreatedAt:   json.CreatedAt,
+		UpdatedAt:   json.UpdatedAt,
+		Deleted:     json.Deleted,
 	}
 }
 
@@ -533,7 +510,6 @@ type dbPortalApplication struct {
 	Deleted              bool              `json:"deleted"`
 	DeletedAt            time.Time         `json:"deleted_at"`
 	RequestTimeout       int32             `json:"request_timeout"`
-	FirstDateSurpassed   time.Time         `json:"first_date_surpassed"`
 	PlanType             string            `json:"plan_type"`
 	DailyLimit           int32             `json:"daily_limit"`
 	CustomLimit          int32             `json:"custom_limit"`

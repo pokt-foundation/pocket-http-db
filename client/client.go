@@ -102,8 +102,6 @@ type (
 		UpdatePortalApp(ctx context.Context, portalAppUpdate types.UpdatePortalApp) (*types.UpdatePortalApp, error)
 		// DeletePortalApp deletes a Portal App - DELETE `/v2/portal_app/{id}`
 		DeletePortalApp(ctx context.Context, portalAppID types.PortalAppID) (map[string]string, error)
-		// UpdatePortalAppsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/portal_app/first_date_surpassed`
-		UpdatePortalAppsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error)
 
 		// CreateAccount creates a new Account in the database for a single user - POST `/v2/user/{userID}/account`
 		CreateAccount(ctx context.Context, userID types.UserID, account types.Account, timestamp time.Time) (*types.Account, error)
@@ -115,6 +113,8 @@ type (
 		UpdateAccountIntegration(ctx context.Context, accountID types.AccountID, integration types.AccountIntegrations) (*types.AccountIntegrations, error)
 		// DeleteAccount deletes an account in the DB - DELETE `/v2/account/{id}`
 		DeleteAccount(ctx context.Context, accountID types.AccountID) (map[string]string, error)
+		// UpdateAccountsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/account/first_date_surpassed`
+		UpdateAccountsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error)
 
 		// WriteAccountUser creates a single Account User - POST `/v2/account/user`
 		WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, time time.Time) (map[string]types.UserID, error)
@@ -735,18 +735,6 @@ func (db *DBClient) DeletePortalApp(ctx context.Context, portalAppID types.Porta
 	return deleteReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), db.httpClient)
 }
 
-// UpdatePortalAppsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/portal_app/first_date_surpassed`
-func (db *DBClient) UpdatePortalAppsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error) {
-	firstDateSurpassedUpdateJSON, err := json.Marshal(firstDateSurpassedUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", errInvalidFirstDateSurpassedUpdateJSON, err)
-	}
-
-	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(portalAppPath), "first_date_surpassed")
-
-	return postReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), firstDateSurpassedUpdateJSON, db.httpClient)
-}
-
 /* -- Account Write Methods -- */
 
 // CreateAccount creates a new Account in the database for a single user - POST `/v2/user/{userID}/account`
@@ -813,6 +801,18 @@ func (db *DBClient) DeleteAccount(ctx context.Context, accountID types.AccountID
 	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), accountID)
 
 	return deleteReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), db.httpClient)
+}
+
+// UpdateAccountsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/account/first_date_surpassed`
+func (db *DBClient) UpdateAccountsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error) {
+	firstDateSurpassedUpdateJSON, err := json.Marshal(firstDateSurpassedUpdate)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", errInvalidFirstDateSurpassedUpdateJSON, err)
+	}
+
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), "first_date_surpassed")
+
+	return postReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), firstDateSurpassedUpdateJSON, db.httpClient)
 }
 
 /* -- Account User Write Methods -- */

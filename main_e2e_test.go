@@ -1390,9 +1390,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					AATs: map[types.ProtocolAppID]types.AAT{
 						"test_protocol_app_5": testdata.TestCreatePortalAppAAT,
 					},
-					FirstDateSurpassed: testdata.MockTimestamp,
-					CreatedAt:          testdata.MockTimestamp,
-					UpdatedAt:          testdata.MockTimestamp,
+					CreatedAt: testdata.MockTimestamp,
+					UpdatedAt: testdata.MockTimestamp,
 				},
 			},
 			{
@@ -1680,53 +1679,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	ts.Run("Test_UpdatePortalAppsFirstDateSurpassed", func() {
-		tests := []struct {
-			name                     string
-			firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
-			err                      error
-			expected                 map[string]string
-		}{
-			{
-				name: "Should update FirstDateSurpassed field for a given list of Portal apps in the DB",
-				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-					PortalAppIDs:       []types.PortalAppID{"test_app_1", "test_app_2"},
-					FirstDateSurpassed: testdata.MockTimestamp,
-				},
-				expected: map[string]string{"status": "updated"},
-			},
-			{
-				name: "Should return an error if no app IDs provided",
-				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-					PortalAppIDs:       []types.PortalAppID{},
-					FirstDateSurpassed: testdata.MockTimestamp,
-				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request"),
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				result, err := ts.client1.UpdatePortalAppsFirstDateSurpassed(context.Background(), test.firstDateSurpassedUpdate)
-				ts.Equal(test.err, err)
-
-				if test.err == nil {
-					ts.Equal(test.expected, result)
-
-					for _, appID := range test.firstDateSurpassedUpdate.PortalAppIDs {
-						portalApp, err := ts.client1.GetPortalAppByID(context.Background(), appID)
-						ts.NoError(err)
-						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
-
-						portalApp, err = ts.client2.GetPortalAppByID(context.Background(), appID)
-						ts.NoError(err)
-						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
-					}
-				}
-			})
-		}
-	})
-
 	/* ------ V2 Account Write Tests ------ */
 
 	ts.Run("Test_CreateAccount", func() {
@@ -1850,16 +1802,31 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			err                 error
 		}{
 			{
-				name:                "Should update the account's PlanType field",
+				name:                "Should update the account's PlanType field to Enterprise",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
+				update: types.UpdateAccount{
+					AccountID:       "account_1",
+					PlanType:        types.Enterprise,
+					EnterpriseLimit: 3_000_000,
+				},
+				userID: "user_1",
+				expected: &types.Account{
+					ID:              "account_1",
+					PlanType:        types.Enterprise,
+					EnterpriseLimit: 3_000_000,
+				},
+			},
+			{
+				name:                "Should update the account's PlanType field to non-Enterprise",
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID: "account_1",
-					PlanType:  types.Enterprise,
+					PlanType:  types.FreetierV0,
 				},
 				userID: "user_1",
 				expected: &types.Account{
 					ID:       "account_1",
-					PlanType: types.Enterprise,
+					PlanType: types.FreetierV0,
 				},
 			},
 			{
@@ -1907,10 +1874,29 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should fail if an invalid account ID is provided",
 				update: types.UpdateAccount{
 					AccountID: "account_8823",
-					PlanType:  types.Enterprise,
+					PlanType:  types.FreetierV0,
 				},
 				userID: "user_1",
 				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error account does not exist for account ID 'account_8823'"),
+			},
+			{
+				name: "Should fail if no limit provided for Enterprise plan",
+				update: types.UpdateAccount{
+					AccountID: "account_1",
+					PlanType:  types.Enterprise,
+				},
+				userID: "user_1",
+				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error enterprise plan must have a limit set"),
+			},
+			{
+				name: "Should fail if a limit provided for non-Enterprise plan",
+				update: types.UpdateAccount{
+					AccountID:       "account_1",
+					PlanType:        types.FreetierV0,
+					EnterpriseLimit: 123,
+				},
+				userID: "user_1",
+				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error non-enterprise plan must not have a limit set"),
 			},
 		}
 
@@ -1929,6 +1915,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if test.err == nil {
 					if test.update.PlanType != "" {
 						ts.Equal(test.expected.PlanType, updatedAccount.PlanType)
+						if test.update.PlanType == types.Enterprise {
+							ts.Equal(test.expected.EnterpriseLimit, updatedAccount.EnterpriseLimit)
+						} else {
+							ts.Equal(int32(0), updatedAccount.EnterpriseLimit)
+						}
 					}
 
 					if len(test.update.Notifications) != 0 {
@@ -1942,6 +1933,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					if test.update.PlanType != "" {
 						ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
+						if test.update.PlanType == types.Enterprise {
+							ts.Equal(test.expected.EnterpriseLimit, accountAfterUpdate.EnterpriseLimit)
+						} else {
+							ts.Equal(int32(0), updatedAccount.EnterpriseLimit)
+						}
 					} else {
 						ts.Equal(accountBeforeUpdate.PlanType, accountAfterUpdate.PlanType)
 					}
@@ -2123,6 +2119,58 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					account, err = ts.client2.GetUserAccount(context.Background(), createdAccount.ID, test.ownerID)
 					ts.Equal(test.err, err)
 					ts.Nil(account)
+				}
+			})
+		}
+	})
+
+	ts.Run("Test_UpdateAccountsFirstDateSurpassed", func() {
+		tests := []struct {
+			name                     string
+			firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
+			ownerIDs                 map[types.AccountID]types.UserID
+			err                      error
+			expected                 map[string]string
+		}{
+			{
+				name: "Should update FirstDateSurpassed field for a given list of Portal apps in the DB",
+				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
+					AccountIDs:         []types.AccountID{"account_1", "account_2"},
+					FirstDateSurpassed: testdata.MockTimestamp,
+				},
+				ownerIDs: map[types.AccountID]types.UserID{
+					"account_1": "user_1",
+					"account_2": "user_3",
+				},
+				expected: map[string]string{"status": "updated"},
+			},
+			{
+				name: "Should return an error if no app IDs provided",
+				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
+					AccountIDs:         []types.AccountID{},
+					FirstDateSurpassed: testdata.MockTimestamp,
+				},
+				err: fmt.Errorf("Response not OK. 400 Bad Request"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				result, err := ts.client1.UpdateAccountsFirstDateSurpassed(context.Background(), test.firstDateSurpassedUpdate)
+				ts.Equal(test.err, err)
+
+				if test.err == nil {
+					ts.Equal(test.expected, result)
+
+					for _, accountID := range test.firstDateSurpassedUpdate.AccountIDs {
+						portalApp, err := ts.client1.GetUserAccount(context.Background(), accountID, test.ownerIDs[accountID])
+						ts.NoError(err)
+						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
+
+						portalApp, err = ts.client2.GetUserAccount(context.Background(), accountID, test.ownerIDs[accountID])
+						ts.NoError(err)
+						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
+					}
 				}
 			})
 		}

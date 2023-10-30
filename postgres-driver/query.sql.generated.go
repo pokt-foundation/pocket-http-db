@@ -753,7 +753,7 @@ INSERT INTO accounts (
         updated_at
     )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, created_at, updated_at, deleted, deleted_at
+RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, enterprise_limit, first_date_surpassed, created_at, updated_at, deleted, deleted_at
 `
 
 type InsertAccountParams struct {
@@ -783,6 +783,8 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.PartnerChainIDs,
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
+		&i.EnterpriseLimit,
+		&i.FirstDateSurpassed,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
@@ -1049,8 +1051,7 @@ INSERT INTO portal_applications (
         description,
         app_emoji,
         created_at,
-        updated_at,
-        first_date_surpassed
+        updated_at
     )
 VALUES (
         $1,
@@ -1059,21 +1060,19 @@ VALUES (
         $4,
         $5,
         $6,
-        $7,
-        $8
+        $7
     )
-RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, first_date_surpassed
+RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at
 `
 
 type InsertPortalApplicationParams struct {
-	ID                 types.PortalAppID  `json:"id"`
-	AccountID          pgtype.Text        `json:"account_id"`
-	Name               string             `json:"name"`
-	Description        pgtype.Text        `json:"description"`
-	AppEmoji           pgtype.Text        `json:"app_emoji"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
-	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
+	ID          types.PortalAppID  `json:"id"`
+	AccountID   pgtype.Text        `json:"account_id"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	AppEmoji    pgtype.Text        `json:"app_emoji"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalApplicationParams) (PortalApplication, error) {
@@ -1085,7 +1084,6 @@ func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalA
 		arg.AppEmoji,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.FirstDateSurpassed,
 	)
 	var i PortalApplication
 	err := row.Scan(
@@ -1098,7 +1096,6 @@ func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalA
 		&i.UpdatedAt,
 		&i.Deleted,
 		&i.DeletedAt,
-		&i.FirstDateSurpassed,
 	)
 	return i, err
 }
@@ -1210,7 +1207,7 @@ func (q *Queries) RemoveGlobalBlockedContract(ctx context.Context, blockedAddres
 }
 
 const selectAccount = `-- name: SelectAccount :one
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.first_date_surpassed, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1256,6 +1253,8 @@ type SelectAccountRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
+	FirstDateSurpassed      pgtype.Timestamptz `json:"first_date_surpassed"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -1277,6 +1276,8 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 		&i.PartnerChainIDs,
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
+		&i.EnterpriseLimit,
+		&i.FirstDateSurpassed,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
@@ -1290,7 +1291,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 }
 
 const selectAccounts = `-- name: SelectAccounts :many
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.first_date_surpassed, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1339,6 +1340,8 @@ type SelectAccountsRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
+	FirstDateSurpassed      pgtype.Timestamptz `json:"first_date_surpassed"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -1366,6 +1369,8 @@ func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAc
 			&i.PartnerChainIDs,
 			&i.PartnerThroughputLimit,
 			&i.PartnerApplicationLimit,
+			&i.EnterpriseLimit,
+			&i.FirstDateSurpassed,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Deleted,
@@ -1814,7 +1819,7 @@ whitelists_agg AS (
     FROM portal_application_whitelists paw
     GROUP BY paw.application_id
 )
-SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at, p.first_date_surpassed,
+SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at,
     pas.secret_key,
     pas.secret_key_required,
     pas.monthly_relay_limit,
@@ -1833,23 +1838,22 @@ WHERE (
 `
 
 type SelectPortalApplicationsRow struct {
-	ID                 types.PortalAppID  `json:"id"`
-	AccountID          pgtype.Text        `json:"account_id"`
-	Name               string             `json:"name"`
-	AppEmoji           pgtype.Text        `json:"app_emoji"`
-	Description        pgtype.Text        `json:"description"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
-	Deleted            bool               `json:"deleted"`
-	DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
-	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
-	SecretKey          pgtype.Text        `json:"secret_key"`
-	SecretKeyRequired  pgtype.Bool        `json:"secret_key_required"`
-	MonthlyRelayLimit  pgtype.Int4        `json:"monthly_relay_limit"`
-	Environment        NullEnvironment    `json:"environment"`
-	FavoritedChainIDs  []string           `json:"favorited_chain_ids"`
-	AATs               []byte             `json:"aats"`
-	Whitelists         []byte             `json:"whitelists"`
+	ID                types.PortalAppID  `json:"id"`
+	AccountID         pgtype.Text        `json:"account_id"`
+	Name              string             `json:"name"`
+	AppEmoji          pgtype.Text        `json:"app_emoji"`
+	Description       pgtype.Text        `json:"description"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	Deleted           bool               `json:"deleted"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	SecretKey         pgtype.Text        `json:"secret_key"`
+	SecretKeyRequired pgtype.Bool        `json:"secret_key_required"`
+	MonthlyRelayLimit pgtype.Int4        `json:"monthly_relay_limit"`
+	Environment       NullEnvironment    `json:"environment"`
+	FavoritedChainIDs []string           `json:"favorited_chain_ids"`
+	AATs              []byte             `json:"aats"`
+	Whitelists        []byte             `json:"whitelists"`
 }
 
 func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) ([]SelectPortalApplicationsRow, error) {
@@ -1871,7 +1875,6 @@ func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) (
 			&i.UpdatedAt,
 			&i.Deleted,
 			&i.DeletedAt,
-			&i.FirstDateSurpassed,
 			&i.SecretKey,
 			&i.SecretKeyRequired,
 			&i.MonthlyRelayLimit,
@@ -1999,8 +2002,12 @@ SET name = COALESCE($1, name),
     partner_chain_ids = COALESCE($4, partner_chain_ids),
     partner_throughput_limit = COALESCE($5, partner_throughput_limit),
     partner_application_limit = COALESCE($6, partner_application_limit),
-    updated_at = $7
-WHERE id = $8
+    enterprise_limit = CASE
+        WHEN COALESCE($3, plan_type) = 'ENTERPRISE' THEN COALESCE($7, enterprise_limit)
+        ELSE NULL
+    END,
+    updated_at = $8
+WHERE id = $9
 `
 
 type UpdateAccountFieldsParams struct {
@@ -2010,6 +2017,7 @@ type UpdateAccountFieldsParams struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	ID                      types.AccountID    `json:"id"`
 }
@@ -2022,6 +2030,7 @@ func (q *Queries) UpdateAccountFields(ctx context.Context, arg UpdateAccountFiel
 		arg.PartnerChainIDs,
 		arg.PartnerThroughputLimit,
 		arg.PartnerApplicationLimit,
+		arg.EnterpriseLimit,
 		arg.UpdatedAt,
 		arg.ID,
 	)
@@ -2205,18 +2214,18 @@ func (q *Queries) UpdateDeleteWhitelists(ctx context.Context, arg UpdateDeleteWh
 }
 
 const updateFirstDatesSurpassed = `-- name: UpdateFirstDatesSurpassed :exec
-UPDATE portal_applications
+UPDATE accounts
 SET first_date_surpassed = $1
 WHERE id = ANY ($2::VARCHAR [])
 `
 
 type UpdateFirstDatesSurpassedParams struct {
 	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
-	PortalAppIds       []string           `json:"portal_app_ids"`
+	AccountIDs         []string           `json:"account_ids"`
 }
 
 func (q *Queries) UpdateFirstDatesSurpassed(ctx context.Context, arg UpdateFirstDatesSurpassedParams) error {
-	_, err := q.db.Exec(ctx, updateFirstDatesSurpassed, arg.FirstDateSurpassed, arg.PortalAppIds)
+	_, err := q.db.Exec(ctx, updateFirstDatesSurpassed, arg.FirstDateSurpassed, arg.AccountIDs)
 	return err
 }
 

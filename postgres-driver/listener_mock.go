@@ -146,6 +146,8 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 				PartnerChainIDs:         partnerChainIDs,
 				PartnerThroughputLimit:  account.PartnerThroughputLimit,
 				PartnerApplicationLimit: account.PartnerAppLimit,
+				EnterpriseLimit:         account.EnterpriseLimit,
+				FirstDateSurpassed:      account.FirstDateSurpassed,
 				CreatedAt:               account.CreatedAt,
 				UpdatedAt:               account.UpdatedAt,
 				Deleted:                 account.Deleted,
@@ -208,13 +210,12 @@ func portalAppInputs(mainTableAction, sideTablesAction types.Action, content typ
 			action: mainTableAction,
 			table:  types.TablePortalApps,
 			input: dbPortalApplication{
-				ID:                 portalApp.ID,
-				AccountID:          string(portalApp.AccountID),
-				Name:               portalApp.Name,
-				FirstDateSurpassed: portalApp.FirstDateSurpassed,
-				CreatedAt:          portalApp.CreatedAt,
-				UpdatedAt:          portalApp.UpdatedAt,
-				Deleted:            portalApp.Deleted,
+				ID:        portalApp.ID,
+				AccountID: string(portalApp.AccountID),
+				Name:      portalApp.Name,
+				CreatedAt: portalApp.CreatedAt,
+				UpdatedAt: portalApp.UpdatedAt,
+				Deleted:   portalApp.Deleted,
 			},
 		})
 	}

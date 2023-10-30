@@ -54,10 +54,11 @@ func Test_GetOwnerID(t *testing.T) {
 }
 
 var testAccount = Account{
-	ID:       "account_1",
-	Name:     "The Brave Voyager",
-	IconURL:  "https://picsum.photos/200",
-	PlanType: FreetierV0,
+	ID:                 "account_1",
+	Name:               "The Brave Voyager",
+	IconURL:            "https://picsum.photos/200",
+	PlanType:           FreetierV0,
+	FirstDateSurpassed: timestamp,
 	Integrations: AccountIntegrations{
 		StripeSubscriptionID: "stripe_id_1",
 		CovalentAPIKeyFree:   "covalent_api_key_1",
@@ -141,9 +142,8 @@ var testAccount = Account{
 					"0001": {"GET": {}},
 				},
 			},
-			FirstDateSurpassed: timestamp,
-			CreatedAt:          timestamp,
-			UpdatedAt:          timestamp,
+			CreatedAt: timestamp,
+			UpdatedAt: timestamp,
 		},
 		"test_app_2": {
 			ID:          "test_app_2",
@@ -180,9 +180,8 @@ var testAccount = Account{
 					"0064": {"POST": {}},
 				},
 			},
-			FirstDateSurpassed: timestamp,
-			CreatedAt:          timestamp,
-			UpdatedAt:          timestamp,
+			CreatedAt: timestamp,
+			UpdatedAt: timestamp,
 		},
 	},
 	PartnerChainIDs:        map[RelayChainID]struct{}{"0001": {}, "0053": {}},

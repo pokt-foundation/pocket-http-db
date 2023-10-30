@@ -197,10 +197,20 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 		err                      error
 	}{
 		{
-			name: "Should update the account's PlanType field",
+			name: "Should update the account's PlanType field to Enterprise",
+			update: types.UpdateAccount{
+				AccountID:       "account_1",
+				PlanType:        types.Enterprise,
+				EnterpriseLimit: 3_000_000,
+			},
+			account: testdata.Accounts()["account_1"],
+			err:     nil,
+		},
+		{
+			name: "Should update the account's PlanType field to non-Enterprise",
 			update: types.UpdateAccount{
 				AccountID: "account_1",
-				PlanType:  types.Enterprise,
+				PlanType:  types.FreetierV0,
 			},
 			account: testdata.Accounts()["account_1"],
 			err:     nil,
@@ -285,7 +295,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should fail if update Account does not exist in the db",
 			update: types.UpdateAccount{
 				AccountID: "account_8823",
-				PlanType:  types.Enterprise,
+				PlanType:  types.FreetierV0,
 			},
 			err: fmt.Errorf(errAccountDoesntExist.Error(), "account_8823"),
 		},
@@ -296,6 +306,23 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				PlanType:  "turbo_ultra_mega_plan",
 			},
 			err: fmt.Errorf(errPayPlanDoesntExist.Error(), types.PayPlanType("turbo_ultra_mega_plan")),
+		},
+		{
+			name: "Should fail if update Account has plan type Enterprise but no EnterpriseLimit",
+			update: types.UpdateAccount{
+				AccountID: "account_1",
+				PlanType:  types.Enterprise,
+			},
+			err: errEnterpriseMustHaveLimit,
+		},
+		{
+			name: "Should fail if update Account has a non-Enterprise plan type but has an EnterpriseLimit",
+			update: types.UpdateAccount{
+				AccountID:       "account_1",
+				PlanType:        types.FreetierV0,
+				EnterpriseLimit: 123,
+			},
+			err: errNonEnterpriseMustNotHaveLimit,
 		},
 	}
 
@@ -666,4 +693,38 @@ func (ts *PGDriverTestSuite) getAndAssignAccountUsers(accountID types.AccountID)
 	account.AssignAccountUsers(usersForAccount)
 
 	return account
+}
+
+func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccountsFirstDateSurpassed() {
+	tests := []struct {
+		name   string
+		update *types.UpdateFirstDateSurpassed
+		err    error
+	}{
+		{
+			name: "Should update multiple Accounts in the database with a FirstDateSurpassed timestamp ",
+			update: &types.UpdateFirstDateSurpassed{
+				AccountIDs:         []types.AccountID{testdata.Accounts()["account_1"].ID, testdata.Accounts()["account_2"].ID},
+				FirstDateSurpassed: time.Date(2023, time.February, 14, 0, 0, 0, 0, time.UTC),
+			},
+			err: nil,
+		},
+	}
+
+	for _, test := range tests {
+		ts.Run(test.name, func() {
+			// Update FirstDateSurpassed fields for Accounts
+			err := ts.driver.UpdateAccountsFirstDateSurpassed(context.Background(), test.update)
+			ts.Equal(test.err, err)
+
+			// Check FirstDateSurpassed fields for Accounts in the DB
+			accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
+			ts.Equal(test.err, err)
+			for _, appID := range test.update.AccountIDs {
+				account, ok := accounts[types.AccountID(appID)]
+				ts.True(ok)
+				ts.Equal(test.update.FirstDateSurpassed, account.FirstDateSurpassed)
+			}
+		})
+	}
 }

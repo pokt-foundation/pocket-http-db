@@ -113,7 +113,6 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app", rt.createNewPortalApp).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.updatePortalApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
-	rt.Router.HandleFunc("/v2/portal_app/first_date_surpassed", rt.updatePortalAppFirstDateSurpassed).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v2/middleware/portal_app", rt.getPortalAppsForMiddleware).Methods(http.MethodGet)
 
@@ -122,6 +121,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.createAccountIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.updateAccountIntegration).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.deleteAccount).Methods(http.MethodDelete)
+	rt.Router.HandleFunc("/v2/account/first_date_surpassed", rt.updateAccountFirstDateSurpassed).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v2/account/user", rt.writeAccountUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/user/update_role", rt.updateAccountUserRole).Methods(http.MethodPut)
@@ -584,30 +584,6 @@ func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
-// POST /v2/portal_app/first_date_surpassed - Updates one or more PortalApps' FirstDateSurpassed field.
-func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	var firstDateSurpassedUpdate *types.UpdateFirstDateSurpassed
-
-	err := json.NewDecoder(r.Body).Decode(&firstDateSurpassedUpdate)
-	if err != nil {
-		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	if len(firstDateSurpassedUpdate.PortalAppIDs) == 0 {
-		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusBadRequest, fmt.Errorf("no portal app IDs provided"))
-	}
-
-	err = rt.writer.UpdatePortalAppsFirstDateSurpassed(r.Context(), firstDateSurpassedUpdate)
-	if err != nil {
-		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "updated"})
-}
-
 /* ---------- V2 Account Handler Methods ---------- */
 
 // GET /v2/account - Get all Accounts.
@@ -819,6 +795,30 @@ func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+// POST /v2/account/first_date_surpassed - Updates one or more Accounts' FirstDateSurpassed field.
+func (rt *Router) updateAccountFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
+	var firstDateSurpassedUpdate *types.UpdateFirstDateSurpassed
+
+	err := json.NewDecoder(r.Body).Decode(&firstDateSurpassedUpdate)
+	if err != nil {
+		rt.handleError(w, "updateAccountFirstDateSurpassed", http.StatusBadRequest, err)
+		return
+	}
+	defer r.Body.Close()
+
+	if len(firstDateSurpassedUpdate.AccountIDs) == 0 {
+		rt.handleError(w, "updateAccountFirstDateSurpassed", http.StatusBadRequest, fmt.Errorf("no account IDs provided"))
+	}
+
+	err = rt.writer.UpdateAccountsFirstDateSurpassed(r.Context(), firstDateSurpassedUpdate)
+	if err != nil {
+		rt.handleError(w, "updateAccountFirstDateSurpassed", http.StatusInternalServerError, err)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
 /* ---------- V2 Account User Handler Methods ---------- */

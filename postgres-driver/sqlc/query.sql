@@ -118,8 +118,7 @@ INSERT INTO portal_applications (
         description,
         app_emoji,
         created_at,
-        updated_at,
-        first_date_surpassed
+        updated_at
     )
 VALUES (
         $1,
@@ -128,8 +127,7 @@ VALUES (
         $4,
         $5,
         $6,
-        $7,
-        $8
+        $7
     )
 RETURNING *;
 -- name: InsertPortalApplicationAAT :one
@@ -279,9 +277,9 @@ WHERE (
         )
     );
 -- name: UpdateFirstDatesSurpassed :exec
-UPDATE portal_applications
+UPDATE accounts
 SET first_date_surpassed = @first_date_surpassed
-WHERE id = ANY (@portal_app_ids::VARCHAR []);
+WHERE id = ANY (@account_ids::VARCHAR []);
 -- name: DeletePortalApp :exec
 UPDATE portal_applications
 SET deleted = true,
@@ -372,8 +370,12 @@ SET name = COALESCE($1, name),
     partner_chain_ids = COALESCE($4, partner_chain_ids),
     partner_throughput_limit = COALESCE($5, partner_throughput_limit),
     partner_application_limit = COALESCE($6, partner_application_limit),
-    updated_at = $7
-WHERE id = $8;
+    enterprise_limit = CASE
+        WHEN COALESCE($3, plan_type) = 'ENTERPRISE' THEN COALESCE($7, enterprise_limit)
+        ELSE NULL
+    END,
+    updated_at = $8
+WHERE id = $9;
 -- name: UpsertAccountIntegrations :one
 INSERT INTO account_integrations (
         account_id,

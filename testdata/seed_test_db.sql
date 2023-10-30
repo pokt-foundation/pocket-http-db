@@ -340,6 +340,8 @@ INSERT INTO accounts (
         partner_chain_ids,
         partner_throughput_limit,
         partner_application_limit,
+        enterprise_limit,
+        first_date_surpassed,
         created_at,
         updated_at
     )
@@ -351,6 +353,8 @@ VALUES (
         ARRAY ['0001', '0053'],
         2000,
         1,
+        NULL,
+        '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -362,6 +366,8 @@ VALUES (
         ARRAY ['0001', '0053','0021', '0064'],
         5000,
         3,
+        3000000,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -373,6 +379,8 @@ VALUES (
         ARRAY ['0001', '0053', '0064', '0034'],
         1000,
         2,
+        NULL,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -384,6 +392,8 @@ VALUES (
         ARRAY ['0001'],
         1000,
         2,
+        NULL,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -395,6 +405,8 @@ VALUES (
         ARRAY ['0006', '0040'],
         6000,
         1,
+        NULL,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
@@ -500,7 +512,6 @@ INSERT INTO portal_applications (
         name,
         app_emoji,
         description,
-        first_date_surpassed,
         created_at,
         updated_at
     )
@@ -511,7 +522,6 @@ VALUES (
         '1F336',
         'Embark on an interstellar journey with our powerful application.',
         '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
@@ -521,7 +531,6 @@ VALUES (
         '1F336',
         'Unveil the mysteries of the multiverse with our enchanting application.',
         '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
@@ -530,7 +539,6 @@ VALUES (
         'pokt_app_789',
         '1F336',
         'Harness the power of a connected world with our revolutionary application.',
-        '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );

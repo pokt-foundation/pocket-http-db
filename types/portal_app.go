@@ -50,18 +50,17 @@ func (w WhitelistType) IsValid() bool {
 type (
 	// PortalApp represents a single application in the Portal
 	PortalApp struct {
-		ID                 PortalAppID           `json:"id"`
-		Name               string                `json:"name"`
-		Description        string                `json:"description"`
-		AppEmoji           AppEmoji              `json:"appEmoji"`
-		AccountID          AccountID             `json:"accountID"`
-		Settings           Settings              `json:"settings"`
-		Whitelists         Whitelists            `json:"whitelists"`
-		AATs               map[ProtocolAppID]AAT `json:"aat"`
-		FirstDateSurpassed time.Time             `json:"firstDateSurpassed"`
-		CreatedAt          time.Time             `json:"createdAt"`
-		UpdatedAt          time.Time             `json:"updatedAt"`
-		Deleted            bool                  `json:"deleted"`
+		ID          PortalAppID           `json:"id"`
+		Name        string                `json:"name"`
+		Description string                `json:"description"`
+		AppEmoji    AppEmoji              `json:"appEmoji"`
+		AccountID   AccountID             `json:"accountID"`
+		Settings    Settings              `json:"settings"`
+		Whitelists  Whitelists            `json:"whitelists"`
+		AATs        map[ProtocolAppID]AAT `json:"aat"`
+		CreatedAt   time.Time             `json:"createdAt"`
+		UpdatedAt   time.Time             `json:"updatedAt"`
+		Deleted     bool                  `json:"deleted"`
 	}
 
 	Settings struct {
@@ -163,11 +162,6 @@ type (
 		SecretKeyRequired bool        `json:"secretKeyRequired"`
 		MonthlyRelayLimit int32       `json:"monthlyRelayLimit"`
 		FavoritedChainIDs []string    `json:"favoritedChainIDs"`
-	}
-
-	UpdateFirstDateSurpassed struct {
-		PortalAppIDs       []PortalAppID `json:"applicationIDs"`
-		FirstDateSurpassed time.Time     `json:"firstDateSurpassed"`
 	}
 
 	Origin    string

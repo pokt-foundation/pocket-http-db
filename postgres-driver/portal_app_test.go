@@ -96,7 +96,6 @@ func filterAppsCreatedInTest(portalApps map[types.PortalAppID]*types.PortalApp) 
 		if len(app.ID) != 8 {
 			app.CreatedAt = testdata.MockTimestamp
 			app.UpdatedAt = testdata.MockTimestamp
-			app.FirstDateSurpassed = testdata.MockTimestamp
 			filtered[id] = app
 		}
 	}
@@ -355,40 +354,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 				} else {
 					ts.Equal(createdPortalApp.Whitelists, updatedPortalApp.Whitelists)
 				}
-			}
-		})
-	}
-}
-
-func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalAppsFirstDateSurpassed() {
-	tests := []struct {
-		name   string
-		update *types.UpdateFirstDateSurpassed
-		err    error
-	}{
-		{
-			name: "Should update multiple PortalApps in the database with a FirstDateSurpassed timestamp ",
-			update: &types.UpdateFirstDateSurpassed{
-				PortalAppIDs:       []types.PortalAppID{testdata.PortalApps()["test_app_1"].ID, testdata.PortalApps()["test_app_2"].ID},
-				FirstDateSurpassed: time.Date(2023, time.February, 14, 0, 0, 0, 0, time.UTC),
-			},
-			err: nil,
-		},
-	}
-
-	for _, test := range tests {
-		ts.Run(test.name, func() {
-			// Update FirstDateSurpassed fields for PortalApps
-			err := ts.driver.UpdatePortalAppsFirstDateSurpassed(context.Background(), test.update)
-			ts.Equal(test.err, err)
-
-			// Check FirstDateSurpassed fields for PortalApps in the DB
-			portalApps, err := ts.driver.ReadPortalApps(context.Background(), types.DriverOptions{})
-			ts.Equal(test.err, err)
-			for _, appID := range test.update.PortalAppIDs {
-				portalApp, ok := portalApps[types.PortalAppID(appID)]
-				ts.True(ok)
-				ts.Equal(test.update.FirstDateSurpassed, portalApp.FirstDateSurpassed)
 			}
 		})
 	}
