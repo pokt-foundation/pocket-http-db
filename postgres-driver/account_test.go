@@ -225,6 +225,15 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			err:     nil,
 		},
 		{
+			name: "Should update the account's StripeSubscriptionID field",
+			update: types.UpdateAccount{
+				AccountID:            "account_3",
+				StripeSubscriptionID: "stripe_id_update_123",
+			},
+			account: testdata.Accounts()["account_3"],
+			err:     nil,
+		},
+		{
 			name: "Should update the account's IconURL field",
 			update: types.UpdateAccount{
 				AccountID: "account_1",
@@ -334,6 +343,12 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			if test.err == nil {
 				if test.update.PlanType != "" {
 					ts.Equal(test.update.PlanType, account.PlanType)
+					if test.update.PlanType == types.Enterprise {
+						ts.Equal(test.update.EnterpriseLimit, account.EnterpriseLimit)
+					}
+				}
+				if test.update.StripeSubscriptionID != "" {
+					ts.Equal(test.update.StripeSubscriptionID, account.Integrations.StripeSubscriptionID)
 				}
 				if test.update.Name != "" {
 					ts.Equal(test.update.Name, account.Name)

@@ -109,12 +109,13 @@ type (
 
 	// UpdateAccount contains all fields required to update an Account
 	UpdateAccount struct {
-		AccountID       AccountID                    `json:"accountID"`
-		Name            string                       `json:"name"`
-		IconURL         string                       `json:"iconURL"`
-		PlanType        PayPlanType                  `json:"planType"`
-		EnterpriseLimit int32                        `json:"enterpriseLimit"`
-		Notifications   []UpdateAccountNotifications `json:"notificationSettings,omitempty"`
+		AccountID            AccountID                    `json:"accountID"`
+		Name                 string                       `json:"name"`
+		IconURL              string                       `json:"iconURL"`
+		PlanType             PayPlanType                  `json:"planType"`
+		EnterpriseLimit      int32                        `json:"enterpriseLimit"`
+		StripeSubscriptionID string                       `json:"stripeSubscriptionID"`
+		Notifications        []UpdateAccountNotifications `json:"notificationSettings,omitempty"`
 	}
 
 	UpdateAccountNotifications struct {

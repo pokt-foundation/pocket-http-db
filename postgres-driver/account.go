@@ -283,12 +283,24 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 			// Delete notification row for application_id & type in DB if active: false in update struct
 			if !appNotification.Active {
 				err := qtx.UpdateDeleteAccountNotification(ctx, UpdateDeleteAccountNotificationParams{
-					AccountID: update.AccountID, Type: appNotification.NotificationType,
+					AccountID: update.AccountID,
+					Type:      appNotification.NotificationType,
 				})
 				if err != nil {
 					return nil, err
 				}
 			}
+		}
+	}
+
+	if update.StripeSubscriptionID != "" {
+		_, err := qtx.UpsertAccountIntegrations(ctx, UpsertAccountIntegrationsParams{
+			AccountID:            update.AccountID,
+			StripeSubscriptionID: newText(update.StripeSubscriptionID),
+			UpdatedAt:            newTimestamptz(updatedAt),
+		})
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -311,6 +323,7 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		PartnerChainIDs:         accountResult.PartnerChainIDs,
 		PartnerThroughputLimit:  accountResult.PartnerThroughputLimit,
 		PartnerApplicationLimit: accountResult.PartnerApplicationLimit,
+		StripeSubscriptionID:    accountResult.StripeSubscriptionID,
 		CovalentAPIKeyFree:      accountResult.CovalentAPIKeyFree,
 		CovalentAPIKeyPaid:      accountResult.CovalentAPIKeyPaid,
 		Notifications:           accountResult.Notifications,
