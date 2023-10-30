@@ -274,6 +274,32 @@ func (_m *MockIDBClient) DeleteUser(ctx context.Context, userID types.UserID) (m
 	return r0, r1
 }
 
+// GetAccountByID provides a mock function with given fields: ctx, accountID
+func (_m *MockIDBClient) GetAccountByID(ctx context.Context, accountID types.AccountID) (*types.Account, error) {
+	ret := _m.Called(ctx, accountID)
+
+	var r0 *types.Account
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, types.AccountID) (*types.Account, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, types.AccountID) *types.Account); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Account)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, types.AccountID) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetAllAccounts provides a mock function with given fields: ctx, options
 func (_m *MockIDBClient) GetAllAccounts(ctx context.Context, options ...AccountOptions) ([]*types.Account, error) {
 	_va := make([]interface{}, len(options))
