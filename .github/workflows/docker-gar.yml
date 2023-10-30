@@ -2,7 +2,7 @@ name: Lint, Test, Publish New Go Version, Push Test Database Image and Push Dock
 
 on:
   push:
-    branches: [master, staging]
+    branches: [master, dev]
 
 env:
   PROJECT_ID: portal-gb-prod
