@@ -64,6 +64,8 @@ type (
 
 		// GetAllAccounts returns all Accounts - GET `/v2/account`
 		GetAllAccounts(ctx context.Context, options ...AccountOptions) ([]*types.Account, error)
+		// GetAccountByID returns a single Account by its ID - GET `/v2/account/{id}`
+		GetAccountByID(ctx context.Context, accountID types.AccountID) (*types.Account, error)
 		// GetUserAccounts returns all Accounts for a given user ID - GET `/v2/user/{userID}/account`
 		GetUserAccounts(ctx context.Context, userID types.UserID, options ...AccountOptions) ([]*types.Account, error)
 		// GetUserAccount returns a single user Account by its account ID and user ID - GET `/v2/user/{userID}/account/{id}`
@@ -497,6 +499,12 @@ func (db *DBClient) GetAllAccounts(ctx context.Context, optionParams ...AccountO
 	}
 
 	return getReq[[]*types.Account](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+}
+
+// GetAccountByID returns a single Account by its ID - GET `/v2/account/{id}`
+func (db *DBClient) GetAccountByID(ctx context.Context, accountID types.AccountID) (*types.Account, error) {
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), accountID)
+	return getReq[*types.Account](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
 // GetUserAccounts returns all Accounts for a given user ID - GET `/v2/user/{userID}/account`

@@ -544,6 +544,36 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}
 	})
 
+	ts.Run("Test_GetAccount", func() {
+		tests := []struct {
+			name            string
+			accountID       types.AccountID
+			expectedAccount *types.Account
+			err             error
+		}{
+			{
+				name:            "Should get one account",
+				accountID:       "account_1",
+				expectedAccount: testdata.Accounts(setAccountOpts)["account_1"],
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				account, err := ts.client1.GetAccountByID(context.Background(), test.accountID)
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Equal(account, test.expectedAccount)
+
+					account, err = ts.client2.GetAccountByID(context.Background(), test.accountID)
+					ts.Equal(test.err, err)
+					ts.Equal(account, test.expectedAccount)
+				}
+			})
+		}
+	})
+
 	ts.Run("Test_GetUserAccounts", func() {
 		tests := []struct {
 			name         string

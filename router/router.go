@@ -117,6 +117,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/middleware/portal_app", rt.getPortalAppsForMiddleware).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v2/account", rt.getAccounts).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccount).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.createAccountIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.updateAccountIntegration).Methods(http.MethodPut)
@@ -605,6 +606,20 @@ func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, accounts)
+}
+
+// GET /v2/account/{id} - Get one Account.
+func (rt *Router) getAccount(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	accountID := types.AccountID(vars["id"])
+
+	account := rt.cache.GetAccount(accountID)
+	if account.ID == "" {
+		rt.handleError(w, "getAccount", http.StatusNotFound, errAccountNotFound)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, account)
 }
 
 // GET /v2/{userID}/account - Get all user accounts by user ID.

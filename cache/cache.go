@@ -448,6 +448,18 @@ func (c *Cache) GetAccounts(options Options) []types.Account {
 	return accountsToReturn
 }
 
+// GetAccounts returns one Accounts from cache
+func (c *Cache) GetAccount(accountID types.AccountID) types.Account {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	if account, ok := c.accounts[accountID]; ok {
+		return *account
+	}
+
+	return types.Account{}
+}
+
 // GetUserAccount returns one Account by accountID with portal apps filtered by user ID
 func (c *Cache) GetUserAccount(accountID types.AccountID, userID types.UserID, options Options) types.Account {
 	c.rwMutex.RLock()

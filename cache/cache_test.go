@@ -69,6 +69,11 @@ func Test_SetCache(t *testing.T) {
 			expected: testdata.Accounts(setAccountOpts),
 		},
 		{
+			name:     "Should return one account",
+			actual:   cache.GetAccount("account_1"),
+			expected: *testdata.Accounts(setAccountOpts)["account_1"],
+		},
+		{
 			name:     "Should return account by ID",
 			actual:   cache.GetUserAccount("account_1", "user_1", Options{}),
 			expected: *testdata.Accounts(setAccountOpts)["account_1"],
