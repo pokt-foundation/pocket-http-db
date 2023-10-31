@@ -778,9 +778,10 @@ func (json dbAccountUser) toOutput() *types.AccountUser {
 
 func (j dbAccountIntegration) toOutput() *types.AccountIntegrations {
 	return &types.AccountIntegrations{
-		AccountID:          j.AccountID,
-		CovalentAPIKeyFree: j.CovalentAPIKeyFree,
-		CovalentAPIKeyPaid: j.CovalentAPIKeyPaid,
+		AccountID:            j.AccountID,
+		StripeSubscriptionID: j.StripeSubscriptionID,
+		CovalentAPIKeyFree:   j.CovalentAPIKeyFree,
+		CovalentAPIKeyPaid:   j.CovalentAPIKeyPaid,
 	}
 }
 
@@ -820,12 +821,13 @@ type dbAccount struct {
 }
 
 type dbAccountIntegration struct {
-	ID                 int32           `json:"id"`
-	AccountID          types.AccountID `json:"account_id"`
-	CovalentAPIKeyFree string          `json:"covalent_api_key_free"`
-	CovalentAPIKeyPaid string          `json:"covalent_api_key_paid"`
-	CreatedAt          time.Time       `json:"created_at"`
-	UpdatedAt          time.Time       `json:"updated_at"`
+	ID                   int32           `json:"id"`
+	AccountID            types.AccountID `json:"account_id"`
+	StripeSubscriptionID string          `json:"stripe_subscription_id"`
+	CovalentAPIKeyFree   string          `json:"covalent_api_key_free"`
+	CovalentAPIKeyPaid   string          `json:"covalent_api_key_paid"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
 }
 
 type dbAccountNotification struct {
