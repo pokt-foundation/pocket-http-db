@@ -721,7 +721,8 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
 	return map[types.PortalAppID]*types.PortalAppLite{
 		"test_app_1": {
-			ID: "test_app_1",
+			ID:        "test_app_1",
+			AccountID: "account_1",
 			PublicKeys: []types.PortalAppPublicKey{
 				"test_34715cae753e67c75fbb340442e7de8e",
 			},
@@ -757,7 +758,8 @@ func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
 			},
 		},
 		"test_app_2": {
-			ID: "test_app_2",
+			ID:        "test_app_2",
+			AccountID: "account_2",
 			PublicKeys: []types.PortalAppPublicKey{
 				"test_8237c72345f12d1b1a8b64a1a7f66fa4",
 			},
@@ -789,7 +791,8 @@ func PortalAppLites() map[types.PortalAppID]*types.PortalAppLite {
 			},
 		},
 		"test_app_3": {
-			ID: "test_app_3",
+			ID:        "test_app_3",
+			AccountID: "account_3",
 			PublicKeys: []types.PortalAppPublicKey{
 				"test_f608500e4fe3e09014fe2411b4a560b5",
 				"test_f6a5d8690ecb669865bd752b7796a920",
