@@ -58,7 +58,7 @@ var (
 		MonthlyRelayLimit: 5_000_000,
 		ThroughputLimit:   5_000,
 		AppLimit:          5,
-		LegacyDailyLimit:  250_000,
+		DailyLimit:        250_000,
 		CreatedAt:         time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
 	}
 

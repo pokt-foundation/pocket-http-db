@@ -813,7 +813,7 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			MonthlyRelayLimit: 5_000_000,
 			ThroughputLimit:   5_000,
 			AppLimit:          5,
-			LegacyDailyLimit:  250_000,
+			DailyLimit:        250_000,
 			CreatedAt:         MockTimestamp,
 		},
 		types.PayAsYouGoV0: {
@@ -824,7 +824,7 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			MonthlyRelayLimit: 10_000_000,
 			ThroughputLimit:   10_000,
 			AppLimit:          5,
-			LegacyDailyLimit:  0,
+			DailyLimit:        0,
 			CreatedAt:         MockTimestamp,
 		},
 		types.Enterprise: {
@@ -835,7 +835,7 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			MonthlyRelayLimit: 10_000_000,
 			ThroughputLimit:   10_000,
 			AppLimit:          5,
-			LegacyDailyLimit:  0,
+			DailyLimit:        0,
 			CreatedAt:         MockTimestamp,
 		},
 		types.TestPlanV0: {
@@ -846,7 +846,7 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			MonthlyRelayLimit: 10_000_000,
 			ThroughputLimit:   10_000,
 			AppLimit:          5,
-			LegacyDailyLimit:  0,
+			DailyLimit:        0,
 			CreatedAt:         MockTimestamp,
 		},
 		types.TestPlan10K: {
@@ -857,7 +857,7 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			MonthlyRelayLimit: 10_000_000,
 			ThroughputLimit:   10_000,
 			AppLimit:          5,
-			LegacyDailyLimit:  10_000,
+			DailyLimit:        10_000,
 			CreatedAt:         MockTimestamp,
 		},
 		types.TestPlan90k: {
@@ -868,7 +868,7 @@ func PayPlans() map[types.PayPlanType]*types.Plan {
 			MonthlyRelayLimit: 90_000_000,
 			ThroughputLimit:   10_000,
 			AppLimit:          5,
-			LegacyDailyLimit:  90_000,
+			DailyLimit:        90_000,
 			CreatedAt:         MockTimestamp,
 		},
 	}

@@ -173,7 +173,7 @@ func (a *Account) GetDailyLimit() int {
 	if a.PlanType == Enterprise {
 		return int(a.EnterpriseLimit)
 	}
-	return int(a.Plan.LegacyDailyLimit)
+	return int(a.Plan.DailyLimit)
 }
 
 // GetOwner returns the Account OWNER
