@@ -36,7 +36,6 @@ CREATE TABLE pay_plans (
     application_limit INT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    -- legacy field
     daily_limit INT
 );
 -- Users Tables
