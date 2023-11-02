@@ -108,8 +108,8 @@ type (
 
 	// PortalAppLite contains only the PortalApp fields actually used in the Portal Middleware.
 	PortalAppLite struct {
-		ID         PortalAppID          `json:"id"`
-		AccountID  AccountID            `json:"accountID"`
+		ID PortalAppID `json:"id"`
+		// AccountID  AccountID            `json:"accountID"`
 		PublicKeys []PortalAppPublicKey `json:"publicKeys"`
 		Settings   SettingsLite         `json:"settings,omitempty"`
 		Whitelists Whitelists           `json:"whitelists,omitempty"`
@@ -332,8 +332,8 @@ func (w *Whitelists) IsEmpty() bool {
 // Returns a copy rather than a pointer as its intended be used at the point of returning the request body
 func (a *PortalApp) ConvertPortalAppToPortalAppLite(appPlan *Plan) PortalAppLite {
 	portalAppLite := PortalAppLite{
-		ID:         a.getIDForMiddleware(),
-		AccountID:  a.AccountID,
+		ID: a.getIDForMiddleware(),
+		// AccountID:  a.AccountID,
 		PublicKeys: a.GetPublicKeys(),
 	}
 	if !a.Whitelists.IsEmpty() {
