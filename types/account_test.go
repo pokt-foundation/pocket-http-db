@@ -54,11 +54,10 @@ func Test_GetOwnerID(t *testing.T) {
 }
 
 var testAccount = Account{
-	ID:                 "account_1",
-	Name:               "The Brave Voyager",
-	IconURL:            "https://picsum.photos/200",
-	PlanType:           FreetierV0,
-	FirstDateSurpassed: timestamp,
+	ID:       "account_1",
+	Name:     "The Brave Voyager",
+	IconURL:  "https://picsum.photos/200",
+	PlanType: FreetierV0,
 	Integrations: AccountIntegrations{
 		StripeSubscriptionID: "stripe_id_1",
 		CovalentAPIKeyFree:   "covalent_api_key_1",

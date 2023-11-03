@@ -64,8 +64,6 @@ type (
 		UpsertAccountIntegration(ctx context.Context, integrations types.AccountIntegrations) (*types.AccountIntegrations, error)
 		/* SetAccountDeleted sets the Account Deleted field to true. */
 		SetAccountDeleted(ctx context.Context, accountID types.AccountID, deletedAt time.Time) error
-		/* UpdateAccountsFirstDateSurpassed updates multiple Accounts firstDateSurpassed field. */
-		UpdateAccountsFirstDateSurpassed(ctx context.Context, update *types.UpdateFirstDateSurpassed) error
 
 		/* WriteAccountUser saves input AccountUser to the database. */
 		WriteAccountUser(ctx context.Context, createAccountUser types.CreateAccountUser, createdAt time.Time) (types.UserID, error)

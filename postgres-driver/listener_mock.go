@@ -147,7 +147,6 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 				PartnerThroughputLimit:  account.PartnerThroughputLimit,
 				PartnerApplicationLimit: account.PartnerAppLimit,
 				EnterpriseLimit:         account.EnterpriseLimit,
-				FirstDateSurpassed:      account.FirstDateSurpassed,
 				CreatedAt:               account.CreatedAt,
 				UpdatedAt:               account.UpdatedAt,
 				Deleted:                 account.Deleted,

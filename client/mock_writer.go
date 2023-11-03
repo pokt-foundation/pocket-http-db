@@ -430,32 +430,6 @@ func (_m *MockIDBWriter) UpdateAccountIntegration(ctx context.Context, accountID
 	return r0, r1
 }
 
-// UpdateAccountsFirstDateSurpassed provides a mock function with given fields: ctx, firstDateSurpassedUpdate
-func (_m *MockIDBWriter) UpdateAccountsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error) {
-	ret := _m.Called(ctx, firstDateSurpassedUpdate)
-
-	var r0 map[string]string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.UpdateFirstDateSurpassed) (map[string]string, error)); ok {
-		return rf(ctx, firstDateSurpassedUpdate)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, types.UpdateFirstDateSurpassed) map[string]string); ok {
-		r0 = rf(ctx, firstDateSurpassedUpdate)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]string)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, types.UpdateFirstDateSurpassed) error); ok {
-		r1 = rf(ctx, firstDateSurpassedUpdate)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // UpdateBlockedContractActive provides a mock function with given fields: ctx, address, isActive
 func (_m *MockIDBWriter) UpdateBlockedContractActive(ctx context.Context, address types.BlockedAddress, isActive bool) (map[string]bool, error) {
 	ret := _m.Called(ctx, address, isActive)

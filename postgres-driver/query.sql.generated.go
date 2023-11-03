@@ -753,7 +753,7 @@ INSERT INTO accounts (
         updated_at
     )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, enterprise_limit, first_date_surpassed, created_at, updated_at, deleted, deleted_at
+RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, enterprise_limit, created_at, updated_at, deleted, deleted_at
 `
 
 type InsertAccountParams struct {
@@ -784,7 +784,6 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
 		&i.EnterpriseLimit,
-		&i.FirstDateSurpassed,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
@@ -1207,7 +1206,7 @@ func (q *Queries) RemoveGlobalBlockedContract(ctx context.Context, blockedAddres
 }
 
 const selectAccount = `-- name: SelectAccount :one
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.first_date_surpassed, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1254,7 +1253,6 @@ type SelectAccountRow struct {
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
 	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
-	FirstDateSurpassed      pgtype.Timestamptz `json:"first_date_surpassed"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -1277,7 +1275,6 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
 		&i.EnterpriseLimit,
-		&i.FirstDateSurpassed,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
@@ -1291,7 +1288,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 }
 
 const selectAccounts = `-- name: SelectAccounts :many
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.first_date_surpassed, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1341,7 +1338,6 @@ type SelectAccountsRow struct {
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
 	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
-	FirstDateSurpassed      pgtype.Timestamptz `json:"first_date_surpassed"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -1370,7 +1366,6 @@ func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAc
 			&i.PartnerThroughputLimit,
 			&i.PartnerApplicationLimit,
 			&i.EnterpriseLimit,
-			&i.FirstDateSurpassed,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Deleted,
@@ -2210,22 +2205,6 @@ func (q *Queries) UpdateDeleteWhitelists(ctx context.Context, arg UpdateDeleteWh
 		arg.Values,
 		arg.ChainIDs,
 	)
-	return err
-}
-
-const updateFirstDatesSurpassed = `-- name: UpdateFirstDatesSurpassed :exec
-UPDATE accounts
-SET first_date_surpassed = $1
-WHERE id = ANY ($2::VARCHAR [])
-`
-
-type UpdateFirstDatesSurpassedParams struct {
-	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
-	AccountIDs         []string           `json:"account_ids"`
-}
-
-func (q *Queries) UpdateFirstDatesSurpassed(ctx context.Context, arg UpdateFirstDatesSurpassedParams) error {
-	_, err := q.db.Exec(ctx, updateFirstDatesSurpassed, arg.FirstDateSurpassed, arg.AccountIDs)
 	return err
 }
 

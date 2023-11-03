@@ -76,7 +76,6 @@ CREATE TABLE accounts (
     partner_throughput_limit INT,
     partner_application_limit INT,
     enterprise_limit INT,
-    first_date_surpassed TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,

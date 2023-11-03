@@ -454,7 +454,6 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			PartnerThroughputLimit: 2_000,
 			PartnerAppLimit:        1,
 			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
-			FirstDateSurpassed:     MockTimestamp,
 			CreatedAt:              MockTimestamp,
 			UpdatedAt:              MockTimestamp,
 		},

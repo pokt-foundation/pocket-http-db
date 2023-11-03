@@ -2154,58 +2154,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
-	ts.Run("Test_UpdateAccountsFirstDateSurpassed", func() {
-		tests := []struct {
-			name                     string
-			firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
-			ownerIDs                 map[types.AccountID]types.UserID
-			err                      error
-			expected                 map[string]string
-		}{
-			{
-				name: "Should update FirstDateSurpassed field for a given list of Portal apps in the DB",
-				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-					AccountIDs:         []types.AccountID{"account_1", "account_2"},
-					FirstDateSurpassed: testdata.MockTimestamp,
-				},
-				ownerIDs: map[types.AccountID]types.UserID{
-					"account_1": "user_1",
-					"account_2": "user_3",
-				},
-				expected: map[string]string{"status": "updated"},
-			},
-			{
-				name: "Should return an error if no app IDs provided",
-				firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-					AccountIDs:         []types.AccountID{},
-					FirstDateSurpassed: testdata.MockTimestamp,
-				},
-				err: fmt.Errorf("Response not OK. 400 Bad Request"),
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				result, err := ts.client1.UpdateAccountsFirstDateSurpassed(context.Background(), test.firstDateSurpassedUpdate)
-				ts.Equal(test.err, err)
-
-				if test.err == nil {
-					ts.Equal(test.expected, result)
-
-					for _, accountID := range test.firstDateSurpassedUpdate.AccountIDs {
-						portalApp, err := ts.client1.GetUserAccount(context.Background(), accountID, test.ownerIDs[accountID])
-						ts.NoError(err)
-						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
-
-						portalApp, err = ts.client2.GetUserAccount(context.Background(), accountID, test.ownerIDs[accountID])
-						ts.NoError(err)
-						ts.Equal(test.firstDateSurpassedUpdate.FirstDateSurpassed, portalApp.FirstDateSurpassed)
-					}
-				}
-			})
-		}
-	})
-
 	/* ------ V2 Account User Write Tests ------ */
 
 	ts.Run("Test_WriteAccountUser", func() {

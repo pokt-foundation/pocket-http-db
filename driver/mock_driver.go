@@ -384,20 +384,6 @@ func (_m *MockDriver) UpdateAccount(ctx context.Context, update types.UpdateAcco
 	return r0, r1
 }
 
-// UpdateAccountsFirstDateSurpassed provides a mock function with given fields: ctx, update
-func (_m *MockDriver) UpdateAccountsFirstDateSurpassed(ctx context.Context, update *types.UpdateFirstDateSurpassed) error {
-	ret := _m.Called(ctx, update)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *types.UpdateFirstDateSurpassed) error); ok {
-		r0 = rf(ctx, update)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
 // UpdateBlockedContractActive provides a mock function with given fields: ctx, blockedAddress, active, updatedAt
 func (_m *MockDriver) UpdateBlockedContractActive(ctx context.Context, blockedAddress types.BlockedAddress, active bool, updatedAt time.Time) error {
 	ret := _m.Called(ctx, blockedAddress, active, updatedAt)

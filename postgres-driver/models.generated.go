@@ -410,7 +410,6 @@ type Account struct {
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
 	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
-	FirstDateSurpassed      pgtype.Timestamptz `json:"first_date_surpassed"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`

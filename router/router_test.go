@@ -1160,65 +1160,6 @@ func TestRouter_updateAccount(t *testing.T) {
 	}
 }
 
-func TestRouter_updateAccountFirstDateSurpassed(t *testing.T) {
-	tests := []struct {
-		name                     string
-		firstDateSurpassedUpdate types.UpdateFirstDateSurpassed
-		expectedStatus           int
-	}{
-		{
-			name: "Should update Account's FirstDateSurpassed field",
-			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-				AccountIDs: []types.AccountID{
-					"account_1",
-					"account_2",
-				},
-				FirstDateSurpassed: testdata.MockTimestamp,
-			},
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "Should handle no AppIDs provided",
-			firstDateSurpassedUpdate: types.UpdateFirstDateSurpassed{
-				AccountIDs:         []types.AccountID{},
-				FirstDateSurpassed: testdata.MockTimestamp,
-			},
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			router, err := newTestRouter(t)
-			c.NoError(err)
-
-			writerMock := driver.NewMockDriver(t)
-			writerMock.On("UpdateAccountsFirstDateSurpassed", mock.Anything, mock.Anything).Return(nil).Once()
-			router.writer = writerMock
-
-			rr := httptest.NewRecorder()
-
-			firstDateSurpassedUpdateBytes, err := json.Marshal(test.firstDateSurpassedUpdate)
-			c.NoError(err)
-
-			req, err := http.NewRequest(http.MethodPost, "/v2/account/first_date_surpassed", bytes.NewBuffer(firstDateSurpassedUpdateBytes))
-			c.NoError(err)
-
-			router.Router.ServeHTTP(rr, req)
-			c.Equal(test.expectedStatus, rr.Code)
-
-			if test.expectedStatus == http.StatusOK {
-				var response map[string]string
-				err = json.Unmarshal(rr.Body.Bytes(), &response)
-				c.NoError(err)
-				c.Equal("updated", response["status"])
-			}
-		})
-	}
-}
-
 func TestRouter_createAccountIntegration(t *testing.T) {
 	tests := []struct {
 		name                string

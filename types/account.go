@@ -60,7 +60,6 @@ type (
 		PartnerThroughputLimit int32                                    `json:"partnerThroughputLimit"`
 		PartnerAppLimit        int32                                    `json:"partnerAppLimit"`
 		Integrations           AccountIntegrations                      `json:"integrations"`
-		FirstDateSurpassed     time.Time                                `json:"firstDateSurpassed"`
 		EnterpriseLimit        int32                                    `json:"enterpriseLimit"`
 		Notifications          map[NotificationType]AccountNotification `json:"notifications"`
 		CreatedAt              time.Time                                `json:"createdAt"`
@@ -147,12 +146,6 @@ type (
 	UpdateRemoveAccountUser struct {
 		UserID    UserID    `json:"userID"`
 		AccountID AccountID `json:"accountID"`
-	}
-
-	// UpdateFirstDateSurpassed is used by Rate Limiter to update the first date surpassed for multiple Accounts
-	UpdateFirstDateSurpassed struct {
-		AccountIDs         []AccountID `json:"accountIDs"`
-		FirstDateSurpassed time.Time   `json:"firstDateSurpassed"`
 	}
 )
 

@@ -115,8 +115,6 @@ type (
 		UpdateAccountIntegration(ctx context.Context, accountID types.AccountID, integration types.AccountIntegrations) (*types.AccountIntegrations, error)
 		// DeleteAccount deletes an account in the DB - DELETE `/v2/account/{id}`
 		DeleteAccount(ctx context.Context, accountID types.AccountID) (map[string]string, error)
-		// UpdateAccountsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/account/first_date_surpassed`
-		UpdateAccountsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error)
 
 		// WriteAccountUser creates a single Account User - POST `/v2/account/user`
 		WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, time time.Time) (map[string]types.UserID, error)
@@ -238,16 +236,15 @@ var (
 	errNoPlanTypeSet      error = errors.New("no plan type set")
 	errNoBlockedAddress   error = errors.New("no blocked address provided")
 
-	errInvalidRoleName                     error = errors.New("invalid role name filter provided")
-	errInvalidPortalAppJSON                error = errors.New("invalid portal app JSON")
-	errInvalidFirstDateSurpassedUpdateJSON error = errors.New("invalid first date surpassed update JSON")
-	errInvalidAccountJSON                  error = errors.New("invalid account JSON")
-	errInvalidAccountIntegrationJSON       error = errors.New("invalid account integration JSON")
-	errInvalidAppJSON                      error = errors.New("invalid application JSON")
-	errInvalidChainJSON                    error = errors.New("invalid chain JSON")
-	errInvalidGigastakeAppJSON             error = errors.New("invalid gigastake app JSON")
-	errInvalidActiveStatusJSON             error = errors.New("invalid active status JSON")
-	errInvalidBlockedContractJSON          error = errors.New("invalid blocked contract JSON")
+	errInvalidRoleName               error = errors.New("invalid role name filter provided")
+	errInvalidPortalAppJSON          error = errors.New("invalid portal app JSON")
+	errInvalidAccountJSON            error = errors.New("invalid account JSON")
+	errInvalidAccountIntegrationJSON error = errors.New("invalid account integration JSON")
+	errInvalidAppJSON                error = errors.New("invalid application JSON")
+	errInvalidChainJSON              error = errors.New("invalid chain JSON")
+	errInvalidGigastakeAppJSON       error = errors.New("invalid gigastake app JSON")
+	errInvalidActiveStatusJSON       error = errors.New("invalid active status JSON")
+	errInvalidBlockedContractJSON    error = errors.New("invalid blocked contract JSON")
 
 	errMoreThanOneOption error = errors.New("may not provider more than one options parameter")
 
@@ -809,18 +806,6 @@ func (db *DBClient) DeleteAccount(ctx context.Context, accountID types.AccountID
 	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), accountID)
 
 	return deleteReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), db.httpClient)
-}
-
-// UpdateAccountsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/account/first_date_surpassed`
-func (db *DBClient) UpdateAccountsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error) {
-	firstDateSurpassedUpdateJSON, err := json.Marshal(firstDateSurpassedUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", errInvalidFirstDateSurpassedUpdateJSON, err)
-	}
-
-	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), "first_date_surpassed")
-
-	return postReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), firstDateSurpassedUpdateJSON, db.httpClient)
 }
 
 /* -- Account User Write Methods -- */

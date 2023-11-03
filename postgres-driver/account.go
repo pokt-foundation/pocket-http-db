@@ -90,11 +90,10 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 			CovalentAPIKeyFree:   a.CovalentAPIKeyFree.String,
 			CovalentAPIKeyPaid:   a.CovalentAPIKeyPaid.String,
 		},
-		Notifications:      notifications,
-		FirstDateSurpassed: a.FirstDateSurpassed.Time.UTC(),
-		CreatedAt:          a.CreatedAt.Time.UTC(),
-		UpdatedAt:          a.UpdatedAt.Time.UTC(),
-		Deleted:            a.Deleted,
+		Notifications: notifications,
+		CreatedAt:     a.CreatedAt.Time.UTC(),
+		UpdatedAt:     a.UpdatedAt.Time.UTC(),
+		Deleted:       a.Deleted,
 
 		// PortalApps map set in cache when cache is set
 		PortalApps: map[types.PortalAppID]*types.PortalApp{},
@@ -327,7 +326,6 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		CovalentAPIKeyFree:      accountResult.CovalentAPIKeyFree,
 		CovalentAPIKeyPaid:      accountResult.CovalentAPIKeyPaid,
 		Notifications:           accountResult.Notifications,
-		FirstDateSurpassed:      accountResult.FirstDateSurpassed,
 		CreatedAt:               accountResult.CreatedAt,
 		UpdatedAt:               accountResult.UpdatedAt,
 		Deleted:                 accountResult.Deleted,
@@ -721,26 +719,6 @@ func (pg *PostgresDriver) validateRemoveAccountUserInput(ctx context.Context, us
 	return nil
 }
 
-// UpdateAccountsFirstDateSurpassed updates multiple Accounts' FirstDateSurpassed fields
-func (pg *PostgresDriver) UpdateAccountsFirstDateSurpassed(ctx context.Context, update *types.UpdateFirstDateSurpassed) error {
-	accountIDs := []string{}
-	for _, accountID := range update.AccountIDs {
-		accountIDs = append(accountIDs, string(accountID))
-	}
-
-	params := UpdateFirstDatesSurpassedParams{
-		AccountIDs:         accountIDs,
-		FirstDateSurpassed: newTimestamptz(update.FirstDateSurpassed),
-	}
-
-	err := pg.UpdateFirstDatesSurpassed(ctx, params)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 /* ----- Used by Listener ----- */
 func (json dbAccount) toOutput() *types.Account {
 	var partnerChainIDs map[types.RelayChainID]struct{}
@@ -760,7 +738,6 @@ func (json dbAccount) toOutput() *types.Account {
 		PartnerThroughputLimit: json.PartnerThroughputLimit,
 		PartnerAppLimit:        json.PartnerApplicationLimit,
 		EnterpriseLimit:        json.EnterpriseLimit,
-		FirstDateSurpassed:     json.FirstDateSurpassed,
 		CreatedAt:              json.CreatedAt,
 		UpdatedAt:              json.UpdatedAt,
 		Deleted:                json.Deleted,
@@ -813,7 +790,6 @@ type dbAccount struct {
 	PartnerThroughputLimit  int32             `json:"partner_throughput_limit"`
 	PartnerApplicationLimit int32             `json:"partner_application_limit"`
 	EnterpriseLimit         int32             `json:"enterprise_limit"`
-	FirstDateSurpassed      time.Time         `json:"first_date_surpassed"`
 	CreatedAt               time.Time         `json:"created_at"`
 	UpdatedAt               time.Time         `json:"updated_at"`
 	Deleted                 bool              `json:"deleted"`

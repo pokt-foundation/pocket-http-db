@@ -30,7 +30,6 @@ func Test_PGDriver_Listen(t *testing.T) {
 						PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 						PartnerThroughputLimit: 2_000,
 						PartnerAppLimit:        1,
-						FirstDateSurpassed:     testdata.MockTimestamp,
 						CreatedAt:              testdata.MockTimestamp,
 						UpdatedAt:              testdata.MockTimestamp,
 					},

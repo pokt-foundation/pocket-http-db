@@ -276,10 +276,6 @@ WHERE (
                 AND t2.value = portal_application_whitelists.value
         )
     );
--- name: UpdateFirstDatesSurpassed :exec
-UPDATE accounts
-SET first_date_surpassed = @first_date_surpassed
-WHERE id = ANY (@account_ids::VARCHAR []);
 -- name: DeletePortalApp :exec
 UPDATE portal_applications
 SET deleted = true,

@@ -709,37 +709,3 @@ func (ts *PGDriverTestSuite) getAndAssignAccountUsers(accountID types.AccountID)
 
 	return account
 }
-
-func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccountsFirstDateSurpassed() {
-	tests := []struct {
-		name   string
-		update *types.UpdateFirstDateSurpassed
-		err    error
-	}{
-		{
-			name: "Should update multiple Accounts in the database with a FirstDateSurpassed timestamp ",
-			update: &types.UpdateFirstDateSurpassed{
-				AccountIDs:         []types.AccountID{testdata.Accounts()["account_1"].ID, testdata.Accounts()["account_2"].ID},
-				FirstDateSurpassed: time.Date(2023, time.February, 14, 0, 0, 0, 0, time.UTC),
-			},
-			err: nil,
-		},
-	}
-
-	for _, test := range tests {
-		ts.Run(test.name, func() {
-			// Update FirstDateSurpassed fields for Accounts
-			err := ts.driver.UpdateAccountsFirstDateSurpassed(context.Background(), test.update)
-			ts.Equal(test.err, err)
-
-			// Check FirstDateSurpassed fields for Accounts in the DB
-			accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
-			ts.Equal(test.err, err)
-			for _, appID := range test.update.AccountIDs {
-				account, ok := accounts[types.AccountID(appID)]
-				ts.True(ok)
-				ts.Equal(test.update.FirstDateSurpassed, account.FirstDateSurpassed)
-			}
-		})
-	}
-}
