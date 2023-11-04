@@ -731,7 +731,211 @@ var (
 		"github|paul_atreides":     "user_2",
 	}
 
-	PortalApps = map[types.PortalAppID]*types.PortalApp{
+func AccountUsers() map[int]types.AccountUser {
+	return map[int]types.AccountUser{
+		1: {ID: "user_1", Email: "james.holden123@test.com", RoleName: types.RoleOwner, Accepted: true},
+		2: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		3: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
+		4: {ID: "user_3", Email: "ellen.ripley789@test.com", RoleName: types.RoleOwner, Accepted: true},
+		5: {ID: "user_5", Email: "chrisjen.avasarala1@test.com", RoleName: types.RoleOwner, Accepted: true},
+		6: {ID: "user_6", Email: "amos.burton789@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		7: {ID: "user_7", Email: "frodo.baggins123@test.com", RoleName: types.RoleMember, Accepted: true},
+		8: {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		9: {ID: "user_9", Email: "tyrion.lannister789@test.com", RoleName: types.RoleMember, Accepted: false},
+		// Paul is an admin of Account 1 as well as a member of Account 2
+		10: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
+		// Ulfric is an admin of Account 2 as well as the owner of Accounts 4 and 5
+		11: {ID: "user_4", Email: "ulfric.stormcloak123@test.com", RoleName: types.RoleOwner, Accepted: true},
+		// Daenerys has not signed up with an auth provider yet and is a member of Account 3
+		12: {ID: "user_10", Email: "daenerys.targaryen123@test.com", RoleName: types.RoleMember, Accepted: false},
+		// Bernard is an existing user and is used to create a new AccountUser row
+		13: {ID: "user_11", Email: "bernard.marx@test.com"},
+		// Winston has not signed up yet and is used to create a new AccountUser row
+		14: {Email: "winston.smith@test.com"},
+	}
+}
+
+type AccountOptions struct {
+	IncludePortalApps bool
+	IncludePlans      bool
+	AssignUsers       bool
+}
+
+func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
+	accounts := map[types.AccountID]*types.Account{
+		"account_1": {
+			ID:       "account_1",
+			Name:     "The Brave Voyager",
+			IconURL:  "https://picsum.photos/200",
+			PlanType: types.StarterPlan,
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_1",
+				CovalentAPIKeyFree:   "covalent_api_key_1",
+			},
+			Notifications: map[types.NotificationType]types.AccountNotification{
+				types.NotificationTypeEmail: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "james.holden123@test.com",
+					Trigger:     "trigger123",
+					Events: map[types.NotificationEvent]bool{
+						types.NotificationEventFull:          true,
+						types.NotificationEventQuarter:       true,
+						types.NotificationEventThreeQuarters: true,
+					},
+				},
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+			PartnerThroughputLimit: 2_000,
+			PartnerAppLimit:        1,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_2": {
+			ID:              "account_2",
+			Name:            "Dragonborn Explorer",
+			IconURL:         "https://picsum.photos/200",
+			PlanType:        types.EnterprisePlan,
+			EnterpriseLimit: 3_000_000,
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_2",
+				CovalentAPIKeyFree:   "covalent_api_key_2",
+			},
+			Notifications: map[types.NotificationType]types.AccountNotification{
+				types.NotificationTypeEmail: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "ellen.ripley789@test.com",
+					Trigger:     "trigger456",
+					Events: map[types.NotificationEvent]bool{
+						types.NotificationEventHalf: true,
+						types.NotificationEventFull: true,
+					},
+				},
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0064": {}},
+			PartnerThroughputLimit: 5_000,
+			PartnerAppLimit:        3,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_3": {
+			ID:       "account_3",
+			Name:     "Fellowship Startup",
+			IconURL:  "https://picsum.photos/200",
+			PlanType: types.AutoscalePlan,
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_3",
+				CovalentAPIKeyFree:   "covalent_api_key_3",
+			},
+			Notifications: map[types.NotificationType]types.AccountNotification{
+				types.NotificationTypeEmail: {
+					Type:        types.NotificationTypeEmail,
+					Active:      true,
+					Destination: "chrisjen.avasarala1@test.com",
+					Trigger:     "trigger789",
+					Events: map[types.NotificationEvent]bool{
+						types.NotificationEventHalf:    true,
+						types.NotificationEventFull:    true,
+						types.NotificationEventQuarter: true,
+					},
+				},
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0064": {}, "0034": {}},
+			PartnerThroughputLimit: 1_000,
+			PartnerAppLimit:        2,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_4": {
+			ID:       "account_4",
+			Name:     "Iron Throne Enterprise",
+			IconURL:  "https://picsum.photos/200",
+			PlanType: types.StarterPlan,
+			Integrations: types.AccountIntegrations{
+				StripeSubscriptionID: "stripe_id_4",
+				CovalentAPIKeyFree:   "covalent_api_key_4",
+			},
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
+			PartnerThroughputLimit: 1_000,
+			PartnerAppLimit:        2,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_5": {
+			ID:                     "account_5",
+			Name:                   "Nomad Wanderer",
+			IconURL:                "https://picsum.photos/200",
+			PlanType:               types.AutoscalePlan,
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0006": {}, "0040": {}},
+			PartnerThroughputLimit: 6_000,
+			PartnerAppLimit:        1,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+	}
+
+	if len(opts) > 0 {
+		if opts[0].IncludePortalApps {
+			for _, app := range PortalApps() {
+				accounts[app.AccountID].PortalApps[app.ID] = app
+			}
+		}
+		if opts[0].IncludePlans {
+			for _, account := range accounts {
+				account.Plan = PayPlans()[account.PlanType]
+			}
+		}
+		if opts[0].AssignUsers {
+			usersForAccountIDs := map[types.AccountID]map[types.UserID]*types.User{
+				"account_1": {
+					"user_1": Users()["user_1"],
+					"user_2": Users()["user_2"],
+					"user_8": Users()["user_8"],
+				},
+				"account_2": {
+					"user_3": Users()["user_3"],
+					"user_4": Users()["user_4"],
+					"user_9": Users()["user_9"],
+					"user_2": Users()["user_2"],
+				},
+				"account_3": {
+					"user_5":  Users()["user_5"],
+					"user_6":  Users()["user_6"],
+					"user_7":  Users()["user_7"],
+					"user_10": Users()["user_10"],
+				},
+				"account_4": {
+					"user_4": Users()["user_4"],
+				},
+				"account_5": {
+					"user_4": Users()["user_4"],
+				},
+			}
+
+			for _, account := range accounts {
+				if usersForAccount, ok := usersForAccountIDs[account.ID]; ok {
+					account.AssignAccountUsers(usersForAccount)
+				}
+			}
+		}
+	}
+
+	return accounts
+}
+
+func PortalApps() map[types.PortalAppID]*types.PortalApp {
+	return map[types.PortalAppID]*types.PortalApp{
 		"test_app_1": {
 			ID:          "test_app_1",
 			AccountID:   "account_1",
@@ -932,9 +1136,8 @@ var (
 				},
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.FreetierV0,
-				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				ThroughputLimit: 5_000,
+				PlanType:        types.StarterPlan,
+				ThroughputLimit: 30,
 			},
 		},
 		"test_app_2": {
@@ -964,9 +1167,7 @@ var (
 				},
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.PayAsYouGoV0,
-				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				ThroughputLimit: 10_000,
+				PlanType: types.EnterprisePlan,
 			},
 		},
 		"test_app_3": {
@@ -976,30 +1177,32 @@ var (
 				"test_f6a5d8690ecb669865bd752b7796a920",
 			},
 			Plan: types.PlanLite{
-				PlanType:        types.Enterprise,
-				ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				ThroughputLimit: 10_000,
+				PlanType: types.AutoscalePlan,
 			},
 		},
 	}
 
-	AccountUsers = map[types.PortalAppID]map[types.UserID]types.AccountUser{
-		"test_app_1": {
-			"user_1": AccountUser[1],
-			"user_2": AccountUser[2],
-			"user_8": AccountUser[8],
+func PayPlans() map[types.PayPlanType]*types.Plan {
+	return map[types.PayPlanType]*types.Plan{
+		types.StarterPlan: {
+			Type:            types.StarterPlan,
+			Name:            "Starter Plan",
+			Description:     "For developers looking to get started reading and writing data from any integrated chains.",
+			DailyLimit:      100_000,
+			ThroughputLimit: 30,
+			CreatedAt:       MockTimestamp,
 		},
-		"test_app_2": {
-			"user_3": AccountUser[3],
-			"user_4": AccountUser[4],
-			"user_9": AccountUser[9],
-			"user_2": AccountUser[10],
+		types.AutoscalePlan: {
+			Type:        types.AutoscalePlan,
+			Name:        "Auto-Scale Plan",
+			Description: "For projects needing to scale, pay only for the RPC requests above the free threshold.",
+			CreatedAt:   MockTimestamp,
 		},
-		"test_app_3": {
-			"user_5":  AccountUser[5],
-			"user_6":  AccountUser[6],
-			"user_7":  AccountUser[7],
-			"user_10": AccountUser[12],
+		types.EnterprisePlan: {
+			Type:        types.EnterprisePlan,
+			Name:        "Enterprise Plan",
+			Description: "Premium plan for large businesses.",
+			CreatedAt:   MockTimestamp,
 		},
 	}
 
@@ -1297,7 +1500,21 @@ var (
 
 	/* ----- Create Data ----- */
 
-	// TestCreatePortalApp app used to test creation of PortalApps
+	TestCreateAccount = &types.Account{
+		ID:         "create_account_id",
+		Name:       "Protogen Corp",
+		IconURL:    "https://picsum.photos/200",
+		PlanType:   types.StarterPlan,
+		PortalApps: map[types.PortalAppID]*types.PortalApp{},
+		CreatedAt:  MockTimestamp,
+		UpdatedAt:  MockTimestamp,
+	}
+
+	TestCreateUser = types.CreateUser{
+		Email:          "commander.data@example.com",
+		ProviderUserID: "auth0|commander_data",
+	}
+
 	TestCreatePortalAppByOwner = &types.PortalApp{
 		AccountID:   "account_4",
 		Name:        "create_pokt_app_1",

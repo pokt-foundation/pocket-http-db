@@ -75,7 +75,7 @@ var (
 	}
 
 	testPlan = &Plan{
-		Type:              PayPlanType("FREETIER_V0"),
+		Type:              StarterPlan,
 		ChainIDs:          map[RelayChainID]struct{}{"0001": {}, "0053": {}},
 		MonthlyRelayLimit: 5_000_000,
 		ThroughputLimit:   5_000,
@@ -127,7 +127,7 @@ var (
 			},
 		},
 		Plan: PlanLite{
-			PlanType:        PayPlanType("FREETIER_V0"),
+			PlanType:        StarterPlan,
 			ChainIDs:        map[RelayChainID]struct{}{"0001": {}, "0053": {}},
 			ThroughputLimit: 5_000,
 		},
@@ -334,7 +334,7 @@ func Test_PortalAppLite_PlanType(t *testing.T) {
 		{
 			name:          "Should correctly return PlanType",
 			portalAppLite: testPortalAppLite,
-			expectedType:  "FREETIER_V0",
+			expectedType:  StarterPlan,
 		},
 	}
 

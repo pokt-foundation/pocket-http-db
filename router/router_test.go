@@ -1116,7 +1116,7 @@ func TestRouter_createAccount(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedAccount: &types.Account{
 				ID:        "account_77",
-				PlanType:  types.PayPlanType("developer_plan"),
+				PlanType:  types.StarterPlan,
 				CreatedAt: testdata.MockTimestamp,
 				UpdatedAt: testdata.MockTimestamp,
 			},
@@ -1166,12 +1166,42 @@ func TestRouter_updateAccount(t *testing.T) {
 			accountID: "account_1",
 			updateAccountInput: types.UpdateAccount{
 				AccountID: "account_1",
-				PlanType:  types.TestPlan10K,
+				PlanType:  types.AutoscalePlan,
+				Notifications: []types.UpdateAccountNotifications{
+					{
+						NotificationType: types.NotificationTypeEmail,
+						Active:           true,
+						Destination:      "user@example.com",
+						Trigger:          "daily",
+						Events: []types.NotificationEvent{
+							types.NotificationEventSignedUp,
+							types.NotificationEventHalf,
+							types.NotificationEventQuarter,
+							types.NotificationEventThreeQuarters,
+							types.NotificationEventFull,
+						},
+					},
+				},
 			},
 			expectedStatus: http.StatusOK,
 			expectedAccount: &types.Account{
 				ID:       "account_1",
-				PlanType: types.TestPlan10K,
+				PlanType: types.AutoscalePlan,
+				Notifications: map[types.NotificationType]types.AccountNotification{
+					types.NotificationTypeEmail: {
+						Type:        types.NotificationTypeEmail,
+						Active:      true,
+						Destination: "user@example.com",
+						Trigger:     "daily",
+						Events: map[types.NotificationEvent]bool{
+							types.NotificationEventSignedUp:      true,
+							types.NotificationEventHalf:          true,
+							types.NotificationEventQuarter:       true,
+							types.NotificationEventThreeQuarters: true,
+							types.NotificationEventFull:          true,
+						},
+					},
+				},
 			},
 		},
 	}

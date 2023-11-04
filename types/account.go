@@ -87,6 +87,26 @@ type (
 	}
 )
 
+// AssignAccountUsers assigns all users for the account
+// Called in the PHD cache when an account is fetched by any account endpoints
+func (a *Account) AssignAccountUsers(usersForAccountID map[UserID]*User) {
+	if a.Users == nil {
+		a.Users = make(map[UserID]AccountUser)
+	}
+
+	for _, user := range usersForAccountID {
+		a.Users[user.ID] = user.ToAccountUser(a.ID)
+	}
+}
+
+// GetDailyLimit returns the Account's daily relay limit
+func (a *Account) GetDailyLimit() int {
+	if a.PlanType == EnterprisePlan {
+		return int(a.EnterpriseLimit)
+	}
+	return int(a.Plan.DailyLimit)
+}
+
 // GetOwner returns the Account OWNER
 func (a *Account) GetOwner() (AccountUser, error) {
 	for _, user := range a.AccountUsers {

@@ -166,8 +166,25 @@ var testAccount = Account{
 	ID:       "account_1",
 	Name:     "The Brave Voyager",
 	IconURL:  "https://picsum.photos/200",
-	PlanType: PayPlanType("basic_plan"),
-	AccountUsers: map[UserID]AccountUser{
+	PlanType: StarterPlan,
+	Integrations: AccountIntegrations{
+		StripeSubscriptionID: "stripe_id_1",
+		CovalentAPIKeyFree:   "covalent_api_key_1",
+	},
+	Notifications: map[NotificationType]AccountNotification{
+		NotificationTypeEmail: {
+			Type:        NotificationTypeEmail,
+			Active:      true,
+			Destination: "test@test.com",
+			Trigger:     "trigger123",
+			Events: map[NotificationEvent]bool{
+				NotificationEventFull:          true,
+				NotificationEventQuarter:       true,
+				NotificationEventThreeQuarters: true,
+			},
+		},
+	},
+	Users: map[UserID]AccountUser{
 		"user_1": {
 			AccountID: "",
 			UserID:    "user_1",

@@ -284,7 +284,57 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		IconURL:   newText(update.IconURL),
 		PlanType:  newText(string(update.PlanType)),
 		UpdatedAt: newTimestamptz(updatedAt),
-	})
+	}
+	if update.PlanType != "" && update.PlanType == types.EnterprisePlan {
+		updateAccount.EnterpriseLimit = newInt4(update.EnterpriseLimit, false)
+	}
+
+	err = qtx.UpdateAccountFields(ctx, updateAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	if update.Notifications != nil && len(update.Notifications) > 0 {
+		for _, appNotification := range update.Notifications {
+			// Upsert notification row for application_id & type if active: true in update struct
+			err := qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
+				AccountID:   update.AccountID,
+				Type:        appNotification.NotificationType,
+				Active:      appNotification.Active,
+				Destination: appNotification.Destination,
+				Trigger:     appNotification.Trigger,
+				Events:      appNotification.Events,
+				UpdatedAt:   newTimestamptz(updatedAt),
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			// Delete notification row for application_id & type in DB if active: false in update struct
+			if !appNotification.Active {
+				err := qtx.UpdateDeleteAccountNotification(ctx, UpdateDeleteAccountNotificationParams{
+					AccountID: update.AccountID,
+					Type:      appNotification.NotificationType,
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	if update.StripeSubscriptionID != "" {
+		_, err := qtx.UpsertAccountIntegrations(ctx, UpsertAccountIntegrationsParams{
+			AccountID:            update.AccountID,
+			StripeSubscriptionID: newText(update.StripeSubscriptionID),
+			UpdatedAt:            newTimestamptz(updatedAt),
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = tx.Commit(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -325,6 +375,12 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 		if err != nil {
 			return fmt.Errorf(errInvalidIconURL.Error(), update.IconURL)
 		}
+	}
+
+	if update.PlanType == types.EnterprisePlan && update.EnterpriseLimit == 0 {
+		return errEnterpriseMustHaveLimit
+	} else if update.PlanType != types.EnterprisePlan && update.EnterpriseLimit != 0 {
+		return errNonEnterpriseMustNotHaveLimit
 	}
 
 	accountExists, err := pg.CheckAccountExists(ctx, update.AccountID)

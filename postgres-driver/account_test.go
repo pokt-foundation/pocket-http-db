@@ -170,10 +170,20 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 		err     error
 	}{
 		{
-			name: "Should update the account's PlanType field",
+			name: "Should update the account's PlanType field to Enterprise",
+			update: types.UpdateAccount{
+				AccountID:       "account_1",
+				PlanType:        types.EnterprisePlan,
+				EnterpriseLimit: 3_000_000,
+			},
+			account: testdata.Accounts()["account_1"],
+			err:     nil,
+		},
+		{
+			name: "Should update the account's PlanType field to non-Enterprise",
 			update: types.UpdateAccount{
 				AccountID: "account_1",
-				PlanType:  types.Enterprise,
+				PlanType:  types.StarterPlan,
 			},
 			account: testdata.Accounts["account_1"],
 			err:     nil,
@@ -200,7 +210,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should update all fields",
 			update: types.UpdateAccount{
 				AccountID: "account_1",
-				PlanType:  types.TestPlan10K,
+				PlanType:  types.AutoscalePlan,
 				Name:      "Willy Wonka",
 				IconURL:   "https://picsum.photos/444",
 			},
@@ -211,7 +221,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should fail if update Account has an invalid icon URL set",
 			update: types.UpdateAccount{
 				AccountID: "account_8823",
-				PlanType:  types.Enterprise,
+				PlanType:  types.EnterprisePlan,
 				IconURL:   "who_did(this)",
 			},
 			err: fmt.Errorf(errInvalidIconURL.Error(), "who_did(this)"),
@@ -220,7 +230,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should fail if update Account does not exist in the db",
 			update: types.UpdateAccount{
 				AccountID: "account_8823",
-				PlanType:  types.Enterprise,
+				PlanType:  types.StarterPlan,
 			},
 			err: fmt.Errorf(errAccountDoesntExist.Error(), "account_8823"),
 		},
@@ -232,6 +242,23 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			},
 			err: fmt.Errorf(errPayPlanDoesntExist.Error(), types.PayPlanType("turbo_ultra_mega_plan")),
 		},
+		{
+			name: "Should fail if update Account has plan type Enterprise but no EnterpriseLimit",
+			update: types.UpdateAccount{
+				AccountID: "account_1",
+				PlanType:  types.EnterprisePlan,
+			},
+			err: errEnterpriseMustHaveLimit,
+		},
+		{
+			name: "Should fail if update Account has a non-Enterprise plan type but has an EnterpriseLimit",
+			update: types.UpdateAccount{
+				AccountID:       "account_1",
+				PlanType:        types.StarterPlan,
+				EnterpriseLimit: 123,
+			},
+			err: errNonEnterpriseMustNotHaveLimit,
+		},
 	}
 
 	for _, test := range tests {
@@ -242,6 +269,12 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			if test.err == nil {
 				if test.update.PlanType != "" {
 					ts.Equal(test.update.PlanType, account.PlanType)
+					if test.update.PlanType == types.EnterprisePlan {
+						ts.Equal(test.update.EnterpriseLimit, account.EnterpriseLimit)
+					}
+				}
+				if test.update.StripeSubscriptionID != "" {
+					ts.Equal(test.update.StripeSubscriptionID, account.Integrations.StripeSubscriptionID)
 				}
 				if test.update.Name != "" {
 					ts.Equal(test.update.Name, account.Name)

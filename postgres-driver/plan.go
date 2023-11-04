@@ -35,7 +35,6 @@ func (p *SelectPlansRow) toPlan() (*types.Plan, error) {
 		Name:              p.Name.String,
 		Description:       p.Description.String,
 		Type:              p.PlanType,
-		ChainIDs:          make(map[types.RelayChainID]struct{}, len(p.ChainIDs)),
 		MonthlyRelayLimit: p.MonthlyRelayLimit,
 		ThroughputLimit:   p.ThroughputLimit,
 		AppLimit:          p.ApplicationLimit,
@@ -43,8 +42,12 @@ func (p *SelectPlansRow) toPlan() (*types.Plan, error) {
 		CreatedAt:         p.CreatedAt.Time.UTC(),
 	}
 
-	for _, chainID := range p.ChainIDs {
-		plan.ChainIDs[types.RelayChainID(chainID)] = struct{}{}
+	if len(p.ChainIDs) > 0 {
+		chainIDs := make(map[types.RelayChainID]struct{}, len(p.ChainIDs))
+		for _, chainID := range p.ChainIDs {
+			chainIDs[types.RelayChainID(chainID)] = struct{}{}
+		}
+		plan.ChainIDs = chainIDs
 	}
 
 	return plan, nil

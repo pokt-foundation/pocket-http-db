@@ -2068,7 +2068,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				ownerID:      "user_1",
 				accountInput: testdata.TestCreateAccount,
 				expected: &types.Account{
-					PlanType:  types.PayPlanType("developer_plan"),
+					PlanType:  types.StarterPlan,
 					Name:      "Protogen Corp",
 					IconURL:   "https://picsum.photos/200",
 					CreatedAt: testdata.MockTimestamp,
@@ -2083,28 +2083,22 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						},
 					},
 					Plan: &types.Plan{
-						Type:              types.PayPlanType("developer_plan"),
-						Name:              "Developer Plan",
-						Description:       "Developer plan for testing purposes",
-						ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
-						MonthlyRelayLimit: 500_000,
-						ThroughputLimit:   500,
-						AppLimit:          1,
-						LegacyDailyLimit:  100,
-						CreatedAt:         testdata.MockTimestamp,
+						Type:            types.StarterPlan,
+						Name:            "Starter Plan",
+						Description:     "For developers looking to get started reading and writing data from any integrated chains.",
+						DailyLimit:      100_000,
+						ThroughputLimit: 30,
+						CreatedAt:       testdata.MockTimestamp,
 					},
 					PortalApps: map[types.PortalAppID]*types.PortalApp{},
 				},
 				expectedPlan: &types.Plan{
-					Type:              types.PayPlanType("developer_plan"),
-					Name:              "Developer Plan",
-					Description:       "Developer plan for testing purposes",
-					ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}, "0021": {}, "0034": {}},
-					MonthlyRelayLimit: 500_000,
-					ThroughputLimit:   500,
-					AppLimit:          1,
-					LegacyDailyLimit:  100,
-					CreatedAt:         testdata.MockTimestamp,
+					Type:            types.StarterPlan,
+					Name:            "Starter Plan",
+					Description:     "For developers looking to get started reading and writing data from any integrated chains.",
+					DailyLimit:      100_000,
+					ThroughputLimit: 30,
+					CreatedAt:       testdata.MockTimestamp,
 				},
 			},
 			{
@@ -2179,26 +2173,101 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			err                 error
 		}{
 			{
-				name:                "Should update the account's PlanType field",
-				accountBeforeUpdate: testdata.Accounts["account_1"],
+				name:                "Should update the account's PlanType field to Enterprise",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
+				update: types.UpdateAccount{
+					AccountID:       "account_1",
+					PlanType:        types.EnterprisePlan,
+					EnterpriseLimit: 3_000_000,
+				},
+				userID: "user_1",
+				expected: &types.Account{
+					ID:              "account_1",
+					PlanType:        types.EnterprisePlan,
+					EnterpriseLimit: 3_000_000,
+				},
+			},
+			{
+				name:                "Should update the account's PlanType field to non-Enterprise",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID: "account_1",
-					PlanType:  types.Enterprise,
+					PlanType:  types.StarterPlan,
 				},
 				userID: "user_1",
 				expected: &types.Account{
 					ID:       "account_1",
-					PlanType: types.Enterprise,
+					PlanType: types.StarterPlan,
+				},
+			},
+			{
+				name:                "Should update the account's Notifications field",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
+				update: types.UpdateAccount{
+					AccountID: "account_1",
+					Notifications: []types.UpdateAccountNotifications{
+						{
+							NotificationType: types.NotificationTypeEmail,
+							Active:           true,
+							Destination:      "user@example.com",
+							Trigger:          "daily",
+							Events: []types.NotificationEvent{
+								types.NotificationEventSignedUp,
+								types.NotificationEventHalf,
+								types.NotificationEventQuarter,
+								types.NotificationEventThreeQuarters,
+								types.NotificationEventFull,
+							},
+						},
+					},
+				},
+				userID: "user_1",
+				expected: &types.Account{
+					ID: "account_1",
+					Notifications: map[types.NotificationType]types.AccountNotification{
+						types.NotificationTypeEmail: {
+							Type:        types.NotificationTypeEmail,
+							Active:      true,
+							Destination: "user@example.com",
+							Trigger:     "daily",
+							Events: map[types.NotificationEvent]bool{
+								types.NotificationEventSignedUp:      true,
+								types.NotificationEventHalf:          true,
+								types.NotificationEventQuarter:       true,
+								types.NotificationEventThreeQuarters: true,
+								types.NotificationEventFull:          true,
+							},
+						},
+					},
 				},
 			},
 			{
 				name: "Should fail if an invalid account ID is provided",
 				update: types.UpdateAccount{
 					AccountID: "account_8823",
-					PlanType:  types.Enterprise,
+					PlanType:  types.StarterPlan,
 				},
 				userID: "user_1",
 				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error account does not exist for account ID 'account_8823'"),
+			},
+			{
+				name: "Should fail if no limit provided for Enterprise plan",
+				update: types.UpdateAccount{
+					AccountID: "account_1",
+					PlanType:  types.EnterprisePlan,
+				},
+				userID: "user_1",
+				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error enterprise plan must have a limit set"),
+			},
+			{
+				name: "Should fail if a limit provided for non-Enterprise plan",
+				update: types.UpdateAccount{
+					AccountID:       "account_1",
+					PlanType:        types.StarterPlan,
+					EnterpriseLimit: 123,
+				},
+				userID: "user_1",
+				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error non-enterprise plan must not have a limit set"),
 			},
 		}
 
@@ -2214,13 +2283,58 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				ts.Equal(test.err, err)
 
 				if test.err == nil {
+					if test.update.PlanType != "" {
+						ts.Equal(test.expected.PlanType, updatedAccount.PlanType)
+						if test.update.PlanType == types.EnterprisePlan {
+							ts.Equal(test.expected.EnterpriseLimit, updatedAccount.EnterpriseLimit)
+						} else {
+							ts.Equal(int32(0), updatedAccount.EnterpriseLimit)
+						}
+					}
+
+					if len(test.update.Notifications) != 0 {
+						ts.Equal(test.expected.Notifications, updatedAccount.Notifications)
+					}
+
 					<-time.After(50 * time.Millisecond)
 
 					ts.Equal(test.expected.PlanType, updatedAccount.PlanType)
 
 					accountAfterUpdate, err := ts.client1.GetUserAccount(context.Background(), updatedAccount.ID, test.userID)
 					ts.NoError(err)
-					ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
+
+					if test.update.PlanType != "" {
+						ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
+						if test.update.PlanType == types.EnterprisePlan {
+							ts.Equal(test.expected.EnterpriseLimit, accountAfterUpdate.EnterpriseLimit)
+						} else {
+							ts.Equal(int32(0), updatedAccount.EnterpriseLimit)
+						}
+					} else {
+						ts.Equal(accountBeforeUpdate.PlanType, accountAfterUpdate.PlanType)
+					}
+
+					if len(test.update.Notifications) != 0 {
+						ts.Equal(test.expected.Notifications, accountAfterUpdate.Notifications)
+					} else {
+						ts.Equal(accountBeforeUpdate.Notifications, accountAfterUpdate.Notifications)
+					}
+
+					accountAfterUpdate, err = ts.client2.GetUserAccount(context.Background(), test.update.AccountID, test.userID)
+					ts.NoError(err)
+
+					if test.update.PlanType != "" {
+						ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
+					} else {
+						ts.Equal(accountBeforeUpdate.PlanType, accountAfterUpdate.PlanType)
+					}
+
+					if len(test.update.Notifications) != 0 {
+						ts.Equal(test.expected.Notifications, accountAfterUpdate.Notifications)
+					} else {
+						ts.Equal(accountBeforeUpdate.Notifications, accountAfterUpdate.Notifications)
+					}
+
 				}
 			})
 		}
@@ -2342,7 +2456,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			// Create new account for test case
 			createAcc := types.Account{
 				ID:                     types.AccountID(fmt.Sprintf("test-delete-account-%d", i+1)),
-				PlanType:               types.FreetierV0,
+				PlanType:               types.StarterPlan,
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"chain_1": {}},
 				PartnerThroughputLimit: 1000,
 				PartnerAppLimit:        5,
