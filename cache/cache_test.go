@@ -448,7 +448,6 @@ func Test_upsertAccount(t *testing.T) {
 			if test.account.Deleted {
 				c.Empty(cache.GetUserAccount(accountID, test.accountUser.ID, Options{}), "Account should be removed from cache")
 			} else {
-
 				expectedAccount.Plan = cache.plans[expectedAccount.PlanType]
 				if test.accountUser.ID != "" {
 					test.accountUser.AccountID = ""

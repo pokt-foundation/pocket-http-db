@@ -546,7 +546,6 @@ func (c *Cache) upsertAccount(account types.Account) {
 	defer c.rwMutex.Unlock()
 
 	// If marked as deleted, remove Account from map
-
 	// and from all user ID maps of all Account users
 	if account.Deleted {
 		delete(c.accounts, account.ID)
@@ -577,11 +576,13 @@ func (c *Cache) upsertAccount(account types.Account) {
 	}
 	c.accounts[account.ID] = &account
 
-	for _, user := range account.Users {
-		if _, ok := c.accountsByUserID[user.ID]; !ok {
-			c.accountsByUserID[user.ID] = make(map[types.AccountID]*types.Account)
+	if usersForAccount, ok := c.usersByAccountID[account.ID]; ok {
+		for _, user := range usersForAccount {
+			if _, ok := c.accountsByUserID[user.ID]; !ok {
+				c.accountsByUserID[user.ID] = make(map[types.AccountID]*types.Account)
+			}
+			c.accountsByUserID[user.ID][account.ID] = &account
 		}
-		c.accountsByUserID[user.ID][account.ID] = &account
 	}
 }
 
