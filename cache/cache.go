@@ -39,11 +39,10 @@ type (
 		pendingAccountUsers         map[types.UserID][]types.AccountUser
 		pendingUserAuthProviders    map[types.UserID]types.UserAuthProvider
 
-		portalApps                map[types.PortalAppID]*types.PortalApp
-		portalAppsByProtocolAppID map[types.ProtocolAppID]*types.PortalApp
-		pendingPortalAppAATs      map[types.PortalAppID]types.AAT
-		pendingSettings           map[types.PortalAppID]types.Settings
-		pendingWhitelists         map[types.PortalAppID][]types.Whitelist
+		portalApps           map[types.PortalAppID]*types.PortalApp
+		pendingPortalAppAATs map[types.PortalAppID]types.AAT
+		pendingSettings      map[types.PortalAppID]types.Settings
+		pendingWhitelists    map[types.PortalAppID][]types.Whitelist
 
 		gigastakeApps              map[types.GigastakeAppID]*types.GigastakeApp
 		pendingChainsGigastakeApps map[types.GigastakeAppID]types.ChainGigastakeApp
@@ -195,7 +194,6 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.accounts = appsData.accounts
 	c.accountsByUserID = appsData.accountsByUserID
 	c.portalApps = appsData.portalApps
-	c.portalAppsByProtocolAppID = appsData.portalAppsByProtocolAppID
 
 	c.chains = chainsData.chains
 	c.gigastakeApps = chainsData.gigastakeApps
@@ -574,8 +572,11 @@ func (c *Cache) upsertAccount(account types.Account) {
 	if plan, ok := c.plans[account.PlanType]; ok {
 		account.Plan = plan
 	}
+
+	// Set account in accounts by ID map
 	c.accounts[account.ID] = &account
 
+	// Set account for all account users
 	if usersForAccount, ok := c.usersByAccountID[account.ID]; ok {
 		for _, user := range usersForAccount {
 			if _, ok := c.accountsByUserID[user.ID]; !ok {
@@ -711,19 +712,6 @@ func (c *Cache) GetPortalApp(portalAppID types.PortalAppID) types.PortalApp {
 	return *portalApp
 }
 
-// GetPortalAppByProtocolAppID returns PortalApp from cache by protocolAppID
-func (c *Cache) GetPortalAppByProtocolAppID(protocolAppID types.ProtocolAppID) types.PortalApp {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	portalApp, ok := c.portalAppsByProtocolAppID[protocolAppID]
-	if !ok {
-		return types.PortalApp{}
-	}
-
-	return *portalApp
-}
-
 // GetPortalApps returns all PortalApps in cache
 func (c *Cache) GetPortalApps(options Options) []types.PortalApp {
 	c.rwMutex.RLock()
@@ -797,9 +785,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 
 	if portalApp.Deleted {
 		delete(c.portalApps, portalApp.ID)
-		for aatID := range portalApp.AATs {
-			delete(c.portalAppsByProtocolAppID, aatID)
-		}
 
 		if account, ok := c.accounts[portalApp.AccountID]; ok {
 			delete(account.PortalApps, portalApp.ID)
@@ -837,9 +822,6 @@ func (c *Cache) upsertPortalApp(portalApp types.PortalApp) {
 	}
 
 	c.portalApps[portalApp.ID] = &portalApp
-	for aatID := range portalApp.AATs {
-		c.portalAppsByProtocolAppID[aatID] = &portalApp
-	}
 }
 
 // addPortalAppAAT adds or updates the AAT for a PortalApp in cache
