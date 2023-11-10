@@ -446,12 +446,16 @@ func (c *Cache) GetAccounts(options Options) []types.Account {
 	return accountsToReturn
 }
 
-// GetAccounts returns one Accounts from cache
+// GetAccount returns one Accounts from cache
 func (c *Cache) GetAccount(accountID types.AccountID) types.Account {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
 	if account, ok := c.accounts[accountID]; ok {
+		if usersForAccount, ok := c.usersByAccountID[account.ID]; ok {
+			account.AssignAccountUsers(usersForAccount)
+		}
+
 		return *account
 	}
 
