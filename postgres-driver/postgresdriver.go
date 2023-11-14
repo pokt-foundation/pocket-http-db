@@ -270,6 +270,13 @@ func newText(value string) pgtype.Text {
 	}
 }
 
+func newNullText(value string) pgtype.Text {
+	return pgtype.Text{
+		String: value,
+		Valid:  true,
+	}
+}
+
 func newInt4(value int32, allowZero bool) pgtype.Int4 {
 	if !allowZero && value == 0 {
 		return pgtype.Int4{}

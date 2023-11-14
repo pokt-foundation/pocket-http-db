@@ -228,7 +228,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should update the account's StripeSubscriptionID field",
 			update: types.UpdateAccount{
 				AccountID:            "account_3",
-				StripeSubscriptionID: "stripe_id_update_123",
+				StripeSubscriptionID: strPtr("stripe_id_update_123"),
 			},
 			account: testdata.Accounts()["account_3"],
 			err:     nil,
@@ -347,7 +347,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 						ts.Equal(test.update.EnterpriseLimit, account.EnterpriseLimit)
 					}
 				}
-				if test.update.StripeSubscriptionID != "" {
+				if test.update.StripeSubscriptionID != nil {
 					ts.Equal(test.update.StripeSubscriptionID, account.Integrations.StripeSubscriptionID)
 				}
 				if test.update.Name != "" {
@@ -708,4 +708,8 @@ func (ts *PGDriverTestSuite) getAndAssignAccountUsers(accountID types.AccountID)
 	account.AssignAccountUsers(usersForAccount)
 
 	return account
+}
+
+func strPtr(s string) *string {
+	return &s
 }

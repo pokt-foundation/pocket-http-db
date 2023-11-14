@@ -292,10 +292,10 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		}
 	}
 
-	if update.StripeSubscriptionID != "" {
+	if update.StripeSubscriptionID != nil {
 		_, err := qtx.UpsertAccountIntegrations(ctx, UpsertAccountIntegrationsParams{
 			AccountID:            update.AccountID,
-			StripeSubscriptionID: newText(update.StripeSubscriptionID),
+			StripeSubscriptionID: newNullText(*update.StripeSubscriptionID),
 			UpdatedAt:            newTimestamptz(updatedAt),
 		})
 		if err != nil {
