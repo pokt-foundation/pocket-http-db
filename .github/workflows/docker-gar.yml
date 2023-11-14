@@ -2,7 +2,7 @@ name: Lint, Test, Publish New Go Version, Push Test Database Image and Push Dock
 
 on:
   push:
-    branches: [master, staging]
+    branches: [master, dev]
 
 env:
   PROJECT_ID: portal-gb-prod
@@ -11,24 +11,72 @@ env:
   REGISTRY: us-central1-docker.pkg.dev
 
 jobs:
-  lint:
-    name: Lint
+  pre-commit-checks:
+    name: Lint, Unit Test and Pre-commit Checks
     runs-on: ubuntu-22.04
+
     steps:
-      - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: 1.21
+    - name: Check for disabled pre-commit checks in .pre-commit-config.yaml
+      run: |
+        if grep '^[[:space:]]*#' .pre-commit-config.yaml; then
+          echo "Found commented lines in .pre-commit-config.yaml. Please remove them to proceed."
+          exit 1
+        fi
 
-      - name: Run Golang ci Action
-        uses: golangci/golangci-lint-action@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.21
+
+    - name: Cache Go and pre-commit data
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+          ~/.cache/pip
+          ~/pre-commit-2.20.0.pyz
+          $(go env GOPATH)/bin
+        key: ${{ runner.os }}-go-precommit-${{ hashFiles('**/go.sum', '.pre-commit-config.yaml', '**/requirements*.txt', 'pre-commit-2.20.0.pyz') }}
+        restore-keys: |
+          ${{ runner.os }}-go-precommit-
+
+    - name: Install Go tools
+      run: |
+        PATH="$(go env GOPATH)/bin:$PATH"
+        if ! command -v goimports &> /dev/null; then
+          go install golang.org/x/tools/cmd/goimports@v0.6.0
+        fi
+        if ! command -v golangci-lint &> /dev/null; then
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0
+        fi
+        if ! command -v gocritic &> /dev/null; then
+          go install github.com/go-critic/go-critic/cmd/gocritic@v0.6.5
+        fi
+      env:
+        PATH: $(go env GOPATH)/bin:$PATH
+
+    - name: Download pre-commit if not cached
+      run: |
+        if [ ! -f ~/pre-commit-2.20.0.pyz ]; then
+          echo "Downloading pre-commit..."
+          wget -P ~ https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz
+        else
+          echo "Using cached pre-commit."
+        fi
+
+    - name: Run pre-commit checks on all files
+      run: python3 ~/pre-commit-2.20.0.pyz run --all-files
 
   test:
     name: Test
     runs-on: ubuntu-22.04
-    needs: [lint]
+    needs: [pre-commit-checks]
     steps:
       - uses: actions/checkout@v3
 
@@ -47,9 +95,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run unit tests
-        run: make test_unit_ci
-
       - name: Set up Docker test stack
         run: make test_env_up
 
@@ -65,7 +110,7 @@ jobs:
   tag:
     name: Semantic Release Tag
     runs-on: ubuntu-22.04
-    needs: [lint, test]
+    needs: [pre-commit-checks, test]
     outputs:
       new: ${{ steps.semantic.outputs.new-release-published }}
       version: ${{ steps.semantic.outputs.release-version }}
@@ -77,6 +122,14 @@ jobs:
         id: semantic
         uses: codfish/semantic-release-action@v2
         with:
+          branches: |
+            [
+              'master',
+              {
+                name: 'dev',
+                prerelease: 'dev'
+              }
+            ]
           tag_format: "v${version}"
           additional_packages: |
             ['@semantic-release/commit-analyzer']
@@ -87,7 +140,7 @@ jobs:
     if: needs.tag.outputs.new == 'true'
     name: Release New Go Version
     runs-on: ubuntu-22.04
-    needs: [lint, test, tag]
+    needs: [pre-commit-checks, test, tag]
 
     steps:
       - uses: actions/checkout@v3
@@ -103,7 +156,7 @@ jobs:
     if: needs.tag.outputs.new == 'true'
     name: Push Test Database Image to Dockerhub
     runs-on: ubuntu-22.04
-    needs: [lint, test, tag]
+    needs: [pre-commit-checks, test, tag]
 
     steps:
       - uses: actions/checkout@v3
@@ -130,7 +183,7 @@ jobs:
     if: needs.tag.outputs.new == 'true'
     name: Push Docker Image to Google Artifact Registry
     runs-on: ubuntu-22.04
-    needs: [lint, test, tag]
+    needs: [pre-commit-checks, test, tag]
 
     steps:
       - uses: actions/checkout@v3
