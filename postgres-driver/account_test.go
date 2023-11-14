@@ -348,7 +348,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 					}
 				}
 				if test.update.StripeSubscriptionID != nil {
-					ts.Equal(test.update.StripeSubscriptionID, account.Integrations.StripeSubscriptionID)
+					ts.Equal(test.update.StripeSubscriptionID, &account.Integrations.StripeSubscriptionID)
 				}
 				if test.update.Name != "" {
 					ts.Equal(test.update.Name, account.Name)
