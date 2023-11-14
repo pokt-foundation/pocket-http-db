@@ -2702,3 +2702,26 @@ func (q *Queries) UpsertChainCheck(ctx context.Context, arg UpsertChainCheckPara
 	)
 	return err
 }
+
+const upsertStripeSubID = `-- name: UpsertStripeSubID :exec
+INSERT INTO account_integrations (account_id, stripe_subscription_id, updated_at)
+VALUES ($1, $2, $3) ON CONFLICT (account_id) DO
+UPDATE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id <> '' THEN EXCLUDED.stripe_subscription_id
+        ELSE NULL
+    END,
+    updated_at = EXCLUDED.updated_at
+RETURNING id, account_id, stripe_subscription_id, covalent_api_key_free, covalent_api_key_paid, created_at, updated_at
+`
+
+type UpsertStripeSubIDParams struct {
+	AccountID            types.AccountID    `json:"account_id"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpsertStripeSubID(ctx context.Context, arg UpsertStripeSubIDParams) error {
+	_, err := q.db.Exec(ctx, upsertStripeSubID, arg.AccountID, arg.StripeSubscriptionID, arg.UpdatedAt)
+	return err
+}

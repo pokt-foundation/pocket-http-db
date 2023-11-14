@@ -293,9 +293,9 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 	}
 
 	if update.StripeSubscriptionID != nil {
-		_, err := qtx.UpsertAccountIntegrations(ctx, UpsertAccountIntegrationsParams{
+		err = qtx.UpsertStripeSubID(ctx, UpsertStripeSubIDParams{
 			AccountID:            update.AccountID,
-			StripeSubscriptionID: newNullText(*update.StripeSubscriptionID),
+			StripeSubscriptionID: newText(*update.StripeSubscriptionID),
 			UpdatedAt:            newTimestamptz(updatedAt),
 		})
 		if err != nil {

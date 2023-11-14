@@ -414,6 +414,16 @@ GROUP BY au.user_id,
     au.role_name,
     au.accepted,
     ur.permissions;
+-- name: UpsertStripeSubID :exec
+INSERT INTO account_integrations (account_id, stripe_subscription_id, updated_at)
+VALUES ($1, $2, $3) ON CONFLICT (account_id) DO
+UPDATE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id <> '' THEN EXCLUDED.stripe_subscription_id
+        ELSE NULL
+    END,
+    updated_at = EXCLUDED.updated_at
+RETURNING *;
 -- name: SelectUserIDs :many
 SELECT user_id,
     provider_user_id
