@@ -386,8 +386,7 @@ func Test_upsertAccount(t *testing.T) {
 					"test_app_1": testdata.PortalApps()["test_app_1"],
 				},
 				Integrations: types.AccountIntegrations{
-					StripeSubscriptionID: "stripe_id_1",
-					CovalentAPIKeyFree:   "covalent_api_key_1",
+					CovalentAPIKeyFree: "covalent_api_key_1",
 				},
 				Notifications:          map[types.NotificationType]types.AccountNotification{"email": types.AccountNotification{AccountID: "", Type: "email", Active: true, Destination: "james.holden123@test.com", Trigger: "trigger123", Events: map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true}}},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},

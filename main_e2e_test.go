@@ -1860,6 +1860,36 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name:                "Should update the account's PlanType field to PayAsYouGo",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
+				update: types.UpdateAccount{
+					AccountID:            "account_1",
+					PlanType:             types.PayAsYouGoV0,
+					StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
+				},
+				userID: "user_1",
+				expected: &types.Account{
+					ID:       "account_1",
+					PlanType: types.PayAsYouGoV0,
+					Integrations: types.AccountIntegrations{
+						StripeSubscriptionID: "stripe_id_1",
+					},
+				},
+			},
+			{
+				name:                "Should update the account's PlanType field from PayAsYouGo",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
+				update: types.UpdateAccount{
+					AccountID: "account_3",
+					PlanType:  types.FreetierV0,
+				},
+				userID: "user_5",
+				expected: &types.Account{
+					ID:       "account_3",
+					PlanType: types.FreetierV0,
+				},
+			},
+			{
 				name:                "Should update the account's Notifications field",
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
@@ -1928,6 +1958,31 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				userID: "user_1",
 				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error non-enterprise plan must not have a limit set"),
 			},
+			{
+				name: "Should fail if update Account has a Stripe subscription ID but is not setting plan type",
+				update: types.UpdateAccount{
+					AccountID:            "account_1",
+					StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error cannot set stripe subscription ID without setting plan type"),
+			},
+			{
+				name: "Should fail if update Account has a non-PayAsYouGo plan type but has a Stripe subscription ID",
+				update: types.UpdateAccount{
+					AccountID:            "account_1",
+					PlanType:             types.FreetierV0,
+					StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error only auto-scale plan can have a stripe subscription ID"),
+			},
+			{
+				name: "Should fail if update Account has a PayAsYouGo plan type but has no Stripe subscription ID",
+				update: types.UpdateAccount{
+					AccountID: "account_1",
+					PlanType:  types.PayAsYouGoV0,
+				},
+				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error auto-scale plan must have a stripe subscription ID"),
+			},
 		}
 
 		for _, test := range tests {
@@ -1967,6 +2022,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							ts.Equal(test.expected.EnterpriseLimit, accountAfterUpdate.EnterpriseLimit)
 						} else {
 							ts.Equal(int32(0), updatedAccount.EnterpriseLimit)
+						}
+						if test.update.PlanType == types.PayAsYouGoV0 {
+							ts.Equal(test.expected.Integrations.StripeSubscriptionID, accountAfterUpdate.Integrations.StripeSubscriptionID)
+						} else {
+							ts.Equal("", accountAfterUpdate.Integrations.StripeSubscriptionID)
 						}
 					} else {
 						ts.Equal(accountBeforeUpdate.PlanType, accountAfterUpdate.PlanType)

@@ -433,8 +433,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.FreetierV0,
 			Integrations: types.AccountIntegrations{
-				StripeSubscriptionID: "stripe_id_1",
-				CovalentAPIKeyFree:   "covalent_api_key_1",
+				CovalentAPIKeyFree: "covalent_api_key_1",
 			},
 			Notifications: map[types.NotificationType]types.AccountNotification{
 				types.NotificationTypeEmail: {
@@ -464,8 +463,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			PlanType:        types.Enterprise,
 			EnterpriseLimit: 3_000_000,
 			Integrations: types.AccountIntegrations{
-				StripeSubscriptionID: "stripe_id_2",
-				CovalentAPIKeyFree:   "covalent_api_key_2",
+				CovalentAPIKeyFree: "covalent_api_key_2",
 			},
 			Notifications: map[types.NotificationType]types.AccountNotification{
 				types.NotificationTypeEmail: {
@@ -523,8 +521,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			IconURL:  "https://picsum.photos/200",
 			PlanType: types.FreetierV0,
 			Integrations: types.AccountIntegrations{
-				StripeSubscriptionID: "stripe_id_4",
-				CovalentAPIKeyFree:   "covalent_api_key_4",
+				CovalentAPIKeyFree: "covalent_api_key_4",
 			},
 			Users:                  map[types.UserID]types.AccountUser{},
 			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},

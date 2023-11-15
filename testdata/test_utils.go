@@ -195,3 +195,7 @@ func DerefPlansMap(plans map[types.PayPlanType]*types.Plan) map[types.PayPlanTyp
 func BoolToPointer(value bool) *bool {
 	return &value
 }
+
+func StringToPointer(value string) *string {
+	return &value
+}

@@ -130,9 +130,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpsertAccountIntegration() {
 				CovalentAPIKeyFree: "updated_covalent_api_key_1",
 			},
 			expectedIntegrations: types.AccountIntegrations{
-				AccountID:            "account_1",
-				StripeSubscriptionID: "stripe_id_1",
-				CovalentAPIKeyFree:   "updated_covalent_api_key_1",
+				AccountID:          "account_1",
+				CovalentAPIKeyFree: "updated_covalent_api_key_1",
 			},
 		},
 		{
@@ -216,6 +215,25 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			err:     nil,
 		},
 		{
+			name: "Should update the account's PlanType field to PayAsYouGo",
+			update: types.UpdateAccount{
+				AccountID:            "account_1",
+				PlanType:             types.PayAsYouGoV0,
+				StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
+			},
+			account: testdata.Accounts()["account_1"],
+			err:     nil,
+		},
+		{
+			name: "Should update the account's PlanType field from PayAsYouGo",
+			update: types.UpdateAccount{
+				AccountID: "account_3",
+				PlanType:  types.FreetierV0,
+			},
+			account: testdata.Accounts()["account_3"],
+			err:     nil,
+		},
+		{
 			name: "Should update the account's Name field",
 			update: types.UpdateAccount{
 				AccountID: "account_1",
@@ -228,7 +246,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should update the account's StripeSubscriptionID field",
 			update: types.UpdateAccount{
 				AccountID:            "account_3",
-				StripeSubscriptionID: strPtr("stripe_id_update_123"),
+				PlanType:             types.PayAsYouGoV0,
+				StripeSubscriptionID: testdata.StringToPointer("stripe_id_update_123"),
 			},
 			account: testdata.Accounts()["account_3"],
 			err:     nil,
@@ -332,6 +351,31 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				EnterpriseLimit: 123,
 			},
 			err: errNonEnterpriseMustNotHaveLimit,
+		},
+		{
+			name: "Should fail if update Account has a Stripe subscription ID but is not setting plan type",
+			update: types.UpdateAccount{
+				AccountID:            "account_1",
+				StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
+			},
+			err: errCannotSetStripeSubIDWithoutPlanType,
+		},
+		{
+			name: "Should fail if update Account has a non-PayAsYouGo plan type but has a Stripe subscription ID",
+			update: types.UpdateAccount{
+				AccountID:            "account_1",
+				PlanType:             types.FreetierV0,
+				StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
+			},
+			err: errOnlyAutoScaleCanHaveStripeSubID,
+		},
+		{
+			name: "Should fail if update Account has a PayAsYouGo plan type but has no Stripe subscription ID",
+			update: types.UpdateAccount{
+				AccountID: "account_1",
+				PlanType:  types.PayAsYouGoV0,
+			},
+			err: errAutoScaleMustHaveStripeSubID,
 		},
 	}
 
@@ -708,8 +752,4 @@ func (ts *PGDriverTestSuite) getAndAssignAccountUsers(accountID types.AccountID)
 	account.AssignAccountUsers(usersForAccount)
 
 	return account
-}
-
-func strPtr(s string) *string {
-	return &s
 }
