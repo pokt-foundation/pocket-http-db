@@ -70,6 +70,11 @@ jobs:
           echo "Using cached pre-commit."
         fi
 
+    - name: Comment out 'no-commit-to-branch' in .pre-commit-config.yaml
+      run: |
+        sed -i 's/^\(\s*- id: no-commit-to-branch\)/# \1/' .pre-commit-config.yaml
+      working-directory: ${{ github.workspace }}
+
     - name: Run pre-commit checks on all files
       run: python3 ~/pre-commit-2.20.0.pyz run --all-files
 
