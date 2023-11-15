@@ -46,10 +46,12 @@ func (c *Cache) parseNotification(n types.Notification) {
 	switch n.Table {
 	case types.TableAccounts:
 		c.parseAccountNotification(n)
-	case types.TableAccountUserAccess:
-		c.parseAccountUserAccessNotification(n)
+	case types.TableAccountUsers:
+		c.parseAccountUserNotification(n)
 	case types.TableAccountIntegrations:
 		c.parseAccountIntegrationsNotification(n)
+	case types.TableAccountNotifications:
+		c.parseAccountNotificationNotification(n)
 
 	case types.TablePortalApps:
 		c.parsePortalAppNotification(n)
@@ -57,8 +59,6 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseSettingsNotification(n)
 	case types.TableAppWhitelists:
 		c.parseWhitelistNotification(n)
-	case types.TableAppNotifications:
-		c.parseAppNotificationNotification(n)
 	case types.TablePortalAppAATs:
 		c.parsePortalAppAATNotification(n)
 
@@ -104,10 +104,10 @@ func (c *Cache) parseAccountNotification(n types.Notification) {
 	}
 }
 
-func (c *Cache) parseAccountUserAccessNotification(n types.Notification) {
+func (c *Cache) parseAccountUserNotification(n types.Notification) {
 	accountUserAccess, ok := n.Data.(*types.AccountUser)
 	if !ok {
-		c.logger.Error("parseAccountUserAccessNotification failed")
+		c.logger.Error("parseAccountUserNotification failed")
 		return
 	}
 
@@ -171,15 +171,15 @@ func (c *Cache) parseWhitelistNotification(n types.Notification) {
 	}
 }
 
-func (c *Cache) parseAppNotificationNotification(n types.Notification) {
-	appNotification, ok := n.Data.(*types.AppNotification)
+func (c *Cache) parseAccountNotificationNotification(n types.Notification) {
+	accountNotification, ok := n.Data.(*types.AccountNotification)
 	if !ok {
-		c.logger.Error("parseAppNotificationNotification failed")
+		c.logger.Error("parseAccountNotificationNotification failed")
 		return
 	}
 
 	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
-		c.addAppNotification(*appNotification)
+		c.addAccountNotification(*accountNotification)
 	}
 }
 

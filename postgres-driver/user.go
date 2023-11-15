@@ -109,19 +109,12 @@ func (pg *PostgresDriver) ReadAllUsers(ctx context.Context) (map[types.UserID]*t
 	for _, userRoleRow := range userRoles {
 		if user, ok := usersMap[userRoleRow.UserID]; ok {
 			if user.Permissions == nil {
-				user.Permissions = make(map[types.PortalAppID]types.PortalAppPermissions)
+				user.Permissions = make(map[types.AccountID]types.AccountPermissions)
 			}
 
-			// The PortalApplicationIDs slice will be every portal app ID in the account in the case
-			// of an account OWNER or just a single portal app ID in the case of an account user.
-			for _, appID := range userRoleRow.PortalApplicationIDs {
-				portalAppID := types.PortalAppID(appID)
-
-				_, err := user.UpsertPermissions(portalAppID, userRoleRow.AccountID, userRoleRow.RoleName)
-				if err != nil {
-					return nil, err
-				}
-
+			_, err := user.UpsertPermissions(userRoleRow.AccountID, userRoleRow.RoleName, userRoleRow.Accepted)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -251,12 +244,11 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 	}
 
 	// New user is Account OWNER
-	_, err = qtx.InsertAccountUserAccess(ctx, InsertAccountUserAccessParams{
+	_, err = qtx.InsertAccountUser(ctx, InsertAccountUserParams{
 		AccountID: accountID,
 		UserID:    createdUserID,
 		Email:     user.Email,
 		RoleName:  types.RoleOwner,
-		Owner:     true,
 		Accepted:  true,
 		CreatedAt: newTimestamptz(createdAt),
 		UpdatedAt: newTimestamptz(createdAt),

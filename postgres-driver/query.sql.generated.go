@@ -46,40 +46,18 @@ func (q *Queries) CheckAccountExists(ctx context.Context, id types.AccountID) (b
 
 const checkAccountUserAccepted = `-- name: CheckAccountUserAccepted :one
 SELECT accepted
-FROM account_user_access
+FROM account_users
 WHERE user_id = $1
-    AND portal_application_id = $2
+    AND account_id = $2
 `
 
 type CheckAccountUserAcceptedParams struct {
-	UserID              types.UserID      `json:"user_id"`
-	PortalApplicationID types.PortalAppID `json:"portal_application_id"`
+	UserID    types.UserID    `json:"user_id"`
+	AccountID types.AccountID `json:"account_id"`
 }
 
 func (q *Queries) CheckAccountUserAccepted(ctx context.Context, arg CheckAccountUserAcceptedParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkAccountUserAccepted, arg.UserID, arg.PortalApplicationID)
-	var accepted bool
-	err := row.Scan(&accepted)
-	return accepted, err
-}
-
-const checkAccountUserAcceptedOrOwner = `-- name: CheckAccountUserAcceptedOrOwner :one
-SELECT accepted
-FROM account_user_access
-WHERE user_id = $1
-    AND (
-        portal_application_id = $2
-        OR owner = true
-    )
-`
-
-type CheckAccountUserAcceptedOrOwnerParams struct {
-	UserID              types.UserID      `json:"user_id"`
-	PortalApplicationID types.PortalAppID `json:"portal_application_id"`
-}
-
-func (q *Queries) CheckAccountUserAcceptedOrOwner(ctx context.Context, arg CheckAccountUserAcceptedOrOwnerParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkAccountUserAcceptedOrOwner, arg.UserID, arg.PortalApplicationID)
+	row := q.db.QueryRow(ctx, checkAccountUserAccepted, arg.UserID, arg.AccountID)
 	var accepted bool
 	err := row.Scan(&accepted)
 	return accepted, err
@@ -88,54 +66,27 @@ func (q *Queries) CheckAccountUserAcceptedOrOwner(ctx context.Context, arg Check
 const checkAccountUserExists = `-- name: CheckAccountUserExists :one
 SELECT EXISTS (
         SELECT 1
-        FROM account_user_access
-        WHERE (
-                user_id = $1
-                AND portal_application_id = $2
-            )
-            OR (
-                user_id = $1
-                AND role_name = 'OWNER'
-                AND account_id = $3
-            )
+        FROM account_users
+        WHERE user_id = $1
+            AND account_id = $2
     )
 `
 
 type CheckAccountUserExistsParams struct {
-	UserID              types.UserID      `json:"user_id"`
-	PortalApplicationID types.PortalAppID `json:"portal_application_id"`
-	AccountID           types.AccountID   `json:"account_id"`
+	UserID    types.UserID    `json:"user_id"`
+	AccountID types.AccountID `json:"account_id"`
 }
 
 func (q *Queries) CheckAccountUserExists(ctx context.Context, arg CheckAccountUserExistsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkAccountUserExists, arg.UserID, arg.PortalApplicationID, arg.AccountID)
+	row := q.db.QueryRow(ctx, checkAccountUserExists, arg.UserID, arg.AccountID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
 }
 
-const checkAccountUserIsOwner = `-- name: CheckAccountUserIsOwner :one
-SELECT owner
-FROM account_user_access
-WHERE user_id = $1
-    AND account_id = $2
-`
-
-type CheckAccountUserIsOwnerParams struct {
-	UserID    types.UserID    `json:"user_id"`
-	AccountID types.AccountID `json:"account_id"`
-}
-
-func (q *Queries) CheckAccountUserIsOwner(ctx context.Context, arg CheckAccountUserIsOwnerParams) (bool, error) {
-	row := q.db.QueryRow(ctx, checkAccountUserIsOwner, arg.UserID, arg.AccountID)
-	var owner bool
-	err := row.Scan(&owner)
-	return owner, err
-}
-
 const checkAccountUserRole = `-- name: CheckAccountUserRole :one
 SELECT role_name
-FROM account_user_access
+FROM account_users
 WHERE user_id = $1
     AND account_id = $2
 `
@@ -296,7 +247,7 @@ func (q *Queries) CheckPortalAppExists(ctx context.Context, id types.PortalAppID
 const checkUserAccountExists = `-- name: CheckUserAccountExists :one
 SELECT EXISTS (
         SELECT 1
-        FROM account_user_access
+        FROM account_users
         WHERE user_id = $1
     )
 `
@@ -451,18 +402,18 @@ func (q *Queries) DeleteAccount(ctx context.Context, arg DeleteAccountParams) er
 }
 
 const deleteAccountUser = `-- name: DeleteAccountUser :exec
-DELETE FROM account_user_access
-WHERE portal_application_id = $1
+DELETE FROM account_users
+WHERE account_id = $1
     AND user_id = $2
 `
 
 type DeleteAccountUserParams struct {
-	PortalApplicationID types.PortalAppID `json:"portal_application_id"`
-	UserID              types.UserID      `json:"user_id"`
+	AccountID types.AccountID `json:"account_id"`
+	UserID    types.UserID    `json:"user_id"`
 }
 
 func (q *Queries) DeleteAccountUser(ctx context.Context, arg DeleteAccountUserParams) error {
-	_, err := q.db.Exec(ctx, deleteAccountUser, arg.PortalApplicationID, arg.UserID)
+	_, err := q.db.Exec(ctx, deleteAccountUser, arg.AccountID, arg.UserID)
 	return err
 }
 
@@ -600,23 +551,21 @@ func (q *Queries) DeleteUser(ctx context.Context, id types.UserID) (types.UserID
 }
 
 const getAccountOwner = `-- name: GetAccountOwner :one
-SELECT aua.account_id,
-    aua.owner,
-    aua.user_id,
+SELECT au.account_id,
+    au.user_id,
     users.email,
     users.icon_url,
     users.updates_product,
     users.updates_marketing,
     users.beta_tester
-FROM account_user_access AS aua
-    JOIN users ON aua.user_id = users.id
-WHERE aua.account_id = $1
-    AND aua.owner = true
+FROM account_users AS au
+    JOIN users ON au.user_id = users.id
+WHERE au.account_id = $1
+    AND au.role_name = 'OWNER'
 `
 
 type GetAccountOwnerRow struct {
 	AccountID        types.AccountID `json:"account_id"`
-	Owner            bool            `json:"owner"`
 	UserID           types.UserID    `json:"user_id"`
 	Email            types.Email     `json:"email"`
 	IconURL          pgtype.Text     `json:"icon_url"`
@@ -630,7 +579,6 @@ func (q *Queries) GetAccountOwner(ctx context.Context, accountID types.AccountID
 	var i GetAccountOwnerRow
 	err := row.Scan(
 		&i.AccountID,
-		&i.Owner,
 		&i.UserID,
 		&i.Email,
 		&i.IconURL,
@@ -805,7 +753,7 @@ INSERT INTO accounts (
         updated_at
     )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, created_at, updated_at, deleted, deleted_at
+RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, enterprise_limit, created_at, updated_at, deleted, deleted_at
 `
 
 type InsertAccountParams struct {
@@ -835,6 +783,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.PartnerChainIDs,
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
+		&i.EnterpriseLimit,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
@@ -843,7 +792,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 	return i, err
 }
 
-const insertAccountUserAccess = `-- name: InsertAccountUserAccess :one
+const insertAccountUser = `-- name: InsertAccountUser :one
 WITH updated_user AS (
     UPDATE users
     SET email = $7
@@ -851,12 +800,10 @@ WITH updated_user AS (
     RETURNING id,
         email
 ) -- Must update email to trigger listener notification for users table
-INSERT INTO account_user_access (
+INSERT INTO account_users (
         user_id,
         account_id,
-        portal_application_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
@@ -864,39 +811,33 @@ INSERT INTO account_user_access (
 VALUES (
         $1,
         $2,
-        NULLIF($9::VARCHAR, ''),
         $3,
         $4,
         $5,
-        $6,
-        $8
+        $6
     )
 RETURNING user_id
 `
 
-type InsertAccountUserAccessParams struct {
-	UserID              types.UserID       `json:"user_id"`
-	AccountID           types.AccountID    `json:"account_id"`
-	RoleName            types.RoleName     `json:"role_name"`
-	Owner               bool               `json:"owner"`
-	Accepted            bool               `json:"accepted"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
-	Email               types.Email        `json:"email"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
-	PortalApplicationID string             `json:"portal_application_id"`
+type InsertAccountUserParams struct {
+	UserID    types.UserID       `json:"user_id"`
+	AccountID types.AccountID    `json:"account_id"`
+	RoleName  types.RoleName     `json:"role_name"`
+	Accepted  bool               `json:"accepted"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Email     types.Email        `json:"email"`
 }
 
-func (q *Queries) InsertAccountUserAccess(ctx context.Context, arg InsertAccountUserAccessParams) (types.UserID, error) {
-	row := q.db.QueryRow(ctx, insertAccountUserAccess,
+func (q *Queries) InsertAccountUser(ctx context.Context, arg InsertAccountUserParams) (types.UserID, error) {
+	row := q.db.QueryRow(ctx, insertAccountUser,
 		arg.UserID,
 		arg.AccountID,
 		arg.RoleName,
-		arg.Owner,
 		arg.Accepted,
 		arg.CreatedAt,
-		arg.Email,
 		arg.UpdatedAt,
-		arg.PortalApplicationID,
+		arg.Email,
 	)
 	var user_id types.UserID
 	err := row.Scan(&user_id)
@@ -916,12 +857,10 @@ WITH inserted_user AS (
     RETURNING id,
         email
 )
-INSERT INTO account_user_access (
+INSERT INTO account_users (
         user_id,
         account_id,
-        portal_application_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
@@ -931,10 +870,8 @@ VALUES (
             SELECT id
             FROM inserted_user
         ),
-        $6,
-        $7,
         $5,
-        false,
+        $6,
         false,
         $3,
         $4
@@ -943,13 +880,12 @@ RETURNING user_id
 `
 
 type InsertAccountUserAccessNoUserParams struct {
-	ID                  types.UserID       `json:"id"`
-	Email               types.Email        `json:"email"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
-	RoleName            types.RoleName     `json:"role_name"`
-	AccountID           types.AccountID    `json:"account_id"`
-	PortalApplicationID types.PortalAppID  `json:"portal_application_id"`
+	ID        types.UserID       `json:"id"`
+	Email     types.Email        `json:"email"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	AccountID types.AccountID    `json:"account_id"`
+	RoleName  types.RoleName     `json:"role_name"`
 }
 
 func (q *Queries) InsertAccountUserAccessNoUser(ctx context.Context, arg InsertAccountUserAccessNoUserParams) (types.UserID, error) {
@@ -958,9 +894,8 @@ func (q *Queries) InsertAccountUserAccessNoUser(ctx context.Context, arg InsertA
 		arg.Email,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.RoleName,
 		arg.AccountID,
-		arg.PortalApplicationID,
+		arg.RoleName,
 	)
 	var user_id types.UserID
 	err := row.Scan(&user_id)
@@ -1115,15 +1050,7 @@ INSERT INTO portal_applications (
         description,
         app_emoji,
         created_at,
-        updated_at,
-        request_timeout,
-        first_date_surpassed,
-        -- legacy field
-        plan_type,
-        -- legacy field
-        daily_limit,
-        -- legacy field
-        custom_limit
+        updated_at
     )
 VALUES (
         $1,
@@ -1132,29 +1059,19 @@ VALUES (
         $4,
         $5,
         $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12
+        $7
     )
-RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, request_timeout, first_date_surpassed, plan_type, daily_limit, custom_limit, stripe_subscription_id
+RETURNING id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at
 `
 
 type InsertPortalApplicationParams struct {
-	ID                 types.PortalAppID  `json:"id"`
-	AccountID          pgtype.Text        `json:"account_id"`
-	Name               string             `json:"name"`
-	Description        pgtype.Text        `json:"description"`
-	AppEmoji           pgtype.Text        `json:"app_emoji"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
-	RequestTimeout     pgtype.Int4        `json:"request_timeout"`
-	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
-	PlanType           types.PayPlanType  `json:"plan_type"`
-	DailyLimit         pgtype.Int4        `json:"daily_limit"`
-	CustomLimit        pgtype.Int4        `json:"custom_limit"`
+	ID          types.PortalAppID  `json:"id"`
+	AccountID   pgtype.Text        `json:"account_id"`
+	Name        string             `json:"name"`
+	Description pgtype.Text        `json:"description"`
+	AppEmoji    pgtype.Text        `json:"app_emoji"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalApplicationParams) (PortalApplication, error) {
@@ -1166,11 +1083,6 @@ func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalA
 		arg.AppEmoji,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.RequestTimeout,
-		arg.FirstDateSurpassed,
-		arg.PlanType,
-		arg.DailyLimit,
-		arg.CustomLimit,
 	)
 	var i PortalApplication
 	err := row.Scan(
@@ -1183,12 +1095,6 @@ func (q *Queries) InsertPortalApplication(ctx context.Context, arg InsertPortalA
 		&i.UpdatedAt,
 		&i.Deleted,
 		&i.DeletedAt,
-		&i.RequestTimeout,
-		&i.FirstDateSurpassed,
-		&i.PlanType,
-		&i.DailyLimit,
-		&i.CustomLimit,
-		&i.StripeSubscriptionID,
 	)
 	return i, err
 }
@@ -1300,63 +1206,42 @@ func (q *Queries) RemoveGlobalBlockedContract(ctx context.Context, blockedAddres
 }
 
 const selectAccount = `-- name: SelectAccount :one
-WITH app_role_agg_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(pa.id, 'OWNER') AS portal_application_roles
-    FROM account_user_access AS aua
-        JOIN portal_applications AS pa ON aua.account_id = pa.account_id
-    WHERE aua.owner = true
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg_non_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(aua.portal_application_id, aua.role_name) AS portal_application_roles
-    FROM account_user_access AS aua
-        JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
-    WHERE aua.owner = false
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg AS (
-    SELECT COALESCE(aro.user_id, aroo.user_id) as user_id,
-        COALESCE(aro.account_id, aroo.account_id) as account_id,
-        COALESCE(aro.portal_application_roles, '{}'::jsonb) || COALESCE(aroo.portal_application_roles, '{}'::jsonb) as portal_application_roles
-    FROM app_role_agg_owner aro
-        FULL JOIN app_role_agg_non_owner aroo ON aro.user_id = aroo.user_id
-        AND aro.account_id = aroo.account_id
-)
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
-    json_agg(
-        json_build_object(
-            'user_id',
-            u.id,
-            'email',
-            u.email,
-            'accepted',
-            aua.accepted,
-            'owner',
-            aua.owner,
-            'portal_application_roles',
-            ara.portal_application_roles
-        )
-    ) AS users
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
-    LEFT JOIN account_user_access AS aua ON a.id = aua.account_id
-    LEFT JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
-    LEFT JOIN users AS u ON aua.user_id = u.id
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN app_role_agg AS ara ON u.id = ara.user_id
-    AND a.id = ara.account_id
 WHERE a.id = $1
-GROUP BY a.id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
 `
 
 type SelectAccountRow struct {
@@ -1367,13 +1252,15 @@ type SelectAccountRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
 	DeletedAt               pgtype.Timestamptz `json:"deleted_at"`
+	StripeSubscriptionID    pgtype.Text        `json:"stripe_subscription_id"`
 	CovalentAPIKeyFree      pgtype.Text        `json:"covalent_api_key_free"`
 	CovalentAPIKeyPaid      pgtype.Text        `json:"covalent_api_key_paid"`
-	Users                   []byte             `json:"users"`
+	Notifications           []byte             `json:"notifications"`
 }
 
 func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (SelectAccountRow, error) {
@@ -1387,86 +1274,59 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 		&i.PartnerChainIDs,
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
+		&i.EnterpriseLimit,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
 		&i.DeletedAt,
+		&i.StripeSubscriptionID,
 		&i.CovalentAPIKeyFree,
 		&i.CovalentAPIKeyPaid,
-		&i.Users,
+		&i.Notifications,
 	)
 	return i, err
 }
 
 const selectAccounts = `-- name: SelectAccounts :many
-WITH filtered_portal_applications AS (
-    SELECT id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, request_timeout, first_date_surpassed, plan_type, daily_limit, custom_limit, stripe_subscription_id
-    FROM portal_applications
-    WHERE deleted = false
-),
-app_role_agg_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(fpa.id, 'OWNER') AS portal_application_roles,
-        jsonb_object_agg(fpa.id, aua.accepted) AS portal_applications_accepted
-    FROM account_user_access AS aua
-        JOIN filtered_portal_applications AS fpa ON aua.account_id = fpa.account_id
-    WHERE aua.owner = true
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg_non_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(aua.portal_application_id, aua.role_name) AS portal_application_roles,
-        jsonb_object_agg(aua.portal_application_id, aua.accepted) AS portal_applications_accepted
-    FROM account_user_access AS aua
-        JOIN filtered_portal_applications AS fpa ON aua.portal_application_id = fpa.id
-    WHERE aua.owner = false
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg AS (
-    SELECT COALESCE(aro.user_id, aroo.user_id) as user_id,
-        COALESCE(aro.account_id, aroo.account_id) as account_id,
-        COALESCE(aro.portal_application_roles, '{}'::jsonb) || COALESCE(aroo.portal_application_roles, '{}'::jsonb) as portal_application_roles,
-        COALESCE(aro.portal_applications_accepted, '{}'::jsonb) || COALESCE(aroo.portal_applications_accepted, '{}'::jsonb) as portal_applications_accepted
-    FROM app_role_agg_owner aro
-        FULL JOIN app_role_agg_non_owner aroo ON aro.user_id = aroo.user_id
-        AND aro.account_id = aroo.account_id
-)
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.enterprise_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
-    json_agg(
-        json_build_object(
-            'user_id',
-            u.id,
-            'email',
-            u.email,
-            'owner',
-            aua.owner,
-            'portal_application_roles',
-            ara.portal_application_roles,
-            'portal_applications_accepted',
-            ara.portal_applications_accepted
-        )
-    ) AS users
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
-    LEFT JOIN account_user_access AS aua ON a.id = aua.account_id
-    LEFT JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
-    LEFT JOIN users AS u ON aua.user_id = u.id
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN app_role_agg AS ara ON u.id = ara.user_id
-    AND a.id = ara.account_id
 WHERE (
         $1::BOOLEAN
         OR a.deleted = false
     )
-GROUP BY a.id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid
 `
 
 type SelectAccountsRow struct {
@@ -1477,13 +1337,15 @@ type SelectAccountsRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
 	DeletedAt               pgtype.Timestamptz `json:"deleted_at"`
+	StripeSubscriptionID    pgtype.Text        `json:"stripe_subscription_id"`
 	CovalentAPIKeyFree      pgtype.Text        `json:"covalent_api_key_free"`
 	CovalentAPIKeyPaid      pgtype.Text        `json:"covalent_api_key_paid"`
-	Users                   []byte             `json:"users"`
+	Notifications           []byte             `json:"notifications"`
 }
 
 func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAccountsRow, error) {
@@ -1503,13 +1365,15 @@ func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAc
 			&i.PartnerChainIDs,
 			&i.PartnerThroughputLimit,
 			&i.PartnerApplicationLimit,
+			&i.EnterpriseLimit,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Deleted,
 			&i.DeletedAt,
+			&i.StripeSubscriptionID,
 			&i.CovalentAPIKeyFree,
 			&i.CovalentAPIKeyPaid,
-			&i.Users,
+			&i.Notifications,
 		); err != nil {
 			return nil, err
 		}
@@ -1935,35 +1799,6 @@ WITH aats_agg AS (
     FROM portal_application_aats paa
     GROUP BY paa.portal_application_id
 ),
-notifications_agg AS (
-    SELECT pn.application_id,
-        json_object_agg(
-            pn.type,
-            json_build_object(
-                'type',
-                pn.type,
-                'active',
-                pn.active,
-                'destination',
-                pn.destination,
-                'trigger',
-                pn.trigger,
-                'events',
-                (
-                    SELECT json_object_agg(
-                            event,
-                            true
-                        )
-                    FROM (
-                            SELECT unnest(pn.events) AS event
-                        ) subquery
-                    WHERE event IS NOT NULL
-                )
-            )
-        ) AS notifications
-    FROM portal_application_notifications pn
-    GROUP BY pn.application_id
-),
 whitelists_agg AS (
     SELECT paw.application_id,
         json_agg(
@@ -1979,19 +1814,17 @@ whitelists_agg AS (
     FROM portal_application_whitelists paw
     GROUP BY paw.application_id
 )
-SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at, p.request_timeout, p.first_date_surpassed, p.plan_type, p.daily_limit, p.custom_limit, p.stripe_subscription_id,
+SELECT p.id, p.account_id, p.name, p.app_emoji, p.description, p.created_at, p.updated_at, p.deleted, p.deleted_at,
     pas.secret_key,
     pas.secret_key_required,
     pas.monthly_relay_limit,
     pas.environment,
     pas.favorited_chain_ids,
     COALESCE(aats_agg.aats, '[]'::json) AS aats,
-    COALESCE(notifications_agg.notifications, '[]'::json) AS notifications,
     COALESCE(whitelists_agg.whitelists, '[]'::json) AS whitelists
 FROM portal_applications p
     LEFT JOIN portal_application_settings pas ON p.id = pas.application_id
     LEFT JOIN aats_agg ON p.id = aats_agg.portal_application_id
-    LEFT JOIN notifications_agg ON p.id = notifications_agg.application_id
     LEFT JOIN whitelists_agg ON p.id = whitelists_agg.application_id
 WHERE (
         $1::BOOLEAN
@@ -2000,29 +1833,22 @@ WHERE (
 `
 
 type SelectPortalApplicationsRow struct {
-	ID                   types.PortalAppID  `json:"id"`
-	AccountID            pgtype.Text        `json:"account_id"`
-	Name                 string             `json:"name"`
-	AppEmoji             pgtype.Text        `json:"app_emoji"`
-	Description          pgtype.Text        `json:"description"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	Deleted              bool               `json:"deleted"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	RequestTimeout       pgtype.Int4        `json:"request_timeout"`
-	FirstDateSurpassed   pgtype.Timestamptz `json:"first_date_surpassed"`
-	PlanType             types.PayPlanType  `json:"plan_type"`
-	DailyLimit           pgtype.Int4        `json:"daily_limit"`
-	CustomLimit          pgtype.Int4        `json:"custom_limit"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	SecretKey            pgtype.Text        `json:"secret_key"`
-	SecretKeyRequired    pgtype.Bool        `json:"secret_key_required"`
-	MonthlyRelayLimit    pgtype.Int4        `json:"monthly_relay_limit"`
-	Environment          NullEnvironment    `json:"environment"`
-	FavoritedChainIDs    []string           `json:"favorited_chain_ids"`
-	AATs                 []byte             `json:"aats"`
-	Notifications        []byte             `json:"notifications"`
-	Whitelists           []byte             `json:"whitelists"`
+	ID                types.PortalAppID  `json:"id"`
+	AccountID         pgtype.Text        `json:"account_id"`
+	Name              string             `json:"name"`
+	AppEmoji          pgtype.Text        `json:"app_emoji"`
+	Description       pgtype.Text        `json:"description"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	Deleted           bool               `json:"deleted"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	SecretKey         pgtype.Text        `json:"secret_key"`
+	SecretKeyRequired pgtype.Bool        `json:"secret_key_required"`
+	MonthlyRelayLimit pgtype.Int4        `json:"monthly_relay_limit"`
+	Environment       NullEnvironment    `json:"environment"`
+	FavoritedChainIDs []string           `json:"favorited_chain_ids"`
+	AATs              []byte             `json:"aats"`
+	Whitelists        []byte             `json:"whitelists"`
 }
 
 func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) ([]SelectPortalApplicationsRow, error) {
@@ -2044,19 +1870,12 @@ func (q *Queries) SelectPortalApplications(ctx context.Context, dollar_1 bool) (
 			&i.UpdatedAt,
 			&i.Deleted,
 			&i.DeletedAt,
-			&i.RequestTimeout,
-			&i.FirstDateSurpassed,
-			&i.PlanType,
-			&i.DailyLimit,
-			&i.CustomLimit,
-			&i.StripeSubscriptionID,
 			&i.SecretKey,
 			&i.SecretKeyRequired,
 			&i.MonthlyRelayLimit,
 			&i.Environment,
 			&i.FavoritedChainIDs,
 			&i.AATs,
-			&i.Notifications,
 			&i.Whitelists,
 		); err != nil {
 			return nil, err
@@ -2101,41 +1920,26 @@ func (q *Queries) SelectUserIDs(ctx context.Context) ([]SelectUserIDsRow, error)
 }
 
 const selectUserPermissions = `-- name: SelectUserPermissions :many
-WITH filtered_portal_applications AS (
-    SELECT id, account_id, name, app_emoji, description, created_at, updated_at, deleted, deleted_at, request_timeout, first_date_surpassed, plan_type, daily_limit, custom_limit, stripe_subscription_id
-    FROM portal_applications
-    WHERE deleted = false
-)
-SELECT aua.user_id,
-    aua.account_id,
-    aua.role_name,
-    aua.owner,
-    ur.permissions::permissions [] AS permissions,
-    CASE
-        WHEN aua.owner THEN array_agg(fpa.id)::VARCHAR []
-        ELSE ARRAY [aua.portal_application_id]::VARCHAR []
-    END AS portal_application_ids
-FROM account_user_access AS aua
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN filtered_portal_applications AS fpa ON aua.account_id = fpa.account_id
-WHERE aua.accepted = true
-    AND aua.user_id IS NOT NULL
-    AND fpa.id IS NOT NULL
-GROUP BY aua.user_id,
-    aua.account_id,
-    aua.role_name,
-    aua.owner,
-    ur.permissions,
-    aua.portal_application_id
+SELECT au.user_id,
+    au.account_id,
+    au.role_name,
+    au.accepted,
+    ur.permissions::permissions [] AS permissions
+FROM account_users AS au
+    LEFT JOIN user_roles AS ur ON au.role_name = ur.role_name
+GROUP BY au.user_id,
+    au.account_id,
+    au.role_name,
+    au.accepted,
+    ur.permissions
 `
 
 type SelectUserPermissionsRow struct {
-	UserID               types.UserID        `json:"user_id"`
-	AccountID            types.AccountID     `json:"account_id"`
-	RoleName             types.RoleName      `json:"role_name"`
-	Owner                bool                `json:"owner"`
-	Permissions          []types.Permissions `json:"permissions"`
-	PortalApplicationIDs []string            `json:"portal_application_ids"`
+	UserID      types.UserID        `json:"user_id"`
+	AccountID   types.AccountID     `json:"account_id"`
+	RoleName    types.RoleName      `json:"role_name"`
+	Accepted    bool                `json:"accepted"`
+	Permissions []types.Permissions `json:"permissions"`
 }
 
 func (q *Queries) SelectUserPermissions(ctx context.Context) ([]SelectUserPermissionsRow, error) {
@@ -2151,9 +1955,8 @@ func (q *Queries) SelectUserPermissions(ctx context.Context) ([]SelectUserPermis
 			&i.UserID,
 			&i.AccountID,
 			&i.RoleName,
-			&i.Owner,
+			&i.Accepted,
 			&i.Permissions,
-			&i.PortalApplicationIDs,
 		); err != nil {
 			return nil, err
 		}
@@ -2186,111 +1989,6 @@ func (q *Queries) SetGlobalBlockedContractActive(ctx context.Context, arg SetGlo
 	return id, err
 }
 
-const transferOwnerCreateRows = `-- name: TransferOwnerCreateRows :exec
-WITH updated_user AS (
-    UPDATE users
-    SET email = users.email
-    WHERE id = $4::VARCHAR(24)
-),
-insert_old_owner_admin_rows AS (
-    INSERT INTO account_user_access (
-            portal_application_id,
-            user_id,
-            account_id,
-            role_name,
-            owner,
-            accepted,
-            created_at,
-            updated_at
-        )
-    SELECT DISTINCT on (pa.id) pa.id,
-        $5::VARCHAR(24),
-        aua.account_id,
-        'ADMIN',
-        false,
-        true,
-        aua.created_at,
-        aua.updated_at
-    FROM account_user_access AS aua
-        LEFT JOIN portal_applications AS pa ON aua.account_id = pa.account_id
-    WHERE aua.account_id = $1
-        AND pa.deleted = false -- Only include non-deleted portal applications
-        AND NOT EXISTS (
-            SELECT 1
-            FROM account_user_access
-            WHERE user_id = $5::VARCHAR(24)
-                AND portal_application_id = pa.id
-        )
-),
-insert_new_owner_row AS (
-    INSERT INTO account_user_access (
-            user_id,
-            account_id,
-            role_name,
-            owner,
-            accepted,
-            created_at,
-            updated_at
-        )
-    SELECT $4::VARCHAR(24),
-        $1,
-        'OWNER',
-        true,
-        true,
-        $2,
-        $3
-)
-SELECT 1
-`
-
-type TransferOwnerCreateRowsParams struct {
-	AccountID  types.AccountID    `json:"account_id"`
-	CreatedAt  pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
-	NewOwnerID string             `json:"new_owner_id"`
-	OldOwnerID string             `json:"old_owner_id"`
-}
-
-func (q *Queries) TransferOwnerCreateRows(ctx context.Context, arg TransferOwnerCreateRowsParams) error {
-	_, err := q.db.Exec(ctx, transferOwnerCreateRows,
-		arg.AccountID,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.NewOwnerID,
-		arg.OldOwnerID,
-	)
-	return err
-}
-
-const transferOwnerDeleteOldRows = `-- name: TransferOwnerDeleteOldRows :one
-WITH delete_old_owner_row AS (
-    DELETE FROM account_user_access
-    WHERE account_user_access.account_id = $1
-        AND role_name = 'OWNER'
-    RETURNING user_id
-),
-delete_new_owner_non_owner_rows AS (
-    DELETE FROM account_user_access
-    WHERE account_user_access.account_id = $1
-        AND user_id = $2::VARCHAR(24)
-        AND role_name <> 'OWNER'
-)
-SELECT user_id
-FROM delete_old_owner_row
-`
-
-type TransferOwnerDeleteOldRowsParams struct {
-	AccountID  types.AccountID `json:"account_id"`
-	NewOwnerID string          `json:"new_owner_id"`
-}
-
-func (q *Queries) TransferOwnerDeleteOldRows(ctx context.Context, arg TransferOwnerDeleteOldRowsParams) (string, error) {
-	row := q.db.QueryRow(ctx, transferOwnerDeleteOldRows, arg.AccountID, arg.NewOwnerID)
-	var user_id string
-	err := row.Scan(&user_id)
-	return user_id, err
-}
-
 const updateAccountFields = `-- name: UpdateAccountFields :exec
 UPDATE accounts
 SET name = COALESCE($1, name),
@@ -2299,8 +1997,12 @@ SET name = COALESCE($1, name),
     partner_chain_ids = COALESCE($4, partner_chain_ids),
     partner_throughput_limit = COALESCE($5, partner_throughput_limit),
     partner_application_limit = COALESCE($6, partner_application_limit),
-    updated_at = $7
-WHERE id = $8
+    enterprise_limit = CASE
+        WHEN COALESCE($3, plan_type) = 'ENTERPRISE' THEN COALESCE($7, enterprise_limit)
+        ELSE NULL
+    END,
+    updated_at = $8
+WHERE id = $9
 `
 
 type UpdateAccountFieldsParams struct {
@@ -2310,6 +2012,7 @@ type UpdateAccountFieldsParams struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	ID                      types.AccountID    `json:"id"`
 }
@@ -2322,30 +2025,51 @@ func (q *Queries) UpdateAccountFields(ctx context.Context, arg UpdateAccountFiel
 		arg.PartnerChainIDs,
 		arg.PartnerThroughputLimit,
 		arg.PartnerApplicationLimit,
+		arg.EnterpriseLimit,
 		arg.UpdatedAt,
 		arg.ID,
 	)
 	return err
 }
 
+const updateAccountOwnerToAdmin = `-- name: UpdateAccountOwnerToAdmin :exec
+UPDATE account_users
+SET role_name = 'ADMIN',
+    updated_at = $3
+WHERE account_id = $1
+    AND role_name = 'OWNER'
+    AND user_id != $2
+`
+
+type UpdateAccountOwnerToAdminParams struct {
+	AccountID types.AccountID    `json:"account_id"`
+	UserID    types.UserID       `json:"user_id"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateAccountOwnerToAdmin(ctx context.Context, arg UpdateAccountOwnerToAdminParams) error {
+	_, err := q.db.Exec(ctx, updateAccountOwnerToAdmin, arg.AccountID, arg.UserID, arg.UpdatedAt)
+	return err
+}
+
 const updateAccountUserRole = `-- name: UpdateAccountUserRole :exec
-UPDATE account_user_access
+UPDATE account_users
 SET role_name = $3,
     updated_at = $4
-WHERE portal_application_id = $1
+WHERE account_id = $1
     AND user_id = $2
 `
 
 type UpdateAccountUserRoleParams struct {
-	PortalApplicationID types.PortalAppID  `json:"portal_application_id"`
-	UserID              types.UserID       `json:"user_id"`
-	RoleName            types.RoleName     `json:"role_name"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	AccountID types.AccountID    `json:"account_id"`
+	UserID    types.UserID       `json:"user_id"`
+	RoleName  types.RoleName     `json:"role_name"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) UpdateAccountUserRole(ctx context.Context, arg UpdateAccountUserRoleParams) error {
 	_, err := q.db.Exec(ctx, updateAccountUserRole,
-		arg.PortalApplicationID,
+		arg.AccountID,
 		arg.UserID,
 		arg.RoleName,
 		arg.UpdatedAt,
@@ -2423,19 +2147,19 @@ func (q *Queries) UpdateChainActive(ctx context.Context, arg UpdateChainActivePa
 	return active, err
 }
 
-const updateDeletePortalAppNotification = `-- name: UpdateDeletePortalAppNotification :exec
-DELETE FROM portal_application_notifications
-WHERE application_id = $1
+const updateDeleteAccountNotification = `-- name: UpdateDeleteAccountNotification :exec
+DELETE FROM account_notifications
+WHERE account_id = $1
     and type = $2
 `
 
-type UpdateDeletePortalAppNotificationParams struct {
-	ApplicationID types.PortalAppID      `json:"application_id"`
-	Type          types.NotificationType `json:"type"`
+type UpdateDeleteAccountNotificationParams struct {
+	AccountID types.AccountID        `json:"account_id"`
+	Type      types.NotificationType `json:"type"`
 }
 
-func (q *Queries) UpdateDeletePortalAppNotification(ctx context.Context, arg UpdateDeletePortalAppNotificationParams) error {
-	_, err := q.db.Exec(ctx, updateDeletePortalAppNotification, arg.ApplicationID, arg.Type)
+func (q *Queries) UpdateDeleteAccountNotification(ctx context.Context, arg UpdateDeleteAccountNotificationParams) error {
+	_, err := q.db.Exec(ctx, updateDeleteAccountNotification, arg.AccountID, arg.Type)
 	return err
 }
 
@@ -2481,22 +2205,6 @@ func (q *Queries) UpdateDeleteWhitelists(ctx context.Context, arg UpdateDeleteWh
 		arg.Values,
 		arg.ChainIDs,
 	)
-	return err
-}
-
-const updateFirstDatesSurpassed = `-- name: UpdateFirstDatesSurpassed :exec
-UPDATE portal_applications
-SET first_date_surpassed = $1
-WHERE id = ANY ($2::VARCHAR [])
-`
-
-type UpdateFirstDatesSurpassedParams struct {
-	FirstDateSurpassed pgtype.Timestamptz `json:"first_date_surpassed"`
-	PortalAppIds       []string           `json:"portal_app_ids"`
-}
-
-func (q *Queries) UpdateFirstDatesSurpassed(ctx context.Context, arg UpdateFirstDatesSurpassedParams) error {
-	_, err := q.db.Exec(ctx, updateFirstDatesSurpassed, arg.FirstDateSurpassed, arg.PortalAppIds)
 	return err
 }
 
@@ -2579,40 +2287,28 @@ func (q *Queries) UpdateInsertWhitelists(ctx context.Context, arg UpdateInsertWh
 
 const updatePortalAppFields = `-- name: UpdatePortalAppFields :exec
 UPDATE portal_applications
-SET name = COALESCE(NULLIF($6::VARCHAR, ''), name),
-    description = COALESCE(NULLIF($7::VARCHAR, ''), description),
-    app_emoji = COALESCE(NULLIF($8::VARCHAR, ''), app_emoji),
-    plan_type = COALESCE(NULLIF($9::VARCHAR, ''), plan_type),
-    daily_limit = COALESCE($2, daily_limit),
-    custom_limit = COALESCE($3, custom_limit),
-    stripe_subscription_id = COALESCE($4, stripe_subscription_id),
-    updated_at = $5
+SET name = COALESCE(NULLIF($3::VARCHAR, ''), name),
+    description = COALESCE(NULLIF($4::VARCHAR, ''), description),
+    app_emoji = COALESCE(NULLIF($5::VARCHAR, ''), app_emoji),
+    updated_at = $2
 WHERE id = $1
 `
 
 type UpdatePortalAppFieldsParams struct {
-	ID                   types.PortalAppID  `json:"id"`
-	DailyLimit           pgtype.Int4        `json:"daily_limit"`
-	CustomLimit          pgtype.Int4        `json:"custom_limit"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	Name                 string             `json:"name"`
-	Description          string             `json:"description"`
-	AppEmoji             string             `json:"app_emoji"`
-	PlanType             string             `json:"plan_type"`
+	ID          types.PortalAppID  `json:"id"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	AppEmoji    string             `json:"app_emoji"`
 }
 
 func (q *Queries) UpdatePortalAppFields(ctx context.Context, arg UpdatePortalAppFieldsParams) error {
 	_, err := q.db.Exec(ctx, updatePortalAppFields,
 		arg.ID,
-		arg.DailyLimit,
-		arg.CustomLimit,
-		arg.StripeSubscriptionID,
 		arg.UpdatedAt,
 		arg.Name,
 		arg.Description,
 		arg.AppEmoji,
-		arg.PlanType,
 	)
 	return err
 }
@@ -2654,9 +2350,9 @@ func (q *Queries) UpdatePortalAppSettings(ctx context.Context, arg UpdatePortalA
 	return err
 }
 
-const updateUpsertPortalAppNotification = `-- name: UpdateUpsertPortalAppNotification :exec
-INSERT INTO portal_application_notifications (
-        application_id,
+const updateUpsertAccountNotification = `-- name: UpdateUpsertAccountNotification :exec
+INSERT INTO account_notifications (
+        account_id,
         type,
         active,
         destination,
@@ -2671,7 +2367,7 @@ SELECT $1,
     $6::VARCHAR(255),
     $7::notification_event [],
     $2
-WHERE $4 IS true ON CONFLICT (application_id, type) DO
+WHERE $4 IS true ON CONFLICT (account_id, type) DO
 UPDATE
 SET active = EXCLUDED.active,
     destination = EXCLUDED.destination,
@@ -2681,19 +2377,19 @@ SET active = EXCLUDED.active,
 WHERE EXCLUDED.active IS true
 `
 
-type UpdateUpsertPortalAppNotificationParams struct {
-	ApplicationID types.PortalAppID         `json:"application_id"`
-	UpdatedAt     pgtype.Timestamptz        `json:"updated_at"`
-	Type          types.NotificationType    `json:"type"`
-	Active        bool                      `json:"active"`
-	Destination   string                    `json:"destination"`
-	Trigger       string                    `json:"trigger"`
-	Events        []types.NotificationEvent `json:"events"`
+type UpdateUpsertAccountNotificationParams struct {
+	AccountID   types.AccountID           `json:"account_id"`
+	UpdatedAt   pgtype.Timestamptz        `json:"updated_at"`
+	Type        types.NotificationType    `json:"type"`
+	Active      bool                      `json:"active"`
+	Destination string                    `json:"destination"`
+	Trigger     string                    `json:"trigger"`
+	Events      []types.NotificationEvent `json:"events"`
 }
 
-func (q *Queries) UpdateUpsertPortalAppNotification(ctx context.Context, arg UpdateUpsertPortalAppNotificationParams) error {
-	_, err := q.db.Exec(ctx, updateUpsertPortalAppNotification,
-		arg.ApplicationID,
+func (q *Queries) UpdateUpsertAccountNotification(ctx context.Context, arg UpdateUpsertAccountNotificationParams) error {
+	_, err := q.db.Exec(ctx, updateUpsertAccountNotification,
+		arg.AccountID,
 		arg.UpdatedAt,
 		arg.Type,
 		arg.Active,
@@ -2719,13 +2415,13 @@ WITH inserted_or_existing_provider AS (
     RETURNING user_id
 ),
 updated_access AS (
-    UPDATE account_user_access
+    UPDATE account_users
     SET accepted = true
     WHERE user_id = (
             SELECT user_id
             FROM inserted_or_existing_provider
         )
-        AND portal_application_id = $6
+        AND account_id = $6
 )
 UPDATE users
 SET signed_up = true
@@ -2736,12 +2432,12 @@ WHERE id = (
 `
 
 type UpdateUserAcceptedInviteParams struct {
-	UserID              types.UserID         `json:"user_id"`
-	Type                types.AuthType       `json:"type"`
-	Provider            types.AuthProvider   `json:"provider"`
-	ProviderUserID      types.ProviderUserID `json:"provider_user_id"`
-	Federated           bool                 `json:"federated"`
-	PortalApplicationID types.PortalAppID    `json:"portal_application_id"`
+	UserID         types.UserID         `json:"user_id"`
+	Type           types.AuthType       `json:"type"`
+	Provider       types.AuthProvider   `json:"provider"`
+	ProviderUserID types.ProviderUserID `json:"provider_user_id"`
+	Federated      bool                 `json:"federated"`
+	AccountID      types.AccountID      `json:"account_id"`
 }
 
 func (q *Queries) UpdateUserAcceptedInvite(ctx context.Context, arg UpdateUserAcceptedInviteParams) error {
@@ -2751,7 +2447,7 @@ func (q *Queries) UpdateUserAcceptedInvite(ctx context.Context, arg UpdateUserAc
 		arg.Provider,
 		arg.ProviderUserID,
 		arg.Federated,
-		arg.PortalApplicationID,
+		arg.AccountID,
 	)
 	return err
 }
@@ -2763,14 +2459,14 @@ WITH user_check AS (
     WHERE uap.user_id = $1
     UNION ALL
     SELECT user_id
-    FROM account_user_access aua
-    WHERE aua.user_id = $1
-        AND aua.portal_application_id != $2
+    FROM account_users au
+    WHERE au.user_id = $1
+        AND au.account_id != $2
 ),
 delete_aua AS (
-    DELETE FROM account_user_access aua
-    WHERE aua.user_id = $1
-        AND aua.portal_application_id = $2
+    DELETE FROM account_users au
+    WHERE au.user_id = $1
+        AND au.account_id = $2
 )
 DELETE FROM users u
 WHERE u.id = $1
@@ -2781,12 +2477,12 @@ WHERE u.id = $1
 `
 
 type UpdateUserDeclinedInviteParams struct {
-	ID                  types.UserID      `json:"id"`
-	PortalApplicationID types.PortalAppID `json:"portal_application_id"`
+	ID        types.UserID    `json:"id"`
+	AccountID types.AccountID `json:"account_id"`
 }
 
 func (q *Queries) UpdateUserDeclinedInvite(ctx context.Context, arg UpdateUserDeclinedInviteParams) error {
-	_, err := q.db.Exec(ctx, updateUserDeclinedInvite, arg.ID, arg.PortalApplicationID)
+	_, err := q.db.Exec(ctx, updateUserDeclinedInvite, arg.ID, arg.AccountID)
 	return err
 }
 
@@ -2824,14 +2520,19 @@ func (q *Queries) UpdateUserFields(ctx context.Context, arg UpdateUserFieldsPara
 const upsertAccountIntegrations = `-- name: UpsertAccountIntegrations :one
 INSERT INTO account_integrations (
         account_id,
+        stripe_subscription_id,
         covalent_api_key_free,
         covalent_api_key_paid,
         created_at,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5) ON CONFLICT (account_id) DO
+VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (account_id) DO
 UPDATE
-SET covalent_api_key_free = CASE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id IS NOT NULL THEN EXCLUDED.stripe_subscription_id
+        ELSE account_integrations.stripe_subscription_id
+    END,
+    covalent_api_key_free = CASE
         WHEN EXCLUDED.covalent_api_key_free IS NOT NULL THEN EXCLUDED.covalent_api_key_free
         ELSE account_integrations.covalent_api_key_free
     END,
@@ -2844,20 +2545,22 @@ SET covalent_api_key_free = CASE
         ELSE account_integrations.created_at
     END,
     updated_at = EXCLUDED.updated_at
-RETURNING id, account_id, covalent_api_key_free, covalent_api_key_paid, created_at, updated_at
+RETURNING id, account_id, stripe_subscription_id, covalent_api_key_free, covalent_api_key_paid, created_at, updated_at
 `
 
 type UpsertAccountIntegrationsParams struct {
-	AccountID          types.AccountID    `json:"account_id"`
-	CovalentAPIKeyFree pgtype.Text        `json:"covalent_api_key_free"`
-	CovalentAPIKeyPaid pgtype.Text        `json:"covalent_api_key_paid"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	AccountID            types.AccountID    `json:"account_id"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	CovalentAPIKeyFree   pgtype.Text        `json:"covalent_api_key_free"`
+	CovalentAPIKeyPaid   pgtype.Text        `json:"covalent_api_key_paid"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) UpsertAccountIntegrations(ctx context.Context, arg UpsertAccountIntegrationsParams) (AccountIntegration, error) {
 	row := q.db.QueryRow(ctx, upsertAccountIntegrations,
 		arg.AccountID,
+		arg.StripeSubscriptionID,
 		arg.CovalentAPIKeyFree,
 		arg.CovalentAPIKeyPaid,
 		arg.CreatedAt,
@@ -2867,6 +2570,7 @@ func (q *Queries) UpsertAccountIntegrations(ctx context.Context, arg UpsertAccou
 	err := row.Scan(
 		&i.ID,
 		&i.AccountID,
+		&i.StripeSubscriptionID,
 		&i.CovalentAPIKeyFree,
 		&i.CovalentAPIKeyPaid,
 		&i.CreatedAt,
@@ -2996,5 +2700,28 @@ func (q *Queries) UpsertChainCheck(ctx context.Context, arg UpsertChainCheckPara
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
+	return err
+}
+
+const upsertStripeSubID = `-- name: UpsertStripeSubID :exec
+INSERT INTO account_integrations (account_id, stripe_subscription_id, updated_at)
+VALUES ($1, $2, $3) ON CONFLICT (account_id) DO
+UPDATE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id <> '' THEN EXCLUDED.stripe_subscription_id
+        ELSE NULL
+    END,
+    updated_at = EXCLUDED.updated_at
+RETURNING id, account_id, stripe_subscription_id, covalent_api_key_free, covalent_api_key_paid, created_at, updated_at
+`
+
+type UpsertStripeSubIDParams struct {
+	AccountID            types.AccountID    `json:"account_id"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpsertStripeSubID(ctx context.Context, arg UpsertStripeSubIDParams) error {
+	_, err := q.db.Exec(ctx, upsertStripeSubID, arg.AccountID, arg.StripeSubscriptionID, arg.UpdatedAt)
 	return err
 }

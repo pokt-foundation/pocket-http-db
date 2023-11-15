@@ -64,6 +64,8 @@ type (
 
 		// GetAllAccounts returns all Accounts - GET `/v2/account`
 		GetAllAccounts(ctx context.Context, options ...AccountOptions) ([]*types.Account, error)
+		// GetAccountByID returns a single Account by its ID - GET `/v2/account/{id}`
+		GetAccountByID(ctx context.Context, accountID types.AccountID) (*types.Account, error)
 		// GetUserAccounts returns all Accounts for a given user ID - GET `/v2/user/{userID}/account`
 		GetUserAccounts(ctx context.Context, userID types.UserID, options ...AccountOptions) ([]*types.Account, error)
 		// GetUserAccount returns a single user Account by its account ID and user ID - GET `/v2/user/{userID}/account/{id}`
@@ -102,8 +104,6 @@ type (
 		UpdatePortalApp(ctx context.Context, portalAppUpdate types.UpdatePortalApp) (*types.UpdatePortalApp, error)
 		// DeletePortalApp deletes a Portal App - DELETE `/v2/portal_app/{id}`
 		DeletePortalApp(ctx context.Context, portalAppID types.PortalAppID) (map[string]string, error)
-		// UpdatePortalAppsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/portal_app/first_date_surpassed`
-		UpdatePortalAppsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error)
 
 		// CreateAccount creates a new Account in the database for a single user - POST `/v2/user/{userID}/account`
 		CreateAccount(ctx context.Context, userID types.UserID, account types.Account, timestamp time.Time) (*types.Account, error)
@@ -117,7 +117,7 @@ type (
 		DeleteAccount(ctx context.Context, accountID types.AccountID) (map[string]string, error)
 
 		// WriteAccountUser creates a single Account User - POST `/v2/account/user`
-		WriteAccountUser(ctx context.Context, createUser types.CreateAccountUserAccess, time time.Time) (map[string]types.UserID, error)
+		WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, time time.Time) (map[string]types.UserID, error)
 		// SetAccountUserRole updates the role for a single Account User - PUT `/v2/account/user/update_role`
 		SetAccountUserRole(ctx context.Context, updateUser types.UpdateAccountUserRole, time time.Time) (map[string]string, error)
 		// UpdateAcceptAccountUser accepts or declines an Account User Access - PUT `/v2/account/user/accept`
@@ -236,16 +236,15 @@ var (
 	errNoPlanTypeSet      error = errors.New("no plan type set")
 	errNoBlockedAddress   error = errors.New("no blocked address provided")
 
-	errInvalidRoleName                     error = errors.New("invalid role name filter provided")
-	errInvalidPortalAppJSON                error = errors.New("invalid portal app JSON")
-	errInvalidFirstDateSurpassedUpdateJSON error = errors.New("invalid first date surpassed update JSON")
-	errInvalidAccountJSON                  error = errors.New("invalid account JSON")
-	errInvalidAccountIntegrationJSON       error = errors.New("invalid account integration JSON")
-	errInvalidAppJSON                      error = errors.New("invalid application JSON")
-	errInvalidChainJSON                    error = errors.New("invalid chain JSON")
-	errInvalidGigastakeAppJSON             error = errors.New("invalid gigastake app JSON")
-	errInvalidActiveStatusJSON             error = errors.New("invalid active status JSON")
-	errInvalidBlockedContractJSON          error = errors.New("invalid blocked contract JSON")
+	errInvalidRoleName               error = errors.New("invalid role name filter provided")
+	errInvalidPortalAppJSON          error = errors.New("invalid portal app JSON")
+	errInvalidAccountJSON            error = errors.New("invalid account JSON")
+	errInvalidAccountIntegrationJSON error = errors.New("invalid account integration JSON")
+	errInvalidAppJSON                error = errors.New("invalid application JSON")
+	errInvalidChainJSON              error = errors.New("invalid chain JSON")
+	errInvalidGigastakeAppJSON       error = errors.New("invalid gigastake app JSON")
+	errInvalidActiveStatusJSON       error = errors.New("invalid active status JSON")
+	errInvalidBlockedContractJSON    error = errors.New("invalid blocked contract JSON")
 
 	errMoreThanOneOption error = errors.New("may not provider more than one options parameter")
 
@@ -499,6 +498,12 @@ func (db *DBClient) GetAllAccounts(ctx context.Context, optionParams ...AccountO
 	return getReq[[]*types.Account](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
+// GetAccountByID returns a single Account by its ID - GET `/v2/account/{id}`
+func (db *DBClient) GetAccountByID(ctx context.Context, accountID types.AccountID) (*types.Account, error) {
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), accountID)
+	return getReq[*types.Account](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+}
+
 // GetUserAccounts returns all Accounts for a given user ID - GET `/v2/user/{userID}/account`
 func (db *DBClient) GetUserAccounts(ctx context.Context, userID types.UserID, optionParams ...AccountOptions) ([]*types.Account, error) {
 	if userID == "" {
@@ -735,18 +740,6 @@ func (db *DBClient) DeletePortalApp(ctx context.Context, portalAppID types.Porta
 	return deleteReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), db.httpClient)
 }
 
-// UpdatePortalAppsFirstDateSurpassed updates the FirstDateSurpassed field of one or more Portal Apps - POST `/v2/portal_app/first_date_surpassed`
-func (db *DBClient) UpdatePortalAppsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error) {
-	firstDateSurpassedUpdateJSON, err := json.Marshal(firstDateSurpassedUpdate)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s", errInvalidFirstDateSurpassedUpdateJSON, err)
-	}
-
-	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(portalAppPath), "first_date_surpassed")
-
-	return postReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), firstDateSurpassedUpdateJSON, db.httpClient)
-}
-
 /* -- Account Write Methods -- */
 
 // CreateAccount creates a new Account in the database for a single user - POST `/v2/user/{userID}/account`
@@ -818,12 +811,9 @@ func (db *DBClient) DeleteAccount(ctx context.Context, accountID types.AccountID
 /* -- Account User Write Methods -- */
 
 // WriteAccountUser creates a single Account User - POST `/v2/account/user`
-func (db *DBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUserAccess, time time.Time) (map[string]types.UserID, error) {
+func (db *DBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, time time.Time) (map[string]types.UserID, error) {
 	if createUser.AccountID == "" {
 		return nil, errNoAccountID
-	}
-	if createUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
 	}
 	if createUser.Email == "" {
 		return nil, errNoEmail
@@ -844,9 +834,6 @@ func (db *DBClient) WriteAccountUser(ctx context.Context, createUser types.Creat
 
 // SetAccountUserRole updates the role for a single Account User - PUT `/v2/account/user/update_role`
 func (db *DBClient) SetAccountUserRole(ctx context.Context, updateUser types.UpdateAccountUserRole, time time.Time) (map[string]string, error) {
-	if updateUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
-	}
 	if updateUser.UserID == "" {
 		return nil, errNoUserID
 	}
@@ -869,8 +856,8 @@ func (db *DBClient) SetAccountUserRole(ctx context.Context, updateUser types.Upd
 
 // UpdateAcceptAccountUser accepts or declines an Account User Access - PUT `/v2/account/user/accept`
 func (db *DBClient) UpdateAcceptAccountUser(ctx context.Context, acceptUser types.UpdateAcceptAccountUser, time time.Time) (map[string]string, error) {
-	if acceptUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
+	if acceptUser.AccountID == "" {
+		return nil, errNoAccountID
 	}
 	if acceptUser.UserID == "" {
 		return nil, errNoUserID
@@ -894,9 +881,6 @@ func (db *DBClient) UpdateAcceptAccountUser(ctx context.Context, acceptUser type
 
 // RemoveAccountUser removes an Account User's Role - PUT `/v2/account/user/remove`
 func (db *DBClient) RemoveAccountUser(ctx context.Context, removeUser types.UpdateRemoveAccountUser) (map[string]string, error) {
-	if removeUser.PortalAppID == "" {
-		return nil, errNoPortalAppID
-	}
 	if removeUser.UserID == "" {
 		return nil, errNoUserID
 	}

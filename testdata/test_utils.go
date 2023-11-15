@@ -123,26 +123,6 @@ func FilterActiveChains(chains map[types.RelayChainID]*types.Chain) map[types.Re
 	return activeChains
 }
 
-// This functIon is needed because the cache alter the DB output
-func ModifiedAccountToTest() map[types.AccountID]*types.Account {
-	portalAppsCopy := PortalApps
-	payPlanCopy := PayPlans
-	accCopy := Accounts
-	accCopy["account_1"].Plan = payPlanCopy["basic_plan"]
-	accCopy["account_2"].Plan = payPlanCopy["pro_plan"]
-	accCopy["account_3"].Plan = payPlanCopy["startup_plan"]
-	accCopy["account_4"].Plan = payPlanCopy["enterprise_plan"]
-	accCopy["account_5"].Plan = payPlanCopy["basic_plan"]
-
-	accCopy["account_1"].PortalApps["test_app_1"] = portalAppsCopy["test_app_1"]
-	accCopy["account_2"].PortalApps["test_app_2"] = portalAppsCopy["test_app_2"]
-	accCopy["account_3"].PortalApps["test_app_3"] = portalAppsCopy["test_app_3"]
-	accCopy["account_4"].PortalApps = map[types.PortalAppID]*types.PortalApp{}
-	accCopy["account_5"].PortalApps = map[types.PortalAppID]*types.PortalApp{}
-
-	return accCopy
-}
-
 // chainsToMap takes a slice of pointers to Chains and converts it into a map
 // with the Chain ID as the key and the Chain as the value.
 func ChainPointersToMap(chains []*types.Chain) map[types.RelayChainID]*types.Chain {

@@ -79,35 +79,6 @@ WITH aats_agg AS (
     FROM portal_application_aats paa
     GROUP BY paa.portal_application_id
 ),
-notifications_agg AS (
-    SELECT pn.application_id,
-        json_object_agg(
-            pn.type,
-            json_build_object(
-                'type',
-                pn.type,
-                'active',
-                pn.active,
-                'destination',
-                pn.destination,
-                'trigger',
-                pn.trigger,
-                'events',
-                (
-                    SELECT json_object_agg(
-                            event,
-                            true
-                        )
-                    FROM (
-                            SELECT unnest(pn.events) AS event
-                        ) subquery
-                    WHERE event IS NOT NULL
-                )
-            )
-        ) AS notifications
-    FROM portal_application_notifications pn
-    GROUP BY pn.application_id
-),
 whitelists_agg AS (
     SELECT paw.application_id,
         json_agg(
@@ -130,12 +101,10 @@ SELECT p.*,
     pas.environment,
     pas.favorited_chain_ids,
     COALESCE(aats_agg.aats, '[]'::json) AS aats,
-    COALESCE(notifications_agg.notifications, '[]'::json) AS notifications,
     COALESCE(whitelists_agg.whitelists, '[]'::json) AS whitelists
 FROM portal_applications p
     LEFT JOIN portal_application_settings pas ON p.id = pas.application_id
     LEFT JOIN aats_agg ON p.id = aats_agg.portal_application_id
-    LEFT JOIN notifications_agg ON p.id = notifications_agg.application_id
     LEFT JOIN whitelists_agg ON p.id = whitelists_agg.application_id
 WHERE (
         $1::BOOLEAN
@@ -149,15 +118,7 @@ INSERT INTO portal_applications (
         description,
         app_emoji,
         created_at,
-        updated_at,
-        request_timeout,
-        first_date_surpassed,
-        -- legacy field
-        plan_type,
-        -- legacy field
-        daily_limit,
-        -- legacy field
-        custom_limit
+        updated_at
     )
 VALUES (
         $1,
@@ -166,12 +127,7 @@ VALUES (
         $4,
         $5,
         $6,
-        $7,
-        $8,
-        $9,
-        $10,
-        $11,
-        $12
+        $7
     )
 RETURNING *;
 -- name: InsertPortalApplicationAAT :one
@@ -207,28 +163,23 @@ SELECT email,
 FROM users
 WHERE users.id = $1;
 -- name: GetAccountOwner :one
-SELECT aua.account_id,
-    aua.owner,
-    aua.user_id,
+SELECT au.account_id,
+    au.user_id,
     users.email,
     users.icon_url,
     users.updates_product,
     users.updates_marketing,
     users.beta_tester
-FROM account_user_access AS aua
-    JOIN users ON aua.user_id = users.id
-WHERE aua.account_id = $1
-    AND aua.owner = true;
+FROM account_users AS au
+    JOIN users ON au.user_id = users.id
+WHERE au.account_id = $1
+    AND au.role_name = 'OWNER';
 -- name: UpdatePortalAppFields :exec
 UPDATE portal_applications
 SET name = COALESCE(NULLIF(@name::VARCHAR, ''), name),
     description = COALESCE(NULLIF(@description::VARCHAR, ''), description),
     app_emoji = COALESCE(NULLIF(@app_emoji::VARCHAR, ''), app_emoji),
-    plan_type = COALESCE(NULLIF(@plan_type::VARCHAR, ''), plan_type),
-    daily_limit = COALESCE($2, daily_limit),
-    custom_limit = COALESCE($3, custom_limit),
-    stripe_subscription_id = COALESCE($4, stripe_subscription_id),
-    updated_at = $5
+    updated_at = $2
 WHERE id = $1;
 -- name: GetPlanDailyLimit :one
 SELECT daily_limit
@@ -246,9 +197,9 @@ SET secret_key = COALESCE($2, secret_key),
     favorited_chain_ids = COALESCE($5, favorited_chain_ids),
     updated_at = COALESCE($6, updated_at)
 WHERE application_id = $1;
--- name: UpdateUpsertPortalAppNotification :exec
-INSERT INTO portal_application_notifications (
-        application_id,
+-- name: UpdateUpsertAccountNotification :exec
+INSERT INTO account_notifications (
+        account_id,
         type,
         active,
         destination,
@@ -263,7 +214,7 @@ SELECT $1,
     @trigger::VARCHAR(255),
     @events::notification_event [],
     $2
-WHERE @active IS true ON CONFLICT (application_id, type) DO
+WHERE @active IS true ON CONFLICT (account_id, type) DO
 UPDATE
 SET active = EXCLUDED.active,
     destination = EXCLUDED.destination,
@@ -271,9 +222,9 @@ SET active = EXCLUDED.active,
     events = EXCLUDED.events,
     updated_at = EXCLUDED.updated_at
 WHERE EXCLUDED.active IS true;
--- name: UpdateDeletePortalAppNotification :exec
-DELETE FROM portal_application_notifications
-WHERE application_id = $1
+-- name: UpdateDeleteAccountNotification :exec
+DELETE FROM account_notifications
+WHERE account_id = $1
     and type = $2;
 -- name: CheckIfAppWhitelistExists :one
 SELECT EXISTS(
@@ -325,142 +276,88 @@ WHERE (
                 AND t2.value = portal_application_whitelists.value
         )
     );
--- name: UpdateFirstDatesSurpassed :exec
-UPDATE portal_applications
-SET first_date_surpassed = @first_date_surpassed
-WHERE id = ANY (@portal_app_ids::VARCHAR []);
 -- name: DeletePortalApp :exec
 UPDATE portal_applications
 SET deleted = true,
     deleted_at = $2
 WHERE id = $1;
 -- name: SelectAccounts :many
-WITH filtered_portal_applications AS (
-    SELECT *
-    FROM portal_applications
-    WHERE deleted = false
-),
-app_role_agg_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(fpa.id, 'OWNER') AS portal_application_roles,
-        jsonb_object_agg(fpa.id, aua.accepted) AS portal_applications_accepted
-    FROM account_user_access AS aua
-        JOIN filtered_portal_applications AS fpa ON aua.account_id = fpa.account_id
-    WHERE aua.owner = true
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg_non_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(aua.portal_application_id, aua.role_name) AS portal_application_roles,
-        jsonb_object_agg(aua.portal_application_id, aua.accepted) AS portal_applications_accepted
-    FROM account_user_access AS aua
-        JOIN filtered_portal_applications AS fpa ON aua.portal_application_id = fpa.id
-    WHERE aua.owner = false
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg AS (
-    SELECT COALESCE(aro.user_id, aroo.user_id) as user_id,
-        COALESCE(aro.account_id, aroo.account_id) as account_id,
-        COALESCE(aro.portal_application_roles, '{}'::jsonb) || COALESCE(aroo.portal_application_roles, '{}'::jsonb) as portal_application_roles,
-        COALESCE(aro.portal_applications_accepted, '{}'::jsonb) || COALESCE(aroo.portal_applications_accepted, '{}'::jsonb) as portal_applications_accepted
-    FROM app_role_agg_owner aro
-        FULL JOIN app_role_agg_non_owner aroo ON aro.user_id = aroo.user_id
-        AND aro.account_id = aroo.account_id
-)
 SELECT a.*,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
-    json_agg(
-        json_build_object(
-            'user_id',
-            u.id,
-            'email',
-            u.email,
-            'owner',
-            aua.owner,
-            'portal_application_roles',
-            ara.portal_application_roles,
-            'portal_applications_accepted',
-            ara.portal_applications_accepted
-        )
-    ) AS users
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
-    LEFT JOIN account_user_access AS aua ON a.id = aua.account_id
-    LEFT JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
-    LEFT JOIN users AS u ON aua.user_id = u.id
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN app_role_agg AS ara ON u.id = ara.user_id
-    AND a.id = ara.account_id
 WHERE (
         $1::BOOLEAN
         OR a.deleted = false
-    )
-GROUP BY a.id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid;
+    );
 -- name: SelectAccount :one
-WITH app_role_agg_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(pa.id, 'OWNER') AS portal_application_roles
-    FROM account_user_access AS aua
-        JOIN portal_applications AS pa ON aua.account_id = pa.account_id
-    WHERE aua.owner = true
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg_non_owner AS (
-    SELECT aua.user_id,
-        aua.account_id,
-        jsonb_object_agg(aua.portal_application_id, aua.role_name) AS portal_application_roles
-    FROM account_user_access AS aua
-        JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
-    WHERE aua.owner = false
-    GROUP BY aua.user_id,
-        aua.account_id
-),
-app_role_agg AS (
-    SELECT COALESCE(aro.user_id, aroo.user_id) as user_id,
-        COALESCE(aro.account_id, aroo.account_id) as account_id,
-        COALESCE(aro.portal_application_roles, '{}'::jsonb) || COALESCE(aroo.portal_application_roles, '{}'::jsonb) as portal_application_roles
-    FROM app_role_agg_owner aro
-        FULL JOIN app_role_agg_non_owner aroo ON aro.user_id = aroo.user_id
-        AND aro.account_id = aroo.account_id
-)
 SELECT a.*,
+    ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
-    json_agg(
-        json_build_object(
-            'user_id',
-            u.id,
-            'email',
-            u.email,
-            'accepted',
-            aua.accepted,
-            'owner',
-            aua.owner,
-            'portal_application_roles',
-            ara.portal_application_roles
-        )
-    ) AS users
+    COALESCE(
+        (
+            SELECT json_object_agg(
+                    an.type,
+                    json_build_object(
+                        'type',
+                        an.type,
+                        'active',
+                        an.active,
+                        'destination',
+                        an.destination,
+                        'trigger',
+                        an.trigger,
+                        'events',
+                        (
+                            SELECT json_object_agg(event, true)
+                            FROM (
+                                    SELECT unnest(an.events) AS event
+                                ) subquery
+                            WHERE event IS NOT NULL
+                        )
+                    )
+                )
+            FROM account_notifications an
+            WHERE an.account_id = a.id
+            GROUP BY an.account_id
+        ),
+        '[]'::json
+    )::json AS notifications
 FROM accounts AS a
-    LEFT JOIN account_user_access AS aua ON a.id = aua.account_id
-    LEFT JOIN portal_applications AS pa ON aua.portal_application_id = pa.id
     LEFT JOIN account_integrations AS ai ON a.id = ai.account_id
-    LEFT JOIN users AS u ON aua.user_id = u.id
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN app_role_agg AS ara ON u.id = ara.user_id
-    AND a.id = ara.account_id
-WHERE a.id = $1
-GROUP BY a.id,
-    ai.covalent_api_key_free,
-    ai.covalent_api_key_paid;
+WHERE a.id = $1;
 -- name: UpdateAccountFields :exec
 UPDATE accounts
 SET name = COALESCE($1, name),
@@ -469,19 +366,28 @@ SET name = COALESCE($1, name),
     partner_chain_ids = COALESCE($4, partner_chain_ids),
     partner_throughput_limit = COALESCE($5, partner_throughput_limit),
     partner_application_limit = COALESCE($6, partner_application_limit),
-    updated_at = $7
-WHERE id = $8;
+    enterprise_limit = CASE
+        WHEN COALESCE($3, plan_type) = 'ENTERPRISE' THEN COALESCE($7, enterprise_limit)
+        ELSE NULL
+    END,
+    updated_at = $8
+WHERE id = $9;
 -- name: UpsertAccountIntegrations :one
 INSERT INTO account_integrations (
         account_id,
+        stripe_subscription_id,
         covalent_api_key_free,
         covalent_api_key_paid,
         created_at,
         updated_at
     )
-VALUES ($1, $2, $3, $4, $5) ON CONFLICT (account_id) DO
+VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (account_id) DO
 UPDATE
-SET covalent_api_key_free = CASE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id IS NOT NULL THEN EXCLUDED.stripe_subscription_id
+        ELSE account_integrations.stripe_subscription_id
+    END,
+    covalent_api_key_free = CASE
         WHEN EXCLUDED.covalent_api_key_free IS NOT NULL THEN EXCLUDED.covalent_api_key_free
         ELSE account_integrations.covalent_api_key_free
     END,
@@ -496,32 +402,28 @@ SET covalent_api_key_free = CASE
     updated_at = EXCLUDED.updated_at
 RETURNING *;
 -- name: SelectUserPermissions :many
-WITH filtered_portal_applications AS (
-    SELECT *
-    FROM portal_applications
-    WHERE deleted = false
-)
-SELECT aua.user_id,
-    aua.account_id,
-    aua.role_name,
-    aua.owner,
-    ur.permissions::permissions [] AS permissions,
-    CASE
-        WHEN aua.owner THEN array_agg(fpa.id)::VARCHAR []
-        ELSE ARRAY [aua.portal_application_id]::VARCHAR []
-    END AS portal_application_ids
-FROM account_user_access AS aua
-    LEFT JOIN user_roles AS ur ON aua.role_name = ur.role_name
-    LEFT JOIN filtered_portal_applications AS fpa ON aua.account_id = fpa.account_id
-WHERE aua.accepted = true
-    AND aua.user_id IS NOT NULL
-    AND fpa.id IS NOT NULL
-GROUP BY aua.user_id,
-    aua.account_id,
-    aua.role_name,
-    aua.owner,
-    ur.permissions,
-    aua.portal_application_id;
+SELECT au.user_id,
+    au.account_id,
+    au.role_name,
+    au.accepted,
+    ur.permissions::permissions [] AS permissions
+FROM account_users AS au
+    LEFT JOIN user_roles AS ur ON au.role_name = ur.role_name
+GROUP BY au.user_id,
+    au.account_id,
+    au.role_name,
+    au.accepted,
+    ur.permissions;
+-- name: UpsertStripeSubID :exec
+INSERT INTO account_integrations (account_id, stripe_subscription_id, updated_at)
+VALUES ($1, $2, $3) ON CONFLICT (account_id) DO
+UPDATE
+SET stripe_subscription_id = CASE
+        WHEN EXCLUDED.stripe_subscription_id <> '' THEN EXCLUDED.stripe_subscription_id
+        ELSE NULL
+    END,
+    updated_at = EXCLUDED.updated_at
+RETURNING *;
 -- name: SelectUserIDs :many
 SELECT user_id,
     provider_user_id
@@ -599,22 +501,15 @@ SELECT EXISTS(
 -- name: CheckUserAccountExists :one
 SELECT EXISTS (
         SELECT 1
-        FROM account_user_access
+        FROM account_users
         WHERE user_id = $1
     );
 -- name: CheckAccountUserExists :one
 SELECT EXISTS (
         SELECT 1
-        FROM account_user_access
-        WHERE (
-                user_id = $1
-                AND portal_application_id = $2
-            )
-            OR (
-                user_id = $1
-                AND role_name = 'OWNER'
-                AND account_id = $3
-            )
+        FROM account_users
+        WHERE user_id = $1
+            AND account_id = $2
     );
 -- name: CheckUserProviderExists :one
 SELECT EXISTS (
@@ -626,28 +521,15 @@ SELECT EXISTS (
     );
 -- name: CheckAccountUserRole :one
 SELECT role_name
-FROM account_user_access
-WHERE user_id = $1
-    AND account_id = $2;
--- name: CheckAccountUserAcceptedOrOwner :one
-SELECT accepted
-FROM account_user_access
-WHERE user_id = $1
-    AND (
-        portal_application_id = $2
-        OR owner = true
-    );
--- name: CheckAccountUserIsOwner :one
-SELECT owner
-FROM account_user_access
+FROM account_users
 WHERE user_id = $1
     AND account_id = $2;
 -- name: CheckAccountUserAccepted :one
 SELECT accepted
-FROM account_user_access
+FROM account_users
 WHERE user_id = $1
-    AND portal_application_id = $2;
--- name: InsertAccountUserAccess :one
+    AND account_id = $2;
+-- name: InsertAccountUser :one
 WITH updated_user AS (
     UPDATE users
     SET email = $7
@@ -655,12 +537,10 @@ WITH updated_user AS (
     RETURNING id,
         email
 ) -- Must update email to trigger listener notification for users table
-INSERT INTO account_user_access (
+INSERT INTO account_users (
         user_id,
         account_id,
-        portal_application_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
@@ -668,12 +548,10 @@ INSERT INTO account_user_access (
 VALUES (
         $1,
         $2,
-        NULLIF(@portal_application_id::VARCHAR, ''),
         $3,
         $4,
         $5,
-        $6,
-        $8
+        $6
     )
 RETURNING user_id;
 -- name: InsertAccountUserAccessNoUser :one
@@ -689,12 +567,10 @@ WITH inserted_user AS (
     RETURNING id,
         email
 )
-INSERT INTO account_user_access (
+INSERT INTO account_users (
         user_id,
         account_id,
-        portal_application_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
@@ -704,91 +580,26 @@ VALUES (
             SELECT id
             FROM inserted_user
         ),
-        $6,
-        $7,
         $5,
-        false,
+        $6,
         false,
         $3,
         $4
     )
 RETURNING user_id;
+-- name: UpdateAccountOwnerToAdmin :exec
+UPDATE account_users
+SET role_name = 'ADMIN',
+    updated_at = $3
+WHERE account_id = $1
+    AND role_name = 'OWNER'
+    AND user_id != $2;
 -- name: UpdateAccountUserRole :exec
-UPDATE account_user_access
+UPDATE account_users
 SET role_name = $3,
     updated_at = $4
-WHERE portal_application_id = $1
+WHERE account_id = $1
     AND user_id = $2;
--- name: TransferOwnerDeleteOldRows :one
-WITH delete_old_owner_row AS (
-    DELETE FROM account_user_access
-    WHERE account_user_access.account_id = $1
-        AND role_name = 'OWNER'
-    RETURNING user_id
-),
-delete_new_owner_non_owner_rows AS (
-    DELETE FROM account_user_access
-    WHERE account_user_access.account_id = $1
-        AND user_id = @new_owner_id::VARCHAR(24)
-        AND role_name <> 'OWNER'
-)
-SELECT user_id
-FROM delete_old_owner_row;
--- name: TransferOwnerCreateRows :exec
-WITH updated_user AS (
-    UPDATE users
-    SET email = users.email
-    WHERE id = @new_owner_id::VARCHAR(24)
-),
-insert_old_owner_admin_rows AS (
-    INSERT INTO account_user_access (
-            portal_application_id,
-            user_id,
-            account_id,
-            role_name,
-            owner,
-            accepted,
-            created_at,
-            updated_at
-        )
-    SELECT DISTINCT on (pa.id) pa.id,
-        @old_owner_id::VARCHAR(24),
-        aua.account_id,
-        'ADMIN',
-        false,
-        true,
-        aua.created_at,
-        aua.updated_at
-    FROM account_user_access AS aua
-        LEFT JOIN portal_applications AS pa ON aua.account_id = pa.account_id
-    WHERE aua.account_id = $1
-        AND pa.deleted = false -- Only include non-deleted portal applications
-        AND NOT EXISTS (
-            SELECT 1
-            FROM account_user_access
-            WHERE user_id = @old_owner_id::VARCHAR(24)
-                AND portal_application_id = pa.id
-        )
-),
-insert_new_owner_row AS (
-    INSERT INTO account_user_access (
-            user_id,
-            account_id,
-            role_name,
-            owner,
-            accepted,
-            created_at,
-            updated_at
-        )
-    SELECT @new_owner_id::VARCHAR(24),
-        $1,
-        'OWNER',
-        true,
-        true,
-        $2,
-        $3
-)
-SELECT 1;
 -- name: CreateUserNewSignUp :one
 WITH inserted_user AS (
     INSERT INTO users (id, email, signed_up, created_at, updated_at)
@@ -845,13 +656,13 @@ WITH inserted_or_existing_provider AS (
     RETURNING user_id
 ),
 updated_access AS (
-    UPDATE account_user_access
+    UPDATE account_users
     SET accepted = true
     WHERE user_id = (
             SELECT user_id
             FROM inserted_or_existing_provider
         )
-        AND portal_application_id = $6
+        AND account_id = $6
 )
 UPDATE users
 SET signed_up = true
@@ -866,14 +677,14 @@ WITH user_check AS (
     WHERE uap.user_id = $1
     UNION ALL
     SELECT user_id
-    FROM account_user_access aua
-    WHERE aua.user_id = $1
-        AND aua.portal_application_id != $2
+    FROM account_users au
+    WHERE au.user_id = $1
+        AND au.account_id != $2
 ),
 delete_aua AS (
-    DELETE FROM account_user_access aua
-    WHERE aua.user_id = $1
-        AND aua.portal_application_id = $2
+    DELETE FROM account_users au
+    WHERE au.user_id = $1
+        AND au.account_id = $2
 )
 DELETE FROM users u
 WHERE u.id = $1
@@ -882,8 +693,8 @@ WHERE u.id = $1
         FROM user_check
     );
 -- name: DeleteAccountUser :exec
-DELETE FROM account_user_access
-WHERE portal_application_id = $1
+DELETE FROM account_users
+WHERE account_id = $1
     AND user_id = $2;
 -- name: GetPortalUserID :one
 SELECT user_id

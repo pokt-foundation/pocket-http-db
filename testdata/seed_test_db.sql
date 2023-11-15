@@ -82,66 +82,6 @@ VALUES (
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000',
         90000
-    ),
-    (
-        'Basic Plan',
-        'Basic plan for testing purposes',
-        'basic_plan',
-        ARRAY ['0001', '0053'],
-        5000000,
-        5000,
-        2,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        1000
-    ),
-    (
-        'Pro Plan',
-        'Pro plan for testing purposes',
-        'pro_plan',
-        ARRAY ['0001', '0053', '0021', '0064'],
-        10000000,
-        10000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        5000
-    ),
-    (
-        'Enterprise Plan',
-        'Enterprise plan for testing purposes',
-        'enterprise_plan',
-        ARRAY ['0001', '0053', '0021', '0064', '0034'],
-        20000000,
-        20000,
-        10,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        10000
-    ),
-    (
-        'Developer Plan',
-        'Developer plan for testing purposes',
-        'developer_plan',
-        ARRAY ['0001', '0053', '0021', '0034'],
-        500000,
-        500,
-        1,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        100
-    ),
-    (
-        'Startup Plan',
-        'Startup plan for testing purposes',
-        'startup_plan',
-        ARRAY ['0001', '0053', '0064', '0034'],
-        1000000,
-        1000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        500
     );
 -- Insert users
 INSERT INTO users (
@@ -400,6 +340,7 @@ INSERT INTO accounts (
         partner_chain_ids,
         partner_throughput_limit,
         partner_application_limit,
+        enterprise_limit,
         created_at,
         updated_at
     )
@@ -407,10 +348,11 @@ VALUES (
         'account_1',
         'The Brave Voyager',
         'https://picsum.photos/200',
-        'basic_plan',
+        'FREETIER_V0',
         ARRAY ['0001', '0053'],
         2000,
         1,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -418,10 +360,11 @@ VALUES (
         'account_2',
         'Dragonborn Explorer',
         'https://picsum.photos/200',
-        'pro_plan',
+        'ENTERPRISE',
         ARRAY ['0001', '0053','0021', '0064'],
         5000,
         3,
+        3000000,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -429,10 +372,11 @@ VALUES (
         'account_3',
         'Fellowship Startup',
         'https://picsum.photos/200',
-        'startup_plan',
+        'PAY_AS_YOU_GO_V0',
         ARRAY ['0001', '0053', '0064', '0034'],
         1000,
         2,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -440,10 +384,11 @@ VALUES (
         'account_4',
         'Iron Throne Enterprise',
         'https://picsum.photos/200',
-        'enterprise_plan',
+        'FREETIER_V0',
         ARRAY ['0001'],
         1000,
         2,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -451,41 +396,83 @@ VALUES (
         'account_5',
         'Nomad Wanderer',
         'https://picsum.photos/200',
-        'basic_plan',
+        'PAY_AS_YOU_GO_V0',
         ARRAY ['0006', '0040'],
         6000,
         1,
+        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
 INSERT INTO account_integrations (
         account_id,
+        stripe_subscription_id,
         covalent_api_key_free,
         created_at,
         updated_at
     )
 VALUES (
         'account_1',
+        'stripe_id_1',
         'covalent_api_key_1',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
         'account_2',
+        'stripe_id_2',
         'covalent_api_key_2',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
         'account_3',
+        'stripe_id_3',
         'covalent_api_key_3',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
         'account_4',
+        'stripe_id_4',
         'covalent_api_key_4',
         '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    );
+INSERT INTO account_notifications (
+        account_id,
+        active,
+        type,
+        destination,
+        trigger,
+        events,
+        updated_at
+    )
+VALUES (
+        'account_1',
+        true,
+        'email',
+        'james.holden123@test.com',
+        'trigger123',
+        ARRAY ['quarter'::notification_event,'threeQuarters'::notification_event,'full'::notification_event],
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'account_2',
+        true,
+        'email',
+        'ellen.ripley789@test.com',
+        'trigger456',
+        ARRAY ['full'::notification_event,'half'::notification_event],
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'account_3',
+        true,
+        'email',
+        'chrisjen.avasarala1@test.com',
+        'trigger789',
+        ARRAY ['full'::notification_event,'half'::notification_event,'quarter'::notification_event],
         '2022-11-11 11:11:11.000000'
     );
 -- Insert user_roles
@@ -519,12 +506,6 @@ INSERT INTO portal_applications (
         name,
         app_emoji,
         description,
-        request_timeout,
-        first_date_surpassed,
-        plan_type,
-        daily_limit,
-        custom_limit,
-        stripe_subscription_id,
         created_at,
         updated_at
     )
@@ -534,12 +515,6 @@ VALUES (
         'pokt_app_123',
         '1F336',
         'Embark on an interstellar journey with our powerful application.',
-        5000,
-        '2022-11-11 11:11:11.000000',
-        'FREETIER_V0',
-        250000,
-        NULL,
-        'stripe_id_1',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -549,12 +524,6 @@ VALUES (
         'pokt_app_456',
         '1F336',
         'Unveil the mysteries of the multiverse with our enchanting application.',
-        10000,
-        '2022-11-11 11:11:11.000000',
-        'PAY_AS_YOU_GO_V0',
-        0,
-        NULL,
-        'stripe_id_2',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -564,152 +533,118 @@ VALUES (
         'pokt_app_789',
         '1F336',
         'Harness the power of a connected world with our revolutionary application.',
-        10000,
-        '2022-11-11 11:11:11.000000',
-        'ENTERPRISE',
-        NULL,
-        '4200000',
-        'stripe_id_3',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
--- Insert account_user_access
-INSERT INTO account_user_access (
-        account_id,
+-- Insert into account_users
+INSERT INTO account_users (
         user_id,
-        portal_application_id,
+        account_id,
         role_name,
-        owner,
         accepted,
         created_at,
         updated_at
     )
 VALUES (
-        'account_1',
         'user_1',
-        NULL,
+        'account_1',
         'OWNER',
         true,
-        true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_1',
         'user_2',
-        'test_app_1',
+        'account_1',
         'ADMIN',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_1',
         'user_8',
-        'test_app_1',
+        'account_1',
         'ADMIN',
-        false,
         false,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_2',
         'user_3',
-        NULL,
+        'account_2',
         'OWNER',
         true,
-        true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_2',
         'user_4',
-        'test_app_2',
+        'account_2',
         'MEMBER',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_2',
         'user_9',
-        'test_app_2',
-        'MEMBER',
-        false,
-        false,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
         'account_2',
+        'MEMBER',
+        false,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
         'user_2',
-        'test_app_2',
+        'account_2',
         'MEMBER',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_3',
         'user_5',
-        NULL,
+        'account_3',
         'OWNER',
-        true,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_3',
         'user_6',
-        'test_app_3',
+        'account_3',
         'ADMIN',
-        false,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_3',
         'user_7',
-        'test_app_3',
-        'MEMBER',
-        false,
-        true,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
         'account_3',
+        'MEMBER',
+        true,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
         'user_10',
-        'test_app_3',
+        'account_3',
         'MEMBER',
         false,
-        false,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
+        'user_4',
         'account_4',
-        'user_4',
-        NULL,
         'OWNER',
-        true,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
-        'account_5',
         'user_4',
-        NULL,
+        'account_5',
         'OWNER',
-        true,
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
@@ -825,33 +760,6 @@ VALUES (
         'userAgents',
         'Mozilla/5.0 (Linux; Android 10; SM-A205U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
         NULL,
-        '2022-11-11 11:11:11.000000'
-    );
-INSERT INTO portal_application_notifications (
-        application_id,
-        active,
-        type,
-        destination,
-        trigger,
-        events,
-        updated_at
-    )
-VALUES (
-        'test_app_1',
-        true,
-        'email',
-        'test@test.com',
-        'trigger123',
-        ARRAY ['quarter'::notification_event,'threeQuarters'::notification_event,'full'::notification_event],
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
-        'test_app_2',
-        true,
-        'email',
-        'email@pokt.network',
-        'trigger456',
-        ARRAY ['full'::notification_event,'half'::notification_event],
         '2022-11-11 11:11:11.000000'
     );
 INSERT INTO portal_application_aats (

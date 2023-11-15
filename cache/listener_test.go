@@ -13,14 +13,14 @@ import (
 func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	c := require.New(t)
 
-	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs, nil)
-	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
-	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
-	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
-	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains, nil)
-	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
+	readerMock.On("ReadUserIDsMap", testCtx).Return(testdata.UserIDs(), nil)
+	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
+	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans(), nil)
+	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts(), nil)
+	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps(), nil)
+	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps(), nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
+	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
@@ -34,7 +34,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 
 /* ---------- Accounts ---------- */
 
-func Test_parseAccountUserAccessNotification(t *testing.T) {
+func Test_parseAccountUserNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
@@ -45,19 +45,16 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		{
 			name:            "Should insert AccountUser in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
-			userID:          "user_3",
-			accountID:       "account_1",
+			userID:          "user_1",
+			accountID:       "account_2",
 			account: &types.Account{
-				AccountUsers: map[types.UserID]types.AccountUser{
-					"user_3": {
-						UserID: "user_3",
-						Email:  "ellen.ripley789@test.com",
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_1": types.RoleMember,
-						},
-						PortalAppsAccepted: map[types.PortalAppID]bool{
-							"test_app_1": true,
-						},
+				Users: map[types.UserID]types.AccountUser{
+					"user_1": {
+						ID:        "user_1",
+						AccountID: "account_2",
+						Email:     "james.holden123@test.com",
+						RoleName:  types.RoleMember,
+						Accepted:  true,
 					},
 				},
 			},
@@ -68,16 +65,12 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 			userID:          "user_2",
 			accountID:       "account_1",
 			account: &types.Account{
-				AccountUsers: map[types.UserID]types.AccountUser{
+				Users: map[types.UserID]types.AccountUser{
 					"user_3": {
-						UserID: "user_2",
-						Email:  "paul.atreides456@test.com",
-						PortalAppRoles: map[types.PortalAppID]types.RoleName{
-							"test_app_1": types.RoleMember,
-						},
-						PortalAppsAccepted: map[types.PortalAppID]bool{
-							"test_app_1": true,
-						},
+						ID:       "user_2",
+						Email:    "paul.atreides456@test.com",
+						RoleName: types.RoleMember,
+						Accepted: true,
 					},
 				},
 			},
@@ -85,11 +78,11 @@ func Test_parseAccountUserAccessNotification(t *testing.T) {
 		{
 			name:            "Should delete AccountUser from cache when receiving a delete notification",
 			sideTableAction: types.ActionDelete,
-			userID:          "user_8",
-			accountID:       "account_1",
+			userID:          "user_9",
+			accountID:       "account_2",
 			account: &types.Account{
-				AccountUsers: map[types.UserID]types.AccountUser{
-					"user_8": testdata.AccountUser[8],
+				Users: map[types.UserID]types.AccountUser{
+					"user_9": testdata.AccountUsers()[9],
 				},
 			},
 		},
@@ -133,7 +126,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionInsert,
 			sideTablesAction: types.ActionInsert,
 			accountID:        "account_6",
-			user:             testdata.AccountUser[1],
+			user:             testdata.AccountUsers()[1],
 			account:          testdata.TestCreateAccount,
 		},
 		{
@@ -141,7 +134,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
-			user:             testdata.AccountUser[1],
+			user:             testdata.AccountUsers()[1],
 			account: &types.Account{
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
@@ -154,7 +147,7 @@ func Test_parseAccountNotification(t *testing.T) {
 			mainTableAction:  types.ActionUpdate,
 			sideTablesAction: types.ActionUpdate,
 			accountID:        "account_1",
-			user:             testdata.AccountUser[1],
+			user:             testdata.AccountUsers()[1],
 			account: &types.Account{
 				PlanType:               types.PayPlanType("enterprise_plan"),
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
@@ -175,12 +168,12 @@ func Test_parseAccountNotification(t *testing.T) {
 
 			test.account.ID = test.accountID
 			testAccount := test.account
-			testAccount.AccountUsers = map[types.UserID]types.AccountUser{test.user.UserID: test.user}
+			testAccount.Users = map[types.UserID]types.AccountUser{test.user.ID: test.user}
 			readerMock.listener.MockEvent(test.mainTableAction, test.sideTablesAction, testAccount)
 
 			time.Sleep(100 * time.Millisecond) // need time for cache refresh
 
-			account := cache.GetUserAccount(test.accountID, test.user.UserID, Options{})
+			account := cache.GetUserAccount(test.accountID, test.user.ID, Options{})
 
 			if testAccount.Deleted {
 				c.Empty(account)
@@ -250,10 +243,6 @@ func Test_parsePortalAppNotification(t *testing.T) {
 					SecretKey:         "test_849c1397586f9fb6f902576120d0d10f",
 					SecretKeyRequired: true,
 				},
-				LegacyFields: types.LegacyFields{
-					CustomLimit:    0,
-					RequestTimeout: 5_000,
-				},
 			},
 		},
 		{
@@ -311,11 +300,20 @@ func Test_parseAATNotification(t *testing.T) {
 				AATs: map[types.ProtocolAppID]types.AAT{
 					"test_protocol_app_3": {
 						ID:              "test_protocol_app_3",
-						Address:         "test_162789bdf3fec1da21e3b28a757bb648",
-						PublicKey:       "test_360c8eb90ef9536a888a843689a5a20c",
-						ClientPublicKey: "test_97ae5cb13fa6c67cb3e5904ba79e842e",
+						Address:         "test_b5e07928fc80083c13ad0201b81bae9b",
+						PublicKey:       "test_f608500e4fe3e09014fe2411b4a560b5",
+						ClientPublicKey: "test_328a9cf1b35085eeaa669aa858f6fba9",
 						PrivateKey:      "",
-						Signature:       "test_6505b12fc22692a4d794005f7e253b2e",
+						Signature:       "test_c3cd8be16ba32e24dd49fdb0247fc9b8",
+						Version:         "0.0.1",
+					},
+					"test_protocol_app_4": {
+						ID:              "test_protocol_app_4",
+						Address:         "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
+						PublicKey:       "test_f6a5d8690ecb669865bd752b7796a920",
+						ClientPublicKey: "test_6ee5ea553408f0895923fd1569dc5072",
+						PrivateKey:      "",
+						Signature:       "test_cf05cf9bb26111c548e88fb6157af708",
 						Version:         "0.0.1",
 					},
 				},
@@ -329,11 +327,20 @@ func Test_parseAATNotification(t *testing.T) {
 				AATs: map[types.ProtocolAppID]types.AAT{
 					"test_protocol_app_3": {
 						ID:              "test_protocol_app_3",
-						Address:         "test_80bd695bd00e788aefb90931beeb4354",
-						PublicKey:       "test_d2b20869b2dad0c0e1f87fb0e291aeac",
-						ClientPublicKey: "test_97ba2aaf626c3bbb90f0d3331867a075",
+						Address:         "test_b5e07928fc80083c13ad0201b81bae9b",
+						PublicKey:       "test_f608500e4fe3e09014fe2411b4a560b5",
+						ClientPublicKey: "test_328a9cf1b35085eeaa669aa858f6fba9",
 						PrivateKey:      "",
-						Signature:       "test_bef7b8a4562c500d9a16802364d4eb57",
+						Signature:       "test_c3cd8be16ba32e24dd49fdb0247fc9b8",
+						Version:         "0.0.1",
+					},
+					"test_protocol_app_4": {
+						ID:              "test_protocol_app_4",
+						Address:         "test_eb2e5bcba557cfe8fa76fd7fff54f9d1",
+						PublicKey:       "test_f6a5d8690ecb669865bd752b7796a920",
+						ClientPublicKey: "test_6ee5ea553408f0895923fd1569dc5072",
+						PrivateKey:      "",
+						Signature:       "test_cf05cf9bb26111c548e88fb6157af708",
 						Version:         "0.0.1",
 					},
 				},
@@ -720,7 +727,7 @@ func Test_parseChainAltruistNotification(t *testing.T) {
 	}
 }
 
-func Test_parseAliasNotification(t *testing.T) {
+func Test_parseAliasDomainsNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		sideTableAction types.Action
@@ -728,46 +735,46 @@ func Test_parseAliasNotification(t *testing.T) {
 		chain           types.Chain
 	}{
 		{
-			name:            "Should add Aliases to Chain in cache when receiving an insert notification",
+			name:            "Should add AliasDomains to Chain in cache when receiving an insert notification",
 			sideTableAction: types.ActionInsert,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				Aliases: map[types.ChainAlias]struct{}{
-					"solana-mainnet": {},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"solana-mainnet": {"sol-rpc.gateway.pokt.network"},
 				},
 			},
 		},
 		{
-			name:            "Should update Aliases in Chain in cache when receiving an update notification",
+			name:            "Should update AliasDomains in Chain in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				Aliases: map[types.ChainAlias]struct{}{
-					"updated-solana-mainnet": {},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
 				},
 			},
 		},
 		{
-			name:            "Should update Aliases with a longer slice in Chain in cache when receiving an update notification",
+			name:            "Should update AliasDomains with a longer slice in Chain in cache when receiving an update notification",
 			sideTableAction: types.ActionUpdate,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				Aliases: map[types.ChainAlias]struct{}{
-					"updated-solana-mainnet": {},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network", "sol-rpc-123.gateway.pokt.network"},
 				},
 			},
 		},
 		{
-			name:            "Should delete Aliases in Chain in cache when receiving a delete notification",
+			name:            "Should delete AliasDomains in Chain in cache when receiving a delete notification",
 			sideTableAction: types.ActionDelete,
 			chainID:         "9826",
 			chain: types.Chain{
 				ID: "9826",
-				Aliases: map[types.ChainAlias]struct{}{
-					"updated-solana-mainnet": {},
+				AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+					"updated-solana-mainnet": {"sol-rpc.gateway.pokt.network"},
 				},
 			},
 		},
@@ -790,22 +797,22 @@ func Test_parseAliasNotification(t *testing.T) {
 			chain := cache.GetChain(test.chainID, Options{})
 
 			if test.sideTableAction != types.ActionDelete {
-				// Merge any additional keys from chain.Aliases into test.chain.Aliases before checking for equality
-				for key, value := range chain.Aliases {
-					if _, exists := test.chain.Aliases[key]; !exists {
-						test.chain.Aliases[key] = value
+				// Merge any additional keys from chain.AliasDomains into test.chain.AliasDomains before checking for equality
+				for key, value := range chain.AliasDomains {
+					if _, exists := test.chain.AliasDomains[key]; !exists {
+						test.chain.AliasDomains[key] = value
 					}
 				}
-				c.Equal(test.chain.Aliases, chain.Aliases, "Chain aliases should match expected")
+				c.Equal(test.chain.AliasDomains, chain.AliasDomains, "Chain alias domains should match expected")
 			} else {
-				// For deletion, just check that the alias does not exist in chain.Aliases
+				// For deletion, just check that the alias does not exist in chain.AliasDomains
 				var aliasKey types.ChainAlias
-				for key := range test.chain.Aliases {
+				for key := range test.chain.AliasDomains {
 					aliasKey = key
 					break
 				}
-				c.NotEmpty(aliasKey)
-				_, exists := chain.Aliases[aliasKey]
+				c.Empty(aliasKey)
+				_, exists := chain.AliasDomains[aliasKey]
 				c.False(exists, "Alias should not exist after delete operation")
 			}
 		})

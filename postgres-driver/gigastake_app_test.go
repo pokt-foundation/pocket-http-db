@@ -19,9 +19,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadGigastakeApps() {
 		{
 			name: "Should return all non-deleted GigastakeApps from the database",
 			gigastakeApps: map[types.GigastakeAppID]*types.GigastakeApp{
-				testdata.GigastakeApps["test_gigastake_app_1"].ID: testdata.GigastakeApps["test_gigastake_app_1"],
-				testdata.GigastakeApps["test_gigastake_app_2"].ID: testdata.GigastakeApps["test_gigastake_app_2"],
-				testdata.GigastakeApps["test_gigastake_app_3"].ID: testdata.GigastakeApps["test_gigastake_app_3"],
+				testdata.GigastakeApps()["test_gigastake_app_1"].ID: testdata.GigastakeApps()["test_gigastake_app_1"],
+				testdata.GigastakeApps()["test_gigastake_app_2"].ID: testdata.GigastakeApps()["test_gigastake_app_2"],
+				testdata.GigastakeApps()["test_gigastake_app_3"].ID: testdata.GigastakeApps()["test_gigastake_app_3"],
 			},
 			options: types.DriverOptions{},
 			err:     nil,

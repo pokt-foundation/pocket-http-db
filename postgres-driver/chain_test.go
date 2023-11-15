@@ -19,11 +19,11 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadChains() {
 		{
 			name: "Should return all non-deleted Chains from the database",
 			chains: map[types.RelayChainID]*types.Chain{
-				types.RelayChainID("0001"): testdata.Chains[types.RelayChainID("0001")],
-				types.RelayChainID("0053"): testdata.Chains[types.RelayChainID("0053")],
-				types.RelayChainID("0021"): testdata.Chains[types.RelayChainID("0021")],
-				types.RelayChainID("0064"): testdata.Chains[types.RelayChainID("0064")],
-				types.RelayChainID("0040"): testdata.Chains[types.RelayChainID("0040")],
+				types.RelayChainID("0001"): testdata.Chains()[types.RelayChainID("0001")],
+				types.RelayChainID("0053"): testdata.Chains()[types.RelayChainID("0053")],
+				types.RelayChainID("0021"): testdata.Chains()[types.RelayChainID("0021")],
+				types.RelayChainID("0064"): testdata.Chains()[types.RelayChainID("0064")],
+				types.RelayChainID("0040"): testdata.Chains()[types.RelayChainID("0040")],
 			},
 			options: types.DriverOptions{},
 			err:     nil,
@@ -167,7 +167,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteChain() {
 		},
 		{
 			name:            "Should fail if chain already exists in the database",
-			chain:           *testdata.Chains[types.RelayChainID("0064")],
+			chain:           *testdata.Chains()[types.RelayChainID("0064")],
 			testCreatedTime: testdata.MockTimestamp,
 			err:             fmt.Errorf(errChainExists.Error(), "0064"),
 		},

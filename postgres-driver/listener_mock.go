@@ -146,6 +146,7 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 				PartnerChainIDs:         partnerChainIDs,
 				PartnerThroughputLimit:  account.PartnerThroughputLimit,
 				PartnerApplicationLimit: account.PartnerAppLimit,
+				EnterpriseLimit:         account.EnterpriseLimit,
 				CreatedAt:               account.CreatedAt,
 				UpdatedAt:               account.UpdatedAt,
 				Deleted:                 account.Deleted,
@@ -154,28 +155,41 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 	}
 
 	if sideTablesAction != "" {
-		for _, userAccess := range account.AccountUsers {
-			var portalAppID types.PortalAppID
-			var roleName types.RoleName
-			for id, role := range userAccess.PortalAppRoles {
-				portalAppID = id
-				roleName = role
+		for _, user := range account.Users {
+			// listener mock only allows one side table so must hardcode user here
+			if user.ID == "user_1" || user.ID == "user_9" {
+				inputs = append(inputs, inputStruct{
+					action: sideTablesAction,
+					table:  types.TableAccountUsers,
+					input: dbAccountUser{
+						AccountID: account.ID,
+						UserID:    user.ID,
+						RoleName:  user.RoleName,
+						Accepted:  user.Accepted,
+					},
+				})
 				break
 			}
-			var accepted bool
-			for _, appAccepted := range userAccess.PortalAppsAccepted {
-				accepted = appAccepted
-				break
+		}
+
+		for _, notification := range account.Notifications {
+			events := []types.NotificationEvent{}
+			for event, active := range notification.Events {
+				if active {
+					events = append(events, event)
+				}
 			}
+
 			inputs = append(inputs, inputStruct{
 				action: sideTablesAction,
-				table:  types.TableAccountUserAccess,
-				input: dbAccountUserAccess{
-					AccountID:           account.ID,
-					UserID:              userAccess.UserID,
-					PortalApplicationID: portalAppID,
-					RoleName:            roleName,
-					Accepted:            accepted,
+				table:  types.TableAccountNotifications,
+				input: dbAccountNotification{
+					AccountID:   account.ID,
+					Active:      notification.Active,
+					Type:        notification.Type,
+					Destination: notification.Destination,
+					Trigger:     notification.Trigger,
+					Events:      events,
 				},
 			})
 		}
@@ -195,16 +209,12 @@ func portalAppInputs(mainTableAction, sideTablesAction types.Action, content typ
 			action: mainTableAction,
 			table:  types.TablePortalApps,
 			input: dbPortalApplication{
-				ID:                   portalApp.ID,
-				AccountID:            string(portalApp.AccountID),
-				Name:                 portalApp.Name,
-				FirstDateSurpassed:   portalApp.FirstDateSurpassed,
-				CreatedAt:            portalApp.CreatedAt,
-				UpdatedAt:            portalApp.UpdatedAt,
-				Deleted:              portalApp.Deleted,
-				RequestTimeout:       portalApp.LegacyFields.RequestTimeout,
-				CustomLimit:          portalApp.LegacyFields.CustomLimit,
-				StripeSubscriptionID: portalApp.LegacyFields.StripeSubscriptionID,
+				ID:        portalApp.ID,
+				AccountID: string(portalApp.AccountID),
+				Name:      portalApp.Name,
+				CreatedAt: portalApp.CreatedAt,
+				UpdatedAt: portalApp.UpdatedAt,
+				Deleted:   portalApp.Deleted,
 			},
 		})
 	}
@@ -256,28 +266,6 @@ func portalAppInputs(mainTableAction, sideTablesAction types.Action, content typ
 					ApplicationID: portalApp.ID,
 					Type:          types.WhitelistTypeBlockchains,
 					Value:         string(chainID),
-				},
-			})
-		}
-
-		for _, notification := range portalApp.Notifications {
-			events := []types.NotificationEvent{}
-			for event, active := range notification.Events {
-				if active {
-					events = append(events, event)
-				}
-			}
-
-			inputs = append(inputs, inputStruct{
-				action: sideTablesAction,
-				table:  types.TableAppNotifications,
-				input: dbPortalApplicationNotification{
-					ApplicationID: portalApp.ID,
-					Active:        notification.Active,
-					Type:          notification.Type,
-					Destination:   notification.Destination,
-					Trigger:       notification.Trigger,
-					Events:        events,
 				},
 			})
 		}

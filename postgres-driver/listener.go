@@ -88,10 +88,12 @@ func (n notification) parseNotification() *types.Notification {
 	switch n.Table {
 	case types.TableAccounts:
 		return n.parseAccountNotification()
-	case types.TableAccountUserAccess:
-		return n.parseAccountUserAccessNotification()
+	case types.TableAccountUsers:
+		return n.parseAccountUserNotification()
 	case types.TableAccountIntegrations:
 		return n.parseAccountIntegrationsNotification()
+	case types.TableAccountNotifications:
+		return n.parseAccountNotificationNotification()
 
 	case types.TablePortalApps:
 		return n.parsePortalAppNotification()
@@ -99,8 +101,6 @@ func (n notification) parseNotification() *types.Notification {
 		return n.parseSettingsNotification()
 	case types.TableAppWhitelists:
 		return n.parseWhitelistNotification()
-	case types.TableAppNotifications:
-		return n.parseAppNotificationNotification()
 	case types.TablePortalAppAATs:
 		return n.parseAATNotification()
 
@@ -152,9 +152,9 @@ func (n notification) parseAccountNotification() *types.Notification {
 	}
 }
 
-func (n notification) parseAccountUserAccessNotification() *types.Notification {
+func (n notification) parseAccountUserNotification() *types.Notification {
 	rawData, _ := json.Marshal(n.Data)
-	var dbAccountUser dbAccountUserAccess
+	var dbAccountUser dbAccountUser
 	_ = json.Unmarshal(rawData, &dbAccountUser)
 
 	return &types.Notification{
@@ -173,6 +173,18 @@ func (n notification) parseAccountIntegrationsNotification() *types.Notification
 		Table:  n.Table,
 		Action: n.Action,
 		Data:   dbAccountIntegrations.toOutput(),
+	}
+}
+
+func (n notification) parseAccountNotificationNotification() *types.Notification {
+	rawData, _ := json.Marshal(n.Data)
+	var dbAccountNotification dbAccountNotification
+	_ = json.Unmarshal(rawData, &dbAccountNotification)
+
+	return &types.Notification{
+		Table:  n.Table,
+		Action: n.Action,
+		Data:   dbAccountNotification.toOutput(),
 	}
 }
 
@@ -209,18 +221,6 @@ func (n notification) parseWhitelistNotification() *types.Notification {
 		Table:  n.Table,
 		Action: n.Action,
 		Data:   dbAppWhitelist.toOutput(),
-	}
-}
-
-func (n notification) parseAppNotificationNotification() *types.Notification {
-	rawData, _ := json.Marshal(n.Data)
-	var dbAppNotification dbPortalApplicationNotification
-	_ = json.Unmarshal(rawData, &dbAppNotification)
-
-	return &types.Notification{
-		Table:  n.Table,
-		Action: n.Action,
-		Data:   dbAppNotification.toOutput(),
 	}
 }
 

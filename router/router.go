@@ -113,11 +113,11 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/portal_app", rt.createNewPortalApp).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.updatePortalApp).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/portal_app/{id}", rt.deletePortalApp).Methods(http.MethodDelete)
-	rt.Router.HandleFunc("/v2/portal_app/first_date_surpassed", rt.updatePortalAppFirstDateSurpassed).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v2/middleware/portal_app", rt.getPortalAppsForMiddleware).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v2/account", rt.getAccounts).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/account/{id}", rt.getAccount).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.updateAccount).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.createAccountIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.updateAccountIntegration).Methods(http.MethodPut)
@@ -508,18 +508,7 @@ func (rt *Router) getPortalAppsByUser(w http.ResponseWriter, r *http.Request) {
 		rt.handleError(w, "getPortalAppsByUser", http.StatusBadRequest, fmt.Errorf("user ID must be provided"))
 	}
 
-	queryParams := map[queryParam]queryParamDetail{
-		portalAppParams.roleNameFilters: {required: false},
-		portalAppParams.accepted:        {required: false},
-	}
-
-	options, err := paramProcessor(r.URL, queryParams)
-	if err != nil {
-		rt.handleError(w, "getPortalAppsByUser", http.StatusBadRequest, err)
-		return
-	}
-
-	portalAppsForUser := rt.cache.GetPortalAppsByUserID(userID, options)
+	portalAppsForUser := rt.cache.GetPortalAppsByUserID(userID)
 	if len(portalAppsForUser) == 0 {
 		rt.handleError(w, "getPortalAppsByUser", http.StatusNotFound, errNoPortalAppsFound)
 		return
@@ -595,30 +584,6 @@ func (rt *Router) deletePortalApp(w http.ResponseWriter, r *http.Request) {
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 }
 
-// POST /v2/portal_app/first_date_surpassed - Updates one or more PortalApps' FirstDateSurpassed field.
-func (rt *Router) updatePortalAppFirstDateSurpassed(w http.ResponseWriter, r *http.Request) {
-	var firstDateSurpassedUpdate *types.UpdateFirstDateSurpassed
-
-	err := json.NewDecoder(r.Body).Decode(&firstDateSurpassedUpdate)
-	if err != nil {
-		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusBadRequest, err)
-		return
-	}
-	defer r.Body.Close()
-
-	if len(firstDateSurpassedUpdate.PortalAppIDs) == 0 {
-		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusBadRequest, fmt.Errorf("no portal app IDs provided"))
-	}
-
-	err = rt.writer.UpdatePortalAppsFirstDateSurpassed(r.Context(), firstDateSurpassedUpdate)
-	if err != nil {
-		rt.handleError(w, "updatePortalAppFirstDateSurpassed", http.StatusInternalServerError, err)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "updated"})
-}
-
 /* ---------- V2 Account Handler Methods ---------- */
 
 // GET /v2/account - Get all Accounts.
@@ -640,6 +605,20 @@ func (rt *Router) getAccounts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, accounts)
+}
+
+// GET /v2/account/{id} - Get one Account.
+func (rt *Router) getAccount(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	accountID := types.AccountID(vars["id"])
+
+	account := rt.cache.GetAccount(accountID)
+	if account.ID == "" {
+		rt.handleError(w, "getAccount", http.StatusNotFound, errAccountNotFound)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, account)
 }
 
 // GET /v2/{userID}/account - Get all user accounts by user ID.
@@ -836,7 +815,7 @@ func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
 
 // POST /v2/account/user - Create a single Account User.
 func (rt *Router) writeAccountUser(w http.ResponseWriter, r *http.Request) {
-	var createUser types.CreateAccountUserAccess
+	var createUser types.CreateAccountUser
 
 	err := json.NewDecoder(r.Body).Decode(&createUser)
 	if err != nil {
@@ -913,7 +892,7 @@ func (rt *Router) removeAccountUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	err = rt.writer.RemoveAccountUser(r.Context(), removeUser.UserID, removeUser.PortalAppID, removeUser.AccountID)
+	err = rt.writer.RemoveAccountUser(r.Context(), removeUser.UserID, removeUser.AccountID)
 	if err != nil {
 		rt.handleError(w, "removeAccountUser", http.StatusInternalServerError, err)
 		return

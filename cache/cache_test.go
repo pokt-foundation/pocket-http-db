@@ -22,14 +22,14 @@ func NewTestCache(t *testing.T) *Cache {
 
 	readerMock, _ := NewReaderMock(t)
 
-	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
-	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans, nil)
-	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts, nil)
-	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps, nil)
-	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps, nil)
-	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains, nil)
-	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts, nil)
-	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users[types.UserID("usertest")], nil)
+	readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
+	readerMock.On("ReadPlans", testCtx).Return(testdata.PayPlans(), nil)
+	readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Accounts(), nil)
+	readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.PortalApps(), nil)
+	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps(), nil)
+	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
+	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
+	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users()[types.UserID("usertest")], nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
@@ -46,38 +46,45 @@ func NewTestCache(t *testing.T) *Cache {
 func Test_SetCache(t *testing.T) {
 	cache := NewTestCache(t)
 
+	setAccountOpts := testdata.AccountOptions{IncludePortalApps: true, IncludePlans: true, AssignUsers: true}
+	setChainOpts := testdata.ChainOptions{IncludeGigastakeApps: true}
+
 	tests := []struct {
 		name             string
 		actual, expected interface{}
-		emptyPortalApps  types.AccountID
 	}{
 		{
 			name:     "Should return a user for a given provider user ID",
 			actual:   cache.GetUserByProviderID("auth0|chrisjen_avasarala"),
-			expected: *testdata.Users["user_5"],
+			expected: *testdata.Users()["user_5"],
 		},
 		{
 			name:     "Should return a user for a given portal user ID",
 			actual:   cache.GetUserByID("user_5"),
-			expected: *testdata.Users["user_5"],
+			expected: *testdata.Users()["user_5"],
 		},
 		{
 			name:     "Should return all accounts",
 			actual:   testdata.AccountsToMap(cache.GetAccounts(Options{})),
-			expected: testdata.ModifiedAccountToTest(),
+			expected: testdata.Accounts(setAccountOpts),
+		},
+		{
+			name:     "Should return one account",
+			actual:   cache.GetAccount("account_1"),
+			expected: *testdata.Accounts(setAccountOpts)["account_1"],
 		},
 		{
 			name:     "Should return account by ID",
 			actual:   cache.GetUserAccount("account_1", "user_1", Options{}),
-			expected: *testdata.Accounts["account_1"],
+			expected: *testdata.Accounts(setAccountOpts)["account_1"],
 		},
 		{
 			name:   "Should return accounts by user ID where accepted param not provided",
 			actual: testdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{})),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": testdata.ModifiedAccountToTest()["account_2"],
-				"account_4": testdata.ModifiedAccountToTest()["account_4"],
-				"account_5": testdata.ModifiedAccountToTest()["account_5"],
+				"account_2": testdata.Accounts(setAccountOpts)["account_2"],
+				"account_4": testdata.Accounts(setAccountOpts)["account_4"],
+				"account_5": testdata.Accounts(setAccountOpts)["account_5"],
 			},
 		},
 		{
@@ -86,86 +93,72 @@ func Test_SetCache(t *testing.T) {
 				Accepted: dbclient.BoolPtr(true),
 			})),
 			expected: map[types.AccountID]*types.Account{
-				"account_2": testdata.ModifiedAccountToTest()["account_2"],
-				"account_4": testdata.ModifiedAccountToTest()["account_4"],
-				"account_5": testdata.ModifiedAccountToTest()["account_5"],
+				"account_2": testdata.Accounts(setAccountOpts)["account_2"],
+				"account_4": testdata.Accounts(setAccountOpts)["account_4"],
+				"account_5": testdata.Accounts(setAccountOpts)["account_5"],
 			},
-		},
-		{
-			name: "Should return accounts by user ID where accepted = false",
-			actual: testdata.AccountsToMap(cache.GetUserAccounts("user_4", Options{
-				Accepted: dbclient.BoolPtr(false),
-			})),
-			expected: map[types.AccountID]*types.Account{
-				"account_2": testdata.ModifiedAccountToTest()["account_2"],
-				"account_4": testdata.ModifiedAccountToTest()["account_4"],
-				"account_5": testdata.ModifiedAccountToTest()["account_5"],
-			},
-			emptyPortalApps: "account_2",
 		},
 		{
 			name:     "Should return portal app by ID",
 			actual:   cache.GetPortalApp("test_app_1"),
-			expected: *testdata.PortalApps["test_app_1"],
+			expected: *testdata.PortalApps()["test_app_1"],
 		},
 		{
 			name:     "Should return all portal apps",
 			actual:   testdata.PortalAppsToMap(cache.GetPortalApps(Options{})),
-			expected: testdata.PortalApps,
+			expected: testdata.PortalApps(),
 		},
 		{
 			name:     "Should return all portal app lites for middleware",
 			actual:   testdata.PortalAppLitesToMap(cache.GetPortalAppsForMiddleware()),
-			expected: testdata.PortalAppLites,
+			expected: testdata.PortalAppLites(),
 		},
 		{
 			name:     "Should return gigastake app by AAT ID",
 			actual:   cache.GetGigastakeAppByID("test_gigastake_app_1"),
-			expected: *testdata.GigastakeApps["test_gigastake_app_1"],
+			expected: *testdata.GigastakeApps()["test_gigastake_app_1"],
 		},
 		{
 			name:     "Should return all gigastake apps",
 			actual:   testdata.GigastakeAppsToMap(cache.GetGigastakeApps(Options{})),
-			expected: testdata.GigastakeApps,
+			expected: testdata.GigastakeApps(),
 		},
 		{
 			name:     "Should return chain by ID",
 			actual:   cache.GetChain("0001", Options{}),
-			expected: *testdata.Chains["0001"],
+			expected: *testdata.Chains(setChainOpts)["0001"],
 		},
 		{
 			name:     "Should return all active chains",
 			actual:   testdata.ChainsToMap(cache.GetChains(Options{})),
-			expected: testdata.FilterActiveChains(testdata.Chains),
+			expected: testdata.FilterActiveChains(testdata.Chains(setChainOpts)),
 		},
 		{
 			name:     "Should return all chains inclouding inactive",
 			actual:   testdata.ChainsToMap(cache.GetChains(Options{IncludeInactiveChains: true})),
-			expected: testdata.Chains,
+			expected: testdata.Chains(setChainOpts),
 		},
 		{
 			name:     "Should return plan by type",
-			actual:   cache.GetPlan("basic_plan"),
-			expected: *testdata.PayPlans["basic_plan"],
+			actual:   cache.GetPlan(types.FreetierV0),
+			expected: *testdata.PayPlans()[types.FreetierV0],
 		},
 		{
 			name:     "Should return all pay plans",
 			actual:   testdata.PayPlansToMap(cache.GetPlans()),
-			expected: testdata.PayPlans,
+			expected: testdata.PayPlans(),
 		},
 		{
 			name:     "Should return all global blocked contracts",
 			actual:   cache.GetBlockedContracts(),
-			expected: testdata.GlobalBlockedContracts,
+			expected: testdata.GlobalBlockedContracts(),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			c := require.New(t)
-			if test.emptyPortalApps != "" {
-				test.expected.(map[types.AccountID]*types.Account)[test.emptyPortalApps].PortalApps = map[types.PortalAppID]*types.PortalApp{}
-			}
+
 			c.Equal(test.expected, test.actual)
 		})
 	}
@@ -226,36 +219,36 @@ func TestCache_SetCache_Failure(t *testing.T) {
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
 			case "ReadPlans":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On(test.failedMethod, testCtx).Return(nil, test.err)
 
 			case "ReadAccounts":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadPortalApps":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadChains":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On(test.failedMethod, testCtx, types.DriverOptions{IncludeDeleted: false}).Return(nil, test.err)
 
 			case "ReadGigastakeApps":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
 				readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.RelayChainID]*types.Chain{}, test.err)
 
 			case "ReadBlockedContracts":
-				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users, nil)
+				readerMock.On("ReadAllUsers", testCtx).Return(testdata.Users(), nil)
 				readerMock.On("ReadPlans", testCtx).Return(map[types.PayPlanType]*types.Plan{}, nil)
 				readerMock.On("ReadAccounts", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.AccountID]*types.Account{}, nil)
 				readerMock.On("ReadPortalApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(map[types.PortalAppID]*types.PortalApp{}, nil)
@@ -287,34 +280,26 @@ func Test_upsertAccountUser(t *testing.T) {
 			name:      "Should add a new Accepted user to account and user permissions",
 			accountID: "account_2",
 			accountUser: types.AccountUser{
-				UserID: "user_1",
-				Email:  "james.holden123@test.com",
-				PortalAppRoles: map[types.PortalAppID]types.RoleName{
-					"test_app_2": types.RoleMember,
-				},
-				PortalAppsAccepted: map[types.PortalAppID]bool{
-					"test_app_2": true,
-				},
+				ID:       "user_1",
+				Email:    "james.holden123@test.com",
+				RoleName: types.RoleMember,
+				Accepted: true,
 			},
 		},
 		{
 			name:      "Should add a new not-Accepted user to account",
 			accountID: "account_3",
 			accountUser: types.AccountUser{
-				UserID: "user_10",
-				Email:  "daenerys.targaryen123@test.com",
-				PortalAppRoles: map[types.PortalAppID]types.RoleName{
-					"test_app_3": types.RoleMember,
-				},
-				PortalAppsAccepted: map[types.PortalAppID]bool{
-					"test_app_3": true,
-				},
+				ID:       "user_10",
+				Email:    "daenerys.targaryen123@test.com",
+				RoleName: types.RoleMember,
+				Accepted: true,
 			},
 		},
 		{
 			name:        "Should update an existing account User's roles",
 			accountID:   "account_1",
-			accountUser: testdata.AccountUser[2],
+			accountUser: testdata.AccountUsers()[2],
 			updateRoles: map[types.PortalAppID]types.RoleName{
 				"test_app_1": types.RoleMember,
 			},
@@ -327,70 +312,84 @@ func Test_upsertAccountUser(t *testing.T) {
 
 			cache := NewTestCache(t)
 
-			if test.updateRoles != nil {
-				for portalAppID, roleName := range test.updateRoles {
-					test.accountUser.PortalAppRoles[portalAppID] = roleName
-				}
-			}
-
 			// Upsert account user
 			testAccountUser := test.accountUser
 			testAccountUser.AccountID = test.accountID
 			cache.upsertAccountUser(testAccountUser)
 
-			account := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{})
-			accountUser, ok := account.AccountUsers[test.accountUser.UserID]
+			account := cache.GetUserAccount(test.accountID, test.accountUser.ID, Options{})
+			accountUser, ok := account.Users[test.accountUser.ID]
 			c.True(ok, "AccountUser should be present in account Users map")
 			c.Equal(test.accountUser, accountUser, "AccountUser should be added or updated in the cache")
 
-			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.ID, Options{}), test.accountID)
 			c.True(accountFound, "Account should be present in accountsByUserID map")
 
-			var accepted bool
-			for _, portalAppAccepted := range test.accountUser.PortalAppsAccepted {
-				accepted = portalAppAccepted
-				break
-			}
-
-			if accepted {
-				user := cache.GetUserByID(test.accountUser.UserID)
-				for portalAppID, roleName := range test.accountUser.PortalAppRoles {
-					portalAppPermission, ok := user.Permissions[portalAppID]
-
-					c.True(ok, "PortalAppPermissions should be present in UserPermissions")
-					c.Equal(roleName, portalAppPermission.RoleName, "Role should be updated in UserPermissions")
-				}
-			}
+			user := cache.GetUserByID(test.accountUser.ID)
+			accountPermissions, ok := user.Permissions[test.accountID]
+			c.True(ok, "PortalAppPermissions should be present in UserPermissions")
+			c.Equal(test.accountUser.RoleName, accountPermissions.RoleName, "Role should be updated in UserPermissions")
+			c.Equal(test.accountUser.Accepted, accountPermissions.Accepted, "Accepted should be updated in UserPermissions")
 		})
 	}
 }
 
 func Test_upsertAccount(t *testing.T) {
 	tests := []struct {
-		name         string
-		account      types.Account
-		userID       types.UserID
-		accountUsers AccountsForUser
-		pendingUsers map[types.AccountID][]types.AccountUser
+		name                string
+		account             types.Account
+		accountUser         types.AccountUser
+		accountNotification types.AccountNotification
+		userID              types.UserID
 	}{
 		{
 			name:    "Should insert a new account",
 			account: *testdata.TestCreateAccount,
+			accountUser: types.AccountUser{
+				AccountID: "create_account_id",
+				ID:        "user_1",
+				Email:     "james.holden123@test.com",
+				RoleName:  types.RoleOwner,
+				Accepted:  true,
+			},
+		},
+		{
+			name:    "Should add a new Account to cache with pending AppNotifications",
+			account: *testdata.TestCreateAccount,
+			accountUser: types.AccountUser{
+				AccountID: "create_account_id",
+				ID:        "user_1",
+				Email:     "james.holden123@test.com",
+				RoleName:  types.RoleOwner,
+				Accepted:  true,
+			},
+			accountNotification: types.AccountNotification{
+				AccountID:   "create_account_id",
+				Type:        types.NotificationTypeEmail,
+				Active:      true,
+				Destination: "email@pokt.network",
+				Trigger:     "trigger456",
+				Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
+			},
 		},
 		{
 			name: "Should update an existing account",
 			account: types.Account{
 				ID:       "account_1",
 				PlanType: types.PayPlanType("enterprise_plan"),
-				AccountUsers: map[types.UserID]types.AccountUser{
-					"user_1": testdata.AccountUser[1],
-					"user_2": testdata.AccountUser[2],
-					"user_8": testdata.AccountUser[8],
+				Users: map[types.UserID]types.AccountUser{
+					"user_1": testdata.AccountUsers()[1],
+					"user_2": testdata.AccountUsers()[2],
+					"user_8": testdata.AccountUsers()[8],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
+					"test_app_1": testdata.PortalApps()["test_app_1"],
 				},
-				Integrations:           types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
+				Integrations: types.AccountIntegrations{
+					StripeSubscriptionID: "stripe_id_1",
+					CovalentAPIKeyFree:   "covalent_api_key_1",
+				},
+				Notifications:          map[types.NotificationType]types.AccountNotification{"email": types.AccountNotification{AccountID: "", Type: "email", Active: true, Destination: "james.holden123@test.com", Trigger: "trigger123", Events: map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true}}},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
 				PartnerAppLimit:        1,
@@ -398,47 +397,20 @@ func Test_upsertAccount(t *testing.T) {
 				UpdatedAt:              testdata.MockTimestamp,
 			},
 			userID: "user_1",
-		},
-		{
-			name: "Should update an existing account when pending users found in cache",
-			account: types.Account{
-				ID:       "account_1",
-				PlanType: types.PayPlanType("enterprise_plan"),
-				AccountUsers: map[types.UserID]types.AccountUser{
-					"user_7": testdata.AccountUser[7],
-					"user_1": testdata.AccountUser[1],
-					"user_2": testdata.AccountUser[2],
-					"user_8": testdata.AccountUser[8],
-					"user_3": testdata.AccountUser[3],
-				},
-				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_1": testdata.PortalApps["test_app_1"],
-				},
-				Integrations:           types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
-				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
-				PartnerThroughputLimit: 2_000,
-				PartnerAppLimit:        1,
-				CreatedAt:              testdata.MockTimestamp,
-				UpdatedAt:              testdata.MockTimestamp,
-			},
-			userID: "user_1",
-			pendingUsers: map[types.AccountID][]types.AccountUser{
-				"account_1": {testdata.AccountUser[7], testdata.AccountUser[3]},
-			},
 		},
 		{
 			name: "Should update deleted account and remove from user ID accounts map",
 			account: types.Account{
 				ID:       "account_2",
 				PlanType: types.PayPlanType("pro_plan"),
-				AccountUsers: map[types.UserID]types.AccountUser{
-					"user_3": testdata.AccountUser[3],
-					"user_4": testdata.AccountUser[4],
-					"user_9": testdata.AccountUser[9],
-					"user_2": testdata.AccountUser[10],
+				Users: map[types.UserID]types.AccountUser{
+					"user_3": testdata.AccountUsers()[3],
+					"user_4": testdata.AccountUsers()[4],
+					"user_9": testdata.AccountUsers()[9],
+					"user_2": testdata.AccountUsers()[10],
 				},
 				PortalApps: map[types.PortalAppID]*types.PortalApp{
-					"test_app_2": testdata.PortalApps["test_app_2"],
+					"test_app_2": testdata.PortalApps()["test_app_2"],
 				},
 				Integrations: types.AccountIntegrations{CovalentAPIKeyFree: "covalent_api_key_1"},
 				Deleted:      true,
@@ -454,64 +426,136 @@ func Test_upsertAccount(t *testing.T) {
 
 			cache := NewTestCache(t)
 
-			if len(test.pendingUsers) > 0 {
-				// Add current user to the app for the current test to avoid updating the seed
-				pendingUsers := test.pendingUsers
-				for _, pending := range pendingUsers {
-					for _, userPending := range pending {
-						userPending.PortalAppRoles["test_app_1"] = types.RoleMember
-						userPending.PortalAppsAccepted["test_app_1"] = true
-					}
-				}
-				cache.pendingAccountUserAccess = pendingUsers
-			}
-
 			// Upsert account
 			cache.upsertAccount(test.account)
+
+			expectedAccount := test.account
+
+			userID := test.userID
+			if test.accountUser.ID != "" {
+				userID = test.accountUser.ID
+				cache.upsertAccountUser(test.accountUser)
+			}
+			if test.accountNotification.Type != "" {
+				cache.addAccountNotification(test.accountNotification)
+				if expectedAccount.Notifications == nil {
+					expectedAccount.Notifications = make(map[types.NotificationType]types.AccountNotification)
+				}
+				test.accountNotification.AccountID = "" // is unset in the cache TODO will be changed soon
+				expectedAccount.Notifications[test.accountNotification.Type] = test.accountNotification
+			}
+
 			if test.account.Deleted {
-				c.Empty(cache.GetUserAccount(accountID, test.userID, Options{}), "Account should be removed from cache")
+				c.Empty(cache.GetUserAccount(accountID, test.accountUser.ID, Options{}), "Account should be removed from cache")
 			} else {
-				if len(test.pendingUsers) > 0 {
-					for _, user := range test.pendingUsers[test.account.ID] {
-						test.account.AccountUsers[user.UserID] = user
-					}
+				expectedAccount.Plan = cache.plans[expectedAccount.PlanType]
+				if test.accountUser.ID != "" {
+					test.accountUser.AccountID = ""
+					expectedAccount.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
 				}
 
-				test.account.Plan = cache.plans[test.account.PlanType]
-				c.Equal(test.account, cache.GetUserAccount(test.account.ID, test.userID, Options{}), "Account should be present in cache and updated")
+				c.Equal(expectedAccount, cache.GetUserAccount(expectedAccount.ID, userID, Options{}), "Account should be present in cache and updated")
 
 				accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
-				if test.account.Deleted {
+				if expectedAccount.Deleted {
 					c.False(accountFound, "Account should be removed from accounts map")
 				} else {
 					c.True(accountFound, "Account should be found in accounts map")
 				}
 
-				for _, user := range test.account.AccountUsers {
-					accountsForUser := cache.GetUserAccounts(user.UserID, Options{
+				for _, user := range expectedAccount.Users {
+					accountsForUser := cache.GetUserAccounts(user.ID, Options{
 						Accepted: dbclient.BoolPtr(true),
 					})
 
 					accountInUserAccounts := testdata.FindAccountInAccounts(accountsForUser, accountID)
-
-					if test.account.Deleted {
+					if expectedAccount.Deleted {
 						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {
-						accepted := false
-						for _, portalAppAccepted := range user.PortalAppsAccepted {
-							if portalAppAccepted {
-								accepted = true
-								break
-							}
-						}
-						if accepted {
-							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.UserID, accountID)
-							c.Equal(test.account, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
+						if user.Accepted {
+							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.ID, accountID)
+							c.Equal(expectedAccount, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
 						} else {
 							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
 						}
 					}
 				}
+
+				_, ok := cache.pendingAccountNotifications[expectedAccount.ID]
+				c.False(ok, "Pending AccountNotifications should be removed from cache")
+			}
+		})
+	}
+}
+
+func Test_addAccountNotification(t *testing.T) {
+	tests := []struct {
+		name         string
+		notification types.AccountNotification
+		userID       types.UserID
+		accountID    types.AccountID
+		account      *types.Account
+	}{
+		{
+			name: "Should add AccountNotification to an existing Account in cache",
+			notification: types.AccountNotification{
+				AccountID:   "account_3",
+				Type:        "test_type_1",
+				Active:      true,
+				Destination: "test_destination_1",
+				Trigger:     "test_trigger_1",
+				Events: map[types.NotificationEvent]bool{
+					types.NotificationEventFull: true,
+					types.NotificationEventHalf: false,
+				},
+			},
+			userID:    "user_5",
+			accountID: "account_3",
+			account: &types.Account{
+				ID:            "account_3",
+				Name:          "new_pokt_app_1",
+				Notifications: make(map[types.NotificationType]types.AccountNotification),
+			},
+		},
+		{
+			name: "Should store AccountNotification in pendingAppNotifications map if Account not in cache",
+			notification: types.AccountNotification{
+				AccountID:   "test_account_nope",
+				Type:        "test_type_2",
+				Active:      false,
+				Destination: "test_destination_2",
+				Trigger:     "test_trigger_2",
+				Events: map[types.NotificationEvent]bool{
+					types.NotificationEventQuarter:  true,
+					types.NotificationEventSignedUp: false,
+				},
+			},
+			accountID: "test_account_nope",
+			account:   nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			cache := NewTestCache(t)
+
+			if test.account != nil {
+				cache.upsertAccount(*test.account)
+			}
+
+			cache.addAccountNotification(test.notification)
+			test.notification.AccountID = "" // is unset in the cache TODO will be changed soon
+
+			if test.account != nil {
+				storedAccount := cache.GetUserAccount(test.accountID, test.userID, Options{})
+				storedNotification := storedAccount.Notifications[test.notification.Type]
+				c.Equal(test.notification, storedNotification, "AccountNotification should be added to the Account in cache")
+			} else {
+				storedNotification, ok := cache.pendingAccountNotifications[test.accountID]
+				c.True(ok, "AccountNotification should be stored in pendingAccountNotifications map")
+				c.Equal(test.notification, storedNotification, "AccountNotification should be equal to the pending AccountNotification")
 			}
 		})
 	}
@@ -527,13 +571,13 @@ func Test_deleteAccountUser(t *testing.T) {
 		{
 			name:            "Should delete an existing user access and update permissions",
 			accountID:       "account_1",
-			accountUser:     testdata.AccountUser[2],
+			accountUser:     testdata.AccountUsers()[2],
 			existingAccount: true,
 		},
 		{
 			name:        "Should not fail when deleting a non-existing user access",
 			accountID:   "account_5",
-			accountUser: testdata.AccountUser[12],
+			accountUser: testdata.AccountUsers()[12],
 		},
 	}
 
@@ -544,17 +588,15 @@ func Test_deleteAccountUser(t *testing.T) {
 			cache := NewTestCache(t)
 
 			if test.existingAccount {
-				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.UserID, Options{}).AccountUsers[test.accountUser.UserID]
+				_, ok := cache.GetUserAccount(test.accountID, test.accountUser.ID, Options{}).Users[test.accountUser.ID]
 				c.True(ok, "AccountUser should be found in account Users map before deletion")
 
-				accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+				accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.ID, Options{}), test.accountID)
 				c.True(accountFound, "Account should be found in accountsByUserID map before deletion")
 
-				user := cache.GetUserByID(test.accountUser.UserID)
-				for portalAppID := range test.accountUser.PortalAppRoles {
-					_, ok = user.Permissions[portalAppID]
-					c.True(ok, "PortalAppPermissions should be found in UserPermissions for each PortalAppRole before deletion")
-				}
+				user := cache.GetUserByID(test.accountUser.ID)
+				_, ok = user.Permissions[test.accountID]
+				c.True(ok, "PortalAppPermissions should be found in UserPermissions for each PortalAppRole before deletion")
 			}
 
 			// Delete account user
@@ -562,19 +604,17 @@ func Test_deleteAccountUser(t *testing.T) {
 			testAccountUser.AccountID = test.accountID
 			cache.deleteAccountUser(testAccountUser)
 
-			account := cache.GetUserAccount(test.accountID, testAccountUser.UserID, Options{})
+			account := cache.GetUserAccount(test.accountID, testAccountUser.ID, Options{})
 
-			_, ok := account.AccountUsers[test.accountUser.UserID]
+			_, ok := account.Users[test.accountUser.ID]
 			c.False(ok, "AccountUser should be deleted from account Users map")
 
-			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.UserID, Options{}), test.accountID)
+			accountFound := testdata.FindAccountInAccounts(cache.GetUserAccounts(test.accountUser.ID, Options{}), test.accountID)
 			c.False(accountFound, "Account should be removed from accountsByUserID map")
 
-			user := cache.GetUserByID(test.accountUser.UserID)
-			for portalAppID := range test.accountUser.PortalAppRoles {
-				_, ok = user.Permissions[portalAppID]
-				c.False(ok, "PortalAppPermissions should be removed from UserPermissions for each PortalAppRole")
-			}
+			user := cache.GetUserByID(test.accountUser.ID)
+			_, ok = user.Permissions[test.accountID]
+			c.False(ok, "PortalAppPermissions should be removed from UserPermissions for each PortalAppRole")
 		})
 	}
 }
@@ -590,13 +630,12 @@ func Test_upsertPortalApp(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                    string
-		portalApp               types.PortalApp
-		pendingAAT              map[types.PortalAppID]types.AAT
-		pendingSettings         map[types.PortalAppID]types.Settings
-		pendingAppNotifications map[types.PortalAppID]types.AppNotification
-		pendingWhitelists       map[types.PortalAppID][]types.Whitelist
-		update, delete          bool
+		name              string
+		portalApp         types.PortalApp
+		pendingAAT        map[types.PortalAppID]types.AAT
+		pendingSettings   map[types.PortalAppID]types.Settings
+		pendingWhitelists map[types.PortalAppID][]types.Whitelist
+		update, delete    bool
 	}{
 		{
 			name:      "Should add a new PortalApp to cache with no pending side table data",
@@ -612,25 +651,6 @@ func Test_upsertPortalApp(t *testing.T) {
 		{
 			name:      "Should add a new PortalApp to cache with pending Settings",
 			portalApp: testBaseApp,
-			pendingSettings: map[types.PortalAppID]types.Settings{
-				testBaseApp.ID: testApp.Settings,
-			},
-			pendingAAT: map[types.PortalAppID]types.AAT{
-				testBaseApp.ID: testdata.TestCreatePortalAppAAT,
-			},
-		},
-		{
-			name:      "Should add a new PortalApp to cache with pending AppNotifications",
-			portalApp: testBaseApp,
-			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
-				testBaseApp.ID: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "email@pokt.network",
-					Trigger:     "trigger456",
-					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
-				},
-			},
 			pendingSettings: map[types.PortalAppID]types.Settings{
 				testBaseApp.ID: testApp.Settings,
 			},
@@ -659,34 +679,16 @@ func Test_upsertPortalApp(t *testing.T) {
 					},
 				},
 			},
-			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
-				testBaseApp.ID: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "email@pokt.network",
-					Trigger:     "trigger456",
-					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
-				},
-			},
 			pendingAAT: map[types.PortalAppID]types.AAT{
 				testBaseApp.ID: testdata.TestCreatePortalAppAAT,
 			},
 		},
 		{
 			name:       "Should update an existing PortalApp in cache with all side tables",
-			portalApp:  *testdata.PortalApps["test_app_1"],
+			portalApp:  *testdata.PortalApps()["test_app_1"],
 			pendingAAT: nil, // AAT is never updated
 			pendingSettings: map[types.PortalAppID]types.Settings{
 				"test_app_1": testApp.Settings,
-			},
-			pendingAppNotifications: map[types.PortalAppID]types.AppNotification{
-				"test_app_1": {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "user@example.network",
-					Trigger:     "12345",
-					Events:      map[types.NotificationEvent]bool{types.NotificationEventHalf: true},
-				},
 			},
 			pendingWhitelists: map[types.PortalAppID][]types.Whitelist{
 				"test_app_1": {
@@ -706,7 +708,7 @@ func Test_upsertPortalApp(t *testing.T) {
 		},
 		{
 			name:      "Should delete an existing PortalApp in cache",
-			portalApp: *testdata.PortalApps["test_app_3"],
+			portalApp: *testdata.PortalApps()["test_app_3"],
 			delete:    true,
 		},
 	}
@@ -735,12 +737,6 @@ func Test_upsertPortalApp(t *testing.T) {
 			if settings, ok := test.pendingSettings[test.portalApp.ID]; ok {
 				expectedPortalApp.Settings = settings
 			}
-			if appNotification, ok := test.pendingAppNotifications[test.portalApp.ID]; ok {
-				if expectedPortalApp.Notifications == nil {
-					expectedPortalApp.Notifications = make(map[types.NotificationType]types.AppNotification)
-				}
-				expectedPortalApp.Notifications[appNotification.Type] = appNotification
-			}
 			if whitelists, ok := test.pendingWhitelists[test.portalApp.ID]; ok {
 				for _, whitelist := range whitelists {
 					expectedPortalApp.AddWhitelist((whitelist))
@@ -750,7 +746,6 @@ func Test_upsertPortalApp(t *testing.T) {
 			// Add pending data to cache
 			cache.pendingPortalAppAATs = test.pendingAAT
 			cache.pendingSettings = test.pendingSettings
-			cache.pendingAppNotifications = test.pendingAppNotifications
 			cache.pendingWhitelists = test.pendingWhitelists
 
 			// Add, update or delete PortalApp
@@ -771,8 +766,6 @@ func Test_upsertPortalApp(t *testing.T) {
 			c.False(ok, "Pending AAT should be removed from cache")
 			_, ok = cache.pendingSettings[test.portalApp.ID]
 			c.False(ok, "Pending Settings should be removed from cache")
-			_, ok = cache.pendingAppNotifications[test.portalApp.ID]
-			c.False(ok, "Pending AppNotifications should be removed from cache")
 			_, ok = cache.pendingWhitelists[test.portalApp.ID]
 			c.False(ok, "Pending Whitelists should be removed from cache")
 		})
@@ -901,78 +894,6 @@ func Test_addPortalAppSettings(t *testing.T) {
 				storedSettings, ok := cache.pendingSettings[test.portalAppID]
 				c.True(ok, "Settings should be stored in pendingSettings map")
 				c.Equal(test.settings, storedSettings, "Settings should be equal to the pending Settings")
-			}
-		})
-	}
-}
-
-func Test_addAppNotification(t *testing.T) {
-	tests := []struct {
-		name         string
-		notification types.AppNotification
-		portalAppID  types.PortalAppID
-		portalApp    *types.PortalApp
-	}{
-		{
-			name: "Should add AppNotification to an existing PortalApp in cache",
-			notification: types.AppNotification{
-				AppID:       "test_app_new_3450he46fhs7",
-				Type:        "test_type_1",
-				Active:      true,
-				Destination: "test_destination_1",
-				Trigger:     "test_trigger_1",
-				Events: map[types.NotificationEvent]bool{
-					types.NotificationEventFull: true,
-					types.NotificationEventHalf: false,
-				},
-			},
-			portalAppID: "test_app_new_3450he46fhs7",
-			portalApp: &types.PortalApp{
-				ID:            "test_app_new_3450he46fhs7",
-				Name:          "new_pokt_app_1",
-				AccountID:     "account_3",
-				Notifications: make(map[types.NotificationType]types.AppNotification),
-			},
-		},
-		{
-			name: "Should store AppNotification in pendingAppNotifications map if PortalApp not in cache",
-			notification: types.AppNotification{
-				AppID:       "test_app_nope_345he46fhs7",
-				Type:        "test_type_2",
-				Active:      false,
-				Destination: "test_destination_2",
-				Trigger:     "test_trigger_2",
-				Events: map[types.NotificationEvent]bool{
-					types.NotificationEventQuarter:  true,
-					types.NotificationEventSignedUp: false,
-				},
-			},
-			portalAppID: "test_app_nope_345he46fhs7",
-			portalApp:   nil,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c := require.New(t)
-
-			cache := NewTestCache(t)
-
-			if test.portalApp != nil {
-				cache.upsertPortalApp(*test.portalApp)
-			}
-
-			cache.addAppNotification(test.notification)
-			test.notification.AppID = "" // is unset in the cache TODO will be changed soon
-
-			if test.portalApp != nil {
-				storedPortalApp := cache.GetPortalApp(test.portalAppID)
-				storedNotification := storedPortalApp.Notifications[test.notification.Type]
-				c.Equal(test.notification, storedNotification, "AppNotification should be added to the PortalApp in cache")
-			} else {
-				storedNotification, ok := cache.pendingAppNotifications[test.portalAppID]
-				c.True(ok, "AppNotification should be stored in pendingAppNotifications map")
-				c.Equal(test.notification, storedNotification, "AppNotification should be equal to the pending AppNotification")
 			}
 		})
 	}
@@ -1124,7 +1045,7 @@ func Test_upsertGigastakeApp(t *testing.T) {
 		},
 		{
 			name:         "Should update an existing GigastakeApp in cache with pending AAT",
-			gigastakeApp: *testdata.GigastakeApps["test_gigastake_app_1"],
+			gigastakeApp: *testdata.GigastakeApps()["test_gigastake_app_1"],
 			pendingChainsGigastakeApps: map[types.GigastakeAppID]types.ChainGigastakeApp{
 				testdata.TestCreateGigastakeApp.ID: {
 					ChainID:        "0001",
@@ -1136,7 +1057,7 @@ func Test_upsertGigastakeApp(t *testing.T) {
 		},
 		{
 			name:                       "Should delete an existing GigastakeApp in cache",
-			gigastakeApp:               *testdata.GigastakeApps["test_gigastake_app_3"],
+			gigastakeApp:               *testdata.GigastakeApps()["test_gigastake_app_3"],
 			pendingChainsGigastakeApps: nil,
 			update:                     false,
 			delete:                     true,
@@ -1267,7 +1188,7 @@ func Test_upsertChain(t *testing.T) {
 		},
 		{
 			name:  "Should update an existing Chain in cache with all side tables",
-			chain: *testdata.Chains["0021"],
+			chain: *testdata.Chains()["0021"],
 			pendingAltruists: map[types.RelayChainID][]types.Altruist{
 				"0021": {
 					{
@@ -1307,7 +1228,7 @@ func Test_upsertChain(t *testing.T) {
 		},
 		{
 			name:   "Should delete an existing Chain in cache",
-			chain:  *testdata.Chains["0064"],
+			chain:  *testdata.Chains()["0064"],
 			delete: true,
 		},
 	}
@@ -1623,8 +1544,8 @@ func Test_upsertUser(t *testing.T) {
 		},
 		{
 			name:            "Should insert a new Portal User with pending accounts",
-			user:            *testdata.Users["user_10"],
-			expectedUser:    *testdata.Users["user_10"],
+			user:            *testdata.Users()["user_10"],
+			expectedUser:    *testdata.Users()["user_10"],
 			pendingAccounts: true,
 			err:             nil,
 		},
@@ -1646,9 +1567,8 @@ func Test_upsertUser(t *testing.T) {
 				SignedUp:         true,
 				UpdatesProduct:   true,
 				UpdatesMarketing: true,
-				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-					"test_app_1": {RoleName: "OWNER", AccountID: "account_1", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"test_app_2": {RoleName: "MEMBER", AccountID: "account_2", Permissions: []types.Permissions{"read:endpoint"}},
+				Permissions: map[types.AccountID]types.AccountPermissions{
+					"account_1": {Accepted: true, RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {
@@ -1681,7 +1601,7 @@ func Test_upsertUser(t *testing.T) {
 			if test.pendingAccounts {
 				accounts := cache.GetUserAccounts(test.user.ID, Options{})
 				for _, account := range accounts {
-					c.NotEmpty(account.AccountUsers[test.user.ID])
+					c.NotEmpty(account.Users[test.user.ID])
 				}
 			}
 		})
@@ -1719,9 +1639,8 @@ func Test_addUserAuthProvider(t *testing.T) {
 			expectedUser: types.User{
 				ID:    "user_1",
 				Email: "james.holden752@test.com",
-				Permissions: map[types.PortalAppID]types.PortalAppPermissions{
-					"test_app_1": {RoleName: "OWNER", AccountID: "account_1", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
-					"test_app_2": {RoleName: "MEMBER", AccountID: "account_2", Permissions: []types.Permissions{"read:endpoint"}},
+				Permissions: map[types.AccountID]types.AccountPermissions{
+					"account_1": {Accepted: true, RoleName: "OWNER", Permissions: []types.Permissions{"read:endpoint", "write:endpoint", "delete:endpoint", "transfer:endpoint"}},
 				},
 				AuthProviders: map[types.AuthType]types.UserAuthProvider{
 					"auth0_github": {

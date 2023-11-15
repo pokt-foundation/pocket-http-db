@@ -58,17 +58,17 @@ type (
 )
 
 const (
-	TablePortalApps       Table = "portal_applications"
-	TableAppSettings      Table = "portal_application_settings"
-	TableAppWhitelists    Table = "portal_application_whitelists"
-	TableAppNotifications Table = "portal_application_notifications"
-	TablePortalAppAATs    Table = "portal_application_aats"
+	TablePortalApps    Table = "portal_applications"
+	TableAppSettings   Table = "portal_application_settings"
+	TableAppWhitelists Table = "portal_application_whitelists"
+	TablePortalAppAATs Table = "portal_application_aats"
 
 	TableGigastakeApps Table = "gigastake_applications"
 
-	TableAccounts            Table = "accounts"
-	TableAccountUserAccess   Table = "account_user_access"
-	TableAccountIntegrations Table = "account_integrations"
+	TableAccounts             Table = "accounts"
+	TableAccountUsers         Table = "account_users"
+	TableAccountIntegrations  Table = "account_integrations"
+	TableAccountNotifications Table = "account_notifications"
 
 	TableUsers             Table = "users"
 	TableUserAuthProviders Table = "user_auth_providers"

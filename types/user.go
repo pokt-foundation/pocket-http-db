@@ -8,9 +8,8 @@ import (
 )
 
 var (
-	errAccountIDIsEmpty   error = errors.New("account ID is empty")
-	errPortalAppIDIsEmpty error = errors.New("portal app ID is empty")
-	errInvalidRole        error = errors.New("invalid role provided")
+	errAccountIDIsEmpty error = errors.New("account ID is empty")
+	errInvalidRole      error = errors.New("invalid role provided")
 )
 
 /* Enums */
@@ -108,21 +107,22 @@ func (r RoleName) IsValid() bool {
 type (
 	// User represents a single Portal user
 	User struct {
-		ID               UserID                               `json:"id"`
-		Email            Email                                `json:"email"`
-		IconURL          string                               `json:"iconURL"`
-		SignedUp         bool                                 `json:"signedUp"`
-		UpdatesProduct   bool                                 `json:"updatesProduct"`
-		UpdatesMarketing bool                                 `json:"updatesMarketing"`
-		BetaTester       bool                                 `json:"betaTester"`
-		Permissions      map[PortalAppID]PortalAppPermissions `json:"permissions"`
-		AuthProviders    map[AuthType]UserAuthProvider        `json:"authProviders"`
-		CreatedAt        time.Time                            `json:"createdAt"`
-		UpdatedAt        time.Time                            `json:"updatedAt"`
+		ID               UserID                           `json:"id"`
+		Email            Email                            `json:"email"`
+		IconURL          string                           `json:"iconURL"`
+		SignedUp         bool                             `json:"signedUp"`
+		UpdatesProduct   bool                             `json:"updatesProduct"`
+		UpdatesMarketing bool                             `json:"updatesMarketing"`
+		BetaTester       bool                             `json:"betaTester"`
+		Permissions      map[AccountID]AccountPermissions `json:"permissions"`
+		AuthProviders    map[AuthType]UserAuthProvider    `json:"authProviders"`
+		CreatedAt        time.Time                        `json:"createdAt"`
+		UpdatedAt        time.Time                        `json:"updatedAt"`
 	}
-	// PortalAppPermissions stores user role and permissions for a given PortalApp
-	PortalAppPermissions struct {
-		AccountID   AccountID     `json:"accountID"`
+
+	// AccountPermissions stores user role and permissions for a given Account
+	AccountPermissions struct {
+		Accepted    bool          `json:"accepted"`
 		RoleName    RoleName      `json:"roleName"`
 		Permissions []Permissions `json:"permissions"`
 	}
@@ -157,18 +157,20 @@ type (
 )
 
 /* UserPermissions Struct Definition and Methods */
-var (
-	permissionsList = map[RoleName][]Permissions{
-		RoleOwner:  {PermReadEndpoint, PermWriteEndpoint, PermDeleteEndpoint, PermTransferEndpoint},
-		RoleAdmin:  {PermReadEndpoint, PermWriteEndpoint},
-		RoleMember: {PermReadEndpoint},
+var permissionsList = map[RoleName][]Permissions{
+	RoleOwner:  {PermReadEndpoint, PermWriteEndpoint, PermDeleteEndpoint, PermTransferEndpoint},
+	RoleAdmin:  {PermReadEndpoint, PermWriteEndpoint},
+	RoleMember: {PermReadEndpoint},
+}
+
+func (u *User) ToAccountUser(accountID AccountID) AccountUser {
+	return AccountUser{
+		ID:       u.ID,
+		Email:    u.Email,
+		RoleName: u.GetAccountRole(accountID),
+		Accepted: u.Permissions[accountID].Accepted,
 	}
-	roleOrder = map[RoleName]int{
-		RoleOwner:  3,
-		RoleAdmin:  2,
-		RoleMember: 1,
-	}
-)
+}
 
 func (u *User) ArePermissionsEmpty() bool {
 	if u == nil || u.Permissions == nil || len(u.Permissions) == 0 {
@@ -177,8 +179,8 @@ func (u *User) ArePermissionsEmpty() bool {
 	return false
 }
 
-func (u *User) GetPortalAppRole(portalAppID PortalAppID) RoleName {
-	app, ok := u.Permissions[portalAppID]
+func (u *User) GetAccountRole(accountID AccountID) RoleName {
+	app, ok := u.Permissions[accountID]
 	if !ok {
 		return RoleName("")
 	}
@@ -186,19 +188,16 @@ func (u *User) GetPortalAppRole(portalAppID PortalAppID) RoleName {
 	return app.RoleName
 }
 
-func (u *User) UpsertPermissions(portalAppID PortalAppID, accountID AccountID, role RoleName) (map[PortalAppID]PortalAppPermissions, error) {
+func (u *User) UpsertPermissions(accountID AccountID, role RoleName, accepted bool) (map[AccountID]AccountPermissions, error) {
 	if accountID == "" {
 		return nil, errAccountIDIsEmpty
-	}
-	if portalAppID == "" {
-		return nil, errPortalAppIDIsEmpty
 	}
 	if !role.IsValid() {
 		return nil, errInvalidRole
 	}
 
-	u.Permissions[portalAppID] = PortalAppPermissions{
-		AccountID:   accountID,
+	u.Permissions[accountID] = AccountPermissions{
+		Accepted:    accepted,
 		RoleName:    role,
 		Permissions: permissionsList[role],
 	}
@@ -206,55 +205,19 @@ func (u *User) UpsertPermissions(portalAppID PortalAppID, accountID AccountID, r
 	return u.Permissions, nil
 }
 
-func (u *User) DeletePermissions(portalAppID PortalAppID) map[PortalAppID]PortalAppPermissions {
-	delete(u.Permissions, portalAppID)
+func (u *User) DeletePermissions(accountID AccountID) map[AccountID]AccountPermissions {
+	delete(u.Permissions, accountID)
 
 	return u.Permissions
 }
 
-func (u *User) HasPermission(portalAppID PortalAppID, permission Permissions) bool {
-	app, ok := u.Permissions[portalAppID]
-	if !ok {
+func (u *User) HasPermission(accountID AccountID, permission Permissions) bool {
+	accountPermissions, ok := u.Permissions[accountID]
+	if !ok || !accountPermissions.Accepted {
 		return false
 	}
 
-	for _, portalAppPermission := range app.Permissions {
-		if portalAppPermission == permission {
-			return true
-		}
-	}
-
-	return false
-}
-
-// NOTE - temporary utility method to be used until full account baed permissions implemented in DB
-func (u *User) HasAccountPermission(accountID AccountID, permission Permissions) bool {
-	accountPerms := make(map[AccountID][]PortalAppPermissions)
-	for _, appPerm := range u.Permissions {
-		accountPerms[appPerm.AccountID] = append(accountPerms[appPerm.AccountID], appPerm)
-	}
-
-	highestRole := 0
-	var highestRoleName RoleName
-
-	for _, perms := range accountPerms[accountID] {
-		roleRank := roleOrder[perms.RoleName]
-		if roleRank > highestRole {
-			highestRole = roleRank
-			highestRoleName = perms.RoleName
-			if highestRoleName == RoleOwner {
-				break
-			}
-		}
-	}
-
-	if highestRole == 0 {
-		return false
-	}
-
-	highestRolePerms := permissionsList[highestRoleName]
-
-	for _, accountPermission := range highestRolePerms {
+	for _, accountPermission := range accountPermissions.Permissions {
 		if accountPermission == permission {
 			return true
 		}

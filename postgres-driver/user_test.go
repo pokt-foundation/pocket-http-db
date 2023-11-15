@@ -17,7 +17,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadUserIDsMap() {
 	}{
 		{
 			name:               "Should return the Portal UserID when passed the auth provider user ID",
-			expectedUserIDsMap: testdata.UserIDs,
+			expectedUserIDsMap: testdata.UserIDs(),
 			err:                nil,
 		},
 	}
@@ -41,13 +41,13 @@ func (ts *PGDriverTestSuite) Test_PGDriver_readUserByUserID() {
 		{
 			name:   "Should return a Portal User when passed the portal UserID",
 			userID: "user_1",
-			user:   testdata.Users["user_1"],
+			user:   testdata.Users()["user_1"],
 			err:    nil,
 		},
 		{
 			name:   "Should return a Portal User when passed the portal UserID",
 			userID: "user_7",
-			user:   testdata.Users["user_7"],
+			user:   testdata.Users()["user_7"],
 			err:    nil,
 		},
 		{
@@ -80,7 +80,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadAllUsers() {
 	}{
 		{
 			name:          "Should return all users from the database",
-			expectedUsers: testdata.Users,
+			expectedUsers: testdata.Users(),
 			err:           nil,
 		},
 	}
@@ -163,19 +163,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 
 				ts.NotEmpty(accountID)
 
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
+				account := ts.getAndAssignAccountUsers(accountID)
+				_, err := account.GetUser(user.ID)
 				ts.NoError(err)
-				exists := false
-				for _, account := range accounts {
-					for _, user := range account.AccountUsers {
-						if user.UserID == test.user.ID {
-							exists = true
-							ts.Equal(test.createUser.Email, user.Email)
-							break
-						}
-					}
-				}
-				ts.True(exists)
 			}
 		})
 	}

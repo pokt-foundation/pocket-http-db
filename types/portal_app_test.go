@@ -48,30 +48,8 @@ var (
 				"003E": {"GET": {}},
 			},
 		},
-		Notifications: map[NotificationType]AppNotification{
-			NotificationTypeEmail: {
-				Active: true, Destination: "test@user.com", Trigger: "what_am_i", // TODO what is trigger?
-				Events: map[NotificationEvent]bool{
-					"signedUp":      true,
-					"quarter":       true,
-					"threeQuarters": true,
-				},
-			},
-			NotificationTypeWebhook: {
-				Active: false, Destination: "https://wh.destination.io", Trigger: "what_am_i",
-				Events: map[NotificationEvent]bool{
-					"signedUp": true,
-					"full":     true,
-				},
-			},
-		},
-		FirstDateSurpassed: time.Date(2023, time.February, 28, 15, 15, 15, 0, time.UTC),
-		CreatedAt:          time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
-		UpdatedAt:          time.Date(2023, time.February, 27, 13, 13, 13, 0, time.UTC),
-		LegacyFields: LegacyFields{
-			CustomLimit:    0,
-			RequestTimeout: 5_000,
-		},
+		CreatedAt: time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
+		UpdatedAt: time.Date(2023, time.February, 27, 13, 13, 13, 0, time.UTC),
 	}
 
 	testPlan = &Plan{
@@ -80,7 +58,7 @@ var (
 		MonthlyRelayLimit: 5_000_000,
 		ThroughputLimit:   5_000,
 		AppLimit:          5,
-		LegacyDailyLimit:  250_000,
+		DailyLimit:        250_000,
 		CreatedAt:         time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
 	}
 

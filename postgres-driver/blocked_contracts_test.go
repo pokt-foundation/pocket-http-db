@@ -18,7 +18,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_BlockedContracts() {
 		}{
 			{
 				name:                     "Should return all GlobalBlockedContracts from the DB",
-				expectedBlockedContracts: testdata.GlobalBlockedContracts,
+				expectedBlockedContracts: testdata.GlobalBlockedContracts(),
 				err:                      nil,
 			},
 		}

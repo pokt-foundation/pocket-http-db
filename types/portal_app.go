@@ -8,10 +8,8 @@ import (
 
 /* Enums */
 type (
-	Environment       string
-	NotificationEvent string
-	NotificationType  string
-	WhitelistType     string
+	Environment   string
+	WhitelistType string
 
 	PortalAppPublicKey string
 	PortalAppOrigin    string
@@ -23,16 +21,6 @@ const (
 	EnvironmentProduction Environment = "production"
 	EnvironmentTest       Environment = "test"
 
-	NotificationEventFull          NotificationEvent = "full"
-	NotificationEventHalf          NotificationEvent = "half"
-	NotificationEventQuarter       NotificationEvent = "quarter"
-	NotificationEventSignedUp      NotificationEvent = "signedUp"
-	NotificationEventThreeQuarters NotificationEvent = "threeQuarters"
-
-	NotificationTypeEmail   NotificationType = "email"
-	NotificationTypePortal  NotificationType = "portal"
-	NotificationTypeWebhook NotificationType = "webhook"
-
 	WhitelistTypeOrigins     WhitelistType = "origins"
 	WhitelistTypeBlockchains WhitelistType = "blockchains"
 	WhitelistTypeUserAgents  WhitelistType = "userAgents"
@@ -43,24 +31,6 @@ const (
 func (e Environment) IsValid() bool {
 	switch e {
 	case EnvironmentProduction, EnvironmentTest:
-		return true
-	default:
-		return false
-	}
-}
-
-func (n NotificationEvent) IsValid() bool {
-	switch n {
-	case NotificationEventFull, NotificationEventHalf, NotificationEventQuarter, NotificationEventSignedUp, NotificationEventThreeQuarters:
-		return true
-	default:
-		return false
-	}
-}
-
-func (n NotificationType) IsValid() bool {
-	switch n {
-	case NotificationTypeEmail, NotificationTypePortal, NotificationTypeWebhook:
 		return true
 	default:
 		return false
@@ -80,42 +50,17 @@ func (w WhitelistType) IsValid() bool {
 type (
 	// PortalApp represents a single application in the Portal
 	PortalApp struct {
-		ID                 PortalAppID                          `json:"id"`
-		Name               string                               `json:"name"`
-		Description        string                               `json:"description"`
-		AppEmoji           AppEmoji                             `json:"appEmoji"`
-		AccountID          AccountID                            `json:"accountID"`
-		Settings           Settings                             `json:"settings"`
-		Whitelists         Whitelists                           `json:"whitelists"`
-		AATs               map[ProtocolAppID]AAT                `json:"aat"`
-		Notifications      map[NotificationType]AppNotification `json:"notifications"`
-		CreatedAt          time.Time                            `json:"createdAt"`
-		UpdatedAt          time.Time                            `json:"updatedAt"`
-		Deleted            bool                                 `json:"deleted"`
-		FirstDateSurpassed time.Time                            `json:"firstDateSurpassed"`
-		// TODO - remove when v2 migration finished
-		// Fields required for compatibility with the old Portal API and Services (temporary)
-		LegacyFields LegacyFields `json:"legacyFields"`
-
-		// Users assigned in PHD from PortalApp's Account when PortalApp fetched from PUB
-		PortalAppUsers map[UserID]PortalAppUser `json:"portalAppUsers"`
-	}
-
-	PortalAppUser struct {
-		ID       UserID   `json:"id"`
-		Email    Email    `json:"email"`
-		RoleName RoleName `json:"roleName"`
-		Accepted bool     `json:"accepted"`
-	}
-
-	// TODO - remove when v2 migration finished
-	// Fields required for compatibility with the old Portal API and Services (temporary)
-	LegacyFields struct {
-		PlanType             PayPlanType `json:"planType"`
-		DailyLimit           int32       `json:"dailyLimit"`
-		CustomLimit          int32       `json:"customLimit"`
-		RequestTimeout       int32       `json:"requestTimeout"`
-		StripeSubscriptionID string      `json:"stripeSubscriptionID"`
+		ID          PortalAppID           `json:"id"`
+		Name        string                `json:"name"`
+		Description string                `json:"description"`
+		AppEmoji    AppEmoji              `json:"appEmoji"`
+		AccountID   AccountID             `json:"accountID"`
+		Settings    Settings              `json:"settings"`
+		Whitelists  Whitelists            `json:"whitelists"`
+		AATs        map[ProtocolAppID]AAT `json:"aat"`
+		CreatedAt   time.Time             `json:"createdAt"`
+		UpdatedAt   time.Time             `json:"updatedAt"`
+		Deleted     bool                  `json:"deleted"`
 	}
 
 	Settings struct {
@@ -161,15 +106,6 @@ type (
 		ChainID RelayChainID  `json:"chain_id"`
 	}
 
-	AppNotification struct {
-		AppID       PortalAppID                `json:"appID,omitempty"`
-		Type        NotificationType           `json:"type"`
-		Active      bool                       `json:"active"`
-		Destination string                     `json:"destination"`
-		Trigger     string                     `json:"trigger"`
-		Events      map[NotificationEvent]bool `json:"events"`
-	}
-
 	// PortalAppLite contains only the PortalApp fields actually used in the Portal Middleware.
 	PortalAppLite struct {
 		ID         PortalAppID          `json:"id"`
@@ -211,17 +147,12 @@ type (
 
 	// UpdatePortalApp Struct Definition and Methods
 	UpdatePortalApp struct {
-		AppID         PortalAppID              `json:"appID,omitempty"`
-		Name          string                   `json:"name,omitempty"`
-		Description   string                   `json:"description,omitempty"`
-		AppEmoji      AppEmoji                 `json:"appEmoji,omitempty"`
-		Settings      *UpdateAppSettings       `json:"appSettings,omitempty"`
-		Notifications []UpdateAppNotifications `json:"notificationSettings,omitempty"`
-		Whitelists    *WhitelistsObject        `json:"whitelists,omitempty"`
-		// TODO - remove when v2 migration finished
-		PlanType             PayPlanType `json:"planType,omitempty"`
-		CustomLimit          int32       `json:"customLimit,omitempty"`
-		StripeSubscriptionID string      `json:"stripeSubscriptionID,omitempty"`
+		AppID       PortalAppID        `json:"appID,omitempty"`
+		Name        string             `json:"name,omitempty"`
+		Description string             `json:"description,omitempty"`
+		AppEmoji    AppEmoji           `json:"appEmoji,omitempty"`
+		Settings    *UpdateAppSettings `json:"appSettings,omitempty"`
+		Whitelists  *WhitelistsObject  `json:"whitelists,omitempty"`
 	}
 
 	UpdateAppSettings struct {
@@ -233,20 +164,6 @@ type (
 		FavoritedChainIDs []string    `json:"favoritedChainIDs"`
 	}
 
-	UpdateAppNotifications struct {
-		AppID            PortalAppID         `json:"appID,omitempty"`
-		NotificationType NotificationType    `json:"notificationType"`
-		Active           bool                `json:"active"`
-		Destination      string              `json:"destination"`
-		Trigger          string              `json:"trigger"`
-		Events           []NotificationEvent `json:"events"`
-	}
-
-	UpdateFirstDateSurpassed struct {
-		PortalAppIDs       []PortalAppID `json:"applicationIDs"`
-		FirstDateSurpassed time.Time     `json:"firstDateSurpassed"`
-	}
-
 	Origin    string
 	UserAgent string
 	Method    string
@@ -254,79 +171,15 @@ type (
 )
 
 func (u *UpdatePortalApp) IsEmpty() bool {
-	if u.Name != "" || u.PlanType != "" || u.Description != "" || u.AppEmoji != "" || u.CustomLimit != 0 || u.StripeSubscriptionID != "" {
+	if u.Name != "" || u.Description != "" || u.AppEmoji != "" {
 		return false
 	}
 	return true
 }
 
-// TODO For Legacy Fields Only
-// DailyLimit returns the daily relay limit for a given portal app
-func (a *PortalApp) DailyLimit() int32 {
-	if a.LegacyFields.PlanType == Enterprise {
-		return a.LegacyFields.CustomLimit
-	}
-	return a.LegacyFields.DailyLimit
-}
-
-// TODO For Legacy Fields Only
-// SubscriptionID returns the stripe subscription ID
-func (a *PortalApp) SubscriptionID() string {
-	return a.LegacyFields.StripeSubscriptionID
-}
-
 // MonthlyLimit returns the monthly relay limit for a given portal app
 func (a *PortalApp) MonthlyLimit() int32 {
 	return a.Settings.MonthlyRelayLimit
-}
-
-// GetUsers returns all the PortalApp's Users as a slice
-func (a *PortalApp) GetUsers() []PortalAppUser {
-	users := []PortalAppUser{}
-	for _, user := range a.PortalAppUsers {
-		users = append(users, user)
-	}
-	return users
-}
-
-// GetUserIDs returns all the PortalApp's Users' IDs as a slice
-func (a *PortalApp) GetUserIDs() []UserID {
-	users := []UserID{}
-	for _, user := range a.PortalAppUsers {
-		users = append(users, user.ID)
-	}
-	return users
-}
-
-// Owner ID returns the UserID of the PortalApp's owner
-func (a *PortalApp) OwnerID() UserID {
-	for _, user := range a.PortalAppUsers {
-		if user.RoleName == RoleOwner {
-			return user.ID
-		}
-	}
-	return ""
-}
-
-// AssignUsers assigns the Account's AccountUsers to the PortalApp's PortalAppUsers field
-// Only assigns users that have a role for the PortalApp
-func (a *PortalApp) AssignUsers(account *Account) {
-	if account.AccountUsers != nil && len(account.AccountUsers) > 0 {
-		portalAppUsers := map[UserID]PortalAppUser{}
-
-		for _, accountUser := range account.AccountUsers {
-			if _, ok := accountUser.PortalAppRoles[a.ID]; ok {
-				portalAppUsers[accountUser.UserID] = PortalAppUser{
-					ID:       accountUser.UserID,
-					Email:    accountUser.Email,
-					RoleName: accountUser.PortalAppRoles[a.ID],
-					Accepted: accountUser.PortalAppsAccepted[a.ID],
-				}
-			}
-		}
-
-		a.PortalAppUsers = portalAppUsers
-	}
 }
 
 // AddWhitelist adds a whitelist to the PortalApp pointer's Whitelists field
@@ -597,10 +450,6 @@ func (a *Settings) Table() Table {
 
 func (a *Whitelist) Table() Table {
 	return TableAppWhitelists
-}
-
-func (a *AppNotification) Table() Table {
-	return TableAppNotifications
 }
 
 func (a *AAT) Table() Table {

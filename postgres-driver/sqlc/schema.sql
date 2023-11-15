@@ -36,7 +36,6 @@ CREATE TABLE pay_plans (
     application_limit INT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    -- legacy field
     daily_limit INT
 );
 -- Users Tables
@@ -76,19 +75,54 @@ CREATE TABLE accounts (
     partner_chain_ids VARCHAR(4) ARRAY,
     partner_throughput_limit INT,
     partner_application_limit INT,
+    enterprise_limit INT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
-    deleted_at TIMESTAMPTZ NULL
+    deleted_at TIMESTAMPTZ NULL,
+    CONSTRAINT check_enterprise_limit CHECK (
+        (
+            plan_type = 'ENTERPRISE'
+            AND enterprise_limit IS NOT NULL
+        )
+        OR (
+            plan_type != 'ENTERPRISE'
+            AND enterprise_limit IS NULL
+        )
+    )
 );
 CREATE TABLE IF NOT EXISTS account_integrations (
     id INT GENERATED ALWAYS AS IDENTITY,
     account_id VARCHAR(10) NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+    stripe_subscription_id VARCHAR(255) UNIQUE,
     covalent_api_key_free VARCHAR(255) UNIQUE,
     covalent_api_key_paid VARCHAR(255) UNIQUE,
     created_at TIMESTAMPTZ NULL,
     updated_at TIMESTAMPTZ NULL,
     PRIMARY KEY (id)
+);
+CREATE TABLE account_users (
+    id SERIAL PRIMARY KEY,
+    user_id VARCHAR(10) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    account_id VARCHAR(10) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    role_name VARCHAR(25) NOT NULL REFERENCES user_roles(role_name),
+    accepted BOOLEAN NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (user_id, account_id)
+);
+CREATE UNIQUE INDEX idx_unique_owner_per_account ON account_users (account_id)
+WHERE role_name = 'OWNER';
+CREATE TABLE account_notifications (
+    id SERIAL PRIMARY KEY,
+    account_id VARCHAR(24) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    active BOOLEAN NOT NULL,
+    type notification_type NOT NULL,
+    destination VARCHAR(255),
+    trigger VARCHAR(255),
+    events VARCHAR(100) ARRAY,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (account_id, type)
 );
 -- Chains Tables
 CREATE TABLE chains (
@@ -174,19 +208,7 @@ CREATE TABLE portal_applications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
-    deleted_at TIMESTAMPTZ NULL,
-    -- legacy field
-    request_timeout INT,
-    -- legacy field
-    first_date_surpassed TIMESTAMPTZ,
-    -- legacy field
-    plan_type VARCHAR(25),
-    -- legacy field
-    daily_limit INT,
-    -- legacy field
-    custom_limit INT,
-    -- legacy field
-    stripe_subscription_id VARCHAR(255)
+    deleted_at TIMESTAMPTZ NULL
 );
 CREATE TABLE portal_application_settings (
     id SERIAL PRIMARY KEY,
@@ -197,17 +219,6 @@ CREATE TABLE portal_application_settings (
     secret_key VARCHAR(64),
     secret_key_required BOOLEAN,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE TABLE portal_application_notifications (
-    id SERIAL PRIMARY KEY,
-    application_id VARCHAR(24) NOT NULL REFERENCES portal_applications(id) ON DELETE CASCADE,
-    active BOOLEAN NOT NULL,
-    type notification_type NOT NULL,
-    destination VARCHAR(255),
-    trigger VARCHAR(255),
-    events VARCHAR(100) ARRAY,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (application_id, type)
 );
 CREATE TABLE portal_application_whitelists (
     id SERIAL PRIMARY KEY,
@@ -240,34 +251,6 @@ CREATE TABLE IF NOT EXISTS portal_application_aats (
     private_key VARCHAR(400) NULL,
     version VARCHAR(10) NOT NULL
 );
--- Account User Access Table
-CREATE TABLE account_user_access (
-    id SERIAL PRIMARY KEY,
-    user_id VARCHAR(10) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    account_id VARCHAR(10) NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-    portal_application_id VARCHAR(24) REFERENCES portal_applications(id) ON DELETE CASCADE,
-    role_name VARCHAR(25) NOT NULL REFERENCES user_roles(role_name),
-    owner BOOLEAN NOT NULL,
-    accepted BOOLEAN NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (user_id, portal_application_id),
-    CONSTRAINT check_portal_application_id_for_owner_nonowner CHECK (
-        (
-            role_name = 'OWNER'
-            AND portal_application_id IS NULL
-            AND owner = true
-        )
-        OR (
-            role_name != 'OWNER'
-            AND portal_application_id IS NOT NULL
-            AND owner = false
-        )
-    )
-);
-CREATE UNIQUE INDEX idx_unique_owner_per_account ON account_user_access (account_id)
-WHERE owner = true
-    AND role_name = 'OWNER';
 -- Gigastake Applications Table
 CREATE TABLE IF NOT EXISTS gigastake_applications (
     id VARCHAR(24) PRIMARY KEY,
@@ -340,12 +323,6 @@ INSERT
     OR
 UPDATE
     OR DELETE ON portal_application_whitelists FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER portal_application_notifications_notify_event
-AFTER
-INSERT
-    OR
-UPDATE
-    OR DELETE ON portal_application_notifications FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER portal_application_aats_notify_event
 AFTER
 INSERT
@@ -364,18 +341,24 @@ INSERT
     OR
 UPDATE
     OR DELETE ON accounts FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER account_user_access_notify_event
+CREATE TRIGGER account_users_notify_event
 AFTER
 INSERT
     OR
 UPDATE
-    OR DELETE ON account_user_access FOR EACH ROW EXECUTE PROCEDURE notify_event();
+    OR DELETE ON account_users FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER account_integrations_notify_event
 AFTER
 INSERT
     OR
 UPDATE
     OR DELETE ON account_integrations FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER account_notifications_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON account_notifications FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER users_notify_event
 AFTER
 INSERT

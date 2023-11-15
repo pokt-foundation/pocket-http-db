@@ -274,6 +274,32 @@ func (_m *MockIDBClient) DeleteUser(ctx context.Context, userID types.UserID) (m
 	return r0, r1
 }
 
+// GetAccountByID provides a mock function with given fields: ctx, accountID
+func (_m *MockIDBClient) GetAccountByID(ctx context.Context, accountID types.AccountID) (*types.Account, error) {
+	ret := _m.Called(ctx, accountID)
+
+	var r0 *types.Account
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, types.AccountID) (*types.Account, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, types.AccountID) *types.Account); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Account)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, types.AccountID) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetAllAccounts provides a mock function with given fields: ctx, options
 func (_m *MockIDBClient) GetAllAccounts(ctx context.Context, options ...AccountOptions) ([]*types.Account, error) {
 	_va := make([]interface{}, len(options))
@@ -995,32 +1021,6 @@ func (_m *MockIDBClient) UpdatePortalApp(ctx context.Context, portalAppUpdate ty
 	return r0, r1
 }
 
-// UpdatePortalAppsFirstDateSurpassed provides a mock function with given fields: ctx, firstDateSurpassedUpdate
-func (_m *MockIDBClient) UpdatePortalAppsFirstDateSurpassed(ctx context.Context, firstDateSurpassedUpdate types.UpdateFirstDateSurpassed) (map[string]string, error) {
-	ret := _m.Called(ctx, firstDateSurpassedUpdate)
-
-	var r0 map[string]string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.UpdateFirstDateSurpassed) (map[string]string, error)); ok {
-		return rf(ctx, firstDateSurpassedUpdate)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, types.UpdateFirstDateSurpassed) map[string]string); ok {
-		r0 = rf(ctx, firstDateSurpassedUpdate)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[string]string)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, types.UpdateFirstDateSurpassed) error); ok {
-		r1 = rf(ctx, firstDateSurpassedUpdate)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // UpdateUser provides a mock function with given fields: ctx, user
 func (_m *MockIDBClient) UpdateUser(ctx context.Context, user types.UpdateUser) (*types.User, error) {
 	ret := _m.Called(ctx, user)
@@ -1048,15 +1048,15 @@ func (_m *MockIDBClient) UpdateUser(ctx context.Context, user types.UpdateUser) 
 }
 
 // WriteAccountUser provides a mock function with given fields: ctx, createUser, _a2
-func (_m *MockIDBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUserAccess, _a2 time.Time) (map[string]types.UserID, error) {
+func (_m *MockIDBClient) WriteAccountUser(ctx context.Context, createUser types.CreateAccountUser, _a2 time.Time) (map[string]types.UserID, error) {
 	ret := _m.Called(ctx, createUser, _a2)
 
 	var r0 map[string]types.UserID
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUserAccess, time.Time) (map[string]types.UserID, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUser, time.Time) (map[string]types.UserID, error)); ok {
 		return rf(ctx, createUser, _a2)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUserAccess, time.Time) map[string]types.UserID); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateAccountUser, time.Time) map[string]types.UserID); ok {
 		r0 = rf(ctx, createUser, _a2)
 	} else {
 		if ret.Get(0) != nil {
@@ -1064,7 +1064,7 @@ func (_m *MockIDBClient) WriteAccountUser(ctx context.Context, createUser types.
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, types.CreateAccountUserAccess, time.Time) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, types.CreateAccountUser, time.Time) error); ok {
 		r1 = rf(ctx, createUser, _a2)
 	} else {
 		r1 = ret.Error(1)

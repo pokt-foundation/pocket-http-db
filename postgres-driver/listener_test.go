@@ -19,53 +19,59 @@ func Test_PGDriver_Listen(t *testing.T) {
 	}{
 		{
 			name:    "Should process Account notifications",
-			content: testdata.Accounts["account_4"],
+			content: testdata.Accounts(testdata.AccountOptions{AssignUsers: true})["account_1"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TableAccounts: {
 					Table:  types.TableAccounts,
 					Action: types.ActionInsert,
 					Data: &types.Account{
-						ID:                     "account_4",
-						PlanType:               "enterprise_plan",
-						PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-						PartnerThroughputLimit: 1_000,
-						PartnerAppLimit:        2,
+						ID:                     "account_1",
+						PlanType:               types.FreetierV0,
+						PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
+						PartnerThroughputLimit: 2_000,
+						PartnerAppLimit:        1,
 						CreatedAt:              testdata.MockTimestamp,
 						UpdatedAt:              testdata.MockTimestamp,
 					},
 				},
-				types.TableAccountUserAccess: {
-					Table:  types.TableAccountUserAccess,
+				types.TableAccountUsers: {
+					Table:  types.TableAccountUsers,
 					Action: types.ActionUpdate,
 					Data: &types.AccountUser{
-						AccountID:          "account_4",
-						UserID:             "user_4",
-						PortalAppRoles:     map[types.PortalAppID]types.RoleName{},
-						PortalAppsAccepted: map[types.PortalAppID]bool{},
+						AccountID: "account_1",
+						ID:        "user_1",
+						RoleName:  types.RoleOwner,
+						Accepted:  true,
+					},
+				},
+				types.TableAccountNotifications: {
+					Table:  types.TableAccountNotifications,
+					Action: types.ActionUpdate,
+					Data: &types.AccountNotification{
+						AccountID:   "account_1",
+						Type:        types.NotificationTypeEmail,
+						Active:      true,
+						Destination: "james.holden123@test.com",
+						Trigger:     "trigger123",
+						Events:      map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true},
 					},
 				},
 			},
 		},
 		{
 			name:    "Should process PortalApp notifications",
-			content: testdata.PortalApps["test_app_1"],
+			content: testdata.PortalApps()["test_app_1"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TablePortalApps: {
 					Table:  types.TablePortalApps,
 					Action: types.ActionInsert,
 					Data: &types.PortalApp{
-						ID:                 "test_app_1",
-						AccountID:          "account_1",
-						Name:               "pokt_app_123",
-						FirstDateSurpassed: testdata.MockTimestamp,
-						CreatedAt:          testdata.MockTimestamp,
-						UpdatedAt:          testdata.MockTimestamp,
-						Deleted:            false,
-						LegacyFields: types.LegacyFields{
-							CustomLimit:          0,
-							RequestTimeout:       5000,
-							StripeSubscriptionID: "stripe_id_1",
-						},
+						ID:        "test_app_1",
+						AccountID: "account_1",
+						Name:      "pokt_app_123",
+						CreatedAt: testdata.MockTimestamp,
+						UpdatedAt: testdata.MockTimestamp,
+						Deleted:   false,
 					},
 				},
 				types.TablePortalAppAATs: {
@@ -103,23 +109,11 @@ func Test_PGDriver_Listen(t *testing.T) {
 						Value: "0053",
 					},
 				},
-				types.TableAppNotifications: {
-					Table:  types.TableAppNotifications,
-					Action: types.ActionUpdate,
-					Data: &types.AppNotification{
-						AppID:       "test_app_1",
-						Type:        types.NotificationTypeEmail,
-						Active:      true,
-						Destination: "test@test.com",
-						Trigger:     "trigger123",
-						Events:      map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true},
-					},
-				},
 			},
 		},
 		{
 			name:    "Should process GigastakeApp notifications",
-			content: testdata.GigastakeApps["test_gigastake_app_1"],
+			content: testdata.GigastakeApps()["test_gigastake_app_1"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TableGigastakeApps: {
 					Table:  types.TableGigastakeApps,
@@ -149,7 +143,7 @@ func Test_PGDriver_Listen(t *testing.T) {
 		},
 		{
 			name:    "Should process Chain notifications",
-			content: testdata.Chains["0001"],
+			content: testdata.Chains()["0001"],
 			expectedNotifications: map[types.Table]*types.Notification{
 				types.TableChains: {
 					Table:  types.TableChains,
@@ -255,5 +249,4 @@ func Test_PGDriver_Listen(t *testing.T) {
 			c.Equal(test.expectedNotifications, notificationsMap)
 		})
 	}
-
 }

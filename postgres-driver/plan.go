@@ -39,7 +39,7 @@ func (p *SelectPlansRow) toPlan() (*types.Plan, error) {
 		MonthlyRelayLimit: p.MonthlyRelayLimit,
 		ThroughputLimit:   p.ThroughputLimit,
 		AppLimit:          p.ApplicationLimit,
-		LegacyDailyLimit:  p.DailyLimit.Int32,
+		DailyLimit:        p.DailyLimit.Int32,
 		CreatedAt:         p.CreatedAt.Time.UTC(),
 	}
 
@@ -65,7 +65,7 @@ func (json dbPayPlan) toOutput() *types.Plan {
 		MonthlyRelayLimit: json.MonthlyRelayLimit,
 		ThroughputLimit:   json.ThroughputLimit,
 		AppLimit:          json.ApplicationLimit,
-		LegacyDailyLimit:  json.DailyLimit,
+		DailyLimit:        json.DailyLimit,
 	}
 }
 

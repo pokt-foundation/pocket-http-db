@@ -409,6 +409,7 @@ type Account struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	EnterpriseLimit         pgtype.Int4        `json:"enterprise_limit"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -416,24 +417,34 @@ type Account struct {
 }
 
 type AccountIntegration struct {
-	ID                 int32              `json:"id"`
-	AccountID          types.AccountID    `json:"account_id"`
-	CovalentAPIKeyFree pgtype.Text        `json:"covalent_api_key_free"`
-	CovalentAPIKeyPaid pgtype.Text        `json:"covalent_api_key_paid"`
-	CreatedAt          pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	ID                   int32              `json:"id"`
+	AccountID            types.AccountID    `json:"account_id"`
+	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	CovalentAPIKeyFree   pgtype.Text        `json:"covalent_api_key_free"`
+	CovalentAPIKeyPaid   pgtype.Text        `json:"covalent_api_key_paid"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
 }
 
-type AccountUserAccess struct {
-	ID                  int32              `json:"id"`
-	UserID              types.UserID       `json:"user_id"`
-	AccountID           types.AccountID    `json:"account_id"`
-	PortalApplicationID types.PortalAppID  `json:"portal_application_id"`
-	RoleName            types.RoleName     `json:"role_name"`
-	Owner               bool               `json:"owner"`
-	Accepted            bool               `json:"accepted"`
-	CreatedAt           pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+type AccountNotification struct {
+	ID          int32                  `json:"id"`
+	AccountID   types.AccountID        `json:"account_id"`
+	Active      bool                   `json:"active"`
+	Type        types.NotificationType `json:"type"`
+	Destination pgtype.Text            `json:"destination"`
+	Trigger     pgtype.Text            `json:"trigger"`
+	Events      []string               `json:"events"`
+	UpdatedAt   pgtype.Timestamptz     `json:"updated_at"`
+}
+
+type AccountUser struct {
+	ID        int32              `json:"id"`
+	UserID    types.UserID       `json:"user_id"`
+	AccountID types.AccountID    `json:"account_id"`
+	RoleName  types.RoleName     `json:"role_name"`
+	Accepted  bool               `json:"accepted"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Chain struct {
@@ -530,21 +541,15 @@ type PayPlan struct {
 }
 
 type PortalApplication struct {
-	ID                   types.PortalAppID  `json:"id"`
-	AccountID            pgtype.Text        `json:"account_id"`
-	Name                 string             `json:"name"`
-	AppEmoji             pgtype.Text        `json:"app_emoji"`
-	Description          pgtype.Text        `json:"description"`
-	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
-	Deleted              bool               `json:"deleted"`
-	DeletedAt            pgtype.Timestamptz `json:"deleted_at"`
-	RequestTimeout       pgtype.Int4        `json:"request_timeout"`
-	FirstDateSurpassed   pgtype.Timestamptz `json:"first_date_surpassed"`
-	PlanType             types.PayPlanType  `json:"plan_type"`
-	DailyLimit           pgtype.Int4        `json:"daily_limit"`
-	CustomLimit          pgtype.Int4        `json:"custom_limit"`
-	StripeSubscriptionID pgtype.Text        `json:"stripe_subscription_id"`
+	ID          types.PortalAppID  `json:"id"`
+	AccountID   pgtype.Text        `json:"account_id"`
+	Name        string             `json:"name"`
+	AppEmoji    pgtype.Text        `json:"app_emoji"`
+	Description pgtype.Text        `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	Deleted     bool               `json:"deleted"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type PortalApplicationAat struct {
@@ -556,17 +561,6 @@ type PortalApplicationAat struct {
 	Signature           string                   `json:"signature"`
 	PrivateKey          pgtype.Text              `json:"private_key"`
 	Version             string                   `json:"version"`
-}
-
-type PortalApplicationNotification struct {
-	ID            int32                  `json:"id"`
-	ApplicationID types.PortalAppID      `json:"application_id"`
-	Active        bool                   `json:"active"`
-	Type          types.NotificationType `json:"type"`
-	Destination   pgtype.Text            `json:"destination"`
-	Trigger       pgtype.Text            `json:"trigger"`
-	Events        []string               `json:"events"`
-	UpdatedAt     pgtype.Timestamptz     `json:"updated_at"`
 }
 
 type PortalApplicationSetting struct {

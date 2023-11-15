@@ -24,7 +24,7 @@ gen_writer:
 # These targets spin up and shut down the E2E test env in docker.
 test_env_up:
 	@echo "🧪 Starting up Portal HTTP DB test environment ..."
-	@docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build 1>/dev/null
+	@docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build
 	@echo "⏳ Waiting for test DB to be ready ..."
 	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres 1>/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🐘 Test Portal DB is up ..." || (echo "❌ Test Portal DB failed to start" && make test_env_down 1>/dev/null && exit 1)
@@ -38,7 +38,8 @@ test_env_up:
 	@echo "🚀 Test environment is up!"
 test_db_up:
 	@echo "🧪 Starting up Portal HTTP DB test database only ..."
-	@docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build portal-db 1>/dev/null
+	@docker-compose -f ./testdata/docker-compose.test.yml up -d --remove-orphans --build portal-db
+	@sleep 1
 	@echo "⏳ Waiting for test DB to be ready ..."
 	@attempts=0; until pg_isready -h localhost -p 5432 -U postgres -d postgres 1>/dev/null || [[ $$attempts -eq 5 ]]; do sleep 2; ((attempts++)); done
 	@[[ $$attempts -lt 5 ]] && echo "🐘 Test Portal DB is up ..." || (echo "❌ Test Portal DB failed to start" && make test_env_down 1>/dev/null && exit 1)
@@ -79,6 +80,8 @@ test_unit_ci:
 # For local development see below for how to run the E2E tests locally without spinning up the test env each run.
 test: test_unit test_env_up run_driver_tests reset_test_env run_e2e_tests test_env_down
 
+test_driver: test_db_up run_driver_tests test_env_down
+
 # These targets are for running E2E tests locally. Once the test env is up and running via `make test_env_up`
 # you can run the E2E tests use `make test_dev`. This will reset the test DB and cache before running the tests.
 # This allows for running the E2E tests multiple times quickly without having to restart the test env.
@@ -106,6 +109,8 @@ start_test_phd:
 	@echo "✅ Test PHD containers restarted successfully!"
 
 test_dev: reset_test_db run_driver_tests reset_test_env run_e2e_tests
+test_e2e_dev: reset_test_env run_e2e_tests
+test_driver_dev: reset_test_db run_driver_tests
 
 # This target install pre-commit to the repo and should be run only once, after cloning the repo for the first time.
 init-pre-commit:

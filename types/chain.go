@@ -202,18 +202,6 @@ func (c *Chain) GetChainAliases() []ChainAlias {
 	return aliasesSlice
 }
 
-// DEPRECATED - TODO remove when move to only store aliases is complete
-// LegacyGetChainAliases returns a slice of all of a Chain's aliases
-func (c *Chain) LegacyGetChainAliases() []ChainAlias {
-	chainAliases := []ChainAlias{}
-
-	for chainAlias := range c.AliasDomains {
-		chainAliases = append(chainAliases, chainAlias)
-	}
-
-	return chainAliases
-}
-
 // GetChainDomains returns a slice of all of a Chain's domains
 func (c *Chain) GetChainDomains() []ChainDomain {
 	chainDomains := []ChainDomain{}

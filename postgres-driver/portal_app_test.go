@@ -19,9 +19,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadPortalApps() {
 		{
 			name: "Should return all non-deleted PortalApps from the database",
 			portalApps: map[types.PortalAppID]*types.PortalApp{
-				testdata.PortalApps["test_app_1"].ID: testdata.PortalApps["test_app_1"],
-				testdata.PortalApps["test_app_2"].ID: testdata.PortalApps["test_app_2"],
-				testdata.PortalApps["test_app_3"].ID: testdata.PortalApps["test_app_3"],
+				testdata.PortalApps()["test_app_1"].ID: testdata.PortalApps()["test_app_1"],
+				testdata.PortalApps()["test_app_2"].ID: testdata.PortalApps()["test_app_2"],
+				testdata.PortalApps()["test_app_3"].ID: testdata.PortalApps()["test_app_3"],
 			},
 			options: types.DriverOptions{},
 			err:     nil,
@@ -47,16 +47,16 @@ func (ts *PGDriverTestSuite) Test_PGDriver_Z_SetPortalAppDeleted() {
 		{
 			name: "Should set a PortalApp's deleted field to true, causing it to not appear in the ReadPortalApps query",
 			deleteParams: DeletePortalAppParams{
-				ID: testdata.PortalApps["test_app_3"].ID, DeletedAt: newTimestamptz(testdata.MockTimestamp),
+				ID: testdata.PortalApps()["test_app_3"].ID, DeletedAt: newTimestamptz(testdata.MockTimestamp),
 			},
 			portalAppsBeforeDelete: map[types.PortalAppID]*types.PortalApp{
-				testdata.PortalApps["test_app_1"].ID: testdata.PortalApps["test_app_1"],
-				testdata.PortalApps["test_app_2"].ID: testdata.PortalApps["test_app_2"],
-				testdata.PortalApps["test_app_3"].ID: testdata.PortalApps["test_app_3"],
+				testdata.PortalApps()["test_app_1"].ID: testdata.PortalApps()["test_app_1"],
+				testdata.PortalApps()["test_app_2"].ID: testdata.PortalApps()["test_app_2"],
+				testdata.PortalApps()["test_app_3"].ID: testdata.PortalApps()["test_app_3"],
 			},
 			portalAppsAfterDelete: map[types.PortalAppID]*types.PortalApp{
-				testdata.PortalApps["test_app_1"].ID: testdata.PortalApps["test_app_1"],
-				testdata.PortalApps["test_app_2"].ID: testdata.PortalApps["test_app_2"],
+				testdata.PortalApps()["test_app_1"].ID: testdata.PortalApps()["test_app_1"],
+				testdata.PortalApps()["test_app_2"].ID: testdata.PortalApps()["test_app_2"],
 			},
 			err: nil,
 		},
@@ -96,7 +96,6 @@ func filterAppsCreatedInTest(portalApps map[types.PortalAppID]*types.PortalApp) 
 		if len(app.ID) != 8 {
 			app.CreatedAt = testdata.MockTimestamp
 			app.UpdatedAt = testdata.MockTimestamp
-			app.FirstDateSurpassed = testdata.MockTimestamp
 			filtered[id] = app
 		}
 	}
@@ -146,26 +145,10 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WritePortalApp() {
 			err: fmt.Errorf(errInvalidEnvironment.Error(), "under da sea"),
 		},
 		{
-			name: "Should fail when plan does not exist",
-			portalApp: types.PortalApp{
-				AppEmoji: "1F31B",
-				Name:     "whatever",
-				LegacyFields: types.LegacyFields{
-					PlanType: "nonexistent-plan",
-				},
-				Settings: types.Settings{Environment: types.EnvironmentProduction},
-			},
-			aat: testdata.TestCreatePortalAppAAT,
-			err: fmt.Errorf(errPayPlanDoesntExist.Error(), "nonexistent-plan"),
-		},
-		{
 			name: "Should fail when account does not exist",
 			portalApp: types.PortalApp{
-				AppEmoji: "1F31B",
-				Name:     "whatever",
-				LegacyFields: types.LegacyFields{
-					PlanType: types.FreetierV0,
-				},
+				AppEmoji:  "1F31B",
+				Name:      "whatever",
 				Settings:  types.Settings{Environment: types.EnvironmentProduction},
 				AccountID: "nonexistent-account",
 			},
@@ -182,24 +165,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WritePortalApp() {
 			if test.err == nil {
 				test.portalApp.ID = createdPortalApp.ID
 				test.portalApp.AATs = createdPortalApp.AATs
-				var createUserID types.UserID
-				for userID := range test.portalApp.PortalAppUsers {
-					createUserID = userID
-					break
-				}
-				test.portalApp.PortalAppUsers = nil
 				ts.Equal(&test.portalApp, createdPortalApp)
-
-				// Check user was created for the account
-				accounts, err := ts.driver.ReadAccounts(context.Background(), types.DriverOptions{})
-				ts.NoError(err)
-				account, ok := accounts[test.portalApp.AccountID]
-				ts.True(ok)
-				ts.NotEmpty(createUserID)
-				accountUser, ok := account.AccountUsers[createUserID]
-				ts.True(ok)
-				ts.NotEmpty(accountUser.PortalAppRoles[createdPortalApp.ID])
-				ts.True(accountUser.PortalAppsAccepted[createdPortalApp.ID])
 
 				// Check portal app can be read from driver
 				portalApps, err := ts.driver.ReadPortalApps(context.Background(), types.DriverOptions{})
@@ -217,29 +183,25 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WritePortalApp() {
 
 func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 	tests := []struct {
-		name                     string
-		updatePortalApp          types.UpdatePortalApp
-		testUpdateTime           time.Time
-		testUpdatedName          string
-		testUpdatedDescription   string
-		testUpdatedAppEmoji      types.AppEmoji
-		testUpdatedSettings      types.Settings
-		testUpdatedNotifications map[types.NotificationType]types.AppNotification
-		testUpdatedWhitelists    types.Whitelists
-		testUpdatedLegacyFields  types.LegacyFields
-		err                      error
+		name                   string
+		updatePortalApp        types.UpdatePortalApp
+		testUpdateTime         time.Time
+		testUpdatedName        string
+		testUpdatedDescription string
+		testUpdatedAppEmoji    types.AppEmoji
+		testUpdatedSettings    types.Settings
+
+		testUpdatedWhitelists types.Whitelists
+		err                   error
 	}{
 		{
 			name: "Should update a new PortalApp in the database with all fields",
 			updatePortalApp: types.UpdatePortalApp{
-				Name:                 testdata.UpdatePortalAppName,
-				Description:          testdata.UpdatePortalAppDescription,
-				AppEmoji:             testdata.UpdatePortalAppEmoji,
-				Settings:             testdata.UpdatePortalAppSettings,
-				Notifications:        testdata.UpdatePortalAppNotifications,
-				Whitelists:           testdata.UpdatePortalAppWhitelists,
-				PlanType:             testdata.UpdatePortalAppPlan.PlanType,
-				StripeSubscriptionID: testdata.UpdatePortalAppStripeSubscriptionID.StripeSubscriptionID,
+				Name:        testdata.UpdatePortalAppName,
+				Description: testdata.UpdatePortalAppDescription,
+				AppEmoji:    testdata.UpdatePortalAppEmoji,
+				Settings:    testdata.UpdatePortalAppSettings,
+				Whitelists:  testdata.UpdatePortalAppWhitelists,
 			},
 			testUpdateTime:         testdata.MockTimestamp,
 			testUpdatedName:        "portal-app-updated",
@@ -252,31 +214,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 				MonthlyRelayLimit: 2_500_000,
 				FavoritedChainIDs: map[types.RelayChainID]struct{}{"0003": {}, "0009": {}, "00H3": {}},
 			},
-			testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-				types.NotificationTypeEmail: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "user@example.com",
-					Trigger:     "daily",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventSignedUp:      true,
-						types.NotificationEventHalf:          true,
-						types.NotificationEventQuarter:       true,
-						types.NotificationEventThreeQuarters: true,
-						types.NotificationEventFull:          true,
-					},
-				},
-				types.NotificationTypeWebhook: {
-					Type:        types.NotificationTypeWebhook,
-					Active:      true,
-					Destination: "https://example.com/webhook",
-					Trigger:     "hourly",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventHalf: true,
-						types.NotificationEventFull: true,
-					},
-				},
-			},
+
 			testUpdatedWhitelists: types.Whitelists{
 				Origins:     map[types.Origin]struct{}{"https://portalgun.io": {}, "https://subdomain.example.com": {}, "https://www.example.com": {}},
 				UserAgents:  map[types.UserAgent]struct{}{"Brave": {}, "Google Chrome": {}, "Mozilla Firefox": {}, "Netscape Navigator": {}, "Safari": {}},
@@ -293,11 +231,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 					"003E": {"GET": {}},
 					"0056": {"GET": {}, "POST": {}},
 				},
-			},
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.FreetierV0,
-				DailyLimit:           250_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
 			},
 			err: nil,
 		},
@@ -344,39 +277,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 			err: nil,
 		},
 		{
-			name: "Should update a new PortalApp in the database with only new Notifications",
-			updatePortalApp: types.UpdatePortalApp{
-				Notifications: testdata.UpdatePortalAppNotifications,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedNotifications: map[types.NotificationType]types.AppNotification{
-				types.NotificationTypeEmail: {
-					Type:        types.NotificationTypeEmail,
-					Active:      true,
-					Destination: "user@example.com",
-					Trigger:     "daily",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventSignedUp:      true,
-						types.NotificationEventHalf:          true,
-						types.NotificationEventQuarter:       true,
-						types.NotificationEventThreeQuarters: true,
-						types.NotificationEventFull:          true,
-					},
-				},
-				types.NotificationTypeWebhook: {
-					Type:        types.NotificationTypeWebhook,
-					Active:      true,
-					Destination: "https://example.com/webhook",
-					Trigger:     "hourly",
-					Events: map[types.NotificationEvent]bool{
-						types.NotificationEventHalf: true,
-						types.NotificationEventFull: true,
-					},
-				},
-			},
-			err: nil,
-		},
-		{
 			name: "Should update a new PortalApp in the database with only new Whitelists",
 			updatePortalApp: types.UpdatePortalApp{
 				Whitelists: testdata.UpdatePortalAppWhitelists,
@@ -400,65 +300,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 				},
 			},
 			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with a new stripe subscription ID",
-			updatePortalApp: types.UpdatePortalApp{
-				StripeSubscriptionID: testdata.UpdatePortalAppStripeSubscriptionID.StripeSubscriptionID,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.FreetierV0,
-				DailyLimit:           250_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with a new plan",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: testdata.UpdatePortalAppPlan.PlanType,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.FreetierV0,
-				DailyLimit:           250_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with another new plan",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: testdata.UpdatePortalAppPlanTwo.PlanType,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.TestPlan90k,
-				DailyLimit:           90_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
-		{
-			name: "Should update a new PortalApp in the database with an Enterprise plan",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: testdata.UpdatePortalAppEnterprisePlan.PlanType,
-			},
-			testUpdateTime: testdata.MockTimestamp,
-			testUpdatedLegacyFields: types.LegacyFields{
-				PlanType:             types.Enterprise,
-				CustomLimit:          5_600_000,
-				StripeSubscriptionID: "update_stripe_subscription_id",
-			},
-			err: nil,
-		},
-		{
-			name: "Should fail if an invalid plan type provided",
-			updatePortalApp: types.UpdatePortalApp{
-				PlanType: types.PayPlanType("what_am_i_doing"),
-			},
-			err: fmt.Errorf(errPayPlanDoesntExist.Error(), "what_am_i_doing"),
 		},
 	}
 
@@ -508,63 +349,11 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 					ts.Equal(createdPortalApp.Settings, updatedPortalApp.Settings)
 				}
 
-				if len(test.testUpdatedNotifications) != 0 {
-					ts.Equal(test.testUpdatedNotifications, updatedPortalApp.Notifications)
-				} else {
-					ts.Equal(createdPortalApp.Notifications, updatedPortalApp.Notifications)
-				}
-
 				if len(test.testUpdatedWhitelists.Origins) != 0 {
 					ts.Equal(test.testUpdatedWhitelists, updatedPortalApp.Whitelists)
 				} else {
 					ts.Equal(createdPortalApp.Whitelists, updatedPortalApp.Whitelists)
 				}
-
-				if test.updatePortalApp.PlanType != "" {
-					ts.Equal(test.testUpdatedLegacyFields.PlanType, updatedPortalApp.LegacyFields.PlanType)
-					if test.updatePortalApp.PlanType != types.Enterprise {
-						dailyLimit, err := ts.driver.GetPlanDailyLimit(context.Background(), test.testUpdatedLegacyFields.PlanType)
-						ts.NoError(err)
-						ts.Equal(test.testUpdatedLegacyFields.DailyLimit, dailyLimit.Int32)
-					}
-				}
-				if test.updatePortalApp.CustomLimit != 0 {
-					ts.Equal(test.testUpdatedLegacyFields.CustomLimit, updatedPortalApp.LegacyFields.CustomLimit)
-				}
-			}
-		})
-	}
-}
-
-func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalAppsFirstDateSurpassed() {
-	tests := []struct {
-		name   string
-		update *types.UpdateFirstDateSurpassed
-		err    error
-	}{
-		{
-			name: "Should update multiple PortalApps in the database with a LegacyFields.FirstDateSurpassed timestamp ",
-			update: &types.UpdateFirstDateSurpassed{
-				PortalAppIDs:       []types.PortalAppID{testdata.PortalApps["test_app_1"].ID, testdata.PortalApps["test_app_2"].ID},
-				FirstDateSurpassed: time.Date(2023, time.February, 14, 0, 0, 0, 0, time.UTC),
-			},
-			err: nil,
-		},
-	}
-
-	for _, test := range tests {
-		ts.Run(test.name, func() {
-			// Update FirstDateSurpassed fields for PortalApps
-			err := ts.driver.UpdatePortalAppsFirstDateSurpassed(context.Background(), test.update)
-			ts.Equal(test.err, err)
-
-			// Check FirstDateSurpassed fields for PortalApps in the DB
-			portalApps, err := ts.driver.ReadPortalApps(context.Background(), types.DriverOptions{})
-			ts.Equal(test.err, err)
-			for _, appID := range test.update.PortalAppIDs {
-				portalApp, ok := portalApps[types.PortalAppID(appID)]
-				ts.True(ok)
-				ts.Equal(test.update.FirstDateSurpassed, portalApp.FirstDateSurpassed)
 			}
 		})
 	}
