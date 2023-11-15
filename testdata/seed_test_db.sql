@@ -413,14 +413,14 @@ INSERT INTO account_integrations (
     )
 VALUES (
         'account_1',
-        'stripe_id_1',
+        NULL,
         'covalent_api_key_1',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
     (
         'account_2',
-        'stripe_id_2',
+        NULL,
         'covalent_api_key_2',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
@@ -434,7 +434,7 @@ VALUES (
     ),
     (
         'account_4',
-        'stripe_id_4',
+        NULL,
         'covalent_api_key_4',
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'

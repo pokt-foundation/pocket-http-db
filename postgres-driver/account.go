@@ -12,21 +12,24 @@ import (
 )
 
 var (
-	errNoRoleName                    = errors.New("error no role name set")
-	errInvalidRoleName               = errors.New("error invalid role name set")
-	errInvalidIconURL                = errors.New("error icon URL '%s' is not a valid URL")
-	errPayPlanDoesntExist            = errors.New("error pay plan '%s' does not exist")
-	errAccountDoesntExist            = errors.New("error account does not exist for account ID '%s'")
-	errAccountUserDoesntExist        = errors.New("error user ID '%s' does not exist for account ID '%s'")
-	errCannotDeleteOwner             = errors.New("error cannot delete user ID '%s' for account ID '%s' because this user is the current account owner")
-	errCreateNoAccountID             = errors.New("error must provide account ID when creating user")
-	errTransferNoAccountID           = errors.New("error must provide account ID when transferring user")
-	errAcceptNoAccountID             = errors.New("error must provide account ID when accepting user")
-	errCannotTransferNotAccepted     = errors.New("error cannot transfer ownership to user ID '%s' for account ID '%s' because the user has not accepted their invite")
-	errCannotDeclineAlreadyAccepted  = errors.New("error user ID '%s' cannot decline invite for account ID '%s' because they have already accepted it")
-	errEnterpriseMustHaveLimit       = errors.New("error enterprise plan must have a limit set")
-	errNonEnterpriseMustNotHaveLimit = errors.New("error non-enterprise plan must not have a limit set")
-	errUnmarshallingNotifications    = errors.New("error unmarshalling notifications")
+	errNoRoleName                          = errors.New("error no role name set")
+	errInvalidRoleName                     = errors.New("error invalid role name set")
+	errInvalidIconURL                      = errors.New("error icon URL '%s' is not a valid URL")
+	errPayPlanDoesntExist                  = errors.New("error pay plan '%s' does not exist")
+	errAccountDoesntExist                  = errors.New("error account does not exist for account ID '%s'")
+	errAccountUserDoesntExist              = errors.New("error user ID '%s' does not exist for account ID '%s'")
+	errCannotDeleteOwner                   = errors.New("error cannot delete user ID '%s' for account ID '%s' because this user is the current account owner")
+	errCreateNoAccountID                   = errors.New("error must provide account ID when creating user")
+	errTransferNoAccountID                 = errors.New("error must provide account ID when transferring user")
+	errAcceptNoAccountID                   = errors.New("error must provide account ID when accepting user")
+	errCannotTransferNotAccepted           = errors.New("error cannot transfer ownership to user ID '%s' for account ID '%s' because the user has not accepted their invite")
+	errCannotDeclineAlreadyAccepted        = errors.New("error user ID '%s' cannot decline invite for account ID '%s' because they have already accepted it")
+	errEnterpriseMustHaveLimit             = errors.New("error enterprise plan must have a limit set")
+	errCannotSetStripeSubIDWithoutPlanType = errors.New("error cannot set stripe subscription ID without setting plan type")
+	errOnlyAutoScaleCanHaveStripeSubID     = errors.New("error only auto-scale plan can have a stripe subscription ID")
+	errAutoScaleMustHaveStripeSubID        = errors.New("error auto-scale plan must have a stripe subscription ID")
+	errNonEnterpriseMustNotHaveLimit       = errors.New("error non-enterprise plan must not have a limit set")
+	errUnmarshallingNotifications          = errors.New("error unmarshalling notifications")
 )
 
 /* ----- postgresdriver Account Read Methods ----- */
@@ -254,8 +257,25 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		PlanType:  newText(string(update.PlanType)),
 		UpdatedAt: newTimestamptz(updatedAt),
 	}
-	if update.PlanType != "" && update.PlanType == types.Enterprise {
-		updateAccount.EnterpriseLimit = newInt4(update.EnterpriseLimit, false)
+	if update.PlanType != "" {
+		if update.PlanType == types.Enterprise {
+			updateAccount.EnterpriseLimit = newInt4(update.EnterpriseLimit, false)
+		}
+
+		// If updating to an autoscale plan set the Stripe subscription
+		// ID to the provided value otherwise set it to null.
+		stripeSubscriptionID := ""
+		if update.PlanType == types.PayAsYouGoV0 {
+			stripeSubscriptionID = *update.StripeSubscriptionID
+		}
+		err = qtx.UpsertStripeSubID(ctx, UpsertStripeSubIDParams{
+			AccountID:            update.AccountID,
+			StripeSubscriptionID: newText(stripeSubscriptionID),
+			UpdatedAt:            newTimestamptz(updatedAt),
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = qtx.UpdateAccountFields(ctx, updateAccount)
@@ -289,17 +309,6 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 					return nil, err
 				}
 			}
-		}
-	}
-
-	if update.StripeSubscriptionID != nil {
-		err = qtx.UpsertStripeSubID(ctx, UpsertStripeSubIDParams{
-			AccountID:            update.AccountID,
-			StripeSubscriptionID: newText(*update.StripeSubscriptionID),
-			UpdatedAt:            newTimestamptz(updatedAt),
-		})
-		if err != nil {
-			return nil, err
 		}
 	}
 
@@ -362,7 +371,17 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 		return fmt.Errorf(errAccountDoesntExist.Error(), update.AccountID)
 	}
 
+	if update.StripeSubscriptionID != nil && *update.StripeSubscriptionID != "" && update.PlanType == "" {
+		return errCannotSetStripeSubIDWithoutPlanType
+	}
+
 	if update.PlanType != "" {
+		if update.PlanType != types.PayAsYouGoV0 && update.StripeSubscriptionID != nil && *update.StripeSubscriptionID != "" {
+			return errOnlyAutoScaleCanHaveStripeSubID
+		}
+		if update.PlanType == types.PayAsYouGoV0 && (update.StripeSubscriptionID == nil || *update.StripeSubscriptionID == "") {
+			return errAutoScaleMustHaveStripeSubID
+		}
 		planExists, err := pg.CheckPlanTypeExists(ctx, update.PlanType)
 		if err != nil {
 			return err
