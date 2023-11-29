@@ -25,6 +25,7 @@ const (
 	AuthProviderAuth0 AuthProvider = "auth0"
 
 	AuthTypeAuth0Github   AuthType = "auth0_github"
+	AuthTypeAuth0Google   AuthType = "auth0_google"
 	AuthTypeAuth0Username AuthType = "auth0_username"
 
 	PermReadEndpoint     Permissions = "read:endpoint"
@@ -48,6 +49,8 @@ func (pid ProviderUserID) AuthType() AuthType {
 		return AuthTypeAuth0Username
 	case "github":
 		return AuthTypeAuth0Github
+	case "google-oauth2":
+		return AuthTypeAuth0Google
 	default:
 		if prefix != "" {
 			return AuthType(prefix)
@@ -58,7 +61,7 @@ func (pid ProviderUserID) AuthType() AuthType {
 
 func (a AuthType) IsValid() bool {
 	switch a {
-	case AuthTypeAuth0Github, AuthTypeAuth0Username:
+	case AuthTypeAuth0Github, AuthTypeAuth0Google, AuthTypeAuth0Username:
 		return true
 	default:
 		return false
@@ -69,7 +72,7 @@ func (a AuthType) IsFederated() bool {
 	switch a {
 	case AuthTypeAuth0Username:
 		return false
-	case AuthTypeAuth0Github:
+	case AuthTypeAuth0Github, AuthTypeAuth0Google:
 		return true
 	default:
 		return false
@@ -78,7 +81,7 @@ func (a AuthType) IsFederated() bool {
 
 func (a AuthType) Provider() AuthProvider {
 	switch a {
-	case AuthTypeAuth0Username, AuthTypeAuth0Github:
+	case AuthTypeAuth0Username, AuthTypeAuth0Github, AuthTypeAuth0Google:
 		return AuthProviderAuth0
 	default:
 		return ""

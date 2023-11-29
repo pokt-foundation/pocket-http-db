@@ -1,6 +1,6 @@
 -- Enums
 CREATE TYPE auth_provider AS ENUM ('auth0');
-CREATE TYPE auth_type AS ENUM ('auth0_github', 'auth0_username');
+CREATE TYPE auth_type AS ENUM ('auth0_github', 'auth0_username', 'auth0_google');
 CREATE TYPE chain_auth_type AS ENUM ('basic_auth', 'bearer_token', 'none');
 CREATE TYPE chain_check_type AS ENUM ('archival', 'chain', 'merge', 'sync');
 CREATE TYPE environment AS ENUM ('production', 'test');
