@@ -9,6 +9,14 @@ var (
 	StarterPlan    PayPlanType = "STARTER"
 	AutoscalePlan  PayPlanType = "AUTOSCALE"
 	EnterprisePlan PayPlanType = "ENTERPRISE"
+	TestPlan       PayPlanType = "TEST"
+
+	TestPlanV0   PayPlanType = "TEST_PLAN_V0"     // DEPRECATED
+	TestPlan10K  PayPlanType = "TEST_PLAN_10K"    // DEPRECATED
+	TestPlan90k  PayPlanType = "TEST_PLAN_90K"    // DEPRECATED
+	FreetierV0   PayPlanType = "FREETIER_V0"      // DEPRECATED
+	PayAsYouGoV0 PayPlanType = "PAY_AS_YOU_GO_V0" // DEPRECATED
+	Enterprise   PayPlanType = "ENTERPRISE"       // DEPRECATED
 )
 
 /* Pay Plan Type and Methods */

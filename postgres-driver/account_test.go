@@ -134,8 +134,36 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpsertAccountIntegration() {
 				AccountID:          "account_1",
 				CovalentAPIKeyFree: "updated_covalent_api_key_1",
 			},
-			expectedAPIKeyRow: "updated_covalent_api_key_1",
-			err:               nil,
+			expectedIntegrations: types.AccountIntegrations{
+				AccountID:            "account_1",
+				StripeSubscriptionID: "stripe_id_1",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_1",
+			},
+		},
+		{
+			name: "Should update an existing account integrations row with Stripe subscription ID",
+			integrationsInput: types.AccountIntegrations{
+				AccountID:            "account_2",
+				StripeSubscriptionID: "updated_stripe_id_2",
+			},
+			expectedIntegrations: types.AccountIntegrations{
+				AccountID:            "account_2",
+				StripeSubscriptionID: "updated_stripe_id_2",
+				CovalentAPIKeyFree:   "covalent_api_key_2",
+			},
+		},
+		{
+			name: "Should update an existing account integrations row with both values",
+			integrationsInput: types.AccountIntegrations{
+				AccountID:            "account_3",
+				StripeSubscriptionID: "updated_stripe_id_3",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_3",
+			},
+			expectedIntegrations: types.AccountIntegrations{
+				AccountID:            "account_3",
+				StripeSubscriptionID: "updated_stripe_id_3",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_3",
+			},
 		},
 	}
 
@@ -209,12 +237,17 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 		{
 			name: "Should update all fields",
 			update: types.UpdateAccount{
-				AccountID: "account_1",
-				PlanType:  types.AutoscalePlan,
-				Name:      "Willy Wonka",
-				IconURL:   "https://picsum.photos/444",
+				AccountID:            "account_3",
+				PlanType:             types.AutoscalePlan,
+				StripeSubscriptionID: testdata.StringToPointer("stripe_id_update_all_123"),
+				Name:                 "Willy Wonka",
+				IconURL:              "https://picsum.photos/444",
 			},
+<<<<<<< HEAD
 			account: testdata.Accounts["account_1"],
+=======
+			account: testdata.Accounts()["account_3"],
+>>>>>>> 37bc7c3 (feat: added back deprecated plan types for backwards compatibility)
 			err:     nil,
 		},
 		{
@@ -273,8 +306,13 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 						ts.Equal(test.update.EnterpriseLimit, account.EnterpriseLimit)
 					}
 				}
+<<<<<<< HEAD
 				if test.update.StripeSubscriptionID != "" {
 					ts.Equal(test.update.StripeSubscriptionID, account.Integrations.StripeSubscriptionID)
+=======
+				if test.update.StripeSubscriptionID != nil && *test.update.StripeSubscriptionID != "" {
+					ts.Equal(test.update.StripeSubscriptionID, &account.Integrations.StripeSubscriptionID)
+>>>>>>> 37bc7c3 (feat: added back deprecated plan types for backwards compatibility)
 				}
 				if test.update.Name != "" {
 					ts.Equal(test.update.Name, account.Name)
