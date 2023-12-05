@@ -511,6 +511,13 @@ SELECT EXISTS (
         WHERE user_id = $1
             AND account_id = $2
     );
+-- name: CheckUserHasOwnAccount :one
+SELECT EXISTS (
+        SELECT 1
+        FROM account_users
+        WHERE user_id = $1
+            AND role_name = 'OWNER'
+    );
 -- name: CheckUserProviderExists :one
 SELECT EXISTS (
         SELECT 1

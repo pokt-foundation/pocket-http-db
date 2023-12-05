@@ -188,21 +188,25 @@ func (u *UserRow) toUser() (*types.User, error) {
 /* ----- postgresdriver User Create Methods ----- */
 
 // WriteUserNewSignUp creates a new portal User and UserAuthProviderin the DB from a CreateUser input when a new user signs up.
+// If a brand new user is created they need to have a default account so we also create a default Account for them using the free tier plan.
+// If a new account is created for the user, the account ID is returned; otherwise it is an empty string.
 func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.CreateUser, createdAt time.Time) (*types.User, types.AccountID, error) {
+	accountID := types.AccountID("")
+
 	err := pg.validateWriteUserNewSignUpInput(ctx, user)
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return nil, "", err
 	}
 
 	id, err := pg.generateID(ctx)
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return nil, "", err
 	}
 	userID := types.UserID(id)
 
 	authType := user.ProviderUserID.AuthType()
 
-	params := CreateUserNewSignUpParams{
+	newUserParams := CreateUserNewSignUpParams{
 		ID:             userID,
 		Email:          user.Email,
 		ProviderUserID: user.ProviderUserID,
@@ -215,59 +219,90 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 
 	tx, err := pg.DB.Begin(ctx)
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return nil, "", err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	qtx := pg.WithTx(tx)
 
-	createdUserID, err := qtx.CreateUserNewSignUp(ctx, params)
+	// A new sign up may be either a brand new user or an existing user
+	// signing up with an new auth provider (eg. Github or Google).
+	createdUserID, err := qtx.CreateUserNewSignUp(ctx, newUserParams)
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return nil, "", err
 	}
 
-	// When a new user is created, also create a default Account for them using the free plan
-	id, err = pg.generateID(ctx)
+	// If a brand new user is created they need to have a default account
+	// so we also create a default Account for them using the free tier plan.
+	userHasAccount, err := pg.CheckUserHasOwnAccount(ctx, createdUserID)
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return nil, "", err
+	}
+	if !userHasAccount {
+		accountID, err = pg.createDefaultAccountForNewUser(ctx, qtx, newUserParams, createdAt)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+
+	createdUser, err := pg.readUserByUserID(ctx, createdUserID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return createdUser, accountID, nil
+}
+
+// createDefaultAccountForNewUser creates a default Account for a new User using the free tier plan.
+func (pg *PostgresDriver) createDefaultAccountForNewUser(ctx context.Context, qtx *Queries, newUserParams CreateUserNewSignUpParams, createdAt time.Time) (types.AccountID, error) {
+	id, err := pg.generateID(ctx)
+	if err != nil {
+		return "", err
 	}
 	accountID := types.AccountID(id)
 
-	account, err := qtx.InsertAccount(ctx, InsertAccountParams{
+	_, err = qtx.InsertAccount(ctx, InsertAccountParams{
 		ID:        accountID,
 		PlanType:  newText(string(types.FreetierV0)),
 		CreatedAt: newTimestamptz(createdAt),
 		UpdatedAt: newTimestamptz(createdAt),
 	})
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return "", err
 	}
 
 	// New user is Account OWNER
 	_, err = qtx.InsertAccountUser(ctx, InsertAccountUserParams{
 		AccountID: accountID,
-		UserID:    createdUserID,
-		Email:     user.Email,
+		UserID:    newUserParams.ID,
+		Email:     newUserParams.Email,
 		RoleName:  types.RoleOwner,
 		Accepted:  true,
 		CreatedAt: newTimestamptz(createdAt),
 		UpdatedAt: newTimestamptz(createdAt),
 	})
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return "", err
 	}
 
-	err = tx.Commit(ctx)
+	err = qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
+		AccountID:   accountID,
+		Type:        types.NotificationTypeEmail,
+		Active:      true,
+		Destination: string(newUserParams.Email),
+		Events:      defaultAccountNotifications,
+		UpdatedAt:   newTimestamptz(createdAt),
+	})
 	if err != nil {
-		return nil, types.AccountID(""), err
+		return "", err
 	}
 
-	createdUser, err := pg.readUserByUserID(ctx, createdUserID)
-	if err != nil {
-		return nil, types.AccountID(""), err
-	}
-
-	return createdUser, account.ID, nil
+	return accountID, nil
 }
 
 // validateWriteUserNewSignUpInput validates the input to create a new User and User Auth Provider

@@ -287,6 +287,22 @@ func (q *Queries) CheckUserExists(ctx context.Context, id types.UserID) (bool, e
 	return exists, err
 }
 
+const checkUserHasOwnAccount = `-- name: CheckUserHasOwnAccount :one
+SELECT EXISTS (
+        SELECT 1
+        FROM account_users
+        WHERE user_id = $1
+            AND role_name = 'OWNER'
+    )
+`
+
+func (q *Queries) CheckUserHasOwnAccount(ctx context.Context, userID types.UserID) (bool, error) {
+	row := q.db.QueryRow(ctx, checkUserHasOwnAccount, userID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const checkUserIDFromEmail = `-- name: CheckUserIDFromEmail :one
 SELECT id
 FROM users

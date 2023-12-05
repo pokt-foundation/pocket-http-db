@@ -51,7 +51,9 @@ type (
 		/* SetPortalAppDeleted sets the portal app Deleted field to true. */
 		SetPortalAppDeleted(ctx context.Context, portalAppID types.PortalAppID, deletedAt time.Time) error
 
-		/* WriteUserNewSignUp creates a new portal User in the DB from a CreateUser input. */
+		/*  WriteUserNewSignUp creates a new portal User and UserAuthProviderin the DB from a CreateUser input when a new user signs up.
+		If a brand new user is created they need to have a default account so we also create a default Account for them using the free tier plan.
+		If a new account is created for the user, the account ID is returned; otherwise it is an empty string.*/
 		WriteUserNewSignUp(ctx context.Context, user types.CreateUser, createdAt time.Time) (*types.User, types.AccountID, error)
 		/* DeletePortalUser deletes a portal User from the DB. WARNING will do a full delete in the case of users. */
 		DeletePortalUser(ctx context.Context, userID types.UserID) (types.UserID, error)

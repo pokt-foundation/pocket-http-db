@@ -1129,8 +1129,16 @@ var (
 		IconURL:    "https://picsum.photos/200",
 		PlanType:   types.FreetierV0,
 		PortalApps: map[types.PortalAppID]*types.PortalApp{},
-		CreatedAt:  MockTimestamp,
-		UpdatedAt:  MockTimestamp,
+		Notifications: map[types.NotificationType]types.AccountNotification{
+			types.NotificationTypeEmail: types.AccountNotification{
+				Type:        types.NotificationTypeEmail,
+				Active:      true,
+				Destination: "james.holden123@test.com",
+				Events:      map[types.NotificationEvent]bool{"full": true, "signedUp": true, "threeQuarters": true},
+			},
+		},
+		CreatedAt: MockTimestamp,
+		UpdatedAt: MockTimestamp,
 	}
 
 	TestCreateUser = types.CreateUser{
