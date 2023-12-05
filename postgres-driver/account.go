@@ -32,6 +32,12 @@ var (
 	errUnmarshallingNotifications          = errors.New("error unmarshalling notifications")
 )
 
+var defaultAccountNotifications = []types.NotificationEvent{
+	types.NotificationEventSignedUp,
+	types.NotificationEventThreeQuarters,
+	types.NotificationEventFull,
+}
+
 /* ----- postgresdriver Account Read Methods ----- */
 
 // ReadAccounts returns all Accounts in the database as Accounts structs
@@ -158,6 +164,18 @@ func (pg *PostgresDriver) WriteAccount(ctx context.Context, creatorID types.User
 		Accepted:  true,
 		CreatedAt: newTimestamptz(createdAt),
 		UpdatedAt: newTimestamptz(createdAt),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
+		AccountID:   createdAccount.ID,
+		Type:        types.NotificationTypeEmail,
+		Active:      true,
+		Destination: string(user.Email),
+		Events:      defaultAccountNotifications,
+		UpdatedAt:   newTimestamptz(createdAt),
 	})
 	if err != nil {
 		return nil, err

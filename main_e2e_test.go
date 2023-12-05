@@ -1749,6 +1749,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						DailyLimit:        250_000,
 						CreatedAt:         testdata.MockTimestamp,
 					},
+					Notifications: map[types.NotificationType]types.AccountNotification{"email": {
+						Type:        "email",
+						Active:      true,
+						Destination: "james.holden123@test.com",
+						Events:      map[types.NotificationEvent]bool{"full": true, "signedUp": true, "threeQuarters": true},
+					},
+					},
 					PortalApps: map[types.PortalAppID]*types.PortalApp{},
 				},
 				expectedPlan: &types.Plan{

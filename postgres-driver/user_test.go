@@ -99,10 +99,11 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadAllUsers() {
 
 func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 	tests := []struct {
-		name       string
-		createUser types.CreateUser
-		user       *types.User
-		err        error
+		name         string
+		createUser   types.CreateUser
+		user         *types.User
+		existingUser bool
+		err          error
 	}{
 		{
 			name: "Should create a new portal User in the DB",
@@ -126,6 +127,59 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 				UpdatedAt: testdata.MockTimestamp,
 			},
 			err: nil,
+		},
+		{
+			name: "Should create a new portal User and a new auth provider in the DB",
+			createUser: types.CreateUser{
+				Email:          "ciri.of.cintra@example.com",
+				ProviderUserID: "auth0|ciri_of_cintra",
+			},
+			user: &types.User{
+				ID:       "", // user ID set in test case
+				Email:    "ciri.of.cintra@example.com",
+				SignedUp: true,
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Username: {
+						ProviderUserID: "auth0|ciri_of_cintra",
+						Type:           types.AuthTypeAuth0Username,
+						Provider:       types.AuthProviderAuth0,
+						Federated:      false,
+					},
+				},
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+			err: nil,
+		},
+		{
+			name: "Should create a new auth provider for an existing user in the DB",
+			createUser: types.CreateUser{
+				Email:          "geralt.of.rivia623@example.com",
+				ProviderUserID: "google-oauth2|geralt_of_rivia",
+			},
+			user: &types.User{
+				ID:       "", // user ID set in test case
+				Email:    "geralt.of.rivia623@example.com",
+				SignedUp: true,
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Username: {
+						ProviderUserID: "auth0|geralt_of_rivia",
+						Type:           types.AuthTypeAuth0Username,
+						Provider:       types.AuthProviderAuth0,
+						Federated:      false,
+					},
+					types.AuthTypeAuth0Google: {
+						ProviderUserID: "google-oauth2|geralt_of_rivia",
+						Type:           types.AuthTypeAuth0Google,
+						Provider:       types.AuthProviderAuth0,
+						Federated:      true,
+					},
+				},
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+			existingUser: true,
+			err:          nil,
 		},
 		{
 			name: "Should fail if an invalid email provided",
@@ -161,11 +215,14 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 				test.user.ID = user.ID
 				ts.Equal(test.user, user)
 
-				ts.NotEmpty(accountID)
-
-				account := ts.getAndAssignAccountUsers(accountID)
-				_, err := account.GetUser(user.ID)
-				ts.NoError(err)
+				if !test.existingUser {
+					ts.NotEmpty(accountID)
+					account := ts.getAndAssignAccountUsers(accountID)
+					_, err := account.GetUser(user.ID)
+					ts.NoError(err)
+				} else {
+					ts.Empty(accountID)
+				}
 			}
 		})
 	}

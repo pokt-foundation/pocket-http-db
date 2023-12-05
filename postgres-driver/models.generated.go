@@ -58,6 +58,7 @@ type AuthType string
 const (
 	AuthTypeAuth0Github   AuthType = "auth0_github"
 	AuthTypeAuth0Username AuthType = "auth0_username"
+	AuthTypeAuth0Google   AuthType = "auth0_google"
 )
 
 func (e *AuthType) Scan(src interface{}) error {
