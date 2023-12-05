@@ -1040,7 +1040,7 @@ func TestRouter_createAccount(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedAccount: &types.Account{
 				ID:        "account_77",
-				PlanType:  types.FreetierV0,
+				PlanType:  types.StarterPlan,
 				CreatedAt: testdata.MockTimestamp,
 				UpdatedAt: testdata.MockTimestamp,
 			},
@@ -1090,7 +1090,7 @@ func TestRouter_updateAccount(t *testing.T) {
 			accountID: "account_1",
 			updateAccountInput: types.UpdateAccount{
 				AccountID: "account_1",
-				PlanType:  types.TestPlan10K,
+				PlanType:  types.TestPlan,
 				Notifications: []types.UpdateAccountNotifications{
 					{
 						NotificationType: types.NotificationTypeEmail,
@@ -1110,7 +1110,7 @@ func TestRouter_updateAccount(t *testing.T) {
 			expectedStatus: http.StatusOK,
 			expectedAccount: &types.Account{
 				ID:       "account_1",
-				PlanType: types.TestPlan10K,
+				PlanType: types.TestPlan,
 				Notifications: map[types.NotificationType]types.AccountNotification{
 					types.NotificationTypeEmail: {
 						Type:        types.NotificationTypeEmail,

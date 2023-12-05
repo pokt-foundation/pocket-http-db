@@ -276,14 +276,14 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		UpdatedAt: newTimestamptz(updatedAt),
 	}
 	if update.PlanType != "" {
-		if update.PlanType == types.Enterprise {
+		if update.PlanType == types.EnterprisePlan {
 			updateAccount.EnterpriseLimit = newInt4(update.EnterpriseLimit, false)
 		}
 
 		// If updating to an autoscale plan set the Stripe subscription
 		// ID to the provided value otherwise set it to null.
 		stripeSubscriptionID := ""
-		if update.PlanType == types.PayAsYouGoV0 {
+		if update.PlanType == types.AutoscalePlan {
 			stripeSubscriptionID = *update.StripeSubscriptionID
 		}
 		err = qtx.UpsertStripeSubID(ctx, UpsertStripeSubIDParams{
@@ -375,9 +375,9 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 		}
 	}
 
-	if update.PlanType == types.Enterprise && update.EnterpriseLimit == 0 {
+	if update.PlanType == types.EnterprisePlan && update.EnterpriseLimit == 0 {
 		return errEnterpriseMustHaveLimit
-	} else if update.PlanType != types.Enterprise && update.EnterpriseLimit != 0 {
+	} else if update.PlanType != types.EnterprisePlan && update.EnterpriseLimit != 0 {
 		return errNonEnterpriseMustNotHaveLimit
 	}
 
@@ -394,10 +394,10 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 	}
 
 	if update.PlanType != "" {
-		if update.PlanType != types.PayAsYouGoV0 && update.StripeSubscriptionID != nil && *update.StripeSubscriptionID != "" {
+		if update.PlanType != types.AutoscalePlan && update.StripeSubscriptionID != nil && *update.StripeSubscriptionID != "" {
 			return errOnlyAutoScaleCanHaveStripeSubID
 		}
-		if update.PlanType == types.PayAsYouGoV0 && (update.StripeSubscriptionID == nil || *update.StripeSubscriptionID == "") {
+		if update.PlanType == types.AutoscalePlan && (update.StripeSubscriptionID == nil || *update.StripeSubscriptionID == "") {
 			return errAutoScaleMustHaveStripeSubID
 		}
 		planExists, err := pg.CheckPlanTypeExists(ctx, update.PlanType)

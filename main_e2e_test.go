@@ -1725,7 +1725,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				ownerID:      "user_1",
 				accountInput: testdata.TestCreateAccount,
 				expected: &types.Account{
-					PlanType:  types.FreetierV0,
+					PlanType:  types.StarterPlan,
 					Name:      "Protogen Corp",
 					IconURL:   "https://picsum.photos/200",
 					CreatedAt: testdata.MockTimestamp,
@@ -1739,14 +1739,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 						},
 					},
 					Plan: &types.Plan{
-						Type:              types.FreetierV0,
-						Name:              "Free Tier",
+						Type:              types.StarterPlan,
+						Name:              "Starter Plan",
 						Description:       "Ideal for small projects and testing",
 						ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 						MonthlyRelayLimit: 5_000_000,
 						ThroughputLimit:   5_000,
 						AppLimit:          5,
-						DailyLimit:        250_000,
+						DailyLimit:        100_000,
 						CreatedAt:         testdata.MockTimestamp,
 					},
 					Notifications: map[types.NotificationType]types.AccountNotification{"email": {
@@ -1759,14 +1759,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					PortalApps: map[types.PortalAppID]*types.PortalApp{},
 				},
 				expectedPlan: &types.Plan{
-					Type:              types.FreetierV0,
-					Name:              "Free Tier",
+					Type:              types.StarterPlan,
+					Name:              "Starter Plan",
 					Description:       "Ideal for small projects and testing",
 					ChainIDs:          map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 					MonthlyRelayLimit: 5_000_000,
 					ThroughputLimit:   5_000,
 					AppLimit:          5,
-					DailyLimit:        250_000,
+					DailyLimit:        100_000,
 					CreatedAt:         testdata.MockTimestamp,
 				},
 			},
@@ -1839,31 +1839,31 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			err                 error
 		}{
 			{
-				name:                "Should update the account's PlanType field to Enterprise",
+				name:                "Should update the account's PlanType field to EnterprisePlan",
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID:       "account_1",
-					PlanType:        types.Enterprise,
+					PlanType:        types.EnterprisePlan,
 					EnterpriseLimit: 3_000_000,
 				},
 				userID: "user_1",
 				expected: &types.Account{
 					ID:              "account_1",
-					PlanType:        types.Enterprise,
+					PlanType:        types.EnterprisePlan,
 					EnterpriseLimit: 3_000_000,
 				},
 			},
 			{
-				name:                "Should update the account's PlanType field to non-Enterprise",
+				name:                "Should update the account's PlanType field to non-EnterprisePlan",
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID: "account_1",
-					PlanType:  types.FreetierV0,
+					PlanType:  types.StarterPlan,
 				},
 				userID: "user_1",
 				expected: &types.Account{
 					ID:       "account_1",
-					PlanType: types.FreetierV0,
+					PlanType: types.StarterPlan,
 				},
 			},
 			{
@@ -1871,13 +1871,13 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID:            "account_1",
-					PlanType:             types.PayAsYouGoV0,
+					PlanType:             types.AutoscalePlan,
 					StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
 				},
 				userID: "user_1",
 				expected: &types.Account{
 					ID:       "account_1",
-					PlanType: types.PayAsYouGoV0,
+					PlanType: types.AutoscalePlan,
 					Integrations: types.AccountIntegrations{
 						StripeSubscriptionID: "stripe_id_1",
 					},
@@ -1888,12 +1888,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID: "account_3",
-					PlanType:  types.FreetierV0,
+					PlanType:  types.StarterPlan,
 				},
 				userID: "user_5",
 				expected: &types.Account{
 					ID:       "account_3",
-					PlanType: types.FreetierV0,
+					PlanType: types.StarterPlan,
 				},
 			},
 			{
@@ -1941,25 +1941,25 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should fail if an invalid account ID is provided",
 				update: types.UpdateAccount{
 					AccountID: "account_8823",
-					PlanType:  types.FreetierV0,
+					PlanType:  types.StarterPlan,
 				},
 				userID: "user_1",
 				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error account does not exist for account ID 'account_8823'"),
 			},
 			{
-				name: "Should fail if no limit provided for Enterprise plan",
+				name: "Should fail if no limit provided for EnterprisePlan plan",
 				update: types.UpdateAccount{
 					AccountID: "account_1",
-					PlanType:  types.Enterprise,
+					PlanType:  types.EnterprisePlan,
 				},
 				userID: "user_1",
 				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error enterprise plan must have a limit set"),
 			},
 			{
-				name: "Should fail if a limit provided for non-Enterprise plan",
+				name: "Should fail if a limit provided for non-EnterprisePlan plan",
 				update: types.UpdateAccount{
 					AccountID:       "account_1",
-					PlanType:        types.FreetierV0,
+					PlanType:        types.StarterPlan,
 					EnterpriseLimit: 123,
 				},
 				userID: "user_1",
@@ -1977,7 +1977,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should fail if update Account has a non-PayAsYouGo plan type but has a Stripe subscription ID",
 				update: types.UpdateAccount{
 					AccountID:            "account_1",
-					PlanType:             types.FreetierV0,
+					PlanType:             types.StarterPlan,
 					StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error only auto-scale plan can have a stripe subscription ID"),
@@ -1986,7 +1986,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name: "Should fail if update Account has a PayAsYouGo plan type but has no Stripe subscription ID",
 				update: types.UpdateAccount{
 					AccountID: "account_1",
-					PlanType:  types.PayAsYouGoV0,
+					PlanType:  types.AutoscalePlan,
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error auto-scale plan must have a stripe subscription ID"),
 			},
@@ -2007,7 +2007,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				if test.err == nil {
 					if test.update.PlanType != "" {
 						ts.Equal(test.expected.PlanType, updatedAccount.PlanType)
-						if test.update.PlanType == types.Enterprise {
+						if test.update.PlanType == types.EnterprisePlan {
 							ts.Equal(test.expected.EnterpriseLimit, updatedAccount.EnterpriseLimit)
 						} else {
 							ts.Equal(int32(0), updatedAccount.EnterpriseLimit)
@@ -2025,12 +2025,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					if test.update.PlanType != "" {
 						ts.Equal(test.expected.PlanType, accountAfterUpdate.PlanType)
-						if test.update.PlanType == types.Enterprise {
+						if test.update.PlanType == types.EnterprisePlan {
 							ts.Equal(test.expected.EnterpriseLimit, accountAfterUpdate.EnterpriseLimit)
 						} else {
 							ts.Equal(int32(0), updatedAccount.EnterpriseLimit)
 						}
-						if test.update.PlanType == types.PayAsYouGoV0 {
+						if test.update.PlanType == types.AutoscalePlan {
 							ts.Equal(test.expected.Integrations.StripeSubscriptionID, accountAfterUpdate.Integrations.StripeSubscriptionID)
 						} else {
 							ts.Equal("", accountAfterUpdate.Integrations.StripeSubscriptionID)
@@ -2181,7 +2181,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 			// Create new account for test case
 			createAcc := types.Account{
 				ID:                     types.AccountID(fmt.Sprintf("test-delete-account-%d", i+1)),
-				PlanType:               types.FreetierV0,
+				PlanType:               types.StarterPlan,
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"chain_1": {}},
 				PartnerThroughputLimit: 1000,
 				PartnerAppLimit:        5,

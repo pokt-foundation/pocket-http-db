@@ -163,7 +163,7 @@ func (a *Account) AssignAccountUsers(usersForAccountID map[UserID]*User) {
 
 // GetDailyLimit returns the Account's daily relay limit
 func (a *Account) GetDailyLimit() int {
-	if a.PlanType == Enterprise {
+	if a.PlanType == EnterprisePlan {
 		return int(a.EnterpriseLimit)
 	}
 	return int(a.Plan.DailyLimit)

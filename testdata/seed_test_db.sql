@@ -12,7 +12,7 @@ INSERT INTO pay_plans (
         daily_limit
     )
 VALUES (
-        'Free Tier',
+        'Starter Plan',
         'Ideal for small projects and testing',
         'FREETIER_V0',
         ARRAY ['0001', '0053'],
@@ -21,10 +21,10 @@ VALUES (
         5,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000',
-        250000
+        100000
     ),
     (
-        'Pay As You Go',
+        'Autoscale Plan',
         'Pay only for what you use',
         'PAY_AS_YOU_GO_V0',
         ARRAY ['0001', '0053'],
@@ -36,7 +36,7 @@ VALUES (
         0
     ),
     (
-        'Enterprise',
+        'Enterprise Plan',
         'Premium plan for large businesses',
         'ENTERPRISE',
         ARRAY ['0001', '0053'],
@@ -58,30 +58,6 @@ VALUES (
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000',
         0
-    ),
-    (
-        'Test Plan 10K',
-        'Test plan with 10K daily limit for testing purposes',
-        'TEST_PLAN_10K',
-        ARRAY ['0001', '0053'],
-        10000000,
-        10000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        10000
-    ),
-    (
-        'Test Plan 90K',
-        'Test plan with 90K daily limit for testing purposes',
-        'TEST_PLAN_90K',
-        ARRAY ['0001', '0053'],
-        90000000,
-        10000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        90000
     );
 -- Insert users
 INSERT INTO users (
