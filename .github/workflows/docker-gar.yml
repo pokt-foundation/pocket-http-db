@@ -129,7 +129,7 @@ jobs:
         with:
           branches: |
             [
-              'main',
+              'master',
               {
                 name: 'dev',
                 prerelease: 'dev'
