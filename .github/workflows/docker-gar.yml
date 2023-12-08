@@ -117,28 +117,29 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [pre-commit-checks, test]
     outputs:
-      new: ${{ steps.semantic.outputs.new_release_published }}
-      version: ${{ steps.semantic.outputs.new_release_version }}
+      new: ${{ steps.semantic.outputs.new-release-published }}
+      version: ${{ steps.semantic.outputs.release-version }}
 
     steps:
       - uses: actions/checkout@v3
 
       - name: Tag Semantic Release Version
         id: semantic
-        uses: cycjimmy/semantic-release-action@v4
+        uses: codfish/semantic-release-action@v3
         with:
           branches: |
             [
-              'master',
+              'main',
               {
                 name: 'dev',
                 prerelease: 'dev'
               }
             ]
-          extra_plugins: |
-            @semantic-release/commit-analyzer
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag-format: "v${version}"
+          additional-packages: |
+            ['@semantic-release/commit-analyzer']
+          plugins: |
+            ['@semantic-release/commit-analyzer']
 
   release-client:
     if: needs.tag.outputs.new == 'true'
