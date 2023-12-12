@@ -23,6 +23,15 @@ SELECT EXISTS (
                 WHERE users.id = @id::VARCHAR
             ) AS id_table
     );
+-- name: SelectValidatorChainConfig :many
+SELECT chain_id,
+    valid_range,
+    log_limit_blocks
+FROM chain_config;
+-- name: SelectValidatorMethodConfig :many
+SELECT method,
+    validator
+FROM method_validators;
 -- name: SelectPlans :many
 SELECT name,
     description,

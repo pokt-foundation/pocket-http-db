@@ -1120,6 +1120,33 @@ func GlobalBlockedContracts() types.GlobalBlockedContracts {
 	}
 }
 
+func ValidatorPluginConfig() *types.ValidatorPluginConfig {
+	return &types.ValidatorPluginConfig{
+		ChainsValidRanges: map[types.RelayChainID]int32{
+			"0001": 100,
+			"0053": 200,
+			"0021": 300,
+			"0064": 400,
+			"0040": 400,
+		},
+		ChainsLogLimitBlocks: map[types.RelayChainID]int32{
+			"0001": 500,
+			"0053": 600,
+			"0021": 700,
+			"0064": 800,
+			"0040": 800,
+		},
+		MethodValidatorsMap: map[types.Method][]types.ValidatorMethodStr{
+			"eth_call":             {types.ValidatorMethodBlockRange},
+			"eth_getLogs":          {types.ValidatorMethodLogLimitBlocks},
+			"eth_blocknumber":      {types.ValidatorMethodBlockRange},
+			"eth_estimateGas":      {types.ValidatorMethodBlockRange},
+			"eth_getBalance":       {types.ValidatorMethodBlockRange},
+			"eth_getBlockByNumber": {types.ValidatorMethodBlockRange},
+		},
+	}
+}
+
 var (
 	/* ----- Create Data ----- */
 

@@ -112,6 +112,10 @@ func mockContent(mainTableAction, sideTablesAction types.Action, content types.S
 		inputs = gigastakeAppInputs(mainTableAction, sideTablesAction, content)
 	case *types.Chain:
 		inputs = chainInputs(mainTableAction, sideTablesAction, content)
+	case *types.ValidatorChainConfig:
+		inputs = chainConfigInputs(mainTableAction, content)
+	case *types.ValidatorMethodConfig:
+		inputs = methodValidatorInputs(mainTableAction, content)
 	default:
 		panic("invalid content type")
 	}
@@ -414,6 +418,47 @@ func chainInputs(mainTableAction, sideTablesAction types.Action, content types.S
 				},
 			})
 		}
+	}
+
+	return inputs
+}
+
+// chainConfigInputs generates the mock data for a listener notification for a ValidatorChainConfig struct
+func chainConfigInputs(mainTableAction types.Action, content types.SavedOnDB) []inputStruct {
+	chainConfig := content.(*types.ValidatorChainConfig)
+
+	var inputs []inputStruct
+
+	if mainTableAction != "" {
+		inputs = append(inputs, inputStruct{
+			action: mainTableAction,
+			table:  types.TableChainConfig,
+			input: dbChainConfig{
+				ChainID:        chainConfig.ChainID,
+				ValidRange:     chainConfig.ValidRange,
+				LogLimitBlocks: chainConfig.LogLimitBlocks,
+			},
+		})
+	}
+
+	return inputs
+}
+
+// methodValidatorInputs generates the mock data for a listener notification for a ValidatorMethodConfig struct
+func methodValidatorInputs(mainTableAction types.Action, content types.SavedOnDB) []inputStruct {
+	methodValidator := content.(*types.ValidatorMethodConfig)
+
+	var inputs []inputStruct
+
+	if mainTableAction != "" {
+		inputs = append(inputs, inputStruct{
+			action: mainTableAction,
+			table:  types.TableMethodValidators,
+			input: dbMethodValidator{
+				Method:    methodValidator.Method,
+				Validator: methodValidator.Validator,
+			},
+		})
 	}
 
 	return inputs

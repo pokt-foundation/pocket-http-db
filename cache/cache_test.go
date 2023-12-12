@@ -30,6 +30,7 @@ func NewTestCache(t *testing.T) *Cache {
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users()[types.UserID("usertest")], nil)
+	readerMock.On("ReadValidatorConfig", mock.Anything).Return(testdata.ValidatorPluginConfig(), nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
@@ -152,6 +153,11 @@ func Test_SetCache(t *testing.T) {
 			name:     "Should return all global blocked contracts",
 			actual:   cache.GetBlockedContracts(),
 			expected: testdata.GlobalBlockedContracts(),
+		},
+		{
+			name:     "Should return the Validator Plugin Config",
+			actual:   cache.GetValidatorConfig(),
+			expected: *testdata.ValidatorPluginConfig(),
 		},
 	}
 

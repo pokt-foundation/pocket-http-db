@@ -25,6 +25,7 @@ CREATE TYPE whitelist_type AS ENUM (
     'origins',
     'userAgents'
 );
+CREATE TYPE validator_method_str AS ENUM ('blockRange', 'logLimitBlocks');
 -- Plans Tables
 CREATE TABLE pay_plans (
     name VARCHAR(255),
@@ -279,6 +280,20 @@ CREATE TABLE global_blocked_contracts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Validator Config Tables
+CREATE TABLE chain_config (
+    id SERIAL PRIMARY KEY,
+    chain_id VARCHAR(4) REFERENCES chains(id),
+    valid_range INT,
+    log_limit_blocks INT,
+    UNIQUE (chain_id)
+);
+CREATE TABLE method_validators (
+    id SERIAL PRIMARY KEY,
+    method VARCHAR(255) NOT NULL,
+    validator validator_method_str,
+    UNIQUE (method, validator)
+);
 -- Listener Notification Function
 CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 DECLARE data json;
@@ -426,3 +441,15 @@ INSERT
     OR
 UPDATE
     OR DELETE ON global_blocked_contracts FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER chain_config_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON chain_config FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER method_validators_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON method_validators FOR EACH ROW EXECUTE PROCEDURE notify_event();
