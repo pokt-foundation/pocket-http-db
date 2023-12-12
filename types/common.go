@@ -86,6 +86,9 @@ const (
 
 	TableGlobalBlockedContracts Table = "global_blocked_contracts"
 
+	TableChainConfig      Table = "chain_config"
+	TableMethodValidators Table = "method_validators"
+
 	ActionInsert Action = "INSERT"
 	ActionUpdate Action = "UPDATE"
 	ActionDelete Action = "DELETE"

@@ -133,6 +133,11 @@ func (n notification) parseNotification() *types.Notification {
 	case types.TableGlobalBlockedContracts:
 		return n.parseGlobalBlockedContractNotification()
 
+	case types.TableChainConfig:
+		return n.parseChainConfigNotification()
+	case types.TableMethodValidators:
+		return n.parseMethodValidatorNotification()
+
 	default:
 		return nil
 	}
@@ -366,5 +371,29 @@ func (n notification) parseGlobalBlockedContractNotification() *types.Notificati
 		Table:  n.Table,
 		Action: n.Action,
 		Data:   dbBlockedContract.toOutput(),
+	}
+}
+
+func (n notification) parseChainConfigNotification() *types.Notification {
+	rawData, _ := json.Marshal(n.Data)
+	var dbChainConfig dbChainConfig
+	_ = json.Unmarshal(rawData, &dbChainConfig)
+
+	return &types.Notification{
+		Table:  n.Table,
+		Action: n.Action,
+		Data:   dbChainConfig.toOutput(),
+	}
+}
+
+func (n notification) parseMethodValidatorNotification() *types.Notification {
+	rawData, _ := json.Marshal(n.Data)
+	var dbMethodValidator dbMethodValidator
+	_ = json.Unmarshal(rawData, &dbMethodValidator)
+
+	return &types.Notification{
+		Table:  n.Table,
+		Action: n.Action,
+		Data:   dbMethodValidator.toOutput(),
 	}
 }

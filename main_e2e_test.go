@@ -968,6 +968,36 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			})
 		}
 	})
+
+	/* ------ V2 Validator Config Read Tests ------ */
+
+	ts.Run("Test_GetValidatorConfig", func() {
+		tests := []struct {
+			name             string
+			expectedResponse *types.ValidatorPluginConfig
+			err              error
+		}{
+			{
+				name:             "Should get validator config",
+				expectedResponse: testdata.ValidatorPluginConfig(),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				response, err := ts.client1.GetValidatorConfig(context.Background())
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Equal(test.expectedResponse, response)
+
+					response, err = ts.client2.GetValidatorConfig(context.Background())
+					ts.Equal(test.err, err)
+					ts.Equal(test.expectedResponse, response)
+				}
+			})
+		}
+	})
 }
 
 // Runs all the write endpoint tests after the read tests

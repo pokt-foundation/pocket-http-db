@@ -83,6 +83,9 @@ type (
 
 		// GetBlockedContracts returns all blocked contracts - GET `/v2/blocked_contract`
 		GetBlockedContracts(ctx context.Context) (types.GlobalBlockedContracts, error)
+
+		// GetValidatorConfig returns the validator config - GET `/v2/validator_config`
+		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
 	}
 
 	// IDBWriter interface contains write methods for interacting with the Portal HTTP DB
@@ -192,6 +195,7 @@ const (
 	userPath            basePath = "user"
 	planPath            basePath = "plan"
 	blockedContractPath basePath = "blocked_contract"
+	validatorConfigPath basePath = "validator_config"
 	middlewarePath      basePath = "middleware"
 
 	gigastakePath      subPath = "gigastake"
@@ -630,6 +634,15 @@ func (db *DBClient) GetBlockedContracts(ctx context.Context) (types.GlobalBlocke
 
 	return getReq[types.GlobalBlockedContracts](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
+
+// GetValidatorConfig returns the current validator config - GET `/v2/validator_config`
+func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error) {
+	endpoint := db.v2BasePath(validatorConfigPath)
+
+	return getReq[*types.ValidatorPluginConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+}
+
+/* -- Validator Method Config Read Methods -- */
 
 /* ------------ IDBWriter Methods ------------ */
 

@@ -44,6 +44,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadChains", context.Background(), types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
 	readerMock.On("ReadBlockedContracts", context.Background()).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUser, nil)
+	readerMock.On("ReadValidatorConfig", mock.Anything).Return(testdata.ValidatorPluginConfig(), nil)
 
 	logger := logger.New()
 
@@ -1797,6 +1798,44 @@ func TestRouter_getPlans(t *testing.T) {
 				plansMap[plan.Type] = plan
 			}
 			c.Equal(expectedPlansMap, plansMap)
+		})
+	}
+}
+
+/* ---------- V2 Validator Method Config Handler Method Unit Tests ---------- */
+
+func TestRouter_getValidatorConfig(t *testing.T) {
+	tests := []struct {
+		name             string
+		expectedStatus   int
+		expectedResponse *types.ValidatorPluginConfig
+	}{
+		{
+			name:             "Should fetch validator config",
+			expectedStatus:   http.StatusOK,
+			expectedResponse: testdata.ValidatorPluginConfig(),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/validator_config", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var response *types.ValidatorPluginConfig
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, response)
 		})
 	}
 }

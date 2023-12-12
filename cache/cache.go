@@ -58,6 +58,8 @@ type (
 		plans map[types.PayPlanType]*types.Plan
 
 		blockedContracts types.GlobalBlockedContracts
+
+		validatorConfig *types.ValidatorPluginConfig
 	}
 
 	UsersForAccount map[types.UserID]*types.User
@@ -179,6 +181,10 @@ func (c *Cache) setCache(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	validatorConfigData, err := c.fetchValidatorConfigData(ctx)
+	if err != nil {
+		return err
+	}
 
 	// Lock the mutex only once data is fetched
 	// to minimize the time the lock is held.
@@ -199,6 +205,8 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.gigastakeApps = chainsData.gigastakeApps
 
 	c.blockedContracts = blockedContractsData
+
+	c.validatorConfig = validatorConfigData
 
 	return nil
 }
@@ -344,6 +352,16 @@ func (c *Cache) fetchBlockedContractsData(ctx context.Context) (types.GlobalBloc
 	return blockedContracts, nil
 }
 
+// fetchValidatorConfigData reads ValidatorConfig from the database and returns it.
+func (c *Cache) fetchValidatorConfigData(ctx context.Context) (*types.ValidatorPluginConfig, error) {
+	validatorConfig, err := c.reader.ReadValidatorConfig(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ReadValidatorConfig - %w", err)
+	}
+
+	return validatorConfig, nil
+}
+
 // cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes).
 func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes time.Duration) {
 	for {
@@ -415,6 +433,49 @@ func (c *Cache) deleteGlobalBlockedContract(blockedContract types.BlockedContrac
 	defer c.rwMutex.Unlock()
 
 	delete(c.blockedContracts.BlockedAddresses, blockedContract.BlockedAddress)
+}
+
+/* ---------- Validator Config ---------- */
+
+// GetValidatorConfig returns the ValidatorPluginConfig from the cache
+func (c *Cache) GetValidatorConfig() types.ValidatorPluginConfig {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return *c.validatorConfig
+}
+
+// upsertChainConfig updates the ChainsValidRanges and ChainsLogLimitBlocks with the provided ValidatorChainConfig
+func (c *Cache) upsertChainConfig(chainConfig *types.ValidatorChainConfig) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	// Update the ChainsValidRanges and ChainsLogLimitBlocks with the provided ValidatorChainConfig
+	c.validatorConfig.UpdateChainConfigs(chainConfig)
+}
+
+// deleteChainConfig removes the ChainsValidRanges and ChainsLogLimitBlocks for the provided chainID
+func (c *Cache) deleteChainConfig(chainConfig *types.ValidatorChainConfig) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.validatorConfig.RemoveChainConfigs(chainConfig.ChainID)
+}
+
+// upsertMethodValidator adds or updates the ValidatorMethodConfig in cache
+func (c *Cache) upsertMethodValidator(methodConfig *types.ValidatorMethodConfig) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.validatorConfig.UpdateMethodValidator(methodConfig)
+}
+
+// deleteMethodValidator removes the ValidatorMethodConfig from cache
+func (c *Cache) deleteMethodValidator(methodConfig *types.ValidatorMethodConfig) {
+	c.rwMutex.Lock()
+	defer c.rwMutex.Unlock()
+
+	c.validatorConfig.RemoveMethodValidator(methodConfig)
 }
 
 /* ---------- Accounts ---------- */

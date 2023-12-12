@@ -357,6 +357,48 @@ func (ns NullPermissions) Value() (driver.Value, error) {
 	return string(ns.Permissions), nil
 }
 
+type ValidatorMethodStr string
+
+const (
+	ValidatorMethodStrBlockRange     ValidatorMethodStr = "blockRange"
+	ValidatorMethodStrLogLimitBlocks ValidatorMethodStr = "logLimitBlocks"
+)
+
+func (e *ValidatorMethodStr) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ValidatorMethodStr(s)
+	case string:
+		*e = ValidatorMethodStr(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ValidatorMethodStr: %T", src)
+	}
+	return nil
+}
+
+type NullValidatorMethodStr struct {
+	ValidatorMethodStr ValidatorMethodStr `json:"validator_method_str"`
+	Valid              bool               `json:"valid"` // Valid is true if ValidatorMethodStr is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullValidatorMethodStr) Scan(value interface{}) error {
+	if value == nil {
+		ns.ValidatorMethodStr, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ValidatorMethodStr.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullValidatorMethodStr) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ValidatorMethodStr), nil
+}
+
 type WhitelistType string
 
 const (
@@ -501,6 +543,13 @@ type ChainCheck struct {
 	UpdatedAt  pgtype.Timestamptz   `json:"updated_at"`
 }
 
+type ChainConfig struct {
+	ID             int32       `json:"id"`
+	ChainID        pgtype.Text `json:"chain_id"`
+	ValidRange     pgtype.Int4 `json:"valid_range"`
+	LogLimitBlocks pgtype.Int4 `json:"log_limit_blocks"`
+}
+
 type ChainsGigastakeApplication struct {
 	ChainID                types.RelayChainID   `json:"chain_id"`
 	GigastakeApplicationID types.GigastakeAppID `json:"gigastake_application_id"`
@@ -526,6 +575,12 @@ type GlobalBlockedContract struct {
 	Active         bool                 `json:"active"`
 	CreatedAt      pgtype.Timestamptz   `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz   `json:"updated_at"`
+}
+
+type MethodValidator struct {
+	ID        int32                  `json:"id"`
+	Method    string                 `json:"method"`
+	Validator NullValidatorMethodStr `json:"validator"`
 }
 
 type PayPlan struct {
