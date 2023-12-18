@@ -320,6 +320,10 @@ func (c *Cache) fetchChainsData(ctx context.Context) (chainsData, error) {
 
 	// Set pointers to Chain GigastakeApps
 	for aatID, gigastakeApp := range gigastakeApps {
+		if gigastakeApp.Deleted {
+			continue
+		}
+
 		for chainID := range gigastakeApp.ChainIDs {
 			if chain, ok := chains[chainID]; ok {
 				if chain.GigastakeApps == nil {
