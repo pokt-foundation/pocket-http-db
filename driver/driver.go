@@ -38,6 +38,9 @@ type (
 		/* ReadBlockedContracts returns all GlobalBlockedContracts in the DB */
 		ReadBlockedContracts(ctx context.Context) (types.GlobalBlockedContracts, error)
 
+		/* ReadValidatorConfig returns the ValidatorPluginConfig from the DB */
+		ReadValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
+
 		NotificationChannel() <-chan *types.Notification
 
 		Pinger

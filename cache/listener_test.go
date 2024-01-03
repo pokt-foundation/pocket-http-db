@@ -21,6 +21,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadGigastakeApps", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.GigastakeApps(), nil)
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
+	readerMock.On("ReadValidatorConfig", testCtx).Return(testdata.ValidatorPluginConfig(), nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,
@@ -882,6 +883,122 @@ func Test_parseChainCheckNotification(t *testing.T) {
 
 			chain := cache.GetChain(test.chainID, Options{})
 			c.Equal(chain.Checks, chain.Checks)
+		})
+	}
+}
+
+func Test_parseChainConfigNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		mainTableAction types.Action
+		chainConfig     *types.ValidatorChainConfig
+	}{
+		{
+			name:            "Should update ChainConfig in cache when receiving an insert notification",
+			mainTableAction: types.ActionInsert,
+			chainConfig: &types.ValidatorChainConfig{
+				ChainID:        "7811",
+				ValidRange:     100,
+				LogLimitBlocks: 200,
+			},
+		},
+		{
+			name:            "Should update ChainConfig in cache when receiving an update notification",
+			mainTableAction: types.ActionUpdate,
+			chainConfig: &types.ValidatorChainConfig{
+				ChainID:        "7811",
+				ValidRange:     300,
+				LogLimitBlocks: 400,
+			},
+		},
+		{
+			name:            "Should delete ChainConfig from cache when receiving a delete notification",
+			mainTableAction: types.ActionDelete,
+			chainConfig: &types.ValidatorChainConfig{
+				ChainID: "7811",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock, cancel := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
+
+			cache.validatorConfig.UpdateChainConfigs(test.chainConfig)
+
+			readerMock.listener.MockEvent(test.mainTableAction, "", test.chainConfig)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			if test.mainTableAction == types.ActionDelete {
+				_, exists := cache.validatorConfig.ChainsValidRanges[test.chainConfig.ChainID]
+				c.False(exists, "ChainConfig should not exist after delete operation")
+			} else {
+				c.Equal(test.chainConfig.ValidRange, cache.validatorConfig.ChainsValidRanges[test.chainConfig.ChainID])
+				c.Equal(test.chainConfig.LogLimitBlocks, cache.validatorConfig.ChainsLogLimitBlocks[test.chainConfig.ChainID])
+			}
+		})
+	}
+}
+
+func Test_parseMethodValidatorNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		mainTableAction types.Action
+		methodConfig    *types.ValidatorMethodConfig
+	}{
+		{
+			name:            "Should update MethodValidator in cache when receiving an insert notification",
+			mainTableAction: types.ActionInsert,
+			methodConfig: &types.ValidatorMethodConfig{
+				Method:    "method1",
+				Validator: "validator1",
+			},
+		},
+		{
+			name:            "Should update MethodValidator in cache when receiving an update notification",
+			mainTableAction: types.ActionUpdate,
+			methodConfig: &types.ValidatorMethodConfig{
+				Method:    "method1",
+				Validator: "validator2",
+			},
+		},
+		{
+			name:            "Should delete MethodValidator from cache when receiving a delete notification",
+			mainTableAction: types.ActionDelete,
+			methodConfig: &types.ValidatorMethodConfig{
+				Method:    "method1",
+				Validator: "validator1",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock, cancel := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
+
+			if test.mainTableAction != types.ActionDelete {
+				cache.validatorConfig.UpdateMethodValidator(test.methodConfig)
+			}
+
+			readerMock.listener.MockEvent(test.mainTableAction, "", test.methodConfig)
+
+			time.Sleep(100 * time.Millisecond) // need time for cache refresh
+
+			if test.mainTableAction == types.ActionDelete {
+				_, exists := cache.validatorConfig.MethodValidatorsMap[test.methodConfig.Method]
+				c.False(exists, "MethodValidator should not exist after delete operation")
+			} else {
+				c.Contains(cache.validatorConfig.MethodValidatorsMap[test.methodConfig.Method], test.methodConfig.Validator)
+			}
 		})
 	}
 }

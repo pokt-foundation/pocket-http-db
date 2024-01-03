@@ -87,6 +87,14 @@ func (c *Cache) parseNotification(n types.Notification) {
 
 	case types.TableGlobalBlockedContracts:
 		c.parseGlobalBlockedContractsNotification(n)
+
+	case types.TableChainConfig:
+		c.parseChainConfigNotification(n)
+	case types.TableMethodValidators:
+		c.parseMethodValidatorNotification(n)
+
+	default:
+		c.logger.Error("unknown table", slog.String("table", string(n.Table)))
 	}
 }
 
@@ -339,5 +347,36 @@ func (c *Cache) parseGlobalBlockedContractsNotification(n types.Notification) {
 	}
 	if n.Action == types.ActionDelete {
 		c.deleteGlobalBlockedContract(*blockedContract)
+	}
+}
+
+/* ---------- Method Validator Config ---------- */
+func (c *Cache) parseChainConfigNotification(n types.Notification) {
+	chainConfig, ok := n.Data.(*types.ValidatorChainConfig)
+	if !ok {
+		c.logger.Error("parseChainConfigNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertChainConfig(chainConfig)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteChainConfig(chainConfig)
+	}
+}
+
+func (c *Cache) parseMethodValidatorNotification(n types.Notification) {
+	methodValidator, ok := n.Data.(*types.ValidatorMethodConfig)
+	if !ok {
+		c.logger.Error("parseMethodValidatorNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertMethodValidator(methodValidator)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteMethodValidator(methodValidator)
 	}
 }

@@ -250,6 +250,32 @@ func (_m *MockDriver) ReadPortalApps(ctx context.Context, options types.DriverOp
 	return r0, r1
 }
 
+// ReadValidatorConfig provides a mock function with given fields: ctx
+func (_m *MockDriver) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error) {
+	ret := _m.Called(ctx)
+
+	var r0 *types.ValidatorPluginConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (*types.ValidatorPluginConfig, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) *types.ValidatorPluginConfig); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.ValidatorPluginConfig)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // RemoveAccountUser provides a mock function with given fields: ctx, userID, accountID
 func (_m *MockDriver) RemoveAccountUser(ctx context.Context, userID types.UserID, accountID types.AccountID) error {
 	ret := _m.Called(ctx, userID, accountID)

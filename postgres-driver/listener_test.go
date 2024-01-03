@@ -206,6 +206,42 @@ func Test_PGDriver_Listen(t *testing.T) {
 			expectedNotifications: map[types.Table]*types.Notification{},
 			wantPanic:             true,
 		},
+		{
+			name: "Should process ValidatorChainConfig notifications",
+			content: &types.ValidatorChainConfig{
+				ChainID:        "0001",
+				ValidRange:     100,
+				LogLimitBlocks: 500,
+			},
+			expectedNotifications: map[types.Table]*types.Notification{
+				types.TableChainConfig: {
+					Table:  types.TableChainConfig,
+					Action: types.ActionInsert,
+					Data: &types.ValidatorChainConfig{
+						ChainID:        "0001",
+						ValidRange:     100,
+						LogLimitBlocks: 500,
+					},
+				},
+			},
+		},
+		{
+			name: "Should process ValidatorMethodConfig notifications",
+			content: &types.ValidatorMethodConfig{
+				Method:    "eth_call",
+				Validator: types.ValidatorMethodBlockRange,
+			},
+			expectedNotifications: map[types.Table]*types.Notification{
+				types.TableMethodValidators: {
+					Table:  types.TableMethodValidators,
+					Action: types.ActionInsert,
+					Data: &types.ValidatorMethodConfig{
+						Method:    "eth_call",
+						Validator: types.ValidatorMethodBlockRange,
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {

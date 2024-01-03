@@ -1984,6 +1984,70 @@ func (q *Queries) SelectUserPermissions(ctx context.Context) ([]SelectUserPermis
 	return items, nil
 }
 
+const selectValidatorChainConfig = `-- name: SelectValidatorChainConfig :many
+SELECT chain_id,
+    valid_range,
+    log_limit_blocks
+FROM chain_config
+`
+
+type SelectValidatorChainConfigRow struct {
+	ChainID        pgtype.Text `json:"chain_id"`
+	ValidRange     pgtype.Int4 `json:"valid_range"`
+	LogLimitBlocks pgtype.Int4 `json:"log_limit_blocks"`
+}
+
+func (q *Queries) SelectValidatorChainConfig(ctx context.Context) ([]SelectValidatorChainConfigRow, error) {
+	rows, err := q.db.Query(ctx, selectValidatorChainConfig)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectValidatorChainConfigRow
+	for rows.Next() {
+		var i SelectValidatorChainConfigRow
+		if err := rows.Scan(&i.ChainID, &i.ValidRange, &i.LogLimitBlocks); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const selectValidatorMethodConfig = `-- name: SelectValidatorMethodConfig :many
+SELECT method,
+    validator
+FROM method_validators
+`
+
+type SelectValidatorMethodConfigRow struct {
+	Method    string                 `json:"method"`
+	Validator NullValidatorMethodStr `json:"validator"`
+}
+
+func (q *Queries) SelectValidatorMethodConfig(ctx context.Context) ([]SelectValidatorMethodConfigRow, error) {
+	rows, err := q.db.Query(ctx, selectValidatorMethodConfig)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectValidatorMethodConfigRow
+	for rows.Next() {
+		var i SelectValidatorMethodConfigRow
+		if err := rows.Scan(&i.Method, &i.Validator); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setGlobalBlockedContractActive = `-- name: SetGlobalBlockedContractActive :one
 UPDATE global_blocked_contracts
 SET active = $2,

@@ -142,6 +142,8 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}/active", rt.updateBlockedContractActive).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}", rt.removeBlockedContract).Methods(http.MethodDelete)
 
+	rt.Router.HandleFunc("/v2/validator_config", rt.getValidatorConfig).Methods(http.MethodGet)
+
 	rt.Router.HandleFunc("/v2/plan", rt.getPlans).Methods(http.MethodGet)
 
 	rt.Router.Use(rt.authorizationHandler)
@@ -1074,4 +1076,13 @@ func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) 
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
+}
+
+/* ---------- V2 Validator Config Handler Methods ---------- */
+
+// GET /v2/validator_config - Get the current validator config.
+func (rt *Router) getValidatorConfig(w http.ResponseWriter, r *http.Request) {
+	validatorConfig := rt.cache.GetValidatorConfig()
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, validatorConfig)
 }
