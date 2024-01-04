@@ -32,8 +32,12 @@ type (
 )
 
 func (v *ValidatorPluginConfig) UpdateChainConfigs(chainConfig *ValidatorChainConfig) {
-	v.ChainsValidRanges[chainConfig.ChainID] = chainConfig.ValidRange
-	v.ChainsLogLimitBlocks[chainConfig.ChainID] = chainConfig.LogLimitBlocks
+	if chainConfig.ValidRange != 0 {
+		v.ChainsValidRanges[chainConfig.ChainID] = chainConfig.ValidRange
+	}
+	if chainConfig.LogLimitBlocks != 0 {
+		v.ChainsLogLimitBlocks[chainConfig.ChainID] = chainConfig.LogLimitBlocks
+	}
 }
 
 func (v *ValidatorPluginConfig) RemoveChainConfigs(chainID RelayChainID) {

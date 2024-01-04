@@ -24,8 +24,12 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	}
 
 	for _, cc := range chainConfigs {
-		config.ChainsValidRanges[types.RelayChainID(cc.ChainID.String)] = cc.ValidRange.Int32
-		config.ChainsLogLimitBlocks[types.RelayChainID(cc.ChainID.String)] = cc.LogLimitBlocks.Int32
+		if cc.ValidRange.Int32 != 0 {
+			config.ChainsValidRanges[types.RelayChainID(cc.ChainID.String)] = cc.ValidRange.Int32
+		}
+		if cc.LogLimitBlocks.Int32 != 0 {
+			config.ChainsLogLimitBlocks[types.RelayChainID(cc.ChainID.String)] = cc.LogLimitBlocks.Int32
+		}
 	}
 
 	for _, mc := range methodConfigs {
