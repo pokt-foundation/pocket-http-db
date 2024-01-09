@@ -1139,6 +1139,10 @@ func ValidatorPluginConfig() *types.ValidatorPluginConfig {
 			"0064": 800,
 			"0040": 800,
 		},
+		ArchivalChains: map[types.RelayChainID]types.RelayChainID{
+			"0053": "0064",
+			"0021": "0040",
+		},
 		MethodValidatorsMap: map[types.Method][]types.ValidatorMethodStr{
 			"eth_call":             {types.ValidatorMethodBlockRange},
 			"eth_getLogs":          {types.ValidatorMethodLogLimitBlocks},

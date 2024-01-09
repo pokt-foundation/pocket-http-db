@@ -544,10 +544,11 @@ type ChainCheck struct {
 }
 
 type ChainConfig struct {
-	ID             int32       `json:"id"`
-	ChainID        pgtype.Text `json:"chain_id"`
-	ValidRange     pgtype.Int4 `json:"valid_range"`
-	LogLimitBlocks pgtype.Int4 `json:"log_limit_blocks"`
+	ID              int32       `json:"id"`
+	ChainID         pgtype.Text `json:"chain_id"`
+	ValidRange      pgtype.Int4 `json:"valid_range"`
+	LogLimitBlocks  pgtype.Int4 `json:"log_limit_blocks"`
+	ArchivalChainID pgtype.Text `json:"archival_chain_id"`
 }
 
 type ChainsGigastakeApplication struct {

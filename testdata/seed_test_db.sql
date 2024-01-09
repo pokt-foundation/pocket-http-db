@@ -1157,12 +1157,17 @@ VALUES (
         '2022-11-11 11:11:11.000000'
     );
 -- Seed data for chain_config
-INSERT INTO chain_config (chain_id, valid_range, log_limit_blocks)
-VALUES ('0001', 100, 500),
-    ('0053', 200, 600),
-    ('0021', 300, 700),
-    ('0064', 400, 800),
-    ('0040', 400, 800);
+INSERT INTO chain_config (
+        chain_id,
+        valid_range,
+        log_limit_blocks,
+        archival_chain_id
+    )
+VALUES ('0001', 100, 500, NULL),
+    ('0053', 200, 600, '0064'),
+    ('0021', 300, 700, '0040'),
+    ('0064', 400, 800, NULL),
+    ('0040', 400, 800, NULL);
 -- Seed data for method_validators
 INSERT INTO method_validators (method, validator)
 VALUES ('eth_call', 'blockRange'),
