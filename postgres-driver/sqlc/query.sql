@@ -26,7 +26,8 @@ SELECT EXISTS (
 -- name: SelectValidatorChainConfig :many
 SELECT chain_id,
     valid_range,
-    log_limit_blocks
+    log_limit_blocks,
+    archival_chain_id
 FROM chain_config;
 -- name: SelectValidatorMethodConfig :many
 SELECT method,

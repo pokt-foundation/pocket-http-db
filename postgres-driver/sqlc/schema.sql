@@ -286,6 +286,7 @@ CREATE TABLE chain_config (
     chain_id VARCHAR(4) REFERENCES chains(id),
     valid_range INT,
     log_limit_blocks INT,
+    archival_chain_id VARCHAR(4) NULL REFERENCES chains(id),
     UNIQUE (chain_id)
 );
 CREATE TABLE method_validators (

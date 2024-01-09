@@ -1987,14 +1987,16 @@ func (q *Queries) SelectUserPermissions(ctx context.Context) ([]SelectUserPermis
 const selectValidatorChainConfig = `-- name: SelectValidatorChainConfig :many
 SELECT chain_id,
     valid_range,
-    log_limit_blocks
+    log_limit_blocks,
+    archival_chain_id
 FROM chain_config
 `
 
 type SelectValidatorChainConfigRow struct {
-	ChainID        pgtype.Text `json:"chain_id"`
-	ValidRange     pgtype.Int4 `json:"valid_range"`
-	LogLimitBlocks pgtype.Int4 `json:"log_limit_blocks"`
+	ChainID         pgtype.Text `json:"chain_id"`
+	ValidRange      pgtype.Int4 `json:"valid_range"`
+	LogLimitBlocks  pgtype.Int4 `json:"log_limit_blocks"`
+	ArchivalChainID pgtype.Text `json:"archival_chain_id"`
 }
 
 func (q *Queries) SelectValidatorChainConfig(ctx context.Context) ([]SelectValidatorChainConfigRow, error) {
@@ -2006,7 +2008,12 @@ func (q *Queries) SelectValidatorChainConfig(ctx context.Context) ([]SelectValid
 	var items []SelectValidatorChainConfigRow
 	for rows.Next() {
 		var i SelectValidatorChainConfigRow
-		if err := rows.Scan(&i.ChainID, &i.ValidRange, &i.LogLimitBlocks); err != nil {
+		if err := rows.Scan(
+			&i.ChainID,
+			&i.ValidRange,
+			&i.LogLimitBlocks,
+			&i.ArchivalChainID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

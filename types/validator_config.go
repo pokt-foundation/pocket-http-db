@@ -15,6 +15,9 @@ type (
 		// ChainsLogLimitBlocks is a mapping of chain id to the maximum number of blocks allowed for any eth_getLogs relay request
 		ChainsLogLimitBlocks map[RelayChainID]int32 `json:"chains_log_limit_blocks,omitempty"`
 
+		// ArchivalChains is a mapping of mainnet chain IDs to their archival chain IDs (for all chains with an archival variant)
+		ArchivalChains map[RelayChainID]RelayChainID `json:"archival_chains,omitempty"`
+
 		// MethodValidatorsMap is a mapping of method to a list of validators to be applied to relay requests for that method
 		MethodValidatorsMap map[Method][]ValidatorMethodStr `json:"method_validators,omitempty"`
 	}

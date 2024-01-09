@@ -20,12 +20,16 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	config := &types.ValidatorPluginConfig{
 		ChainsValidRanges:    make(map[types.RelayChainID]int32),
 		ChainsLogLimitBlocks: make(map[types.RelayChainID]int32),
+		ArchivalChains:       make(map[types.RelayChainID]types.RelayChainID),
 		MethodValidatorsMap:  make(map[types.Method][]types.ValidatorMethodStr),
 	}
 
 	for _, cc := range chainConfigs {
 		config.ChainsValidRanges[types.RelayChainID(cc.ChainID.String)] = cc.ValidRange.Int32
 		config.ChainsLogLimitBlocks[types.RelayChainID(cc.ChainID.String)] = cc.LogLimitBlocks.Int32
+		if cc.ArchivalChainID.String != "" {
+			config.ArchivalChains[types.RelayChainID(cc.ChainID.String)] = types.RelayChainID(cc.ArchivalChainID.String)
+		}
 	}
 
 	for _, mc := range methodConfigs {
