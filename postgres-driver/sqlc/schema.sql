@@ -25,7 +25,7 @@ CREATE TYPE whitelist_type AS ENUM (
     'origins',
     'userAgents'
 );
-CREATE TYPE validator_method_str AS ENUM ('blockRange', 'logLimitBlocks');
+CREATE TYPE validator_method_str AS ENUM ('blockRange', 'logLimitBlocks', 'ethAddress');
 -- Plans Tables
 CREATE TABLE pay_plans (
     name VARCHAR(255),

@@ -5,6 +5,7 @@ type ValidatorMethodStr = string
 const (
 	ValidatorMethodBlockRange     ValidatorMethodStr = "blockRange"
 	ValidatorMethodLogLimitBlocks ValidatorMethodStr = "logLimitBlocks"
+	ValidatorMethodETHAddress     ValidatorMethodStr = "ethAddress"
 )
 
 type (
