@@ -241,6 +241,9 @@ func (a *Account) GetPortalAppLimit() int {
 	if a.PartnerAppLimit != 0 {
 		return int(a.PartnerAppLimit)
 	}
+	if a.Plan == nil {
+		return 0
+	}
 	return int(a.Plan.AppLimit)
 }
 
