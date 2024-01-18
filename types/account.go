@@ -224,6 +224,19 @@ func (a *Account) GetEmailSettings() (Email, map[NotificationEvent]bool, error) 
 	return Email(emailNotifications.Destination), emailNotifications.Events, nil
 }
 
+// CanCreatePortalApp returns true if the Account can create a new Portal App
+func (a *Account) CanCreatePortalApp() bool {
+	return len(a.PortalApps) < a.GetPortalAppLimit()
+}
+
+// GetPortalAppLimit returns the Account's portal app limit
+func (a *Account) GetPortalAppLimit() int {
+	if a.PartnerAppLimit != 0 {
+		return int(a.PartnerAppLimit)
+	}
+	return int(a.Plan.AppLimit)
+}
+
 // SubscriptionID returns the Stripe Subscription ID
 func (a *Account) SubscriptionID() string {
 	return a.Integrations.StripeSubscriptionID
