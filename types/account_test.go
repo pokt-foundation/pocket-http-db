@@ -7,57 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_GetOwner(t *testing.T) {
-	tests := []struct {
-		name        string
-		account     Account
-		expected    AccountUser
-		expectedErr error
-	}{
-		{
-			name:     "Should return owner when account has an owner",
-			account:  testAccount,
-			expected: testAccount.Users["user_1"],
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			owner, err := test.account.GetOwner()
-			assert.Equal(t, test.expected, owner)
-			assert.Equal(t, test.expectedErr, err)
-		})
-	}
-}
-
-func Test_GetOwnerID(t *testing.T) {
-	tests := []struct {
-		name        string
-		account     Account
-		expected    UserID
-		expectedErr error
-	}{
-		{
-			name:     "Should return owner when account has an owner",
-			account:  testAccount,
-			expected: "user_1",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			owner, err := test.account.GetOwnerID()
-			assert.Equal(t, test.expected, owner)
-			assert.Equal(t, test.expectedErr, err)
-		})
-	}
-}
+var timestamp = time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC)
 
 var testAccount = Account{
 	ID:       "account_1",
 	Name:     "The Brave Voyager",
 	IconURL:  "https://picsum.photos/200",
 	PlanType: FreetierV0,
+	Plan: &Plan{
+		AppLimit: 2,
+	},
 	Integrations: AccountIntegrations{
 		StripeSubscriptionID: "stripe_id_1",
 		CovalentAPIKeyFree:   "covalent_api_key_1",
@@ -190,4 +149,145 @@ var testAccount = Account{
 	UpdatedAt:              timestamp,
 }
 
-var timestamp = time.Date(2022, time.November, 11, 11, 11, 11, 0, time.UTC)
+func Test_GetOwner(t *testing.T) {
+	tests := []struct {
+		name        string
+		account     Account
+		expected    AccountUser
+		expectedErr error
+	}{
+		{
+			name:     "Should return owner when account has an owner",
+			account:  testAccount,
+			expected: testAccount.Users["user_1"],
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			owner, err := test.account.GetOwner()
+			assert.Equal(t, test.expected, owner)
+			assert.Equal(t, test.expectedErr, err)
+		})
+	}
+}
+
+func Test_GetOwnerID(t *testing.T) {
+	tests := []struct {
+		name        string
+		account     Account
+		expected    UserID
+		expectedErr error
+	}{
+		{
+			name:     "Should return owner when account has an owner",
+			account:  testAccount,
+			expected: "user_1",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			owner, err := test.account.GetOwnerID()
+			assert.Equal(t, test.expected, owner)
+			assert.Equal(t, test.expectedErr, err)
+		})
+	}
+}
+
+func Test_GetPortalAppLimit(t *testing.T) {
+	tests := []struct {
+		name     string
+		account  Account
+		expected int
+	}{
+		{
+			name: "Should return partner app limit when it is set",
+			account: Account{
+				PartnerAppLimit: 5,
+				Plan:            &Plan{AppLimit: 10},
+			},
+			expected: 5,
+		},
+		{
+			name: "Should return plan app limit when partner app limit is not set",
+			account: Account{
+				Plan: &Plan{AppLimit: 10},
+			},
+			expected: 10,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.account.GetPortalAppLimit()
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func Test_CanCreatePortalApp(t *testing.T) {
+	tests := []struct {
+		name     string
+		account  Account
+		expected bool
+	}{
+		{
+			name: "Should return true when the number of portal apps is less than the app limit",
+			account: Account{
+				PortalApps: map[PortalAppID]*PortalApp{
+					"app1": {},
+					"app2": {},
+				},
+				Plan: &Plan{AppLimit: 5},
+			},
+			expected: true,
+		},
+		{
+			name: "Should return false when the number of portal apps is equal to the app limit",
+			account: Account{
+				PortalApps: map[PortalAppID]*PortalApp{
+					"app1": {},
+					"app2": {},
+					"app3": {},
+					"app4": {},
+					"app5": {},
+				},
+				Plan: &Plan{AppLimit: 5},
+			},
+			expected: false,
+		},
+		{
+			name: "Should return true when the number of portal apps is less than the partner app limit",
+			account: Account{
+				PortalApps: map[PortalAppID]*PortalApp{
+					"app1": {},
+					"app2": {},
+				},
+				PartnerAppLimit: 5,
+			},
+			expected: true,
+		},
+		{
+			name: "Should return false when the number of portal apps is equal to the partner app limit",
+			account: Account{
+				PortalApps: map[PortalAppID]*PortalApp{
+					"app1": {},
+					"app2": {},
+					"app3": {},
+					"app4": {},
+					"app5": {},
+				},
+				PartnerAppLimit: 5,
+			},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.account.CanCreatePortalApp()
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
