@@ -282,6 +282,21 @@ func Test_CanCreatePortalApp(t *testing.T) {
 			},
 			expected: false,
 		},
+		{
+			name: "Should return true when the account has an unlimited app limit",
+			account: Account{
+				PortalApps: map[PortalAppID]*PortalApp{
+					"app1": {},
+					"app2": {},
+					"app3": {},
+					"app4": {},
+					"app5": {},
+					"app6": {},
+				},
+				Plan: &Plan{AppLimit: 0},
+			},
+			expected: true,
+		},
 	}
 
 	for _, test := range tests {

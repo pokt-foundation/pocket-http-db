@@ -226,7 +226,14 @@ func (a *Account) GetEmailSettings() (Email, map[NotificationEvent]bool, error) 
 
 // CanCreatePortalApp returns true if the Account can create a new Portal App
 func (a *Account) CanCreatePortalApp() bool {
-	return len(a.PortalApps) < a.GetPortalAppLimit()
+	appLimit := a.GetPortalAppLimit()
+
+	// 0 means unlimited apps
+	if appLimit == 0 {
+		return true
+	}
+
+	return len(a.PortalApps) < appLimit
 }
 
 // GetPortalAppLimit returns the Account's portal app limit
