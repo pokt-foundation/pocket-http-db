@@ -33,6 +33,9 @@ FROM chain_config;
 SELECT method,
     validator
 FROM method_validators;
+-- name: SelectConfiguration :one
+SELECT configuration
+FROM config_json;
 -- name: SelectPlans :many
 SELECT name,
     description,

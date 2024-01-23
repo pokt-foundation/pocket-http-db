@@ -86,6 +86,8 @@ type (
 
 		// GetValidatorConfig returns the validator config - GET `/v2/validator_config`
 		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
+		// GetConfigJSON fetches the current configuration - GET `/v2/config`
+		GetConfigJSON(ctx context.Context) (json.RawMessage, error)
 	}
 
 	// IDBWriter interface contains write methods for interacting with the Portal HTTP DB
@@ -196,6 +198,7 @@ const (
 	planPath            basePath = "plan"
 	blockedContractPath basePath = "blocked_contract"
 	validatorConfigPath basePath = "validator_config"
+	configPath          basePath = "config"
 	middlewarePath      basePath = "middleware"
 
 	gigastakePath      subPath = "gigastake"
@@ -640,6 +643,13 @@ func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPlu
 	endpoint := db.v2BasePath(validatorConfigPath)
 
 	return getReq[*types.ValidatorPluginConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+}
+
+// GetConfigJSON fetches the current configuration - GET `/v2/config`
+func (db *DBClient) GetConfigJSON(ctx context.Context) (json.RawMessage, error) {
+	endpoint := db.v2BasePath(configPath)
+
+	return getReq[json.RawMessage](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
 /* -- Validator Method Config Read Methods -- */

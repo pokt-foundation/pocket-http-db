@@ -2,6 +2,7 @@ package postgresdriver
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
@@ -37,6 +38,15 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	}
 
 	return config, nil
+}
+
+func (q *Queries) ReadConfigJSON(ctx context.Context) (json.RawMessage, error) {
+	configJSON, err := q.SelectConfiguration(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.RawMessage(configJSON), nil
 }
 
 /* ----- Used by Listener ----- */

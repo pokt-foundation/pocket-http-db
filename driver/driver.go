@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/pokt-foundation/portal-http-db/v2/types"
@@ -40,6 +41,8 @@ type (
 
 		/* ReadValidatorConfig returns the ValidatorPluginConfig from the DB */
 		ReadValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
+		/* ReadConfigJSON returns the raw JSON config from the DB */
+		ReadConfigJSON(ctx context.Context) (json.RawMessage, error)
 
 		NotificationChannel() <-chan *types.Notification
 

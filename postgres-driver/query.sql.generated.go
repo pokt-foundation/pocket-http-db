@@ -1635,6 +1635,18 @@ func (q *Queries) SelectChains(ctx context.Context, includeDeleted bool) ([]Sele
 	return items, nil
 }
 
+const selectConfiguration = `-- name: SelectConfiguration :one
+SELECT configuration
+FROM config_json
+`
+
+func (q *Queries) SelectConfiguration(ctx context.Context) ([]byte, error) {
+	row := q.db.QueryRow(ctx, selectConfiguration)
+	var configuration []byte
+	err := row.Scan(&configuration)
+	return configuration, err
+}
+
 const selectGigastakeApplications = `-- name: SelectGigastakeApplications :many
 SELECT ga.id,
     ga.name,

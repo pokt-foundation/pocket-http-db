@@ -295,6 +295,10 @@ CREATE TABLE method_validators (
     validator validator_method_str,
     UNIQUE (method, validator)
 );
+CREATE TABLE config_json (
+    id SERIAL PRIMARY KEY,
+    configuration JSONB
+);
 -- Listener Notification Function
 CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 DECLARE data json;

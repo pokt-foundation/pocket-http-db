@@ -3,6 +3,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -60,6 +61,7 @@ type (
 		blockedContracts types.GlobalBlockedContracts
 
 		validatorConfig *types.ValidatorPluginConfig
+		configJSON      json.RawMessage
 	}
 
 	UsersForAccount map[types.UserID]*types.User
@@ -185,6 +187,10 @@ func (c *Cache) setCache(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	configJSONData, err := c.fetchConfigJSONData(ctx)
+	if err != nil {
+		return err
+	}
 
 	// Lock the mutex only once data is fetched
 	// to minimize the time the lock is held.
@@ -207,6 +213,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.blockedContracts = blockedContractsData
 
 	c.validatorConfig = validatorConfigData
+	c.configJSON = configJSONData
 
 	return nil
 }
@@ -366,6 +373,16 @@ func (c *Cache) fetchValidatorConfigData(ctx context.Context) (*types.ValidatorP
 	return validatorConfig, nil
 }
 
+// fetchConfigJSONData reads ConfigJSON from the database and returns it.
+func (c *Cache) fetchConfigJSONData(ctx context.Context) (json.RawMessage, error) {
+	configJSON, err := c.reader.ReadConfigJSON(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ReadConfigJSON - %w", err)
+	}
+
+	return configJSON, nil
+}
+
 // cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes).
 func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes time.Duration) {
 	for {
@@ -447,6 +464,14 @@ func (c *Cache) GetValidatorConfig() types.ValidatorPluginConfig {
 	defer c.rwMutex.RUnlock()
 
 	return *c.validatorConfig
+}
+
+// GetConfigJSON returns the ConfigJSON from the cache
+func (c *Cache) GetConfigJSON() json.RawMessage {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return c.configJSON
 }
 
 // upsertChainConfig updates the ChainsValidRanges and ChainsLogLimitBlocks with the provided ValidatorChainConfig
