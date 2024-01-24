@@ -198,6 +198,32 @@ func (_m *MockDriver) ReadGigastakeApps(ctx context.Context, options types.Drive
 	return r0, r1
 }
 
+// ReadOpenAPISpecs provides a mock function with given fields: ctx
+func (_m *MockDriver) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID][]byte, error) {
+	ret := _m.Called(ctx)
+
+	var r0 map[types.RelayChainID][]byte
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (map[types.RelayChainID][]byte, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) map[types.RelayChainID][]byte); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[types.RelayChainID][]byte)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ReadPlans provides a mock function with given fields: ctx
 func (_m *MockDriver) ReadPlans(ctx context.Context) (map[types.PayPlanType]*types.Plan, error) {
 	ret := _m.Called(ctx)

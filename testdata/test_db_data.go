@@ -1,6 +1,8 @@
 package testdata
 
 import (
+	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/pokt-foundation/portal-http-db/v2/types"
@@ -1053,6 +1055,30 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
+		"0083": &types.Chain{
+			ID:            "0083",
+			Blockchain:    "radix-mainnet",
+			Description:   "Radix Mainnet",
+			IconURL:       "https://picsum.photos/200",
+			EnforceResult: "REST",
+			Ticker:        "XRD",
+			Active:        true,
+			Altruists: map[types.AltruistURL]types.Altruist{
+				"https://altruist-0083.com:1234": {
+					URL:      "https://altruist-0083.com:1234",
+					AuthType: types.ChainAuthTypeBasicAuth,
+					Auth:     "test_pocket:auth123456",
+				},
+			},
+			AliasDomains: map[types.ChainAlias][]types.ChainDomain{
+				"radix-mainnet": {"xrd-rpc.gateway.pokt.network"},
+			},
+			Checks:    map[types.ChainCheckType]types.Check{},
+			Aliases:   map[types.ChainAlias]struct{}{},
+			CreatedAt: MockTimestamp,
+			UpdatedAt: MockTimestamp,
+			Deleted:   false,
+		},
 	}
 
 	if len(opts) > 0 && opts[0].IncludeGigastakeApps {
@@ -1150,6 +1176,24 @@ func ValidatorPluginConfig() *types.ValidatorPluginConfig {
 			"eth_getBalance":       {types.ValidatorMethodBlockRange},
 			"eth_getBlockByNumber": {types.ValidatorMethodBlockRange},
 		},
+	}
+}
+
+func OpenAPISpecs(filepath string) map[types.RelayChainID][]byte {
+	file, err := os.Open(filepath)
+	if err != nil {
+		panic(err)
+	}
+
+	defer file.Close()
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		panic(err)
+	}
+
+	return map[types.RelayChainID][]byte{
+		"0083": bytes,
 	}
 }
 

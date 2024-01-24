@@ -39,6 +39,20 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	return config, nil
 }
 
+func (q *Queries) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID][]byte, error) {
+	specs, err := q.SelectOpenAPISpecs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	chainSpecs := make(map[types.RelayChainID][]byte)
+	for _, spec := range specs {
+		chainSpecs[types.RelayChainID(spec.ChainID)] = []byte(spec.OpenApiSpec)
+	}
+
+	return chainSpecs, nil
+}
+
 /* ----- Used by Listener ----- */
 
 func (cc dbChainConfig) toOutput() *types.ValidatorChainConfig {

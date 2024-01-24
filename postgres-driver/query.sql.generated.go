@@ -1739,6 +1739,31 @@ func (q *Queries) SelectGlobalBlockedContract(ctx context.Context) ([]SelectGlob
 	return items, nil
 }
 
+const selectOpenAPISpecs = `-- name: SelectOpenAPISpecs :many
+SELECT id, chain_id, open_api_spec
+FROM chain_openapi_specs
+`
+
+func (q *Queries) SelectOpenAPISpecs(ctx context.Context) ([]ChainOpenapiSpec, error) {
+	rows, err := q.db.Query(ctx, selectOpenAPISpecs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ChainOpenapiSpec
+	for rows.Next() {
+		var i ChainOpenapiSpec
+		if err := rows.Scan(&i.ID, &i.ChainID, &i.OpenApiSpec); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const selectPlans = `-- name: SelectPlans :many
 SELECT name,
     description,

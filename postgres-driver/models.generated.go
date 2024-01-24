@@ -362,6 +362,7 @@ type ValidatorMethodStr string
 const (
 	ValidatorMethodStrBlockRange     ValidatorMethodStr = "blockRange"
 	ValidatorMethodStrLogLimitBlocks ValidatorMethodStr = "logLimitBlocks"
+	ValidatorMethodStrEthAddress     ValidatorMethodStr = "ethAddress"
 )
 
 func (e *ValidatorMethodStr) Scan(src interface{}) error {
@@ -549,6 +550,12 @@ type ChainConfig struct {
 	ValidRange      pgtype.Int4 `json:"valid_range"`
 	LogLimitBlocks  pgtype.Int4 `json:"log_limit_blocks"`
 	ArchivalChainID pgtype.Text `json:"archival_chain_id"`
+}
+
+type ChainOpenapiSpec struct {
+	ID          int32              `json:"id"`
+	ChainID     types.RelayChainID `json:"chain_id"`
+	OpenApiSpec []byte             `json:"open_api_spec"`
 }
 
 type ChainsGigastakeApplication struct {
