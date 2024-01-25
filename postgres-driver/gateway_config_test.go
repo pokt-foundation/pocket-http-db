@@ -14,7 +14,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadValidatorConfig() {
 		expected *types.ValidatorPluginConfig
 	}{
 		{
-			name:     "should read the validator plugin config from the database",
+			name:     "should read the method validator plugin config from the database",
 			expected: testdata.ValidatorPluginConfig(),
 		},
 	}
@@ -37,12 +37,10 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadValidatorConfig() {
 func (ts *PGDriverTestSuite) Test_PGDriver_ReadOpenAPISpecs() {
 	tests := []struct {
 		name     string
-		chainID  types.RelayChainID
-		expected map[types.RelayChainID][]byte
+		expected map[types.RelayChainID]json.RawMessage
 	}{
 		{
-			name:     "should read the validator plugin config from the database",
-			chainID:  "0083",
+			name:     "should read the chain open api specs from the database",
 			expected: testdata.OpenAPISpecs("../testdata/radix-spec.json"),
 		},
 	}
@@ -51,13 +49,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadOpenAPISpecs() {
 		ts.Run(test.name, func() {
 			result, err := ts.driver.ReadOpenAPISpecs(context.Background())
 			ts.NoError(err)
-
-			ts.Equal(test.expected, result)
-
-			// Test if the result is a valid JSON structure
-			var dummyInterface interface{}
-			err = json.Unmarshal(result[test.chainID], &dummyInterface)
-			ts.NoError(err, "The result should be a valid JSON structure")
+			for chainID, expectedSpec := range test.expected {
+				ts.JSONEq(string(expectedSpec), string(result[chainID]))
+			}
 		})
 	}
 }

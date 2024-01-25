@@ -35,7 +35,7 @@ SELECT method,
 FROM method_validators;
 -- name: SelectOpenAPISpecs :many
 SELECT *
-FROM chain_openapi_specs;
+FROM config_openapi;
 -- name: SelectPlans :many
 SELECT name,
     description,

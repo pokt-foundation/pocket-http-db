@@ -1035,6 +1035,16 @@ VALUES (
         NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0083',
+        'sync',
+        '{}',
+        '',
+        1,
+        NULL,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
     );
 -- DEPRECATED - TODO remove when move to only store aliases is complete
 INSERT INTO chain_alias_domains (
@@ -1105,6 +1115,11 @@ VALUES (
     (
         '0040',
         'harmony-0',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0083',
+        'radix-mainnet',
         '2022-11-11 11:11:11.000000'
     );
 -- Insert data into aats
@@ -1207,6 +1222,6 @@ DO $$
 DECLARE json_content JSONB;
 BEGIN json_content := pg_read_file('/data/radix-spec.json', 0, 1000000000);
 -- Adjust the last parameter as needed to cover the file size
-INSERT INTO chain_openapi_specs (chain_id, open_api_spec)
+INSERT INTO config_openapi (chain_id, open_api_spec)
 VALUES ('0083', json_content);
 END $$;

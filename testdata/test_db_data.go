@@ -1,7 +1,7 @@
 package testdata
 
 import (
-	"io/ioutil"
+	"encoding/json"
 	"os"
 	"time"
 
@@ -1073,8 +1073,16 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 			AliasDomains: map[types.ChainAlias][]types.ChainDomain{
 				"radix-mainnet": {"xrd-rpc.gateway.pokt.network"},
 			},
-			Checks:    map[types.ChainCheckType]types.Check{},
-			Aliases:   map[types.ChainAlias]struct{}{},
+			Aliases: map[types.ChainAlias]struct{}{
+				"radix-mainnet": {},
+			},
+			Checks: map[types.ChainCheckType]types.Check{
+				types.ChainCheckTypeSync: {
+					Type:      types.ChainCheckTypeSync,
+					Payload:   `{}`,
+					Allowance: 1,
+				},
+			},
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 			Deleted:   false,
@@ -1179,21 +1187,14 @@ func ValidatorPluginConfig() *types.ValidatorPluginConfig {
 	}
 }
 
-func OpenAPISpecs(filepath string) map[types.RelayChainID][]byte {
-	file, err := os.Open(filepath)
+func OpenAPISpecs(filepath string) map[types.RelayChainID]json.RawMessage {
+	bytes, err := os.ReadFile(filepath)
 	if err != nil {
 		panic(err)
 	}
 
-	defer file.Close()
-
-	bytes, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
-	}
-
-	return map[types.RelayChainID][]byte{
-		"0083": bytes,
+	return map[types.RelayChainID]json.RawMessage{
+		"0083": json.RawMessage(bytes),
 	}
 }
 

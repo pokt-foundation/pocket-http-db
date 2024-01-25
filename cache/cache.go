@@ -3,6 +3,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -60,7 +61,7 @@ type (
 		blockedContracts types.GlobalBlockedContracts
 
 		validatorConfig *types.ValidatorPluginConfig
-		openAPISpecs    map[types.RelayChainID][]byte
+		openAPISpecs    map[types.RelayChainID]json.RawMessage
 	}
 
 	UsersForAccount map[types.UserID]*types.User
@@ -373,7 +374,7 @@ func (c *Cache) fetchValidatorConfigData(ctx context.Context) (*types.ValidatorP
 }
 
 // fetchOpenAPISpecsData reads OpenAPISpecs from the database and returns them.
-func (c *Cache) fetchOpenAPISpecsData(ctx context.Context) (map[types.RelayChainID][]byte, error) {
+func (c *Cache) fetchOpenAPISpecsData(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
 	openAPISpecs, err := c.reader.ReadOpenAPISpecs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("ReadOpenAPISpecs - %w", err)
@@ -501,7 +502,7 @@ func (c *Cache) deleteMethodValidator(methodConfig *types.ValidatorMethodConfig)
 /* OpenAPI Specs */
 
 // GetOpenAPISpecs returns the OpenAPISpecs from the cache
-func (c *Cache) GetOpenAPISpecs() map[types.RelayChainID][]byte {
+func (c *Cache) GetOpenAPISpecs() map[types.RelayChainID]json.RawMessage {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 

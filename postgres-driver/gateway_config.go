@@ -2,10 +2,12 @@ package postgresdriver
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
+// ReadValidatorConfig reads the method validator plugin config from the database
 func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error) {
 	chainConfigs, err := q.SelectValidatorChainConfig(ctx)
 	if err != nil {
@@ -39,15 +41,16 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	return config, nil
 }
 
-func (q *Queries) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID][]byte, error) {
+// ReadOpenAPISpecs reads the chain OpenAPI specs from the database
+func (q *Queries) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
 	specs, err := q.SelectOpenAPISpecs(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	chainSpecs := make(map[types.RelayChainID][]byte)
+	chainSpecs := make(map[types.RelayChainID]json.RawMessage)
 	for _, spec := range specs {
-		chainSpecs[types.RelayChainID(spec.ChainID)] = []byte(spec.OpenApiSpec)
+		chainSpecs[types.RelayChainID(spec.ChainID)] = json.RawMessage(spec.OpenApiSpec)
 	}
 
 	return chainSpecs, nil

@@ -4,9 +4,11 @@ package driver
 
 import (
 	context "context"
-	time "time"
+	json "encoding/json"
 
 	mock "github.com/stretchr/testify/mock"
+
+	time "time"
 
 	types "github.com/pokt-foundation/portal-http-db/v2/types"
 )
@@ -199,19 +201,19 @@ func (_m *MockDriver) ReadGigastakeApps(ctx context.Context, options types.Drive
 }
 
 // ReadOpenAPISpecs provides a mock function with given fields: ctx
-func (_m *MockDriver) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID][]byte, error) {
+func (_m *MockDriver) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
 	ret := _m.Called(ctx)
 
-	var r0 map[types.RelayChainID][]byte
+	var r0 map[types.RelayChainID]json.RawMessage
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (map[types.RelayChainID][]byte, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) (map[types.RelayChainID]json.RawMessage, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) map[types.RelayChainID][]byte); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) map[types.RelayChainID]json.RawMessage); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(map[types.RelayChainID][]byte)
+			r0 = ret.Get(0).(map[types.RelayChainID]json.RawMessage)
 		}
 	}
 

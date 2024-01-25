@@ -552,15 +552,15 @@ type ChainConfig struct {
 	ArchivalChainID pgtype.Text `json:"archival_chain_id"`
 }
 
-type ChainOpenapiSpec struct {
-	ID          int32              `json:"id"`
-	ChainID     types.RelayChainID `json:"chain_id"`
-	OpenApiSpec []byte             `json:"open_api_spec"`
-}
-
 type ChainsGigastakeApplication struct {
 	ChainID                types.RelayChainID   `json:"chain_id"`
 	GigastakeApplicationID types.GigastakeAppID `json:"gigastake_application_id"`
+}
+
+type ConfigOpenapi struct {
+	ID          int32              `json:"id"`
+	ChainID     types.RelayChainID `json:"chain_id"`
+	OpenApiSpec []byte             `json:"open_api_spec"`
 }
 
 type GigastakeApplication struct {

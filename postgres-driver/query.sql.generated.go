@@ -1741,18 +1741,18 @@ func (q *Queries) SelectGlobalBlockedContract(ctx context.Context) ([]SelectGlob
 
 const selectOpenAPISpecs = `-- name: SelectOpenAPISpecs :many
 SELECT id, chain_id, open_api_spec
-FROM chain_openapi_specs
+FROM config_openapi
 `
 
-func (q *Queries) SelectOpenAPISpecs(ctx context.Context) ([]ChainOpenapiSpec, error) {
+func (q *Queries) SelectOpenAPISpecs(ctx context.Context) ([]ConfigOpenapi, error) {
 	rows, err := q.db.Query(ctx, selectOpenAPISpecs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ChainOpenapiSpec
+	var items []ConfigOpenapi
 	for rows.Next() {
-		var i ChainOpenapiSpec
+		var i ConfigOpenapi
 		if err := rows.Scan(&i.ID, &i.ChainID, &i.OpenApiSpec); err != nil {
 			return nil, err
 		}
