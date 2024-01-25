@@ -2,7 +2,6 @@ package types
 
 import (
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -332,7 +331,7 @@ func (w *Whitelists) IsEmpty() bool {
 // Returns a copy rather than a pointer as its intended be used at the point of returning the request body
 func (a *PortalApp) ConvertPortalAppToPortalAppLite(appPlan *Plan) PortalAppLite {
 	portalAppLite := PortalAppLite{
-		ID:         a.getIDForMiddleware(),
+		ID:         a.ID,
 		AccountID:  a.AccountID,
 		PublicKeys: a.GetPublicKeys(),
 	}
@@ -354,30 +353,6 @@ func (a *PortalApp) ConvertPortalAppToPortalAppLite(appPlan *Plan) PortalAppLite
 	}
 
 	return portalAppLite
-}
-
-// getIDForMiddleware returns the PortalAppID for a PortalApp for use in the middleware,
-// with special handling to return the AAT.ID field in the case of a direct app.
-func (a *PortalApp) getIDForMiddleware() PortalAppID {
-	// Direct apps are Applications from V1 that did not have an associated LoadBalancer.
-	if a.IsDirectApp() {
-		return a.getDirectAppID()
-	}
-	// All other apps are V2 PortalApps.
-	return a.ID
-}
-
-func (a *PortalApp) IsDirectApp() bool {
-	return strings.Contains(string(a.ID), "direct_app")
-}
-
-// getDirectAppID returns the AAT.ID field for a direct app. This field was formerly
-// the Application.ID field from V1 and is used in the Middleware to look up direct apps.
-func (a *PortalApp) getDirectAppID() PortalAppID {
-	for id := range a.AATs {
-		return PortalAppID(id)
-	}
-	return ""
 }
 
 // GetPublicKeys returns all public keys for a PortalApp
