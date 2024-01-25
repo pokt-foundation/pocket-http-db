@@ -895,6 +895,20 @@ VALUES (
         true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0083',
+        'https://picsum.photos/200',
+        'radix-mainnet',
+        'Radix Mainnet',
+        'REST',
+        '',
+        'XRD',
+        0,
+        0,
+        true,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
     );
 INSERT INTO chain_altruists (
         chain_id,
@@ -939,6 +953,14 @@ VALUES (
     (
         '0040',
         'https://altruist-0040.com:1234',
+        'test_pocket:auth123456',
+        'basic_auth',
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0083',
+        'https://altruist-0083.com:1234',
         'test_pocket:auth123456',
         'basic_auth',
         '2022-11-11 11:11:11.000000',
@@ -1013,6 +1035,16 @@ VALUES (
         NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0083',
+        'sync',
+        '{}',
+        '',
+        1,
+        NULL,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
     );
 -- DEPRECATED - TODO remove when move to only store aliases is complete
 INSERT INTO chain_alias_domains (
@@ -1039,6 +1071,11 @@ VALUES (
         '0040',
         'harmony-0',
         ARRAY ['hmy-rpc.gateway.pokt.network']
+    ),
+    (
+        '0083',
+        'radix-mainnet',
+        ARRAY ['xrd-rpc.gateway.pokt.network']
     );
 INSERT INTO chain_aliases (
         chain_id,
@@ -1078,6 +1115,11 @@ VALUES (
     (
         '0040',
         'harmony-0',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0083',
+        'radix-mainnet',
         '2022-11-11 11:11:11.000000'
     );
 -- Insert data into aats
@@ -1156,6 +1198,14 @@ VALUES (
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
+-- Seed data for method_validators
+INSERT INTO method_validators (method, validator)
+VALUES ('eth_call', 'blockRange'),
+    ('eth_getLogs', 'logLimitBlocks'),
+    ('eth_blocknumber', 'blockRange'),
+    ('eth_estimateGas', 'blockRange'),
+    ('eth_getBalance', 'blockRange'),
+    ('eth_getBlockByNumber', 'blockRange');
 -- Seed data for chain_config
 INSERT INTO chain_config (
         chain_id,
@@ -1168,11 +1218,10 @@ VALUES ('0001', 100, 500, NULL),
     ('0021', 300, 700, '0040'),
     ('0064', 400, 800, NULL),
     ('0040', 400, 800, NULL);
--- Seed data for method_validators
-INSERT INTO method_validators (method, validator)
-VALUES ('eth_call', 'blockRange'),
-    ('eth_getLogs', 'logLimitBlocks'),
-    ('eth_blocknumber', 'blockRange'),
-    ('eth_estimateGas', 'blockRange'),
-    ('eth_getBalance', 'blockRange'),
-    ('eth_getBlockByNumber', 'blockRange');
+DO $$
+DECLARE json_content JSONB;
+BEGIN json_content := pg_read_file('/data/radix-spec.json', 0, 1000000000);
+-- Adjust the last parameter as needed to cover the file size
+INSERT INTO config_openapi (chain_id, open_api_spec)
+VALUES ('0083', json_content);
+END $$;

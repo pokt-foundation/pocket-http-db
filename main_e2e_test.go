@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -998,6 +999,42 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			})
 		}
 	})
+
+	/* ------ V2 Open API Spec Read Tests ------ */
+
+	ts.Run("Test_GetOpenAPISpecs", func() {
+		tests := []struct {
+			name             string
+			expectedResponse map[types.RelayChainID]json.RawMessage
+			err              error
+		}{
+			{
+				name:             "Should get chain open API specs",
+				expectedResponse: testdata.OpenAPISpecs("./testdata/radix-spec.json"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				response, err := ts.client1.GetOpenAPISpecs(context.Background())
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					for chainID, expectedSpec := range test.expectedResponse {
+						ts.JSONEq(string(expectedSpec), string(response[chainID]))
+					}
+
+					response, err = ts.client2.GetOpenAPISpecs(context.Background())
+					ts.Equal(test.err, err)
+
+					for chainID, expectedSpec := range test.expectedResponse {
+						ts.JSONEq(string(expectedSpec), string(response[chainID]))
+					}
+				}
+			})
+		}
+	})
+
 }
 
 // Runs all the write endpoint tests after the read tests

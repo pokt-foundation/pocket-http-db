@@ -362,6 +362,7 @@ type ValidatorMethodStr string
 const (
 	ValidatorMethodStrBlockRange     ValidatorMethodStr = "blockRange"
 	ValidatorMethodStrLogLimitBlocks ValidatorMethodStr = "logLimitBlocks"
+	ValidatorMethodStrEthAddress     ValidatorMethodStr = "ethAddress"
 )
 
 func (e *ValidatorMethodStr) Scan(src interface{}) error {
@@ -554,6 +555,12 @@ type ChainConfig struct {
 type ChainsGigastakeApplication struct {
 	ChainID                types.RelayChainID   `json:"chain_id"`
 	GigastakeApplicationID types.GigastakeAppID `json:"gigastake_application_id"`
+}
+
+type ConfigOpenapi struct {
+	ID          int32              `json:"id"`
+	ChainID     types.RelayChainID `json:"chain_id"`
+	OpenApiSpec []byte             `json:"open_api_spec"`
 }
 
 type GigastakeApplication struct {

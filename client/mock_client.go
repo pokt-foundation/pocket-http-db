@@ -4,9 +4,11 @@ package client
 
 import (
 	context "context"
-	time "time"
+	json "encoding/json"
 
 	mock "github.com/stretchr/testify/mock"
+
+	time "time"
 
 	types "github.com/pokt-foundation/portal-http-db/v2/types"
 )
@@ -553,6 +555,32 @@ func (_m *MockIDBClient) GetGigastakeAppByID(ctx context.Context, gigastakeAppID
 
 	if rf, ok := ret.Get(1).(func(context.Context, types.GigastakeAppID) error); ok {
 		r1 = rf(ctx, gigastakeAppID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetOpenAPISpecs provides a mock function with given fields: ctx
+func (_m *MockIDBClient) GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
+	ret := _m.Called(ctx)
+
+	var r0 map[types.RelayChainID]json.RawMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (map[types.RelayChainID]json.RawMessage, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) map[types.RelayChainID]json.RawMessage); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[types.RelayChainID]json.RawMessage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}

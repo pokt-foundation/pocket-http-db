@@ -28,6 +28,5 @@ repos:
             "--disable-plugin",
             "KeywordDetector",
             "--exclude-files",
-            "./testdata/radix-spec.json",
+            "testdata/radix-spec.json",
           ]
-

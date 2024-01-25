@@ -3,6 +3,7 @@ package cache
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -60,6 +61,7 @@ type (
 		blockedContracts types.GlobalBlockedContracts
 
 		validatorConfig *types.ValidatorPluginConfig
+		openAPISpecs    map[types.RelayChainID]json.RawMessage
 	}
 
 	UsersForAccount map[types.UserID]*types.User
@@ -185,6 +187,10 @@ func (c *Cache) setCache(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	openAPISpecsData, err := c.fetchOpenAPISpecsData(ctx)
+	if err != nil {
+		return err
+	}
 
 	// Lock the mutex only once data is fetched
 	// to minimize the time the lock is held.
@@ -207,6 +213,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.blockedContracts = blockedContractsData
 
 	c.validatorConfig = validatorConfigData
+	c.openAPISpecs = openAPISpecsData
 
 	return nil
 }
@@ -366,6 +373,16 @@ func (c *Cache) fetchValidatorConfigData(ctx context.Context) (*types.ValidatorP
 	return validatorConfig, nil
 }
 
+// fetchOpenAPISpecsData reads OpenAPISpecs from the database and returns them.
+func (c *Cache) fetchOpenAPISpecsData(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
+	openAPISpecs, err := c.reader.ReadOpenAPISpecs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ReadOpenAPISpecs - %w", err)
+	}
+
+	return openAPISpecs, nil
+}
+
 // cacheRefreshHandler sets the cache from the DB at a regular interval (default is 5 minutes).
 func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes time.Duration) {
 	for {
@@ -480,6 +497,16 @@ func (c *Cache) deleteMethodValidator(methodConfig *types.ValidatorMethodConfig)
 	defer c.rwMutex.Unlock()
 
 	c.validatorConfig.RemoveMethodValidator(methodConfig)
+}
+
+/* OpenAPI Specs */
+
+// GetOpenAPISpecs returns the OpenAPISpecs from the cache
+func (c *Cache) GetOpenAPISpecs() map[types.RelayChainID]json.RawMessage {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return c.openAPISpecs
 }
 
 /* ---------- Accounts ---------- */

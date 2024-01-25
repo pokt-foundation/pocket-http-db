@@ -36,7 +36,7 @@ jobs:
           ~/.cache/pip
           ~/pre-commit-2.20.0.pyz
           $(go env GOPATH)/bin
-        key: ${{ runner.os }}-go-precommit-${{ hashFiles('**/go.sum', '.pre-commit-config.yaml', '**/requirements*.txt', 'pre-commit-2.20.0.pyz') }}
+        key: ${{ runner.os }}-go-precommit-${{ hashFiles('**/go.sum', '**/requirements*.txt', 'pre-commit-2.20.0.pyz') }}
         restore-keys: |
           ${{ runner.os }}-go-precommit-
 

@@ -33,6 +33,9 @@ FROM chain_config;
 SELECT method,
     validator
 FROM method_validators;
+-- name: SelectOpenAPISpecs :many
+SELECT *
+FROM config_openapi;
 -- name: SelectPlans :many
 SELECT name,
     description,
