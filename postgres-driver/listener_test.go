@@ -2,6 +2,7 @@ package postgresdriver
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -238,6 +239,23 @@ func Test_PGDriver_Listen(t *testing.T) {
 					Data: &types.ValidatorMethodConfig{
 						Method:    "eth_call",
 						Validator: types.ValidatorMethodBlockRange,
+					},
+				},
+			},
+		},
+		{
+			name: "Should process ConfigJSON notifications",
+			content: &types.GatewayConfig{
+				Version: 1,
+				Config:  json.RawMessage(`{"key":"value"}`),
+			},
+			expectedNotifications: map[types.Table]*types.Notification{
+				types.TableConfigJSON: {
+					Table:  types.TableConfigJSON,
+					Action: types.ActionInsert,
+					Data: &types.GatewayConfig{
+						Version: 1,
+						Config:  json.RawMessage(`{"key":"value"}`),
 					},
 				},
 			},

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	dbClient "github.com/pokt-foundation/portal-http-db/v2/client"
 	"github.com/pokt-foundation/portal-http-db/v2/testdata"
 	"github.com/pokt-foundation/portal-http-db/v2/types"
@@ -995,6 +996,93 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					response, err = ts.client2.GetValidatorConfig(context.Background())
 					ts.Equal(test.err, err)
 					ts.Equal(test.expectedResponse, response)
+				}
+			})
+		}
+	})
+
+	/* ------ V2 Config JSON Read Tests ------ */
+
+	ts.Run("Test_GetConfigJSON", func() {
+		testUpdateConfig := `{
+			"characters": [
+				{
+					"name": "Rick Sanchez",
+					"species": "Human",
+					"status": "Alive",
+					"origin": {
+						"name": "Earth (C-137)",
+						"dimension": "Dimension C-137"
+					},
+					"episodes": 41
+				},
+				{
+					"name": "Morty Smith",
+					"species": "Human",
+					"status": "Alive",
+					"origin": {
+						"name": "Earth (C-137)",
+						"dimension": "Dimension C-137"
+					},
+					"episodes": 41
+				}
+			]
+		}`
+
+		tests := []struct {
+			name             string
+			expectedResponse types.GatewayConfig
+			updatedConfig    string
+			err              error
+		}{
+			{
+				name:             "Should get config JSON",
+				expectedResponse: testdata.ConfigJSON("./testdata/config.json"),
+			},
+			{
+				name:          "Should set new config JSON",
+				updatedConfig: testUpdateConfig,
+				expectedResponse: types.GatewayConfig{
+					Version: 2,
+					Config:  json.RawMessage(testUpdateConfig),
+				},
+			},
+			{
+				name:          "Should fail if new config JSON is identical to current config JSON",
+				updatedConfig: testUpdateConfig,
+				expectedResponse: types.GatewayConfig{
+					Version: 2,
+					Config:  json.RawMessage(testUpdateConfig),
+				},
+				err: fmt.Errorf("Failed to execute the SQL statement: ERROR: Blocking config_json row insert: Gateway configuration JSON has not changed (SQLSTATE P0001)"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				if test.updatedConfig != "" {
+					err := insertConfigJSON(test.updatedConfig)
+					if test.err != nil {
+						ts.Error(err)
+						ts.Contains(err.Error(), test.err.Error())
+					} else {
+						ts.NoError(err)
+					}
+
+					<-time.After(50 * time.Millisecond)
+				}
+
+				response, err := ts.client1.GetConfigJSON(context.Background())
+				ts.NoError(err)
+
+				if err == nil {
+					ts.Equal(test.expectedResponse.Version, response.Version)
+					ts.JSONEq(string(test.expectedResponse.GetJSON()), string(response.GetJSON()))
+					response, err = ts.client2.GetConfigJSON(context.Background())
+					ts.NoError(err)
+
+					ts.Equal(test.expectedResponse.Version, response.Version)
+					ts.JSONEq(string(test.expectedResponse.GetJSON()), string(response.GetJSON()))
 				}
 			})
 		}
@@ -3345,4 +3433,31 @@ func (ts *phdE2EReadTestSuite) NoError(err error) {
 }
 func (ts *phdE2EWriteTestSuite) NoError(err error) {
 	ts.Suite.NoError(err)
+}
+
+// insertConfigJSON inserts a config JSON directly into the database to test that
+// the listener update is working for direct DB config updates eg. from portal admin
+func insertConfigJSON(configJSON string) error {
+	dbUser := "postgres"
+	dbPassword := "pgpassword"
+	dbHost := "localhost"
+	dbPort := "5432"
+	dbName := "postgres"
+
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", dbUser, dbPassword, dbHost, dbPort, dbName)
+
+	dbConn, err := pgx.Connect(context.Background(), connStr)
+	if err != nil {
+		return fmt.Errorf("Unable to connect to database: %v\n", err)
+	}
+	defer dbConn.Close(context.Background())
+
+	stmt := fmt.Sprintf("INSERT INTO config_json (configuration) VALUES ('%s')", configJSON)
+
+	_, err = dbConn.Exec(context.Background(), stmt)
+	if err != nil {
+		return fmt.Errorf("Failed to execute the SQL statement: %w", err)
+	}
+
+	return nil
 }

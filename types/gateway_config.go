@@ -1,5 +1,7 @@
 package types
 
+import "encoding/json"
+
 type ValidatorMethodStr = string
 
 const (
@@ -32,6 +34,11 @@ type (
 	ValidatorMethodConfig struct {
 		Method    Method             `json:"method"`
 		Validator ValidatorMethodStr `json:"validator"`
+	}
+
+	GatewayConfig struct {
+		Version int             `json:"version"`
+		Config  json.RawMessage `json:"config"`
 	}
 )
 
@@ -84,4 +91,16 @@ func (v *ValidatorChainConfig) Table() Table {
 
 func (v *ValidatorMethodConfig) Table() Table {
 	return TableMethodValidators
+}
+
+func (g *GatewayConfig) Table() Table {
+	return TableConfigJSON
+}
+
+func (g *GatewayConfig) GetVersion() int {
+	return g.Version
+}
+
+func (g *GatewayConfig) GetJSON() json.RawMessage {
+	return g.Config
 }

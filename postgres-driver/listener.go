@@ -138,6 +138,9 @@ func (n notification) parseNotification() *types.Notification {
 	case types.TableMethodValidators:
 		return n.parseMethodValidatorNotification()
 
+	case types.TableConfigJSON:
+		return n.parseConfigJSONNotification()
+
 	default:
 		return nil
 	}
@@ -395,5 +398,17 @@ func (n notification) parseMethodValidatorNotification() *types.Notification {
 		Table:  n.Table,
 		Action: n.Action,
 		Data:   dbMethodValidator.toOutput(),
+	}
+}
+
+func (n notification) parseConfigJSONNotification() *types.Notification {
+	rawData, _ := json.Marshal(n.Data)
+	var dbConfig dbConfigJSON
+	_ = json.Unmarshal(rawData, &dbConfig)
+
+	return &types.Notification{
+		Table:  n.Table,
+		Action: n.Action,
+		Data:   dbConfig.toOutput(),
 	}
 }

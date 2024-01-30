@@ -93,6 +93,9 @@ func (c *Cache) parseNotification(n types.Notification) {
 	case types.TableMethodValidators:
 		c.parseMethodValidatorNotification(n)
 
+	case types.TableConfigJSON:
+		c.parseConfigJSONNotification(n)
+
 	default:
 		c.logger.Error("unknown table", slog.String("table", string(n.Table)))
 	}
@@ -378,5 +381,20 @@ func (c *Cache) parseMethodValidatorNotification(n types.Notification) {
 	}
 	if n.Action == types.ActionDelete {
 		c.deleteMethodValidator(methodValidator)
+	}
+}
+
+/* ---------- Config JSON ---------- */
+
+func (c *Cache) parseConfigJSONNotification(n types.Notification) {
+	configJSON, ok := n.Data.(*types.GatewayConfig)
+	if !ok {
+		c.logger.Error("parseConfigJSONNotification failed")
+		return
+	}
+
+	// config_json table may only have new rows inserted, never updated
+	if n.Action == types.ActionInsert {
+		c.updateConfigJSON(configJSON)
 	}
 }

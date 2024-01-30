@@ -89,6 +89,8 @@ const (
 	TableChainConfig      Table = "chain_config"
 	TableMethodValidators Table = "method_validators"
 
+	TableConfigJSON Table = "config_json"
+
 	ActionInsert Action = "INSERT"
 	ActionUpdate Action = "UPDATE"
 	ActionDelete Action = "DELETE"

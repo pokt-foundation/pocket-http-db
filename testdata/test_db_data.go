@@ -1187,6 +1187,18 @@ func ValidatorPluginConfig() *types.ValidatorPluginConfig {
 	}
 }
 
+func ConfigJSON(filepath string) types.GatewayConfig {
+	bytes, err := os.ReadFile(filepath)
+	if err != nil {
+		panic(err)
+	}
+
+	return types.GatewayConfig{
+		Version: 1,
+		Config:  json.RawMessage(bytes),
+	}
+}
+
 func OpenAPISpecs(filepath string) map[types.RelayChainID]json.RawMessage {
 	bytes, err := os.ReadFile(filepath)
 	if err != nil {

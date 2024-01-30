@@ -87,7 +87,7 @@ type (
 		// GetValidatorConfig returns the method validator config - GET `/v2/validator_config`
 		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
 		// GetConfigJSON fetches the current configuration - GET `/v2/config`
-		GetConfigJSON(ctx context.Context) (json.RawMessage, error)
+		GetConfigJSON(ctx context.Context) (types.GatewayConfig, error)
 		// GetOpenAPISpecs returns the chain OpenAPI specs - GET `/v2/openapi_specs`
 		GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
 	}
@@ -653,10 +653,10 @@ func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPlu
 /* --  Config JSON Read Methods -- */
 
 // GetConfigJSON fetches the current configuration - GET `/v2/config`
-func (db *DBClient) GetConfigJSON(ctx context.Context) (json.RawMessage, error) {
+func (db *DBClient) GetConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
 	endpoint := db.v2BasePath(configPath)
 
-	return getReq[json.RawMessage](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+	return getReq[types.GatewayConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
 /* -- OpenAPI Specs Read Methods -- */

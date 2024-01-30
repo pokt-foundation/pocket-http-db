@@ -34,6 +34,27 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadValidatorConfig() {
 	}
 }
 
+func (ts *PGDriverTestSuite) Test_PGDriver_ReadConfigJSON() {
+	tests := []struct {
+		name     string
+		expected types.GatewayConfig
+	}{
+		{
+			name:     "should read the raw config JSON from the database",
+			expected: testdata.ConfigJSON("../testdata/config.json"),
+		},
+	}
+
+	for _, test := range tests {
+		ts.Run(test.name, func() {
+			result, err := ts.driver.ReadConfigJSON(context.Background())
+			ts.NoError(err)
+			ts.Equal(test.expected.Version, result.Version)
+			ts.JSONEq(string(test.expected.GetJSON()), string(result.GetJSON()))
+		})
+	}
+}
+
 func (ts *PGDriverTestSuite) Test_PGDriver_ReadOpenAPISpecs() {
 	tests := []struct {
 		name     string

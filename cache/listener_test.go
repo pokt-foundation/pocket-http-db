@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -22,6 +23,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadValidatorConfig", testCtx).Return(testdata.ValidatorPluginConfig(), nil)
+	readerMock.On("ReadConfigJSON", testCtx).Return(testdata.ConfigJSON("../testdata/config.json"), nil)
 	readerMock.On("ReadOpenAPISpecs", testCtx).Return(testdata.OpenAPISpecs("../testdata/radix-spec.json"), nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
@@ -1000,6 +1002,58 @@ func Test_parseMethodValidatorNotification(t *testing.T) {
 			} else {
 				c.Contains(cache.validatorConfig.MethodValidatorsMap[test.methodConfig.Method], test.methodConfig.Validator)
 			}
+		})
+	}
+}
+
+func Test_parseConfigJSONNotification(t *testing.T) {
+	tests := []struct {
+		name            string
+		action          types.Action
+		version         int
+		configuration   json.RawMessage
+		expectedVersion int
+		expectedConfig  json.RawMessage
+	}{
+		{
+			name:            "should update cache with new ConfigJSON on insert",
+			action:          types.ActionInsert,
+			version:         1,
+			configuration:   json.RawMessage(`{"key": "new value"}`),
+			expectedVersion: 1,
+			expectedConfig:  json.RawMessage(`{"key": "new value"}`),
+		},
+		{
+			name:            "should update cache again with new ConfigJSON on insert",
+			action:          types.ActionInsert,
+			version:         2,
+			configuration:   json.RawMessage(`{"newKey2": "newValue2"}`),
+			expectedVersion: 2,
+			expectedConfig:  json.RawMessage(`{"newKey2": "newValue2"}`),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			readerMock, cancel := NewReaderMock(t)
+			cache := newTestListenerCache(t, readerMock)
+			defer cancel()
+
+			notification := types.Notification{
+				Action: test.action,
+				Table:  types.TableConfigJSON,
+				Data: &types.GatewayConfig{
+					Version: test.version,
+					Config:  test.configuration,
+				},
+			}
+
+			cache.parseConfigJSONNotification(notification)
+
+			c.Equal(test.expectedVersion, cache.GetConfigJSON().Version)
+			c.JSONEq(string(test.expectedConfig), string(cache.GetConfigJSON().Config))
 		})
 	}
 }

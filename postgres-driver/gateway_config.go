@@ -42,13 +42,16 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 }
 
 // ReadConfigJSON reads the raw JSON config from the database
-func (q *Queries) ReadConfigJSON(ctx context.Context) (json.RawMessage, error) {
+func (q *Queries) ReadConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
 	configJSON, err := q.SelectConfiguration(ctx)
 	if err != nil {
-		return nil, err
+		return types.GatewayConfig{}, err
 	}
 
-	return json.RawMessage(configJSON), nil
+	return types.GatewayConfig{
+		Version: int(configJSON.Version),
+		Config:  json.RawMessage(configJSON.Configuration),
+	}, nil
 }
 
 // ReadOpenAPISpecs reads the chain OpenAPI specs from the database
@@ -83,6 +86,13 @@ func (mv dbMethodValidator) toOutput() *types.ValidatorMethodConfig {
 	}
 }
 
+func (c dbConfigJSON) toOutput() *types.GatewayConfig {
+	return &types.GatewayConfig{
+		Version: int(c.Version),
+		Config:  c.Configuration,
+	}
+}
+
 type dbChainConfig struct {
 	ChainID        types.RelayChainID
 	ValidRange     int32
@@ -92,4 +102,9 @@ type dbChainConfig struct {
 type dbMethodValidator struct {
 	Method    types.Method
 	Validator string
+}
+
+type dbConfigJSON struct {
+	Version       int32           `db:"version"`
+	Configuration json.RawMessage `db:"configuration"`
 }
