@@ -22,6 +22,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadValidatorConfig", testCtx).Return(testdata.ValidatorPluginConfig(), nil)
+	readerMock.On("ReadOpenAPISpecs", testCtx).Return(testdata.OpenAPISpecs("../testdata/radix-spec.json"), nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
 		Reader:              readerMock,

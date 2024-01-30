@@ -84,10 +84,12 @@ type (
 		// GetBlockedContracts returns all blocked contracts - GET `/v2/blocked_contract`
 		GetBlockedContracts(ctx context.Context) (types.GlobalBlockedContracts, error)
 
-		// GetValidatorConfig returns the validator config - GET `/v2/validator_config`
+		// GetValidatorConfig returns the method validator config - GET `/v2/validator_config`
 		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
 		// GetConfigJSON fetches the current configuration - GET `/v2/config`
 		GetConfigJSON(ctx context.Context) (json.RawMessage, error)
+		// GetOpenAPISpecs returns the chain OpenAPI specs - GET `/v2/openapi_specs`
+		GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
 	}
 
 	// IDBWriter interface contains write methods for interacting with the Portal HTTP DB
@@ -199,6 +201,7 @@ const (
 	blockedContractPath basePath = "blocked_contract"
 	validatorConfigPath basePath = "validator_config"
 	configPath          basePath = "config"
+	openAPISpecsPath    basePath = "openapi_specs"
 	middlewarePath      basePath = "middleware"
 
 	gigastakePath      subPath = "gigastake"
@@ -638,12 +641,16 @@ func (db *DBClient) GetBlockedContracts(ctx context.Context) (types.GlobalBlocke
 	return getReq[types.GlobalBlockedContracts](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
+/* -- Validator Method Config Read Methods -- */
+
 // GetValidatorConfig returns the current validator config - GET `/v2/validator_config`
 func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error) {
 	endpoint := db.v2BasePath(validatorConfigPath)
 
 	return getReq[*types.ValidatorPluginConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
+
+/* --  Config JSON Read Methods -- */
 
 // GetConfigJSON fetches the current configuration - GET `/v2/config`
 func (db *DBClient) GetConfigJSON(ctx context.Context) (json.RawMessage, error) {
@@ -652,7 +659,14 @@ func (db *DBClient) GetConfigJSON(ctx context.Context) (json.RawMessage, error) 
 	return getReq[json.RawMessage](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
-/* -- Validator Method Config Read Methods -- */
+/* -- OpenAPI Specs Read Methods -- */
+
+// GetOpenAPISpecs returns the OpenAPI specs - GET `/v2/openapi_specs`
+func (db *DBClient) GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
+	endpoint := db.v2BasePath(openAPISpecsPath)
+
+	return getReq[map[types.RelayChainID]json.RawMessage](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+}
 
 /* ------------ IDBWriter Methods ------------ */
 

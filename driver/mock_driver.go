@@ -4,9 +4,11 @@ package driver
 
 import (
 	context "context"
-	time "time"
+	json "encoding/json"
 
 	mock "github.com/stretchr/testify/mock"
+
+	time "time"
 
 	types "github.com/pokt-foundation/portal-http-db/v2/types"
 )
@@ -172,6 +174,32 @@ func (_m *MockDriver) ReadChains(ctx context.Context, options types.DriverOption
 	return r0, r1
 }
 
+// ReadConfigJSON provides a mock function with given fields: ctx
+func (_m *MockDriver) ReadConfigJSON(ctx context.Context) (json.RawMessage, error) {
+	ret := _m.Called(ctx)
+
+	var r0 json.RawMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (json.RawMessage, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) json.RawMessage); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(json.RawMessage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // ReadGigastakeApps provides a mock function with given fields: ctx, options
 func (_m *MockDriver) ReadGigastakeApps(ctx context.Context, options types.DriverOptions) (map[types.GigastakeAppID]*types.GigastakeApp, error) {
 	ret := _m.Called(ctx, options)
@@ -191,6 +219,32 @@ func (_m *MockDriver) ReadGigastakeApps(ctx context.Context, options types.Drive
 
 	if rf, ok := ret.Get(1).(func(context.Context, types.DriverOptions) error); ok {
 		r1 = rf(ctx, options)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// ReadOpenAPISpecs provides a mock function with given fields: ctx
+func (_m *MockDriver) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
+	ret := _m.Called(ctx)
+
+	var r0 map[types.RelayChainID]json.RawMessage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (map[types.RelayChainID]json.RawMessage, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) map[types.RelayChainID]json.RawMessage); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[types.RelayChainID]json.RawMessage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
 	} else {
 		r1 = ret.Error(1)
 	}

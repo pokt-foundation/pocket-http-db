@@ -558,8 +558,14 @@ type ChainsGigastakeApplication struct {
 }
 
 type ConfigJson struct {
-	ID            int32  `json:"id"`
+	Version       int32  `json:"version"`
 	Configuration []byte `json:"configuration"`
+}
+
+type ConfigOpenapi struct {
+	ID          int32              `json:"id"`
+	ChainID     types.RelayChainID `json:"chain_id"`
+	OpenApiSpec []byte             `json:"open_api_spec"`
 }
 
 type GigastakeApplication struct {

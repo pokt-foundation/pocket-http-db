@@ -36,6 +36,9 @@ FROM method_validators;
 -- name: SelectConfiguration :one
 SELECT configuration
 FROM config_json;
+-- name: SelectOpenAPISpecs :many
+SELECT *
+FROM config_openapi;
 -- name: SelectPlans :many
 SELECT name,
     description,

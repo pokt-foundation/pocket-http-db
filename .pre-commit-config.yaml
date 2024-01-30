@@ -22,4 +22,11 @@ repos:
     hooks:
       - id: detect-secrets
         args:
-          ["--exclude-secrets", "test_", "--disable-plugin", "KeywordDetector"]
+          [
+            "--exclude-secrets",
+            "test_",
+            "--disable-plugin",
+            "KeywordDetector",
+            "--exclude-files",
+            "testdata/radix-spec.json",
+          ]

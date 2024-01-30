@@ -62,24 +62,6 @@ var (
 		CreatedAt:         time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
 	}
 
-	testDirectApp = PortalApp{
-		ID:   "direct_app_0001",
-		Name: "test_direct_app",
-		AATs: map[ProtocolAppID]AAT{
-			"test_direct_app_1": {
-				ID:              "test_direct_app_1",
-				Address:         "test_b45a087e45ac70ec70c699f53592d132",
-				PublicKey:       "test_7ad0f2a799b5edfe37d89b1907430411",
-				ClientPublicKey: "test_d2562652c1e18e68d3e1e92a7cbe5e3e",
-				PrivateKey:      "",
-				Signature:       "test_0dc44d7d2b368fcb4982d0611ce6f7be",
-				Version:         "0.0.1",
-			},
-		},
-		CreatedAt: time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
-		UpdatedAt: time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
-	}
-
 	testPortalAppLite = PortalAppLite{
 		ID:         "test_app_1",
 		PublicKeys: []PortalAppPublicKey{"test_11b8d394ca331d7c7a71ca1896d630f6"},
@@ -110,27 +92,6 @@ var (
 			ThroughputLimit: 5_000,
 		},
 	}
-
-	testMiddlewareDirectPortalApp = PortalAppLite{
-		ID:         "test_direct_app_1",
-		PublicKeys: []PortalAppPublicKey{"test_7ad0f2a799b5edfe37d89b1907430411"},
-	}
-
-	testEmptyMapApp = PortalApp{
-		ID:        "direct_app_0002",
-		Name:      "empty_aats_map",
-		AATs:      map[ProtocolAppID]AAT{},
-		CreatedAt: time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
-		UpdatedAt: time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
-	}
-
-	testNilMapApp = PortalApp{
-		ID:        "direct_app_0003",
-		Name:      "nil_aats_map",
-		AATs:      nil,
-		CreatedAt: time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
-		UpdatedAt: time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
-	}
 )
 
 func Test_ConvertPortalAppToPortalAppLite(t *testing.T) {
@@ -148,11 +109,6 @@ func Test_ConvertPortalAppToPortalAppLite(t *testing.T) {
 			appPlan:        testPlan,
 			expectedMidApp: testPortalAppLite,
 		},
-		{
-			name:           "Should correctly convert directPortalApp to PortalAppLite",
-			portalApp:      testDirectApp,
-			expectedMidApp: testMiddlewareDirectPortalApp,
-		},
 	}
 
 	for _, test := range tests {
@@ -161,104 +117,6 @@ func Test_ConvertPortalAppToPortalAppLite(t *testing.T) {
 			c.Equal(test.expectedMidApp.ID, middlewarePortalApp.ID)
 			c.Equal(test.expectedMidApp.Settings, middlewarePortalApp.Settings)
 			c.Equal(test.expectedMidApp.Whitelists, middlewarePortalApp.Whitelists)
-		})
-	}
-}
-
-func Test_PortalApp_getIDForMiddleware(t *testing.T) {
-	c := require.New(t)
-
-	tests := []struct {
-		name           string
-		portalApp      *PortalApp
-		expectedResult PortalAppID
-	}{
-		{
-			name:           "Should return the ID of the normal app",
-			portalApp:      &testPortalApplication,
-			expectedResult: "test_app_1",
-		},
-		{
-			name:           "Should return the ID of the direct app",
-			portalApp:      &testDirectApp,
-			expectedResult: "test_direct_app_1",
-		},
-		{
-			name:           "Should return empty string for direct app with empty AATs map",
-			portalApp:      &testEmptyMapApp,
-			expectedResult: "",
-		},
-		{
-			name:           "Should return empty string for direct app with nil AATs map",
-			portalApp:      &testNilMapApp,
-			expectedResult: "",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			id := test.portalApp.getIDForMiddleware()
-			c.Equal(test.expectedResult, id)
-		})
-	}
-}
-
-func Test_PortalApp_IsDirectApp(t *testing.T) {
-	c := require.New(t)
-
-	tests := []struct {
-		name      string
-		portalApp PortalApp
-		expected  bool
-	}{
-		{
-			name:      "Should return false for non-direct app",
-			portalApp: testPortalApplication,
-			expected:  false,
-		},
-		{
-			name:      "Should return true for direct app",
-			portalApp: testDirectApp,
-			expected:  true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			c.Equal(test.expected, test.portalApp.IsDirectApp())
-		})
-	}
-}
-
-func Test_PortalApp_getDirectAppID(t *testing.T) {
-	c := require.New(t)
-
-	tests := []struct {
-		name           string
-		portalApp      *PortalApp
-		expectedResult PortalAppID
-	}{
-		{
-			name:           "Should return the ID of the direct app",
-			portalApp:      &testDirectApp,
-			expectedResult: "test_direct_app_1",
-		},
-		{
-			name:           "Should return empty string for app with empty AATs map",
-			portalApp:      &testEmptyMapApp,
-			expectedResult: "",
-		},
-		{
-			name:           "Should return empty string for app with nil AATs map",
-			portalApp:      &testNilMapApp,
-			expectedResult: "",
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			id := test.portalApp.getDirectAppID()
-			c.Equal(test.expectedResult, id)
 		})
 	}
 }
@@ -272,24 +130,9 @@ func Test_PortalApp_GetPublicKeys(t *testing.T) {
 		expectedResult []PortalAppPublicKey
 	}{
 		{
-			name:           "Should return all public keys of the normal app",
+			name:           "Should return all public keys of the app",
 			portalApp:      &testPortalApplication,
 			expectedResult: []PortalAppPublicKey{"test_11b8d394ca331d7c7a71ca1896d630f6"},
-		},
-		{
-			name:           "Should return all public keys of the direct app",
-			portalApp:      &testDirectApp,
-			expectedResult: []PortalAppPublicKey{"test_7ad0f2a799b5edfe37d89b1907430411"},
-		},
-		{
-			name:           "Should return empty slice for app without AATs",
-			portalApp:      &testEmptyMapApp,
-			expectedResult: []PortalAppPublicKey{},
-		},
-		{
-			name:           "Should return empty slice for app with nil AATs",
-			portalApp:      &testNilMapApp,
-			expectedResult: []PortalAppPublicKey{},
 		},
 	}
 

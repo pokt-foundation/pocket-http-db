@@ -43,6 +43,8 @@ type (
 		ReadValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
 		/* ReadConfigJSON returns the raw JSON config from the DB */
 		ReadConfigJSON(ctx context.Context) (json.RawMessage, error)
+		/* ReadOpenAPISpecs returns the OpenAPISpecs from the DB */
+		ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
 
 		NotificationChannel() <-chan *types.Notification
 

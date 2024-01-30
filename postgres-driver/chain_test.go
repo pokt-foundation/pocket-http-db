@@ -24,6 +24,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadChains() {
 				types.RelayChainID("0021"): testdata.Chains()[types.RelayChainID("0021")],
 				types.RelayChainID("0064"): testdata.Chains()[types.RelayChainID("0064")],
 				types.RelayChainID("0040"): testdata.Chains()[types.RelayChainID("0040")],
+				types.RelayChainID("0083"): testdata.Chains()[types.RelayChainID("0083")],
 			},
 			options: types.DriverOptions{},
 			err:     nil,

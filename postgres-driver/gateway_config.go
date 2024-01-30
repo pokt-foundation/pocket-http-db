@@ -7,6 +7,7 @@ import (
 	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
+// ReadValidatorConfig reads the method validator plugin config from the database
 func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error) {
 	chainConfigs, err := q.SelectValidatorChainConfig(ctx)
 	if err != nil {
@@ -40,6 +41,7 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	return config, nil
 }
 
+// ReadConfigJSON reads the raw JSON config from the database
 func (q *Queries) ReadConfigJSON(ctx context.Context) (json.RawMessage, error) {
 	configJSON, err := q.SelectConfiguration(ctx)
 	if err != nil {
@@ -47,6 +49,21 @@ func (q *Queries) ReadConfigJSON(ctx context.Context) (json.RawMessage, error) {
 	}
 
 	return json.RawMessage(configJSON), nil
+}
+
+// ReadOpenAPISpecs reads the chain OpenAPI specs from the database
+func (q *Queries) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
+	specs, err := q.SelectOpenAPISpecs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	chainSpecs := make(map[types.RelayChainID]json.RawMessage)
+	for _, spec := range specs {
+		chainSpecs[types.RelayChainID(spec.ChainID)] = json.RawMessage(spec.OpenApiSpec)
+	}
+
+	return chainSpecs, nil
 }
 
 /* ----- Used by Listener ----- */

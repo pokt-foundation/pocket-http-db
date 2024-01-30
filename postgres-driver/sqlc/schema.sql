@@ -296,8 +296,14 @@ CREATE TABLE method_validators (
     UNIQUE (method, validator)
 );
 CREATE TABLE config_json (
-    id SERIAL PRIMARY KEY,
+    version SERIAL PRIMARY KEY,
     configuration JSONB
+);
+CREATE TABLE config_openapi (
+    id SERIAL PRIMARY KEY,
+    chain_id VARCHAR(4) REFERENCES chains(id),
+    open_api_spec JSONB NOT NULL,
+    UNIQUE (chain_id)
 );
 -- Listener Notification Function
 CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$

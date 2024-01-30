@@ -45,6 +45,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadBlockedContracts", context.Background()).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUser, nil)
 	readerMock.On("ReadValidatorConfig", mock.Anything).Return(testdata.ValidatorPluginConfig(), nil)
+	readerMock.On("ReadOpenAPISpecs", mock.Anything).Return(testdata.OpenAPISpecs("../testdata/radix-spec.json"), nil)
 
 	logger := logger.New()
 
@@ -1836,6 +1837,47 @@ func TestRouter_getValidatorConfig(t *testing.T) {
 			err = json.Unmarshal(rr.Body.Bytes(), &response)
 			c.NoError(err)
 			c.Equal(test.expectedResponse, response)
+		})
+	}
+}
+
+/* ---------- V2 OpenAPI Handler Method Unit Tests ---------- */
+
+func TestRouter_getOpenAPISpecs(t *testing.T) {
+	tests := []struct {
+		name             string
+		expectedStatus   int
+		expectedResponse map[types.RelayChainID]json.RawMessage
+	}{
+		{
+			name:             "Should fetch open API specs",
+			expectedStatus:   http.StatusOK,
+			expectedResponse: testdata.OpenAPISpecs("../testdata/radix-spec.json"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, "/v2/openapi_specs", nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var response map[types.RelayChainID]json.RawMessage
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			c.NoError(err)
+
+			for chainID, expectedSpec := range test.expectedResponse {
+				c.JSONEq(string(expectedSpec), string(response[chainID]))
+			}
 		})
 	}
 }
