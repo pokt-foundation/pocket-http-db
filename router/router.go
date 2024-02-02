@@ -142,9 +142,14 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}/active", rt.updateBlockedContractActive).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}", rt.removeBlockedContract).Methods(http.MethodDelete)
 
+	// DEPRECATED - keep until all clients are updated
 	rt.Router.HandleFunc("/v2/validator_config", rt.getValidatorConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/config", rt.getConfigJSON).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/openapi_specs", rt.getOpenAPISpecs).Methods(http.MethodGet)
+
+	rt.Router.HandleFunc("/v2/config/json", rt.getConfigJSON).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config/validator", rt.getValidatorConfig).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config/openapi", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v2/plan", rt.getPlans).Methods(http.MethodGet)
 

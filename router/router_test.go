@@ -1828,7 +1828,7 @@ func TestRouter_getValidatorConfig(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, "/v2/validator_config", nil)
+			req, err := http.NewRequest(http.MethodGet, "/v2/config/validator", nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
@@ -1866,7 +1866,7 @@ func TestRouter_getConfigJSON(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, "/v2/config", nil)
+			req, err := http.NewRequest(http.MethodGet, "/v2/config/json", nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
@@ -1905,7 +1905,7 @@ func TestRouter_getOpenAPISpecs(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, "/v2/openapi_specs", nil)
+			req, err := http.NewRequest(http.MethodGet, "/v2/config/openapi", nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)
