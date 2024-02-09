@@ -24,7 +24,6 @@ type (
 	// UpdateGigastakeApp represents the fields that can be updated on a GigastakeApp
 	UpdateGigastakeApp struct {
 		ID       GigastakeAppID `json:"id"`
-		Name     string         `json:"name"`
 		ChainIDs []RelayChainID `json:"chainIDs"`
 	}
 

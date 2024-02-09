@@ -453,7 +453,6 @@ func TestRouter_updateGigastakeApp(t *testing.T) {
 			name: "Should update a Gigastake App",
 			gigastakeAppUpdate: types.UpdateGigastakeApp{
 				ID:       "test_gigastake_app_1",
-				Name:     "pokt_gigastake_updated",
 				ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
 			},
 			expectedStatus: http.StatusOK,

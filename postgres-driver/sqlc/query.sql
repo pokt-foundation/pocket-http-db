@@ -977,11 +977,10 @@ SELECT unnest(@chain_ids::VARCHAR []),
         SELECT id
         FROM new_gigastake_application
     ) ON CONFLICT (chain_id, gigastake_application_id) DO NOTHING;
--- name: UpdateGigastakeAppNameAndChainIDs :exec
+-- name: UpdateGigastakeAppChainIDs :exec
 WITH updated_gigastake_application AS (
     UPDATE gigastake_applications
-    SET name = $2,
-        updated_at = $3
+    SET updated_at = $2
     WHERE id = $1
     RETURNING id
 ),
@@ -1022,3 +1021,13 @@ SELECT id
 FROM users
 ORDER BY created_at DESC
 LIMIT 1;
+-- name: CheckGigastakeAppNameExists :one
+SELECT EXISTS (
+        SELECT 1
+        FROM gigastake_applications
+        WHERE name = $1
+    );
+-- name: GetActiveGigastakeApplicationsCount :one
+SELECT COUNT(*)
+FROM gigastake_applications
+WHERE deleted = false;

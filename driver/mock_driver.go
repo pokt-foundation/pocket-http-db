@@ -675,15 +675,15 @@ func (_m *MockDriver) WriteChainAndGigastakeApps(ctx context.Context, input type
 }
 
 // WriteGigastakeApp provides a mock function with given fields: ctx, gigastakeApp, createdAt
-func (_m *MockDriver) WriteGigastakeApp(ctx context.Context, gigastakeApp types.GigastakeApp, createdAt time.Time) (*types.GigastakeApp, error) {
+func (_m *MockDriver) WriteGigastakeApp(ctx context.Context, gigastakeApp *types.GigastakeApp, createdAt time.Time) (*types.GigastakeApp, error) {
 	ret := _m.Called(ctx, gigastakeApp, createdAt)
 
 	var r0 *types.GigastakeApp
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.GigastakeApp, time.Time) (*types.GigastakeApp, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *types.GigastakeApp, time.Time) (*types.GigastakeApp, error)); ok {
 		return rf(ctx, gigastakeApp, createdAt)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, types.GigastakeApp, time.Time) *types.GigastakeApp); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *types.GigastakeApp, time.Time) *types.GigastakeApp); ok {
 		r0 = rf(ctx, gigastakeApp, createdAt)
 	} else {
 		if ret.Get(0) != nil {
@@ -691,7 +691,7 @@ func (_m *MockDriver) WriteGigastakeApp(ctx context.Context, gigastakeApp types.
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, types.GigastakeApp, time.Time) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *types.GigastakeApp, time.Time) error); ok {
 		r1 = rf(ctx, gigastakeApp, createdAt)
 	} else {
 		r1 = ret.Error(1)

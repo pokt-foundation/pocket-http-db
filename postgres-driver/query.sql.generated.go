@@ -140,6 +140,21 @@ func (q *Queries) CheckChainExists(ctx context.Context, id types.RelayChainID) (
 	return exists, err
 }
 
+const checkGigastakeAppNameExists = `-- name: CheckGigastakeAppNameExists :one
+SELECT EXISTS (
+        SELECT 1
+        FROM gigastake_applications
+        WHERE name = $1
+    )
+`
+
+func (q *Queries) CheckGigastakeAppNameExists(ctx context.Context, name string) (bool, error) {
+	row := q.db.QueryRow(ctx, checkGigastakeAppNameExists, name)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const checkIDExists = `-- name: CheckIDExists :one
 SELECT EXISTS (
         SELECT 1
@@ -603,6 +618,19 @@ func (q *Queries) GetAccountOwner(ctx context.Context, accountID types.AccountID
 		&i.BetaTester,
 	)
 	return i, err
+}
+
+const getActiveGigastakeApplicationsCount = `-- name: GetActiveGigastakeApplicationsCount :one
+SELECT COUNT(*)
+FROM gigastake_applications
+WHERE deleted = false
+`
+
+func (q *Queries) GetActiveGigastakeApplicationsCount(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getActiveGigastakeApplicationsCount)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getLastCreatedUserID = `-- name: GetLastCreatedUserID :one
@@ -2320,17 +2348,16 @@ func (q *Queries) UpdateDeleteWhitelists(ctx context.Context, arg UpdateDeleteWh
 	return err
 }
 
-const updateGigastakeAppNameAndChainIDs = `-- name: UpdateGigastakeAppNameAndChainIDs :exec
+const updateGigastakeAppChainIDs = `-- name: UpdateGigastakeAppChainIDs :exec
 WITH updated_gigastake_application AS (
     UPDATE gigastake_applications
-    SET name = $2,
-        updated_at = $3
+    SET updated_at = $2
     WHERE id = $1
     RETURNING id
 ),
 inserted AS (
     INSERT INTO chains_gigastake_applications (chain_id, gigastake_application_id)
-    SELECT unnest($4::VARCHAR []),
+    SELECT unnest($3::VARCHAR []),
         updated_gigastake_application.id
     FROM updated_gigastake_application ON CONFLICT (chain_id, gigastake_application_id) DO NOTHING
 )
@@ -2340,24 +2367,18 @@ WHERE gigastake_application_id IN (
         FROM updated_gigastake_application
     )
     AND chain_id NOT IN (
-        SELECT unnest($4::VARCHAR [])
+        SELECT unnest($3::VARCHAR [])
     )
 `
 
-type UpdateGigastakeAppNameAndChainIDsParams struct {
+type UpdateGigastakeAppChainIDsParams struct {
 	ID        types.GigastakeAppID `json:"id"`
-	Name      string               `json:"name"`
 	UpdatedAt pgtype.Timestamptz   `json:"updated_at"`
 	ChainIDs  []string             `json:"chain_ids"`
 }
 
-func (q *Queries) UpdateGigastakeAppNameAndChainIDs(ctx context.Context, arg UpdateGigastakeAppNameAndChainIDsParams) error {
-	_, err := q.db.Exec(ctx, updateGigastakeAppNameAndChainIDs,
-		arg.ID,
-		arg.Name,
-		arg.UpdatedAt,
-		arg.ChainIDs,
-	)
+func (q *Queries) UpdateGigastakeAppChainIDs(ctx context.Context, arg UpdateGigastakeAppChainIDsParams) error {
+	_, err := q.db.Exec(ctx, updateGigastakeAppChainIDs, arg.ID, arg.UpdatedAt, arg.ChainIDs)
 	return err
 }
 
