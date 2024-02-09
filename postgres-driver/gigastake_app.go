@@ -106,12 +106,12 @@ func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, 
 		chainIDs = append(chainIDs, string(chainID))
 	}
 
-	numberGigastakes, err := pg.GetActiveGigastakeApplicationsCount(ctx)
+	gigastakesCount, err := pg.GetGigastakeApplicationsCount(ctx)
 	if err != nil {
 		return err
 	}
 
-	gigastakeApp.Name = pg.getNextGigastakeName(numberGigastakes, gigastakeApp.ID)
+	gigastakeApp.Name = pg.getNextGigastakeName(gigastakesCount, gigastakeApp.ID)
 
 	err = qtx.InsertGigastakeApp(ctx, InsertGigastakeAppParams{
 		ID:              gigastakeApp.ID,

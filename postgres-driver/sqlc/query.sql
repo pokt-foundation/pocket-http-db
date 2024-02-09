@@ -1027,7 +1027,6 @@ SELECT EXISTS (
         FROM gigastake_applications
         WHERE name = $1
     );
--- name: GetActiveGigastakeApplicationsCount :one
+-- name: GetGigastakeApplicationsCount :one
 SELECT COUNT(*)
-FROM gigastake_applications
-WHERE deleted = false;
+FROM gigastake_applications;
