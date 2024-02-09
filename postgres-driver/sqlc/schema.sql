@@ -255,8 +255,8 @@ CREATE TABLE IF NOT EXISTS portal_application_aats (
 -- Gigastake Applications Table
 CREATE TABLE IF NOT EXISTS gigastake_applications (
     id VARCHAR(24) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    address VARCHAR(40) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    address VARCHAR(40) NOT NULL UNIQUE,
     public_key VARCHAR(64) NOT NULL,
     client_public_key VARCHAR(64) NOT NULL,
     signature VARCHAR(128) NOT NULL,
