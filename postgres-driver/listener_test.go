@@ -121,7 +121,7 @@ func Test_PGDriver_Listen(t *testing.T) {
 					Action: types.ActionInsert,
 					Data: &types.GigastakeApp{
 						ID:              "test_gigastake_app_1",
-						Name:            "pokt_gigastake",
+						Name:            "pikachu",
 						Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
 						PublicKey:       "test_37a0e8437f5149dc98a9a5b207efc2d0",
 						ClientPublicKey: "test_65c29f0cc82e418b81a528a0c0682a9f",

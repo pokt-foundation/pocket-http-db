@@ -350,7 +350,7 @@ func (rt *Router) createNewChainAndGigastakeApps(w http.ResponseWriter, r *http.
 
 // POST /v2/chain/gigastake - Creates a new Gigastake app.
 func (rt *Router) createNewGigastakeApp(w http.ResponseWriter, r *http.Request) {
-	var gigastakeAppInput types.GigastakeApp
+	var gigastakeAppInput *types.GigastakeApp
 
 	err := json.NewDecoder(r.Body).Decode(&gigastakeAppInput)
 	if err != nil {
