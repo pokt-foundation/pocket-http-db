@@ -252,9 +252,18 @@ CREATE TABLE IF NOT EXISTS portal_application_aats (
     private_key VARCHAR(400) NULL,
     version VARCHAR(10) NOT NULL
 );
+-- Protocols Table
+CREATE TABLE protocols (
+    id VARCHAR(128) PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted BOOLEAN NOT NULL DEFAULT false,
+    deleted_at TIMESTAMPTZ NULL
+);
 -- Gigastake Applications Table
 CREATE TABLE IF NOT EXISTS gigastake_applications (
     id VARCHAR(24) PRIMARY KEY,
+    protocol_id VARCHAR(128) NOT NULL REFERENCES protocols(id),
     name VARCHAR(255) NOT NULL UNIQUE,
     address VARCHAR(40) NOT NULL UNIQUE,
     public_key VARCHAR(64) NOT NULL,

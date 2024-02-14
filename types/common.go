@@ -9,6 +9,7 @@ type (
 	GigastakeAppID string
 	RelayChainID   string
 	PortalAppID    string
+	ProtocolID     string
 	ProtocolAppID  string
 	Email          string
 	BlockedAddress string

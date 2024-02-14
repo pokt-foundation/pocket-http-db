@@ -46,6 +46,7 @@ func (g *SelectGigastakeApplicationsRow) toGigastakeApp() (*types.GigastakeApp, 
 
 	return &types.GigastakeApp{
 		ID:              g.ID,
+		ProtocolID:      g.ProtocolID,
 		ChainIDs:        chainIDs,
 		Name:            g.Name,
 		Address:         g.Address,
@@ -115,6 +116,7 @@ func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, 
 
 	err = qtx.InsertGigastakeApp(ctx, InsertGigastakeAppParams{
 		ID:              gigastakeApp.ID,
+		ProtocolID:      gigastakeApp.ProtocolID,
 		ChainIDs:        chainIDs,
 		Name:            gigastakeApp.Name,
 		Address:         gigastakeApp.Address,
@@ -162,8 +164,11 @@ func (pg *PostgresDriver) getNextGigastakeName(latestEntry int64, fallback types
 }
 
 // generateNextGigastakeName gets the next name for a gigastake. This field is only for human readability.
+// If the name can't be fetched, the calling function returns the fallback name so it will always return a string
 func generateNextGigastakeName(entry int64, fallback types.GigastakeAppID) (string, error) {
-	resp, err := http.Get(fmt.Sprintf("%s%d", mon, entry))
+	// I want to be the very best, like no one ever was
+	// To catch them is my real test; to train them is my cause!
+	resp, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%d", entry))
 	if err != nil {
 		return "", err
 	}
@@ -243,14 +248,11 @@ func (pg *PostgresDriver) validateUpdateGigastakeAppInput(ctx context.Context, g
 	return nil
 }
 
-// I want to be the very best, like no one ever was
-const mon = "https://pokeapi.co/api/v2/pokemon/" // To catch them is my real test
-// To train them is my cause
-
 /* ----- Used by Listener ----- */
 func (json dbGigastakeApp) toOutput() *types.GigastakeApp {
 	return &types.GigastakeApp{
 		ID:              json.ID,
+		ProtocolID:      json.ProtocolID,
 		Name:            json.Name,
 		Address:         json.Address,
 		PublicKey:       types.GigastakeAppPublicKey(json.PublicKey),
@@ -272,6 +274,7 @@ func (json dbChainGigastakeApp) toOutput() *types.ChainGigastakeApp {
 
 type dbGigastakeApp struct {
 	ID              types.GigastakeAppID `json:"id"`
+	ProtocolID      types.ProtocolID     `json:"protocol_id"`
 	Name            string               `json:"name"`
 	Address         string               `json:"address"`
 	PublicKey       string               `json:"public_key"`

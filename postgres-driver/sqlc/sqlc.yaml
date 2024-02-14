@@ -76,6 +76,8 @@ sql:
             go_type: "github.com/pokt-foundation/portal-http-db/v2/types.PortalAppPublicKey"
           - column: "gigastake_applications.id"
             go_type: "github.com/pokt-foundation/portal-http-db/v2/types.GigastakeAppID"
+          - column: "gigastake_applications.protocol_id"
+            go_type: "github.com/pokt-foundation/portal-http-db/v2/types.ProtocolID"
           - column: "gigastake_applications.aat_id"
             go_type: "github.com/pokt-foundation/portal-http-db/v2/types.ProtocolAppID"
           - column: "chains_gigastake_applications.chain_id"
