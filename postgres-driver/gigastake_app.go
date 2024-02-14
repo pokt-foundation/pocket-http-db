@@ -144,6 +144,7 @@ func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, 
 }
 
 // getNextGigastakeName generates a new gigastake name and checks if the name already exists in the DB
+// getNextGigastakeName generates a new gigastake name and checks if the name already exists in the DB
 // If the name can't be fetched, it returns the fallback name so it will always return a string
 func (pg *PostgresDriver) getNextGigastakeName(latestEntry int64, fallback types.GigastakeAppID) string {
 	number := latestEntry + 1
