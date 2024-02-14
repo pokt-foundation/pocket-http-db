@@ -113,7 +113,10 @@ type (
 		Deleted      bool                         `json:"deleted"`
 
 		// GigastakeApps are set inside PHD
+		// DEPRECATED - remove when middleware using new protocol map
 		GigastakeApps map[GigastakeAppID]*GigastakeApp `json:"chainGigastakeApps,omitempty"`
+
+		GigastakeAppsByProtocol map[ProtocolID]map[GigastakeAppID]*GigastakeApp `json:"gigastakeAppsByProtocol,omitempty"`
 	}
 	Altruist struct {
 		ChainID  RelayChainID  `json:"chainID,omitempty"`
@@ -214,6 +217,7 @@ func (c *Chain) GetChainDomains() []ChainDomain {
 }
 
 // GetGigastakeAATs returns a slice of all of a Chain's GigastakeApps
+// DEPRECATED - remove when middleware using new protocol map
 func (c *Chain) GetGigastakeApps() []GigastakeApp {
 	gigastakeAppsSlice := []GigastakeApp{}
 
@@ -224,10 +228,40 @@ func (c *Chain) GetGigastakeApps() []GigastakeApp {
 	return gigastakeAppsSlice
 }
 
+// GetGigastakeAppsByProtocolID returns a slice of a Chain's GigastakeApps for a specific protocol
+func (c *Chain) GetGigastakeAppsByProtocolID(protocolID ProtocolID) []GigastakeApp {
+	gigastakeAppsSlice := []GigastakeApp{}
+
+	for _, gigastakeApp := range c.GigastakeAppsByProtocol[protocolID] {
+		gigastakeAppsSlice = append(gigastakeAppsSlice, *gigastakeApp)
+	}
+
+	return gigastakeAppsSlice
+}
+
+// SetGigastakeApp adds a GigastakeApp to the Chain, updating both the GigastakeApps map (deprecated) and the GigastakeAppsByProtocol map.
+func (c *Chain) SetGigastakeApp(gigastakeApp *GigastakeApp) {
+	// DEPRECATED
+	if c.GigastakeApps == nil {
+		c.GigastakeApps = make(map[GigastakeAppID]*GigastakeApp)
+	}
+	c.GigastakeApps[gigastakeApp.ID] = gigastakeApp
+	// DEPRECATED
+
+	if c.GigastakeAppsByProtocol == nil {
+		c.GigastakeAppsByProtocol = make(map[ProtocolID]map[GigastakeAppID]*GigastakeApp)
+	}
+	if c.GigastakeAppsByProtocol[gigastakeApp.ProtocolID] == nil {
+		c.GigastakeAppsByProtocol[gigastakeApp.ProtocolID] = make(map[GigastakeAppID]*GigastakeApp)
+	}
+	c.GigastakeAppsByProtocol[gigastakeApp.ProtocolID][gigastakeApp.ID] = gigastakeApp
+}
+
 // ClearGigastakeApps clears the Chain's GigastakesApps map and returns the updated Chain
 // Used in the PHD cache when cache.Options.ExcludeGigastakeApps is true
 func (c Chain) ClearGigastakeApps() Chain {
-	c.GigastakeApps = nil
+	c.GigastakeApps = nil // DEPRECATED
+	c.GigastakeAppsByProtocol = nil
 	return c
 }
 

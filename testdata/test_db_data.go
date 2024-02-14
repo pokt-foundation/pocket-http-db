@@ -1092,10 +1092,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 	if len(opts) > 0 && opts[0].IncludeGigastakeApps {
 		for _, gigastakeApp := range GigastakeApps() {
 			for chainID := range gigastakeApp.ChainIDs {
-				if chains[chainID].GigastakeApps == nil {
-					chains[chainID].GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-				}
-				chains[chainID].GigastakeApps[gigastakeApp.ID] = gigastakeApp
+				chains[chainID].SetGigastakeApp(gigastakeApp)
 			}
 		}
 	}
