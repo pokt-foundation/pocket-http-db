@@ -32,6 +32,21 @@ func (e AppEnv) IsValid() bool {
 	}
 }
 
+const (
+	ProtocolMorseMainnet   ProtocolID = "morse-mainnet"
+	ProtocolShannonMainnet ProtocolID = "shannon-mainnet"
+	ProtocolShannonTestnet ProtocolID = "shannon-testnet"
+)
+
+func (id ProtocolID) IsValid() bool {
+	switch id {
+	case ProtocolMorseMainnet, ProtocolShannonMainnet, ProtocolShannonTestnet:
+		return true
+	default:
+		return false
+	}
+}
+
 // Validates that an Email fits a valid email format eg. test@example.com
 func (e Email) IsValid() bool {
 	emailPattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`

@@ -370,7 +370,7 @@ func Test_GetGigastakeApps(t *testing.T) {
 		{
 			name: "Should return all gigastake apps of the chain",
 			chain: Chain{
-				GigastakeApps: map[GigastakeAppID]*GigastakeApp{
+				GigastakeAppsByID: map[GigastakeAppID]*GigastakeApp{
 					"aat_1": {Version: "0.0.1", ClientPublicKey: "clientPublicKey1", PublicKey: "applicationPublicKey1", Signature: "applicationSignature1"},
 					"aat_2": {Version: "0.0.2", ClientPublicKey: "clientPublicKey2", PublicKey: "applicationPublicKey2", Signature: "applicationSignature2"},
 				},
@@ -390,6 +390,54 @@ func Test_GetGigastakeApps(t *testing.T) {
 	}
 }
 
+func Test_GetGigastakeAppsByProtocolID(t *testing.T) {
+	tests := []struct {
+		name       string
+		chain      Chain
+		protocolID ProtocolID
+		expected   []GigastakeApp
+	}{
+		{
+			name: "Should return all gigastake apps for a given protocol ID",
+			chain: Chain{
+				GigastakeApps: map[ProtocolID]map[GigastakeAppID]*GigastakeApp{
+					"protocol_1": {
+						"app_1": {Version: "1.0", ClientPublicKey: "key1", PublicKey: "pubKey1", Signature: "sig1"},
+						"app_2": {Version: "1.1", ClientPublicKey: "key2", PublicKey: "pubKey2", Signature: "sig2"},
+					},
+					"protocol_2": {
+						"app_3": {Version: "2.0", ClientPublicKey: "key3", PublicKey: "pubKey3", Signature: "sig3"},
+					},
+				},
+			},
+			protocolID: "protocol_1",
+			expected: []GigastakeApp{
+				{Version: "1.0", ClientPublicKey: "key1", PublicKey: "pubKey1", Signature: "sig1"},
+				{Version: "1.1", ClientPublicKey: "key2", PublicKey: "pubKey2", Signature: "sig2"},
+			},
+		},
+		{
+			name: "Should return an empty slice for a non-existent protocol ID",
+			chain: Chain{
+				GigastakeApps: map[ProtocolID]map[GigastakeAppID]*GigastakeApp{
+					"protocol_1": {
+						"app_1": {Version: "1.0", ClientPublicKey: "key1", PublicKey: "pubKey1", Signature: "sig1"},
+					},
+				},
+			},
+			protocolID: "protocol_3",
+			expected:   []GigastakeApp{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gigastakeApps := test.chain.GetGigastakeAppsByProtocolID(test.protocolID)
+			assert.ElementsMatch(t, test.expected, gigastakeApps)
+		})
+	}
+}
+
 func Test_ClearGigastakeApps(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -399,7 +447,7 @@ func Test_ClearGigastakeApps(t *testing.T) {
 		{
 			name: "Should clear all GigastakeApps of the chain",
 			chain: Chain{
-				GigastakeApps: map[GigastakeAppID]*GigastakeApp{
+				GigastakeAppsByID: map[GigastakeAppID]*GigastakeApp{
 					"test_app_1": {
 						ID: "test_app_1",
 					},
@@ -409,7 +457,7 @@ func Test_ClearGigastakeApps(t *testing.T) {
 				},
 			},
 			expected: Chain{
-				GigastakeApps: nil,
+				GigastakeAppsByID: nil,
 			},
 		},
 	}

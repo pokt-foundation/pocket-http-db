@@ -26,6 +26,11 @@ CREATE TYPE whitelist_type AS ENUM (
     'userAgents'
 );
 CREATE TYPE validator_method_str AS ENUM ('blockRange', 'logLimitBlocks', 'ethAddress');
+CREATE TYPE protocol_id AS ENUM (
+    'morse-mainnet',
+    'shannon-mainnet',
+    'shannon-testnet'
+);
 -- Plans Tables
 CREATE TABLE pay_plans (
     name VARCHAR(255),
@@ -254,7 +259,7 @@ CREATE TABLE IF NOT EXISTS portal_application_aats (
 );
 -- Protocols Table
 CREATE TABLE protocols (
-    id VARCHAR(128) PRIMARY KEY,
+    id protocol_id PRIMARY KEY,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
@@ -263,7 +268,7 @@ CREATE TABLE protocols (
 -- Gigastake Applications Table
 CREATE TABLE IF NOT EXISTS gigastake_applications (
     id VARCHAR(24) PRIMARY KEY,
-    protocol_id VARCHAR(128) NOT NULL REFERENCES protocols(id),
+    protocol_id protocol_id NOT NULL REFERENCES protocols(id),
     name VARCHAR(255) NOT NULL UNIQUE,
     address VARCHAR(40) NOT NULL UNIQUE,
     public_key VARCHAR(64) NOT NULL,

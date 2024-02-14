@@ -112,11 +112,11 @@ type (
 		UpdatedAt    time.Time                    `json:"updatedAt"`
 		Deleted      bool                         `json:"deleted"`
 
-		// GigastakeApps are set inside PHD
 		// DEPRECATED - remove when middleware using new protocol map
-		GigastakeApps map[GigastakeAppID]*GigastakeApp `json:"chainGigastakeApps,omitempty"`
+		GigastakeAppsByID map[GigastakeAppID]*GigastakeApp `json:"chainGigastakeApps,omitempty"`
 
-		GigastakeAppsByProtocol map[ProtocolID]map[GigastakeAppID]*GigastakeApp `json:"gigastakeAppsByProtocol,omitempty"`
+		// GigastakeApps are set inside PHD
+		GigastakeApps map[ProtocolID]map[GigastakeAppID]*GigastakeApp `json:"gigastakeAppsByProtocol,omitempty"`
 	}
 	Altruist struct {
 		ChainID  RelayChainID  `json:"chainID,omitempty"`
@@ -221,7 +221,7 @@ func (c *Chain) GetChainDomains() []ChainDomain {
 func (c *Chain) GetGigastakeApps() []GigastakeApp {
 	gigastakeAppsSlice := []GigastakeApp{}
 
-	for _, gigastakeApp := range c.GigastakeApps {
+	for _, gigastakeApp := range c.GigastakeAppsByID {
 		gigastakeAppsSlice = append(gigastakeAppsSlice, *gigastakeApp)
 	}
 
@@ -232,36 +232,36 @@ func (c *Chain) GetGigastakeApps() []GigastakeApp {
 func (c *Chain) GetGigastakeAppsByProtocolID(protocolID ProtocolID) []GigastakeApp {
 	gigastakeAppsSlice := []GigastakeApp{}
 
-	for _, gigastakeApp := range c.GigastakeAppsByProtocol[protocolID] {
+	for _, gigastakeApp := range c.GigastakeApps[protocolID] {
 		gigastakeAppsSlice = append(gigastakeAppsSlice, *gigastakeApp)
 	}
 
 	return gigastakeAppsSlice
 }
 
-// SetGigastakeApp adds a GigastakeApp to the Chain, updating both the GigastakeApps map (deprecated) and the GigastakeAppsByProtocol map.
+// SetGigastakeApp adds a GigastakeApp to the Chain, updating both the GigastakeAppsByID map (deprecated) and the GigastakeApps map.
 func (c *Chain) SetGigastakeApp(gigastakeApp *GigastakeApp) {
 	// DEPRECATED
-	if c.GigastakeApps == nil {
-		c.GigastakeApps = make(map[GigastakeAppID]*GigastakeApp)
+	if c.GigastakeAppsByID == nil {
+		c.GigastakeAppsByID = make(map[GigastakeAppID]*GigastakeApp)
 	}
-	c.GigastakeApps[gigastakeApp.ID] = gigastakeApp
+	c.GigastakeAppsByID[gigastakeApp.ID] = gigastakeApp
 	// DEPRECATED
 
-	if c.GigastakeAppsByProtocol == nil {
-		c.GigastakeAppsByProtocol = make(map[ProtocolID]map[GigastakeAppID]*GigastakeApp)
+	if c.GigastakeApps == nil {
+		c.GigastakeApps = make(map[ProtocolID]map[GigastakeAppID]*GigastakeApp)
 	}
-	if c.GigastakeAppsByProtocol[gigastakeApp.ProtocolID] == nil {
-		c.GigastakeAppsByProtocol[gigastakeApp.ProtocolID] = make(map[GigastakeAppID]*GigastakeApp)
+	if c.GigastakeApps[gigastakeApp.ProtocolID] == nil {
+		c.GigastakeApps[gigastakeApp.ProtocolID] = make(map[GigastakeAppID]*GigastakeApp)
 	}
-	c.GigastakeAppsByProtocol[gigastakeApp.ProtocolID][gigastakeApp.ID] = gigastakeApp
+	c.GigastakeApps[gigastakeApp.ProtocolID][gigastakeApp.ID] = gigastakeApp
 }
 
 // ClearGigastakeApps clears the Chain's GigastakesApps map and returns the updated Chain
 // Used in the PHD cache when cache.Options.ExcludeGigastakeApps is true
 func (c Chain) ClearGigastakeApps() Chain {
-	c.GigastakeApps = nil // DEPRECATED
-	c.GigastakeAppsByProtocol = nil
+	c.GigastakeAppsByID = nil // DEPRECATED
+	c.GigastakeApps = nil
 	return c
 }
 

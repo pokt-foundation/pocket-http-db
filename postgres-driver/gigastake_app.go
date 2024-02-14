@@ -13,6 +13,7 @@ import (
 
 var (
 	errEmptyChainIDsForGigastakeApp = errors.New("chainIDs cannot be empty for gigastake app")
+	errInvalidProtocolID            = errors.New("invalid protocol ID: %s")
 )
 
 /* ----- postgresdriver GigastakeApp Read Methods ----- */
@@ -199,6 +200,10 @@ func (pg *PostgresDriver) validateGigastakeAppInput(ctx context.Context, gigasta
 		if !chainExists {
 			return fmt.Errorf(errChainDoesntExist.Error(), chainID)
 		}
+	}
+
+	if !gigastakeApp.ProtocolID.IsValid() {
+		return fmt.Errorf(errInvalidProtocolID.Error(), gigastakeApp.ProtocolID)
 	}
 
 	return nil
