@@ -1036,6 +1036,7 @@ const insertGigastakeApp = `-- name: InsertGigastakeApp :exec
 WITH new_gigastake_application AS (
     INSERT INTO gigastake_applications (
             id,
+            protocol_id,
             name,
             address,
             public_key,
@@ -1045,11 +1046,11 @@ WITH new_gigastake_application AS (
             created_at,
             updated_at
         )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id
 )
 INSERT INTO chains_gigastake_applications (chain_id, gigastake_application_id)
-SELECT unnest($10::VARCHAR []),
+SELECT unnest($11::VARCHAR []),
     (
         SELECT id
         FROM new_gigastake_application
@@ -1058,6 +1059,7 @@ SELECT unnest($10::VARCHAR []),
 
 type InsertGigastakeAppParams struct {
 	ID              types.GigastakeAppID `json:"id"`
+	ProtocolID      types.ProtocolID     `json:"protocol_id"`
 	Name            string               `json:"name"`
 	Address         string               `json:"address"`
 	PublicKey       string               `json:"public_key"`
@@ -1072,6 +1074,7 @@ type InsertGigastakeAppParams struct {
 func (q *Queries) InsertGigastakeApp(ctx context.Context, arg InsertGigastakeAppParams) error {
 	_, err := q.db.Exec(ctx, insertGigastakeApp,
 		arg.ID,
+		arg.ProtocolID,
 		arg.Name,
 		arg.Address,
 		arg.PublicKey,
@@ -1665,6 +1668,7 @@ func (q *Queries) SelectChains(ctx context.Context, includeDeleted bool) ([]Sele
 const selectGigastakeApplications = `-- name: SelectGigastakeApplications :many
 SELECT ga.id,
     ga.name,
+    ga.protocol_id,
     ARRAY_AGG(cga.chain_id)::VARCHAR [] AS chain_ids,
     ga.created_at,
     ga.updated_at,
@@ -1691,6 +1695,7 @@ GROUP BY ga.id,
 type SelectGigastakeApplicationsRow struct {
 	ID              types.GigastakeAppID `json:"id"`
 	Name            string               `json:"name"`
+	ProtocolID      types.ProtocolID     `json:"protocol_id"`
 	ChainIDs        []string             `json:"chain_ids"`
 	CreatedAt       pgtype.Timestamptz   `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz   `json:"updated_at"`
@@ -1714,6 +1719,7 @@ func (q *Queries) SelectGigastakeApplications(ctx context.Context) ([]SelectGiga
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.ProtocolID,
 			&i.ChainIDs,
 			&i.CreatedAt,
 			&i.UpdatedAt,

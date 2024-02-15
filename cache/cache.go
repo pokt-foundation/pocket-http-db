@@ -334,18 +334,14 @@ func (c *Cache) fetchChainsData(ctx context.Context) (chainsData, error) {
 	}
 
 	// Set pointers to Chain GigastakeApps
-	for aatID, gigastakeApp := range gigastakeApps {
+	for _, gigastakeApp := range gigastakeApps {
 		if gigastakeApp.Deleted {
 			continue
 		}
 
 		for chainID := range gigastakeApp.ChainIDs {
 			if chain, ok := chains[chainID]; ok {
-				if chain.GigastakeApps == nil {
-					chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-				}
-				chain.GigastakeApps[aatID] = gigastakeApp
-
+				chain.SetGigastakeApp(gigastakeApp)
 			}
 		}
 	}
@@ -1050,10 +1046,7 @@ func (c *Cache) upsertGigastakeApp(gigastakeApp types.GigastakeApp) {
 
 	for chainID := range gigastakeApp.ChainIDs {
 		if chain, ok := c.chains[chainID]; ok {
-			if chain.GigastakeApps == nil {
-				chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-			}
-			chain.GigastakeApps[gigastakeApp.ID] = &gigastakeApp
+			chain.SetGigastakeApp(&gigastakeApp)
 			continue
 		}
 
@@ -1081,10 +1074,7 @@ func (c *Cache) addChainGigastakeApp(chainGigastake types.ChainGigastakeApp) {
 	gigastakeApp.ChainIDs[chainID] = struct{}{}
 
 	if chain, ok := c.chains[chainID]; ok {
-		if chain.GigastakeApps == nil {
-			chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-		}
-		chain.GigastakeApps[gigastakeApp.ID] = gigastakeApp
+		chain.SetGigastakeApp(gigastakeApp)
 		return
 	}
 
@@ -1144,6 +1134,7 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		chain.Aliases = existingChain.Aliases
 		chain.Checks = existingChain.Checks
 		chain.GigastakeApps = existingChain.GigastakeApps
+		chain.GigastakeAppsByID = existingChain.GigastakeAppsByID // DEPRECATED
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		chain.AliasDomains = existingChain.AliasDomains
 	}
@@ -1190,11 +1181,8 @@ func (c *Cache) upsertChain(chain types.Chain) {
 	}
 
 	if pendingGigastakeApps, ok := c.pendingGigastakeApps[chain.ID]; ok {
-		if chain.GigastakeApps == nil {
-			chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-		}
 		for _, gigastakeApp := range pendingGigastakeApps {
-			chain.GigastakeApps[gigastakeApp.ID] = &gigastakeApp
+			chain.SetGigastakeApp(&gigastakeApp)
 		}
 		delete(c.pendingGigastakeApps, chain.ID)
 	}

@@ -13,6 +13,7 @@ import (
 
 var (
 	errEmptyChainIDsForGigastakeApp = errors.New("chainIDs cannot be empty for gigastake app")
+	errInvalidProtocolID            = errors.New("invalid protocol ID: %s")
 )
 
 /* ----- postgresdriver GigastakeApp Read Methods ----- */
@@ -46,6 +47,7 @@ func (g *SelectGigastakeApplicationsRow) toGigastakeApp() (*types.GigastakeApp, 
 
 	return &types.GigastakeApp{
 		ID:              g.ID,
+		ProtocolID:      g.ProtocolID,
 		ChainIDs:        chainIDs,
 		Name:            g.Name,
 		Address:         g.Address,
@@ -115,6 +117,7 @@ func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, 
 
 	err = qtx.InsertGigastakeApp(ctx, InsertGigastakeAppParams{
 		ID:              gigastakeApp.ID,
+		ProtocolID:      gigastakeApp.ProtocolID,
 		ChainIDs:        chainIDs,
 		Name:            gigastakeApp.Name,
 		Address:         gigastakeApp.Address,
@@ -199,6 +202,10 @@ func (pg *PostgresDriver) validateGigastakeAppInput(ctx context.Context, gigasta
 		}
 	}
 
+	if !gigastakeApp.ProtocolID.IsValid() {
+		return fmt.Errorf(errInvalidProtocolID.Error(), gigastakeApp.ProtocolID)
+	}
+
 	return nil
 }
 
@@ -251,6 +258,7 @@ func (pg *PostgresDriver) validateUpdateGigastakeAppInput(ctx context.Context, g
 func (json dbGigastakeApp) toOutput() *types.GigastakeApp {
 	return &types.GigastakeApp{
 		ID:              json.ID,
+		ProtocolID:      json.ProtocolID,
 		Name:            json.Name,
 		Address:         json.Address,
 		PublicKey:       types.GigastakeAppPublicKey(json.PublicKey),
@@ -272,6 +280,7 @@ func (json dbChainGigastakeApp) toOutput() *types.ChainGigastakeApp {
 
 type dbGigastakeApp struct {
 	ID              types.GigastakeAppID `json:"id"`
+	ProtocolID      types.ProtocolID     `json:"protocol_id"`
 	Name            string               `json:"name"`
 	Address         string               `json:"address"`
 	PublicKey       string               `json:"public_key"`

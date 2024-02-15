@@ -307,6 +307,12 @@ func validateWriteChainAndGigastakeApps(input types.NewChainInput) error {
 		return errChainCannotBeNil
 	}
 
+	for _, gigastakeApp := range input.GigastakeApps {
+		if !gigastakeApp.ProtocolID.IsValid() {
+			return fmt.Errorf(errInvalidProtocolID.Error(), gigastakeApp.ProtocolID)
+		}
+	}
+
 	return nil
 }
 

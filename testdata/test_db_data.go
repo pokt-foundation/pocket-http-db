@@ -1092,10 +1092,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 	if len(opts) > 0 && opts[0].IncludeGigastakeApps {
 		for _, gigastakeApp := range GigastakeApps() {
 			for chainID := range gigastakeApp.ChainIDs {
-				if chains[chainID].GigastakeApps == nil {
-					chains[chainID].GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-				}
-				chains[chainID].GigastakeApps[gigastakeApp.ID] = gigastakeApp
+				chains[chainID].SetGigastakeApp(gigastakeApp)
 			}
 		}
 	}
@@ -1107,6 +1104,7 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 	return map[types.GigastakeAppID]*types.GigastakeApp{
 		"test_gigastake_app_1": {
 			ID:              "test_gigastake_app_1",
+			ProtocolID:      "morse-mainnet",
 			ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 			Name:            "pikachu",
 			Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
@@ -1119,6 +1117,7 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 		},
 		"test_gigastake_app_2": {
 			ID:              "test_gigastake_app_2",
+			ProtocolID:      "morse-mainnet",
 			ChainIDs:        map[types.RelayChainID]struct{}{"0053": {}},
 			Name:            "eevee",
 			Address:         "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
@@ -1131,6 +1130,7 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 		},
 		"test_gigastake_app_3": {
 			ID:              "test_gigastake_app_3",
+			ProtocolID:      "morse-mainnet",
 			ChainIDs:        map[types.RelayChainID]struct{}{"0040": {}},
 			Name:            "snorlax",
 			Address:         "test_e570c841d5cd4f6197e0428ed7c517fd",
@@ -1263,6 +1263,7 @@ var (
 
 	TestCreateGigastakeApp = types.GigastakeApp{
 		ID:              "test_create_gigastake_1",
+		ProtocolID:      "shannon-testnet",
 		ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 		Name:            "charmeleon",
 		Address:         "test_f9b26cd01e10b2054ef4f69e64edbdbfb0d",
@@ -1364,6 +1365,7 @@ var (
 		GigastakeApps: []*types.GigastakeApp{
 			{
 				ID:              "test_create_gigastake_ada",
+				ProtocolID:      "shannon-mainnet",
 				Name:            "charmander",
 				Address:         "test_c3e9d2a1a3214bc7b364f51362a8a8e4",
 				PublicKey:       "test_8a4b6d3f48274d8988d0f5b4866efce1",
