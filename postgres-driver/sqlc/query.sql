@@ -56,6 +56,7 @@ FROM pay_plans;
 -- name: SelectGigastakeApplications :many
 SELECT ga.id,
     ga.name,
+    ga.protocol_id,
     ARRAY_AGG(cga.chain_id)::VARCHAR [] AS chain_ids,
     ga.created_at,
     ga.updated_at,
@@ -965,6 +966,7 @@ RETURNING active;
 WITH new_gigastake_application AS (
     INSERT INTO gigastake_applications (
             id,
+            protocol_id,
             name,
             address,
             public_key,
@@ -974,7 +976,7 @@ WITH new_gigastake_application AS (
             created_at,
             updated_at
         )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id
 )
 INSERT INTO chains_gigastake_applications (chain_id, gigastake_application_id)

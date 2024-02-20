@@ -56,8 +56,10 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteChainAndGigastakeApps() {
 		{
 			name: "Should fail if chain is nil",
 			newChainInput: types.NewChainInput{
-				Chain:         nil,
-				GigastakeApps: []*types.GigastakeApp{{}},
+				Chain: nil,
+				GigastakeApps: []*types.GigastakeApp{{
+					ProtocolID: "morse-mainnet",
+				}},
 			},
 			err: errChainCannotBeNil,
 		},
@@ -69,7 +71,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteChainAndGigastakeApps() {
 					Blockchain: "testBlockchain",
 					Altruists:  map[types.AltruistURL]types.Altruist{"invalid_url": {URL: "invalid_url"}},
 				},
-				GigastakeApps: []*types.GigastakeApp{{}},
+				GigastakeApps: []*types.GigastakeApp{{
+					ProtocolID: "morse-mainnet",
+				}},
 			},
 			err: fmt.Errorf(errInvalidAltruistURL.Error(), "invalid_url"),
 		},
@@ -83,7 +87,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteChainAndGigastakeApps() {
 						"testAlias": {"invalid_domain"},
 					},
 				},
-				GigastakeApps: []*types.GigastakeApp{{}},
+				GigastakeApps: []*types.GigastakeApp{{
+					ProtocolID: "morse-mainnet",
+				}},
 			},
 			err: fmt.Errorf(errInvalidDomain.Error(), "invalid_domain", "testAlias"),
 		},
@@ -97,7 +103,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteChainAndGigastakeApps() {
 						"testAlias": {"invalid_domain"},
 					},
 				},
-				GigastakeApps: []*types.GigastakeApp{{}},
+				GigastakeApps: []*types.GigastakeApp{{
+					ProtocolID: "morse-mainnet",
+				}},
 			},
 			err: fmt.Errorf(errInvalidDomain.Error(), "invalid_domain", "testAlias"),
 		},
@@ -108,9 +116,24 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteChainAndGigastakeApps() {
 					ID:         "0001",
 					Blockchain: "testBlockchain",
 				},
-				GigastakeApps: []*types.GigastakeApp{{}},
+				GigastakeApps: []*types.GigastakeApp{{
+					ProtocolID: "morse-mainnet",
+				}},
 			},
 			err: fmt.Errorf(errChainExists.Error(), "0001"),
+		},
+		{
+			name: "Should fail if protocol ID is invalid",
+			newChainInput: types.NewChainInput{
+				Chain: &types.Chain{
+					ID:         "0001",
+					Blockchain: "testBlockchain",
+				},
+				GigastakeApps: []*types.GigastakeApp{{
+					ProtocolID: "invalid_protocol",
+				}},
+			},
+			err: fmt.Errorf(errInvalidProtocolID.Error(), "invalid_protocol"),
 		},
 	}
 
