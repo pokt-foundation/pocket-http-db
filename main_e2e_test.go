@@ -38,6 +38,8 @@ func Test_E2E_PortalHTTPDBTestSuite(t *testing.T) {
 	suite.Run(t, writeSuite)
 }
 
+var setChainOpts = testdata.ChainOptions{IncludeGigastakeApps: true}
+
 // Runs all the read-only endpoint tests first to compare to test DB seed data only
 // ie. not yet including data written to the test DB by the test suite
 func (ts *phdE2EReadTestSuite) Test_ReadTests() {
@@ -95,7 +97,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:          "Should get chain by ID",
 				chainID:       "0001",
-				expectedChain: testdata.Chains()["0001"],
+				expectedChain: testdata.Chains(setChainOpts)["0001"],
 				gigastakeApp:  testdata.GigastakeApps()["test_gigastake_app_1"],
 			},
 			{
@@ -116,14 +118,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					test.expectedChain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
+					test.expectedChain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
+					test.expectedChain.GigastakeAppsByID[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 
 					chain, err = ts.client2.GetChainByID(context.Background(), test.chainID)
 					ts.Equal(test.err, err)
-					test.expectedChain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
+					test.expectedChain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
+					test.expectedChain.GigastakeAppsByID[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 				}
 			})
@@ -179,12 +181,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:           "Should get all active chains",
-				expectedChains: testdata.FilterActiveChains(testdata.Chains()),
+				expectedChains: testdata.FilterActiveChains(testdata.Chains(setChainOpts)),
 				gigastakeApps:  testdata.GigastakeApps(),
 			},
 			{
 				name:           "Should get all chains including inactive",
-				expectedChains: testdata.Chains(),
+				expectedChains: testdata.Chains(setChainOpts),
 				gigastakeApps:  testdata.GigastakeApps(),
 				options: dbClient.ChainOptions{
 					IncludeInactive: dbClient.BoolPtr(true),
@@ -194,14 +196,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				// Set pointers to Chain GigastakeApps
+				// Set pointers to Chain GigastakeAppsByID
 				for aatID, gigastakeApp := range test.gigastakeApps {
 					for chainID := range gigastakeApp.ChainIDs {
 						if chain, ok := test.expectedChains[chainID]; ok {
-							if chain.GigastakeApps == nil {
-								chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
+							if chain.GigastakeAppsByID == nil {
+								chain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
 							}
-							chain.GigastakeApps[aatID] = gigastakeApp
+							chain.GigastakeAppsByID[aatID] = gigastakeApp
 						}
 					}
 				}
@@ -1159,6 +1161,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					createdChain := createdChainResp.Chain
 					createdGigastakeApps := createdChainResp.GigastakeApps
+
 					timestamp := createdChain.CreatedAt
 
 					test.newChainInput.Chain.CreatedAt = timestamp
@@ -1180,6 +1183,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
 					ts.Len(createdChainByID.GigastakeApps, 1)
+					createdChainByID.GigastakeAppsByID = nil
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 
@@ -1188,6 +1192,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
 					ts.Len(createdChainByID.GigastakeApps, 1)
+					createdChainByID.GigastakeAppsByID = nil
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 				}
@@ -1239,15 +1244,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					for chainID := range test.gigastakeAppInput.ChainIDs {
 						chain, err := ts.client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						chain.GigastakeApps[test.expected.ID].CreatedAt = timestamp
-						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
-						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ID])
+						chain.GigastakeAppsByID[test.expected.ID].CreatedAt = timestamp
+						chain.GigastakeAppsByID[test.expected.ID].UpdatedAt = timestamp
+						ts.Equal(test.expected, chain.GigastakeAppsByID[test.expected.ID])
 
 						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						chain.GigastakeApps[test.expected.ID].CreatedAt = timestamp
-						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
-						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ID])
+						chain.GigastakeAppsByID[test.expected.ID].CreatedAt = timestamp
+						chain.GigastakeAppsByID[test.expected.ID].UpdatedAt = timestamp
+						ts.Equal(test.expected, chain.GigastakeAppsByID[test.expected.ID])
 					}
 				}
 			})
@@ -1470,11 +1475,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					for _, chainID := range test.gigastakeAppUpdate.ChainIDs {
 						chain, err := ts.client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
+						ts.Contains(chain.GigastakeAppsByID, updatedGigastakeApp.ID)
 
 						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
+						ts.Contains(chain.GigastakeAppsByID, updatedGigastakeApp.ID)
 					}
 				}
 			})

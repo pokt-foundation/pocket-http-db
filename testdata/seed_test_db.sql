@@ -1122,9 +1122,15 @@ VALUES (
         'radix-mainnet',
         '2022-11-11 11:11:11.000000'
     );
--- Insert data into aats
+-- Insert data into protocols
+INSERT INTO protocols (id)
+VALUES ('morse-mainnet'),
+    ('shannon-mainnet'),
+    ('shannon-testnet');
+-- Insert data into agigastake_applications
 INSERT INTO gigastake_applications (
         id,
+        protocol_id,
         name,
         address,
         public_key,
@@ -1136,6 +1142,7 @@ INSERT INTO gigastake_applications (
     )
 VALUES (
         'test_gigastake_app_1',
+        'morse-mainnet',
         'pikachu',
         'test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5',
         'test_37a0e8437f5149dc98a9a5b207efc2d0',
@@ -1147,6 +1154,7 @@ VALUES (
     ),
     (
         'test_gigastake_app_2',
+        'morse-mainnet',
         'eevee',
         'test_5c60d434db4e42d2b5d2ea6eeb8933c4',
         'test_a7e28f8d716541a0a332a5dc6b7e4e6e',
@@ -1158,6 +1166,7 @@ VALUES (
     ),
     (
         'test_gigastake_app_3',
+        'morse-mainnet',
         'snorlax',
         'test_e570c841d5cd4f6197e0428ed7c517fd',
         'test_4f805bbbf96c4a649efc3f4f95616f2e',

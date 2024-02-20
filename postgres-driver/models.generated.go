@@ -570,6 +570,7 @@ type ConfigOpenapi struct {
 
 type GigastakeApplication struct {
 	ID              types.GigastakeAppID `json:"id"`
+	ProtocolID      types.ProtocolID     `json:"protocol_id"`
 	Name            string               `json:"name"`
 	Address         string               `json:"address"`
 	PublicKey       string               `json:"public_key"`
@@ -650,6 +651,14 @@ type PortalApplicationWhitelist struct {
 	Value         string              `json:"value"`
 	ChainID       pgtype.Text         `json:"chain_id"`
 	CreatedAt     pgtype.Timestamptz  `json:"created_at"`
+}
+
+type Protocol struct {
+	ID        string             `json:"id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Deleted   bool               `json:"deleted"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type User struct {
