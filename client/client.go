@@ -86,6 +86,8 @@ type (
 
 		// GetValidatorConfig returns the method validator config - GET `/v2/validator_config`
 		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
+		// GetConfigJSON fetches the current configuration - GET `/v2/config`
+		GetConfigJSON(ctx context.Context) (types.GatewayConfig, error)
 		// GetOpenAPISpecs returns the chain OpenAPI specs - GET `/v2/openapi_specs`
 		GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
 	}
@@ -198,6 +200,7 @@ const (
 	planPath            basePath = "plan"
 	blockedContractPath basePath = "blocked_contract"
 	validatorConfigPath basePath = "validator_config"
+	configPath          basePath = "config"
 	openAPISpecsPath    basePath = "openapi_specs"
 	middlewarePath      basePath = "middleware"
 
@@ -645,6 +648,15 @@ func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPlu
 	endpoint := db.v2BasePath(validatorConfigPath)
 
 	return getReq[*types.ValidatorPluginConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+}
+
+/* --  Config JSON Read Methods -- */
+
+// GetConfigJSON fetches the current configuration - GET `/v2/config`
+func (db *DBClient) GetConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
+	endpoint := db.v2BasePath(configPath)
+
+	return getReq[types.GatewayConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
 /* -- OpenAPI Specs Read Methods -- */

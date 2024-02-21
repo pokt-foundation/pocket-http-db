@@ -116,6 +116,8 @@ func mockContent(mainTableAction, sideTablesAction types.Action, content types.S
 		inputs = chainConfigInputs(mainTableAction, content)
 	case *types.ValidatorMethodConfig:
 		inputs = methodValidatorInputs(mainTableAction, content)
+	case *types.GatewayConfig:
+		inputs = configJSONInputs(mainTableAction, content)
 	default:
 		panic("invalid content type")
 	}
@@ -457,6 +459,26 @@ func methodValidatorInputs(mainTableAction types.Action, content types.SavedOnDB
 			input: dbMethodValidator{
 				Method:    methodValidator.Method,
 				Validator: methodValidator.Validator,
+			},
+		})
+	}
+
+	return inputs
+}
+
+// configJSONInputs generates the mock data for a listener notification for a ConfigJSON struct
+func configJSONInputs(mainTableAction types.Action, content types.SavedOnDB) []inputStruct {
+	configJSON := content.(*types.GatewayConfig)
+
+	var inputs []inputStruct
+
+	if mainTableAction != "" {
+		inputs = append(inputs, inputStruct{
+			action: mainTableAction,
+			table:  types.TableConfigJSON,
+			input: dbConfigJSON{
+				Version:       int32(configJSON.Version),
+				Configuration: configJSON.Config,
 			},
 		})
 	}

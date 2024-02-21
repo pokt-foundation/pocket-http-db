@@ -143,6 +143,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/blocked_contract/{address}", rt.removeBlockedContract).Methods(http.MethodDelete)
 
 	rt.Router.HandleFunc("/v2/validator_config", rt.getValidatorConfig).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config", rt.getConfigJSON).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/openapi_specs", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v2/plan", rt.getPlans).Methods(http.MethodGet)
@@ -1087,6 +1088,15 @@ func (rt *Router) getValidatorConfig(w http.ResponseWriter, r *http.Request) {
 	validatorConfig := rt.cache.GetValidatorConfig()
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, validatorConfig)
+}
+
+/* ---------- V2 Config JSON Handler Methods ---------- */
+
+// GET /v2/config - Get the current config.
+func (rt *Router) getConfigJSON(w http.ResponseWriter, r *http.Request) {
+	config := rt.cache.GetConfigJSON()
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, config)
 }
 
 /* ---------- V2 Open API Spec Handler Methods ---------- */

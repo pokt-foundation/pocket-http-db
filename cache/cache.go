@@ -61,6 +61,7 @@ type (
 		blockedContracts types.GlobalBlockedContracts
 
 		validatorConfig *types.ValidatorPluginConfig
+		configJSON      types.GatewayConfig
 		openAPISpecs    map[types.RelayChainID]json.RawMessage
 	}
 
@@ -187,6 +188,10 @@ func (c *Cache) setCache(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	configJSONData, err := c.fetchConfigJSONData(ctx)
+	if err != nil {
+		return err
+	}
 	openAPISpecsData, err := c.fetchOpenAPISpecsData(ctx)
 	if err != nil {
 		return err
@@ -213,6 +218,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.blockedContracts = blockedContractsData
 
 	c.validatorConfig = validatorConfigData
+	c.configJSON = configJSONData
 	c.openAPISpecs = openAPISpecsData
 
 	return nil
@@ -369,6 +375,16 @@ func (c *Cache) fetchValidatorConfigData(ctx context.Context) (*types.ValidatorP
 	return validatorConfig, nil
 }
 
+// fetchConfigJSONData reads ConfigJSON from the database and returns it.
+func (c *Cache) fetchConfigJSONData(ctx context.Context) (types.GatewayConfig, error) {
+	configJSON, err := c.reader.ReadConfigJSON(ctx)
+	if err != nil {
+		return types.GatewayConfig{}, fmt.Errorf("ReadConfigJSON - %w", err)
+	}
+
+	return configJSON, nil
+}
+
 // fetchOpenAPISpecsData reads OpenAPISpecs from the database and returns them.
 func (c *Cache) fetchOpenAPISpecsData(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
 	openAPISpecs, err := c.reader.ReadOpenAPISpecs(ctx)
@@ -495,7 +511,25 @@ func (c *Cache) deleteMethodValidator(methodConfig *types.ValidatorMethodConfig)
 	c.validatorConfig.RemoveMethodValidator(methodConfig)
 }
 
-/* OpenAPI Specs */
+/* ---------- Config JSON ---------- */
+
+// GetConfigJSON returns the ConfigJSON from the cache
+func (c *Cache) GetConfigJSON() types.GatewayConfig {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	return c.configJSON
+}
+
+// updateConfigJSON updates the ConfigJSON in cache to the latest version from the DB
+func (c *Cache) updateConfigJSON(configJSON *types.GatewayConfig) {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	c.configJSON = *configJSON
+}
+
+/* ---------- OpenAPI Specs ---------- */
 
 // GetOpenAPISpecs returns the OpenAPISpecs from the cache
 func (c *Cache) GetOpenAPISpecs() map[types.RelayChainID]json.RawMessage {

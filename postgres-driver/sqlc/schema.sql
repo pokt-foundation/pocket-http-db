@@ -309,6 +309,27 @@ CREATE TABLE method_validators (
     validator validator_method_str,
     UNIQUE (method, validator)
 );
+CREATE TABLE config_json (
+    version SERIAL PRIMARY KEY,
+    configuration JSONB
+);
+-- Do not allow updates to config_json table
+CREATE OR REPLACE RULE config_json_no_update AS ON UPDATE TO config_json DO INSTEAD NOTHING;
+-- Do not allow inserts if the config is the same as the latest config
+CREATE OR REPLACE FUNCTION check_json_change() RETURNS TRIGGER AS $$
+DECLARE latest_config JSONB;
+BEGIN
+SELECT INTO latest_config configuration
+FROM config_json
+ORDER BY version DESC
+LIMIT 1;
+IF (NEW.configuration = latest_config) THEN RAISE EXCEPTION 'Blocking config_json row insert: Gateway configuration JSON has not changed';
+END IF;
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER config_json_check_change BEFORE
+INSERT ON config_json FOR EACH ROW EXECUTE PROCEDURE check_json_change();
 CREATE TABLE config_openapi (
     id SERIAL PRIMARY KEY,
     chain_id VARCHAR(4) REFERENCES chains(id),
@@ -474,3 +495,9 @@ INSERT
     OR
 UPDATE
     OR DELETE ON method_validators FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER config_json_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON config_json FOR EACH ROW EXECUTE PROCEDURE notify_event();

@@ -33,6 +33,12 @@ FROM chain_config;
 SELECT method,
     validator
 FROM method_validators;
+-- name: SelectConfiguration :one
+SELECT version,
+    configuration
+FROM config_json
+ORDER BY version DESC
+LIMIT 1;
 -- name: SelectOpenAPISpecs :many
 SELECT *
 FROM config_openapi;

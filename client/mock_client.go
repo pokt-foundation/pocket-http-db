@@ -536,6 +536,30 @@ func (_m *MockIDBClient) GetChainByID(ctx context.Context, chainID types.RelayCh
 	return r0, r1
 }
 
+// GetConfigJSON provides a mock function with given fields: ctx
+func (_m *MockIDBClient) GetConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
+	ret := _m.Called(ctx)
+
+	var r0 types.GatewayConfig
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (types.GatewayConfig, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) types.GatewayConfig); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(types.GatewayConfig)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetGigastakeAppByID provides a mock function with given fields: ctx, gigastakeAppID
 func (_m *MockIDBClient) GetGigastakeAppByID(ctx context.Context, gigastakeAppID types.GigastakeAppID) (*types.GigastakeApp, error) {
 	ret := _m.Called(ctx, gigastakeAppID)

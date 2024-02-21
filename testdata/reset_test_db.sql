@@ -23,6 +23,7 @@ DROP TYPE IF EXISTS environment CASCADE;
 DROP TYPE IF EXISTS notification_event CASCADE;
 DROP TYPE IF EXISTS notification_type CASCADE;
 DROP TYPE IF EXISTS permissions CASCADE;
+DROP TYPE IF EXISTS validator_method_str CASCADE;
 DROP TYPE IF EXISTS whitelist_type CASCADE;
 
 -- Reset Schema

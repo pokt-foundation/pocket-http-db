@@ -1207,14 +1207,6 @@ VALUES (
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
--- Seed data for method_validators
-INSERT INTO method_validators (method, validator)
-VALUES ('eth_call', 'blockRange'),
-    ('eth_getLogs', 'logLimitBlocks'),
-    ('eth_blocknumber', 'blockRange'),
-    ('eth_estimateGas', 'blockRange'),
-    ('eth_getBalance', 'blockRange'),
-    ('eth_getBlockByNumber', 'blockRange');
 -- Seed data for chain_config
 INSERT INTO chain_config (
         chain_id,
@@ -1227,10 +1219,25 @@ VALUES ('0001', 100, 500, NULL),
     ('0021', 300, 700, '0040'),
     ('0064', 400, 800, NULL),
     ('0040', 400, 800, NULL);
+-- Seed data for method_validators
+INSERT INTO method_validators (method, validator)
+VALUES ('eth_call', 'blockRange'),
+    ('eth_getLogs', 'logLimitBlocks'),
+    ('eth_blocknumber', 'blockRange'),
+    ('eth_estimateGas', 'blockRange'),
+    ('eth_getBalance', 'blockRange'),
+    ('eth_getBlockByNumber', 'blockRange');
+-- Seed data for chain_config
+DO $$
+DECLARE json_content JSONB;
+BEGIN json_content := pg_read_file('/data/config.json', 0, 1000000000);
+INSERT INTO config_json (configuration)
+VALUES (json_content);
+END $$;
+-- Seed data for config_openapi
 DO $$
 DECLARE json_content JSONB;
 BEGIN json_content := pg_read_file('/data/radix-spec.json', 0, 1000000000);
--- Adjust the last parameter as needed to cover the file size
 INSERT INTO config_openapi (chain_id, open_api_spec)
 VALUES ('0083', json_content);
 END $$;
