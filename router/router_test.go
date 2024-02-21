@@ -68,6 +68,8 @@ func newTestRouter(t *testing.T) (*Router, error) {
 /* ---------- V2 Chain Handler Method Unit Tests ---------- */
 
 func TestRouter_getChainByID(t *testing.T) {
+	setChainOpts := testdata.ChainOptions{IncludeGigastakeApps: true}
+
 	tests := []struct {
 		name                   string
 		chainID                types.RelayChainID
@@ -79,7 +81,7 @@ func TestRouter_getChainByID(t *testing.T) {
 			name:                   "Should fetch a single chain",
 			chainID:                "0001",
 			expectedStatus:         http.StatusOK,
-			expectedChain:          *testdata.Chains()["0001"],
+			expectedChain:          *testdata.Chains(setChainOpts)["0001"],
 			expectedChainGigastake: testdata.GigastakeApps()["test_gigastake_app_1"],
 		},
 	}
@@ -102,7 +104,7 @@ func TestRouter_getChainByID(t *testing.T) {
 			var chainResp types.Chain
 			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
 			c.NoError(err)
-			test.expectedChain.GigastakeApps = map[types.GigastakeAppID]*types.GigastakeApp{
+			test.expectedChain.GigastakeAppsByID = map[types.GigastakeAppID]*types.GigastakeApp{
 				test.expectedChainGigastake.ID: test.expectedChainGigastake,
 			}
 			c.Equal(test.expectedChain, chainResp)
@@ -454,7 +456,6 @@ func TestRouter_updateGigastakeApp(t *testing.T) {
 			name: "Should update a Gigastake App",
 			gigastakeAppUpdate: types.UpdateGigastakeApp{
 				ID:       "test_gigastake_app_1",
-				Name:     "pokt_gigastake_updated",
 				ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
 			},
 			expectedStatus: http.StatusOK,
@@ -1866,7 +1867,7 @@ func TestRouter_getConfigJSON(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, "/v2/config/json", nil)
+			req, err := http.NewRequest(http.MethodGet, "/v2/config/gateway", nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)

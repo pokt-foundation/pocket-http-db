@@ -38,6 +38,8 @@ func Test_E2E_PortalHTTPDBTestSuite(t *testing.T) {
 	suite.Run(t, writeSuite)
 }
 
+var setChainOpts = testdata.ChainOptions{IncludeGigastakeApps: true}
+
 // Runs all the read-only endpoint tests first to compare to test DB seed data only
 // ie. not yet including data written to the test DB by the test suite
 func (ts *phdE2EReadTestSuite) Test_ReadTests() {
@@ -95,7 +97,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 			{
 				name:          "Should get chain by ID",
 				chainID:       "0001",
-				expectedChain: testdata.Chains()["0001"],
+				expectedChain: testdata.Chains(setChainOpts)["0001"],
 				gigastakeApp:  testdata.GigastakeApps()["test_gigastake_app_1"],
 			},
 			{
@@ -116,14 +118,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					test.expectedChain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
+					test.expectedChain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
+					test.expectedChain.GigastakeAppsByID[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 
 					chain, err = ts.client2.GetChainByID(context.Background(), test.chainID)
 					ts.Equal(test.err, err)
-					test.expectedChain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-					test.expectedChain.GigastakeApps[test.gigastakeApp.ID] = test.gigastakeApp
+					test.expectedChain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
+					test.expectedChain.GigastakeAppsByID[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 				}
 			})
@@ -179,12 +181,12 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:           "Should get all active chains",
-				expectedChains: testdata.FilterActiveChains(testdata.Chains()),
+				expectedChains: testdata.FilterActiveChains(testdata.Chains(setChainOpts)),
 				gigastakeApps:  testdata.GigastakeApps(),
 			},
 			{
 				name:           "Should get all chains including inactive",
-				expectedChains: testdata.Chains(),
+				expectedChains: testdata.Chains(setChainOpts),
 				gigastakeApps:  testdata.GigastakeApps(),
 				options: dbClient.ChainOptions{
 					IncludeInactive: dbClient.BoolPtr(true),
@@ -194,14 +196,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				// Set pointers to Chain GigastakeApps
+				// Set pointers to Chain GigastakeAppsByID
 				for aatID, gigastakeApp := range test.gigastakeApps {
 					for chainID := range gigastakeApp.ChainIDs {
 						if chain, ok := test.expectedChains[chainID]; ok {
-							if chain.GigastakeApps == nil {
-								chain.GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
+							if chain.GigastakeAppsByID == nil {
+								chain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
 							}
-							chain.GigastakeApps[aatID] = gigastakeApp
+							chain.GigastakeAppsByID[aatID] = gigastakeApp
 						}
 					}
 				}
@@ -1054,7 +1056,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Version: 2,
 					Config:  json.RawMessage(testUpdateConfig),
 				},
-				err: fmt.Errorf("Failed to execute the SQL statement: ERROR: Blocking config_json row insert: Gateway configuration JSON has not changed (SQLSTATE P0001)"),
+				err: fmt.Errorf("Failed to execute the SQL statement: ERROR: Blocking config_gateway row insert: Gateway configuration JSON has not changed (SQLSTATE P0001)"),
 			},
 		}
 
@@ -1159,6 +1161,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 					createdChain := createdChainResp.Chain
 					createdGigastakeApps := createdChainResp.GigastakeApps
+
 					timestamp := createdChain.CreatedAt
 
 					test.newChainInput.Chain.CreatedAt = timestamp
@@ -1180,6 +1183,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
 					ts.Len(createdChainByID.GigastakeApps, 1)
+					createdChainByID.GigastakeAppsByID = nil
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 
@@ -1188,6 +1192,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
 					ts.Len(createdChainByID.GigastakeApps, 1)
+					createdChainByID.GigastakeAppsByID = nil
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 				}
@@ -1208,16 +1213,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				expected:          &testdata.TestCreateGigastakeApp,
 			},
 			{
-				name: "Should return an error if no name provided",
-				gigastakeAppInput: types.GigastakeApp{
-					Name: "",
-				},
-				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewGigastakeApp: gigastake app name cannot be empty"),
-			},
-			{
 				name: "Should return an error for non-existent chain ID",
 				gigastakeAppInput: types.GigastakeApp{
-					Name:     "whatever",
 					ChainIDs: map[types.RelayChainID]struct{}{"0666": {}},
 				},
 				err: fmt.Errorf("Response not OK. 500 Internal Server Error: error in createNewGigastakeApp: error chain does not exist for chain ID '0666'"),
@@ -1247,15 +1244,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					for chainID := range test.gigastakeAppInput.ChainIDs {
 						chain, err := ts.client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						chain.GigastakeApps[test.expected.ID].CreatedAt = timestamp
-						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
-						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ID])
+						chain.GigastakeAppsByID[test.expected.ID].CreatedAt = timestamp
+						chain.GigastakeAppsByID[test.expected.ID].UpdatedAt = timestamp
+						ts.Equal(test.expected, chain.GigastakeAppsByID[test.expected.ID])
 
 						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						chain.GigastakeApps[test.expected.ID].CreatedAt = timestamp
-						chain.GigastakeApps[test.expected.ID].UpdatedAt = timestamp
-						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ID])
+						chain.GigastakeAppsByID[test.expected.ID].CreatedAt = timestamp
+						chain.GigastakeAppsByID[test.expected.ID].UpdatedAt = timestamp
+						ts.Equal(test.expected, chain.GigastakeAppsByID[test.expected.ID])
 					}
 				}
 			})
@@ -1404,13 +1401,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:           "Should update GigastakeApp ChainIDs in the database",
 				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
-					Name:     "pokt_gigastake",
 					ChainIDs: []types.RelayChainID{"0001", "0040"},
 				},
 				err: nil,
 				expected: &types.UpdateGigastakeApp{
 					ID:       "test_gigastake_app_1",
-					Name:     "pokt_gigastake",
 					ChainIDs: []types.RelayChainID{"0001", "0040"},
 				},
 			},
@@ -1419,13 +1414,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
 					ID:       "test_gigastake_app_1",
-					Name:     "pokt_gigastake_updated",
 					ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
 				},
 				err: nil,
 				expected: &types.UpdateGigastakeApp{
 					ID:       "test_gigastake_app_1",
-					Name:     "pokt_gigastake_updated",
 					ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
 				},
 			},
@@ -1433,13 +1426,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				name:           "Should update both GigastakeApp name and ChainIDs in the database back to original values",
 				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
-					Name:     "pokt_gigastake",
 					ChainIDs: []types.RelayChainID{"0001"},
 				},
 				err: nil,
 				expected: &types.UpdateGigastakeApp{
 					ID:       "test_gigastake_app_1",
-					Name:     "pokt_gigastake",
 					ChainIDs: []types.RelayChainID{"0001"},
 				},
 			},
@@ -1450,29 +1441,18 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				expected:       nil,
 			},
 			{
-				name:           "Should return an error if the GigastakeApp name is empty",
-				gigastakeAppID: "test_gigastake_app_1",
-				gigastakeAppUpdate: types.UpdateGigastakeApp{
-					Name: "",
-				},
-				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGigastakeApp: gigastake app name cannot be empty"),
-				expected: nil,
-			},
-			{
 				name:           "Should return an error if the GigastakeApp ChainIDs is empty",
 				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
-					Name:     "whatever",
 					ChainIDs: []types.RelayChainID{},
 				},
-				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGigastakeApp: chainIDs cannot be empty for gigastake app update"),
+				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGigastakeApp: chainIDs cannot be empty for gigastake app"),
 				expected: nil,
 			},
 			{
 				name:           "Should return an error if the chain doesn't exist",
 				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
-					Name:     "whatever",
 					ChainIDs: []types.RelayChainID{"0666"},
 				},
 				err:      fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGigastakeApp: error chain does not exist for chain ID '0666'"),
@@ -1495,13 +1475,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					for _, chainID := range test.gigastakeAppUpdate.ChainIDs {
 						chain, err := ts.client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						ts.Equal(test.gigastakeAppUpdate.Name, chain.GigastakeApps[updatedGigastakeApp.ID].Name)
-						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
+						ts.Contains(chain.GigastakeAppsByID, updatedGigastakeApp.ID)
 
 						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						ts.Equal(test.gigastakeAppUpdate.Name, chain.GigastakeApps[updatedGigastakeApp.ID].Name)
-						ts.Contains(chain.GigastakeApps, updatedGigastakeApp.ID)
+						ts.Contains(chain.GigastakeAppsByID, updatedGigastakeApp.ID)
 					}
 				}
 			})
@@ -3452,7 +3430,7 @@ func insertConfigJSON(configJSON string) error {
 	}
 	defer dbConn.Close(context.Background())
 
-	stmt := fmt.Sprintf("INSERT INTO config_json (configuration) VALUES ('%s')", configJSON)
+	stmt := fmt.Sprintf("INSERT INTO config_gateway (configuration) VALUES ('%s')", configJSON)
 
 	_, err = dbConn.Exec(context.Background(), stmt)
 	if err != nil {

@@ -9,6 +9,7 @@ type (
 	// GigastakeApp represents a single gigastaked application for a given chain
 	GigastakeApp struct {
 		ID              GigastakeAppID            `json:"id"`
+		ProtocolID      ProtocolID                `json:"protocolID"`
 		ChainIDs        map[RelayChainID]struct{} `json:"chainIDs"`
 		Name            string                    `json:"name"`
 		Address         string                    `json:"address"`
@@ -24,7 +25,6 @@ type (
 	// UpdateGigastakeApp represents the fields that can be updated on a GigastakeApp
 	UpdateGigastakeApp struct {
 		ID       GigastakeAppID `json:"id"`
-		Name     string         `json:"name"`
 		ChainIDs []RelayChainID `json:"chainIDs"`
 	}
 

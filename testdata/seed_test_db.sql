@@ -1122,9 +1122,15 @@ VALUES (
         'radix-mainnet',
         '2022-11-11 11:11:11.000000'
     );
--- Insert data into aats
+-- Insert data into protocols
+INSERT INTO protocols (id)
+VALUES ('morse-mainnet'),
+    ('shannon-mainnet'),
+    ('shannon-testnet');
+-- Insert data into agigastake_applications
 INSERT INTO gigastake_applications (
         id,
+        protocol_id,
         name,
         address,
         public_key,
@@ -1136,7 +1142,8 @@ INSERT INTO gigastake_applications (
     )
 VALUES (
         'test_gigastake_app_1',
-        'pokt_gigastake',
+        'morse-mainnet',
+        'pikachu',
         'test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5',
         'test_37a0e8437f5149dc98a9a5b207efc2d0',
         'test_65c29f0cc82e418b81a528a0c0682a9f',
@@ -1147,7 +1154,8 @@ VALUES (
     ),
     (
         'test_gigastake_app_2',
-        'optimism_gigastake',
+        'morse-mainnet',
+        'eevee',
         'test_5c60d434db4e42d2b5d2ea6eeb8933c4',
         'test_a7e28f8d716541a0a332a5dc6b7e4e6e',
         'test_ba4e53dada8f4f939048e56dc8f88f37',
@@ -1158,7 +1166,8 @@ VALUES (
     ),
     (
         'test_gigastake_app_3',
-        'harmony_gigastake',
+        'morse-mainnet',
+        'snorlax',
         'test_e570c841d5cd4f6197e0428ed7c517fd',
         'test_4f805bbbf96c4a649efc3f4f95616f2e',
         'test_789f9d6adcc846f1a079bf68237b5f5c',
@@ -1222,7 +1231,7 @@ VALUES ('eth_call', 'blockRange'),
 DO $$
 DECLARE json_content JSONB;
 BEGIN json_content := pg_read_file('/data/config.json', 0, 1000000000);
-INSERT INTO config_json (configuration)
+INSERT INTO config_gateway (configuration)
 VALUES (json_content);
 END $$;
 -- Seed data for config_openapi

@@ -2,16 +2,18 @@ package postgresdriver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
 var (
-	errEmptyGigastakeAppName              = errors.New("gigastake app name cannot be empty")
-	errEmptyChainIDsForGigastakeAppUpdate = errors.New("chainIDs cannot be empty for gigastake app update")
+	errEmptyChainIDsForGigastakeApp = errors.New("chainIDs cannot be empty for gigastake app")
+	errInvalidProtocolID            = errors.New("invalid protocol ID: %s")
 )
 
 /* ----- postgresdriver GigastakeApp Read Methods ----- */
@@ -45,6 +47,7 @@ func (g *SelectGigastakeApplicationsRow) toGigastakeApp() (*types.GigastakeApp, 
 
 	return &types.GigastakeApp{
 		ID:              g.ID,
+		ProtocolID:      g.ProtocolID,
 		ChainIDs:        chainIDs,
 		Name:            g.Name,
 		Address:         g.Address,
@@ -61,7 +64,7 @@ func (g *SelectGigastakeApplicationsRow) toGigastakeApp() (*types.GigastakeApp, 
 /* ----- postgresdriver GigastakeApp Create Methods ----- */
 
 // WriteGigastakeApp creates a single GigastakeApp in the database
-func (pg *PostgresDriver) WriteGigastakeApp(ctx context.Context, gigastakeApp types.GigastakeApp, createdAt time.Time) (*types.GigastakeApp, error) {
+func (pg *PostgresDriver) WriteGigastakeApp(ctx context.Context, gigastakeApp *types.GigastakeApp, createdAt time.Time) (*types.GigastakeApp, error) {
 	err := pg.validateGigastakeAppInput(ctx, gigastakeApp)
 	if err != nil {
 		return nil, err
@@ -94,19 +97,27 @@ func (pg *PostgresDriver) WriteGigastakeApp(ctx context.Context, gigastakeApp ty
 		return nil, err
 	}
 
-	return &gigastakeApp, nil
+	return gigastakeApp, nil
 }
 
 // insertGigastakeApp performs an insert on a GigastakeApp in the database.
 // It must take a transaction as it is used in both WriteGigastakeApp and WriteChainAndGigastakeApps
-func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, gigastakeApp types.GigastakeApp) error {
+func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, gigastakeApp *types.GigastakeApp) error {
 	chainIDs := []string{}
 	for chainID := range gigastakeApp.ChainIDs {
 		chainIDs = append(chainIDs, string(chainID))
 	}
 
-	err := qtx.InsertGigastakeApp(ctx, InsertGigastakeAppParams{
+	gigastakesCount, err := pg.GetGigastakeApplicationsCount(ctx)
+	if err != nil {
+		return err
+	}
+
+	gigastakeApp.Name = pg.getNextGigastakeName(gigastakesCount, gigastakeApp.ID)
+
+	err = qtx.InsertGigastakeApp(ctx, InsertGigastakeAppParams{
 		ID:              gigastakeApp.ID,
+		ProtocolID:      gigastakeApp.ProtocolID,
 		ChainIDs:        chainIDs,
 		Name:            gigastakeApp.Name,
 		Address:         gigastakeApp.Address,
@@ -121,13 +132,64 @@ func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, 
 		return err
 	}
 
+	err = qtx.UpdateGigastakeAppChainIDs(ctx, UpdateGigastakeAppChainIDsParams{
+		ID:        gigastakeApp.ID,
+		ChainIDs:  chainIDs,
+		UpdatedAt: newTimestamptz(gigastakeApp.UpdatedAt),
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
+// getNextGigastakeName generates a new gigastake name and checks if the name already exists in the DB
+// getNextGigastakeName generates a new gigastake name and checks if the name already exists in the DB
+// If the name can't be fetched, it returns the fallback name so it will always return a string
+func (pg *PostgresDriver) getNextGigastakeName(latestEntry int64, fallback types.GigastakeAppID) string {
+	number := latestEntry + 1
+
+	for i := 0; i < 10; i++ {
+		name, err := generateNextGigastakeName(number, fallback)
+		if err == nil {
+			exists, err := pg.CheckGigastakeAppNameExists(context.Background(), name)
+			if err == nil && !exists {
+				return name
+			}
+		}
+
+		number++
+	}
+
+	return string(fallback)
+}
+
+// generateNextGigastakeName gets the next name for a gigastake. This field is only for human readability.
+// If the name can't be fetched, the calling function returns the fallback name so it will always return a string
+func generateNextGigastakeName(entry int64, fallback types.GigastakeAppID) (string, error) {
+	// I want to be the very best, like no one ever was
+	// To catch them is my real test; to train them is my cause!
+	resp, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%d", entry))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	var response struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return string(fallback), nil
+	}
+
+	return response.Name, nil
+}
+
 // validateGigastakeAppInput performs all necessary data validation checks on incoming GigastakeApp data
-func (pg *PostgresDriver) validateGigastakeAppInput(ctx context.Context, gigastakeApp types.GigastakeApp) error {
-	if gigastakeApp.Name == "" {
-		return errEmptyGigastakeAppName
+func (pg *PostgresDriver) validateGigastakeAppInput(ctx context.Context, gigastakeApp *types.GigastakeApp) error {
+	if len(gigastakeApp.ChainIDs) == 0 {
+		return errEmptyChainIDsForGigastakeApp
 	}
 
 	for chainID := range gigastakeApp.ChainIDs {
@@ -138,6 +200,10 @@ func (pg *PostgresDriver) validateGigastakeAppInput(ctx context.Context, gigasta
 		if !chainExists {
 			return fmt.Errorf(errChainDoesntExist.Error(), chainID)
 		}
+	}
+
+	if !gigastakeApp.ProtocolID.IsValid() {
+		return fmt.Errorf(errInvalidProtocolID.Error(), gigastakeApp.ProtocolID)
 	}
 
 	return nil
@@ -157,9 +223,8 @@ func (pg *PostgresDriver) UpdateGigastakeApp(ctx context.Context, gigastakeAppUp
 		chainIDs = append(chainIDs, string(chainID))
 	}
 
-	err = pg.UpdateGigastakeAppNameAndChainIDs(ctx, UpdateGigastakeAppNameAndChainIDsParams{
+	err = pg.UpdateGigastakeAppChainIDs(ctx, UpdateGigastakeAppChainIDsParams{
 		ID:        gigastakeAppUpdate.ID,
-		Name:      gigastakeAppUpdate.Name,
 		ChainIDs:  chainIDs,
 		UpdatedAt: newTimestamptz(updatedAt),
 	})
@@ -172,12 +237,8 @@ func (pg *PostgresDriver) UpdateGigastakeApp(ctx context.Context, gigastakeAppUp
 
 // validateGigastakeAppInput performs all necessary data validation checks on incoming GigastakeApp data
 func (pg *PostgresDriver) validateUpdateGigastakeAppInput(ctx context.Context, gigastakeAppUpdate types.UpdateGigastakeApp) error {
-	if gigastakeAppUpdate.Name == "" {
-		return errEmptyGigastakeAppName
-	}
-
 	if len(gigastakeAppUpdate.ChainIDs) == 0 {
-		return errEmptyChainIDsForGigastakeAppUpdate
+		return errEmptyChainIDsForGigastakeApp
 	}
 
 	for _, chainID := range gigastakeAppUpdate.ChainIDs {
@@ -197,6 +258,7 @@ func (pg *PostgresDriver) validateUpdateGigastakeAppInput(ctx context.Context, g
 func (json dbGigastakeApp) toOutput() *types.GigastakeApp {
 	return &types.GigastakeApp{
 		ID:              json.ID,
+		ProtocolID:      json.ProtocolID,
 		Name:            json.Name,
 		Address:         json.Address,
 		PublicKey:       types.GigastakeAppPublicKey(json.PublicKey),
@@ -218,6 +280,7 @@ func (json dbChainGigastakeApp) toOutput() *types.ChainGigastakeApp {
 
 type dbGigastakeApp struct {
 	ID              types.GigastakeAppID `json:"id"`
+	ProtocolID      types.ProtocolID     `json:"protocol_id"`
 	Name            string               `json:"name"`
 	Address         string               `json:"address"`
 	PublicKey       string               `json:"public_key"`

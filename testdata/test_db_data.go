@@ -1092,10 +1092,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 	if len(opts) > 0 && opts[0].IncludeGigastakeApps {
 		for _, gigastakeApp := range GigastakeApps() {
 			for chainID := range gigastakeApp.ChainIDs {
-				if chains[chainID].GigastakeApps == nil {
-					chains[chainID].GigastakeApps = make(map[types.GigastakeAppID]*types.GigastakeApp)
-				}
-				chains[chainID].GigastakeApps[gigastakeApp.ID] = gigastakeApp
+				chains[chainID].SetGigastakeApp(gigastakeApp)
 			}
 		}
 	}
@@ -1107,8 +1104,9 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 	return map[types.GigastakeAppID]*types.GigastakeApp{
 		"test_gigastake_app_1": {
 			ID:              "test_gigastake_app_1",
+			ProtocolID:      "morse-mainnet",
 			ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-			Name:            "pokt_gigastake",
+			Name:            "pikachu",
 			Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
 			PublicKey:       types.GigastakeAppPublicKey("test_37a0e8437f5149dc98a9a5b207efc2d0"),
 			ClientPublicKey: "test_65c29f0cc82e418b81a528a0c0682a9f",
@@ -1119,8 +1117,9 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 		},
 		"test_gigastake_app_2": {
 			ID:              "test_gigastake_app_2",
+			ProtocolID:      "morse-mainnet",
 			ChainIDs:        map[types.RelayChainID]struct{}{"0053": {}},
-			Name:            "optimism_gigastake",
+			Name:            "eevee",
 			Address:         "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
 			PublicKey:       types.GigastakeAppPublicKey("test_a7e28f8d716541a0a332a5dc6b7e4e6e"),
 			ClientPublicKey: "test_ba4e53dada8f4f939048e56dc8f88f37",
@@ -1131,8 +1130,9 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 		},
 		"test_gigastake_app_3": {
 			ID:              "test_gigastake_app_3",
+			ProtocolID:      "morse-mainnet",
 			ChainIDs:        map[types.RelayChainID]struct{}{"0040": {}},
-			Name:            "harmony_gigastake",
+			Name:            "snorlax",
 			Address:         "test_e570c841d5cd4f6197e0428ed7c517fd",
 			PublicKey:       types.GigastakeAppPublicKey("test_4f805bbbf96c4a649efc3f4f95616f2e"),
 			ClientPublicKey: "test_789f9d6adcc846f1a079bf68237b5f5c",
@@ -1275,8 +1275,9 @@ var (
 
 	TestCreateGigastakeApp = types.GigastakeApp{
 		ID:              "test_create_gigastake_1",
+		ProtocolID:      "shannon-testnet",
 		ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
-		Name:            "pokt_create_gigastake",
+		Name:            "charmeleon",
 		Address:         "test_f9b26cd01e10b2054ef4f69e64edbdbfb0d",
 		PublicKey:       types.GigastakeAppPublicKey("test_bc795ac9141ec75166ae11f3217bd04a1a3a62492efc8579e34819cfbdf"),
 		ClientPublicKey: "test_94389a8890dc6ab49a74a37b7140413b4c6bb0640689cc2dc628d49b17b",
@@ -1376,7 +1377,8 @@ var (
 		GigastakeApps: []*types.GigastakeApp{
 			{
 				ID:              "test_create_gigastake_ada",
-				Name:            "pokt_create_gigastake_ada",
+				ProtocolID:      "shannon-mainnet",
+				Name:            "charmander",
 				Address:         "test_c3e9d2a1a3214bc7b364f51362a8a8e4",
 				PublicKey:       "test_8a4b6d3f48274d8988d0f5b4866efce1",
 				ClientPublicKey: "test_c3f9e2a7b2f74bc799d0f3b4962efce1",

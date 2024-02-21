@@ -26,6 +26,11 @@ CREATE TYPE whitelist_type AS ENUM (
     'userAgents'
 );
 CREATE TYPE validator_method_str AS ENUM ('blockRange', 'logLimitBlocks', 'ethAddress');
+CREATE TYPE protocol_id AS ENUM (
+    'morse-mainnet',
+    'shannon-mainnet',
+    'shannon-testnet'
+);
 -- Plans Tables
 CREATE TABLE pay_plans (
     name VARCHAR(255),
@@ -252,11 +257,20 @@ CREATE TABLE IF NOT EXISTS portal_application_aats (
     private_key VARCHAR(400) NULL,
     version VARCHAR(10) NOT NULL
 );
+-- Protocols Table
+CREATE TABLE protocols (
+    id protocol_id PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted BOOLEAN NOT NULL DEFAULT false,
+    deleted_at TIMESTAMPTZ NULL
+);
 -- Gigastake Applications Table
 CREATE TABLE IF NOT EXISTS gigastake_applications (
     id VARCHAR(24) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    address VARCHAR(40) NOT NULL,
+    protocol_id protocol_id NOT NULL REFERENCES protocols(id),
+    name VARCHAR(255) NOT NULL UNIQUE,
+    address VARCHAR(40) NOT NULL UNIQUE,
     public_key VARCHAR(64) NOT NULL,
     client_public_key VARCHAR(64) NOT NULL,
     signature VARCHAR(128) NOT NULL,
@@ -295,27 +309,30 @@ CREATE TABLE method_validators (
     validator validator_method_str,
     UNIQUE (method, validator)
 );
-CREATE TABLE config_json (
+CREATE TABLE config_gateway (
     version SERIAL PRIMARY KEY,
     configuration JSONB
 );
--- Do not allow updates to config_json table
-CREATE OR REPLACE RULE config_json_no_update AS ON UPDATE TO config_json DO INSTEAD NOTHING;
--- Do not allow inserts if the config is the same as the latest config
+-- Do not allow updates to config_gateway table
+CREATE OR REPLACE RULE config_json_no_update AS ON UPDATE TO config_gateway DO INSTEAD NOTHING;
+-- Do not allow inserts if the config is the same as the latest config, regardless of order
 CREATE OR REPLACE FUNCTION check_json_change() RETURNS TRIGGER AS $$
 DECLARE latest_config JSONB;
 BEGIN
 SELECT INTO latest_config configuration
-FROM config_json
+FROM config_gateway
 ORDER BY version DESC
 LIMIT 1;
-IF (NEW.configuration = latest_config) THEN RAISE EXCEPTION 'Blocking config_json row insert: Gateway configuration JSON has not changed';
+-- Use the JSONB equality operator to compare the JSONB objects directly
+IF (
+    jsonb_strip_nulls(NEW.configuration) = jsonb_strip_nulls(latest_config)
+) THEN RAISE EXCEPTION 'Blocking config_gateway row insert: Gateway configuration JSON has not changed';
 END IF;
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 CREATE TRIGGER config_json_check_change BEFORE
-INSERT ON config_json FOR EACH ROW EXECUTE PROCEDURE check_json_change();
+INSERT ON config_gateway FOR EACH ROW EXECUTE PROCEDURE check_json_change();
 CREATE TABLE config_openapi (
     id SERIAL PRIMARY KEY,
     chain_id VARCHAR(4) REFERENCES chains(id),
@@ -486,4 +503,4 @@ AFTER
 INSERT
     OR
 UPDATE
-    OR DELETE ON config_json FOR EACH ROW EXECUTE PROCEDURE notify_event();
+    OR DELETE ON config_gateway FOR EACH ROW EXECUTE PROCEDURE notify_event();

@@ -36,7 +36,7 @@ FROM method_validators;
 -- name: SelectConfiguration :one
 SELECT version,
     configuration
-FROM config_json
+FROM config_gateway
 ORDER BY version DESC
 LIMIT 1;
 -- name: SelectOpenAPISpecs :many
@@ -56,6 +56,7 @@ FROM pay_plans;
 -- name: SelectGigastakeApplications :many
 SELECT ga.id,
     ga.name,
+    ga.protocol_id,
     ARRAY_AGG(cga.chain_id)::VARCHAR [] AS chain_ids,
     ga.created_at,
     ga.updated_at,
@@ -965,6 +966,7 @@ RETURNING active;
 WITH new_gigastake_application AS (
     INSERT INTO gigastake_applications (
             id,
+            protocol_id,
             name,
             address,
             public_key,
@@ -974,7 +976,7 @@ WITH new_gigastake_application AS (
             created_at,
             updated_at
         )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     RETURNING id
 )
 INSERT INTO chains_gigastake_applications (chain_id, gigastake_application_id)
@@ -983,11 +985,10 @@ SELECT unnest(@chain_ids::VARCHAR []),
         SELECT id
         FROM new_gigastake_application
     ) ON CONFLICT (chain_id, gigastake_application_id) DO NOTHING;
--- name: UpdateGigastakeAppNameAndChainIDs :exec
+-- name: UpdateGigastakeAppChainIDs :exec
 WITH updated_gigastake_application AS (
     UPDATE gigastake_applications
-    SET name = $2,
-        updated_at = $3
+    SET updated_at = $2
     WHERE id = $1
     RETURNING id
 ),
@@ -1028,3 +1029,12 @@ SELECT id
 FROM users
 ORDER BY created_at DESC
 LIMIT 1;
+-- name: CheckGigastakeAppNameExists :one
+SELECT EXISTS (
+        SELECT 1
+        FROM gigastake_applications
+        WHERE name = $1
+    );
+-- name: GetGigastakeApplicationsCount :one
+SELECT COUNT(*)
+FROM gigastake_applications;

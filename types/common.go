@@ -9,6 +9,7 @@ type (
 	GigastakeAppID string
 	RelayChainID   string
 	PortalAppID    string
+	ProtocolID     string
 	ProtocolAppID  string
 	Email          string
 	BlockedAddress string
@@ -25,6 +26,21 @@ const (
 func (e AppEnv) IsValid() bool {
 	switch e {
 	case AppEnvProduction, AppEnvDevelopment, AppEnvTest:
+		return true
+	default:
+		return false
+	}
+}
+
+const (
+	ProtocolMorseMainnet   ProtocolID = "morse-mainnet"
+	ProtocolShannonMainnet ProtocolID = "shannon-mainnet"
+	ProtocolShannonTestnet ProtocolID = "shannon-testnet"
+)
+
+func (id ProtocolID) IsValid() bool {
+	switch id {
+	case ProtocolMorseMainnet, ProtocolShannonMainnet, ProtocolShannonTestnet:
 		return true
 	default:
 		return false
@@ -89,7 +105,7 @@ const (
 	TableChainConfig      Table = "chain_config"
 	TableMethodValidators Table = "method_validators"
 
-	TableConfigJSON Table = "config_json"
+	TableConfigJSON Table = "config_gateway"
 
 	ActionInsert Action = "INSERT"
 	ActionUpdate Action = "UPDATE"

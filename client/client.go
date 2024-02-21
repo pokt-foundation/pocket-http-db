@@ -86,7 +86,7 @@ type (
 
 		// GetValidatorConfig returns the method validator config - GET `/v2/config/validator`
 		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
-		// GetConfigJSON fetches the current configuration - GET `/v2/config/json`
+		// GetConfigJSON fetches the current gateway configuration JSON - GET `/v2/config/gateway`
 		GetConfigJSON(ctx context.Context) (types.GatewayConfig, error)
 		// GetOpenAPISpecs returns the chain OpenAPI specs - GET `/v2/config/openapi`
 		GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
@@ -211,7 +211,7 @@ const (
 	removeSubPath       subPath  = "remove"
 	permissionPath      subPath  = "permission"
 	activePath          subPath  = "active"
-	jsonConfigPath      subPath  = "json"
+	gatewayConfigPath   subPath  = "gateway"
 	validatorConfigPath basePath = "validator"
 	openAPIConfigPath   subPath  = "openapi"
 )
@@ -654,9 +654,9 @@ func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPlu
 
 /* --  Config JSON Read Methods -- */
 
-// GetConfigJSON fetches the current configuration - GET `/v2/config/json`
+// GetConfigJSON fetches the current gateway configuration JSON - GET `/v2/config/gateway`
 func (db *DBClient) GetConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
-	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(configPath), jsonConfigPath)
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(configPath), gatewayConfigPath)
 
 	return getReq[types.GatewayConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
