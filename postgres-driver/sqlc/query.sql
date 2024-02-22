@@ -36,7 +36,7 @@ FROM method_validators;
 -- name: SelectConfiguration :one
 SELECT version,
     configuration
-FROM config_json
+FROM config_gateway
 ORDER BY version DESC
 LIMIT 1;
 -- name: SelectOpenAPISpecs :many

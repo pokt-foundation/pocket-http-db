@@ -1231,7 +1231,7 @@ VALUES ('eth_call', 'blockRange'),
 DO $$
 DECLARE json_content JSONB;
 BEGIN json_content := pg_read_file('/data/config.json', 0, 1000000000);
-INSERT INTO config_json (configuration)
+INSERT INTO config_gateway (configuration)
 VALUES (json_content);
 END $$;
 -- Seed data for config_openapi

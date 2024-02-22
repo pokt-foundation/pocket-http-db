@@ -18,7 +18,7 @@ overrides:
       aat_id: "AATID"
       icon_url: "IconURL"
       stripe_subscription_id: "StripeSubscriptionID"
-      config_json: "ConfigJSON"
+      config_gateway: "ConfigJSON"
 
 sql:
   - schema: "schema.sql"

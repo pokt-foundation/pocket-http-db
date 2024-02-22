@@ -393,7 +393,7 @@ func (c *Cache) parseConfigJSONNotification(n types.Notification) {
 		return
 	}
 
-	// config_json table may only have new rows inserted, never updated
+	// config_gateway table may only have new rows inserted, never updated
 	if n.Action == types.ActionInsert {
 		c.updateConfigJSON(configJSON)
 	}

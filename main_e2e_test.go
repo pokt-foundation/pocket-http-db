@@ -1056,7 +1056,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					Version: 2,
 					Config:  json.RawMessage(testUpdateConfig),
 				},
-				err: fmt.Errorf("Failed to execute the SQL statement: ERROR: Blocking config_json row insert: Gateway configuration JSON has not changed (SQLSTATE P0001)"),
+				err: fmt.Errorf("Failed to execute the SQL statement: ERROR: Blocking config_gateway row insert: Gateway configuration JSON has not changed (SQLSTATE P0001)"),
 			},
 		}
 
@@ -3430,7 +3430,7 @@ func insertConfigJSON(configJSON string) error {
 	}
 	defer dbConn.Close(context.Background())
 
-	stmt := fmt.Sprintf("INSERT INTO config_json (configuration) VALUES ('%s')", configJSON)
+	stmt := fmt.Sprintf("INSERT INTO config_gateway (configuration) VALUES ('%s')", configJSON)
 
 	_, err = dbConn.Exec(context.Background(), stmt)
 	if err != nil {

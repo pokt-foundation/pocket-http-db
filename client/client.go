@@ -84,11 +84,11 @@ type (
 		// GetBlockedContracts returns all blocked contracts - GET `/v2/blocked_contract`
 		GetBlockedContracts(ctx context.Context) (types.GlobalBlockedContracts, error)
 
-		// GetValidatorConfig returns the method validator config - GET `/v2/validator_config`
+		// GetValidatorConfig returns the method validator config - GET `/v2/config/validator`
 		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
-		// GetConfigJSON fetches the current configuration - GET `/v2/config`
+		// GetConfigJSON fetches the current gateway configuration JSON - GET `/v2/config/gateway`
 		GetConfigJSON(ctx context.Context) (types.GatewayConfig, error)
-		// GetOpenAPISpecs returns the chain OpenAPI specs - GET `/v2/openapi_specs`
+		// GetOpenAPISpecs returns the chain OpenAPI specs - GET `/v2/config/openapi`
 		GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
 	}
 
@@ -199,19 +199,21 @@ const (
 	userPath            basePath = "user"
 	planPath            basePath = "plan"
 	blockedContractPath basePath = "blocked_contract"
-	validatorConfigPath basePath = "validator_config"
 	configPath          basePath = "config"
-	openAPISpecsPath    basePath = "openapi_specs"
-	middlewarePath      basePath = "middleware"
 
-	gigastakePath      subPath = "gigastake"
-	activatePath       subPath = "activate"
-	integrationSubPath subPath = "integration"
-	updateRoleSubPath  subPath = "update_role"
-	acceptSubPath      subPath = "accept"
-	removeSubPath      subPath = "remove"
-	permissionPath     subPath = "permission"
-	activePath         subPath = "active"
+	middlewarePath basePath = "middleware"
+
+	gigastakePath       subPath  = "gigastake"
+	activatePath        subPath  = "activate"
+	integrationSubPath  subPath  = "integration"
+	updateRoleSubPath   subPath  = "update_role"
+	acceptSubPath       subPath  = "accept"
+	removeSubPath       subPath  = "remove"
+	permissionPath      subPath  = "permission"
+	activePath          subPath  = "active"
+	gatewayConfigPath   subPath  = "gateway"
+	validatorConfigPath basePath = "validator"
+	openAPIConfigPath   subPath  = "openapi"
 )
 
 var (
@@ -643,27 +645,27 @@ func (db *DBClient) GetBlockedContracts(ctx context.Context) (types.GlobalBlocke
 
 /* -- Validator Method Config Read Methods -- */
 
-// GetValidatorConfig returns the current validator config - GET `/v2/validator_config`
+// GetValidatorConfig returns the current validator config - GET `/v2/config/validator`
 func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error) {
-	endpoint := db.v2BasePath(validatorConfigPath)
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(configPath), validatorConfigPath)
 
 	return getReq[*types.ValidatorPluginConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
 /* --  Config JSON Read Methods -- */
 
-// GetConfigJSON fetches the current configuration - GET `/v2/config`
+// GetConfigJSON fetches the current gateway configuration JSON - GET `/v2/config/gateway`
 func (db *DBClient) GetConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
-	endpoint := db.v2BasePath(configPath)
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(configPath), gatewayConfigPath)
 
 	return getReq[types.GatewayConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
 /* -- OpenAPI Specs Read Methods -- */
 
-// GetOpenAPISpecs returns the OpenAPI specs - GET `/v2/openapi_specs`
+// GetOpenAPISpecs returns the OpenAPI specs - GET `/v2/config/openapi`
 func (db *DBClient) GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error) {
-	endpoint := db.v2BasePath(openAPISpecsPath)
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(configPath), openAPIConfigPath)
 
 	return getReq[map[types.RelayChainID]json.RawMessage](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
