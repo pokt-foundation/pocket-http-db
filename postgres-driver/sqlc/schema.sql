@@ -314,7 +314,7 @@ CREATE TABLE config_gateway (
     configuration JSONB
 );
 -- Do not allow updates to config_gateway table
-CREATE OR REPLACE RULE config_json_no_update AS ON UPDATE TO config_gateway DO INSTEAD NOTHING;
+CREATE OR REPLACE RULE config_gateway_no_update AS ON UPDATE TO config_gateway DO INSTEAD NOTHING;
 -- Do not allow inserts if the config is the same as the latest config, regardless of order
 CREATE OR REPLACE FUNCTION check_json_change() RETURNS TRIGGER AS $$
 DECLARE latest_config JSONB;
@@ -331,7 +331,7 @@ END IF;
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-CREATE TRIGGER config_json_check_change BEFORE
+CREATE TRIGGER config_gateway_check_change BEFORE
 INSERT ON config_gateway FOR EACH ROW EXECUTE PROCEDURE check_json_change();
 CREATE TABLE config_openapi (
     id SERIAL PRIMARY KEY,
@@ -498,7 +498,7 @@ INSERT
     OR
 UPDATE
     OR DELETE ON method_validators FOR EACH ROW EXECUTE PROCEDURE notify_event();
-CREATE TRIGGER config_json_notify_event
+CREATE TRIGGER config_gateway_notify_event
 AFTER
 INSERT
     OR
