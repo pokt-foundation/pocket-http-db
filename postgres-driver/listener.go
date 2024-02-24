@@ -138,8 +138,8 @@ func (n notification) parseNotification() *types.Notification {
 	case types.TableMethodValidators:
 		return n.parseMethodValidatorNotification()
 
-	case types.TableConfigJSON:
-		return n.parseConfigJSONNotification()
+	case types.TableGatewayConfig:
+		return n.parseGatewayConfigNotification()
 
 	default:
 		return nil
@@ -401,9 +401,9 @@ func (n notification) parseMethodValidatorNotification() *types.Notification {
 	}
 }
 
-func (n notification) parseConfigJSONNotification() *types.Notification {
+func (n notification) parseGatewayConfigNotification() *types.Notification {
 	rawData, _ := json.Marshal(n.Data)
-	var dbConfig dbConfigJSON
+	var dbConfig dbGatewayConfig
 	_ = json.Unmarshal(rawData, &dbConfig)
 
 	return &types.Notification{

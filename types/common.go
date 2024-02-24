@@ -14,18 +14,19 @@ type (
 	Email          string
 	BlockedAddress string
 
-	AppEnv string
+	Environment string
 )
 
 const (
-	AppEnvProduction  AppEnv = "production"
-	AppEnvDevelopment AppEnv = "development"
-	AppEnvTest        AppEnv = "test"
+	EnvProduction Environment = "production"
+	EnvCanary     Environment = "canary"
+	EnvStaging    Environment = "staging"
+	EnvTest       Environment = "test"
 )
 
-func (e AppEnv) IsValid() bool {
+func (e Environment) IsValid() bool {
 	switch e {
-	case AppEnvProduction, AppEnvDevelopment, AppEnvTest:
+	case EnvProduction, EnvCanary, EnvStaging, EnvTest:
 		return true
 	default:
 		return false
@@ -105,7 +106,7 @@ const (
 	TableChainConfig      Table = "chain_config"
 	TableMethodValidators Table = "method_validators"
 
-	TableConfigJSON Table = "config_gateway"
+	TableGatewayConfig Table = "config_gateway"
 
 	ActionInsert Action = "INSERT"
 	ActionUpdate Action = "UPDATE"

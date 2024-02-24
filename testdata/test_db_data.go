@@ -616,7 +616,7 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 				},
 			},
 			Settings: types.Settings{
-				Environment:       types.EnvironmentProduction,
+				Environment:       types.EnvProduction,
 				SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
 				SecretKeyRequired: true,
 				MonthlyRelayLimit: 2_500_000,
@@ -654,7 +654,7 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 				},
 			},
 			Settings: types.Settings{
-				Environment:       types.EnvironmentProduction,
+				Environment:       types.EnvProduction,
 				SecretKey:         "test_9c9e3b193cfba5348f93bb2f3e3fb794",
 				SecretKeyRequired: false,
 				MonthlyRelayLimit: 1_500_000,
@@ -701,7 +701,7 @@ func PortalApps() map[types.PortalAppID]*types.PortalApp {
 				},
 			},
 			Settings: types.Settings{
-				Environment:       types.EnvironmentProduction,
+				Environment:       types.EnvProduction,
 				SecretKey:         "test_9f48b13e2bc5fd31ab367841f11495c1",
 				SecretKeyRequired: false,
 				MonthlyRelayLimit: 4_500_000,
@@ -1187,16 +1187,34 @@ func ValidatorPluginConfig() *types.ValidatorPluginConfig {
 	}
 }
 
-func ConfigJSON(filepath string) types.GatewayConfig {
-	bytes, err := os.ReadFile(filepath)
+func GatewayConfig(prodFilepath, canaryFilepath string) map[types.Environment]types.GatewayConfig {
+	configs := make(map[types.Environment]types.GatewayConfig)
+
+	// Load production config
+	prodConfigBytes, err := os.ReadFile(prodFilepath)
 	if err != nil {
 		panic(err)
 	}
-
-	return types.GatewayConfig{
-		Version: 1,
-		Config:  json.RawMessage(bytes),
+	configs[types.EnvProduction] = types.GatewayConfig{
+		Environment: types.EnvProduction,
+		Description: "Production environment",
+		Version:     1,
+		Config:      json.RawMessage(prodConfigBytes),
 	}
+
+	// Load canary config
+	canaryConfigBytes, err := os.ReadFile(canaryFilepath)
+	if err != nil {
+		panic(err)
+	}
+	configs[types.EnvCanary] = types.GatewayConfig{
+		Environment: types.EnvCanary,
+		Description: "Canary environment",
+		Version:     1,
+		Config:      json.RawMessage(canaryConfigBytes),
+	}
+
+	return configs
 }
 
 func OpenAPISpecs(filepath string) map[types.RelayChainID]json.RawMessage {
@@ -1242,7 +1260,7 @@ var (
 		Description: "Embark on a journey across the enchanting realm of Middle-earth.",
 		AppEmoji:    "1F336",
 		Settings: types.Settings{
-			Environment:       types.EnvironmentProduction,
+			Environment:       types.EnvProduction,
 			SecretKey:         "test_3e3fb7949c9e3b193cfba5348f93bb2f",
 			SecretKeyRequired: true,
 		},
@@ -1256,7 +1274,7 @@ var (
 		Description: "Travel the mystic sands of Arrakis",
 		AppEmoji:    "1F336",
 		Settings: types.Settings{
-			Environment:       types.EnvironmentProduction,
+			Environment:       types.EnvProduction,
 			SecretKey:         "test_83756e546134df7933bfd748b27bde51",
 			SecretKeyRequired: true,
 		},
@@ -1399,7 +1417,7 @@ var (
 		AppEmoji:    "1F336",
 		AATs:        map[types.ProtocolAppID]types.AAT{"test_protocol_app_1": {}},
 		Settings: types.Settings{
-			Environment:       types.EnvironmentProduction,
+			Environment:       types.EnvProduction,
 			SecretKey:         "test_849c1397586f9fb6f902576120d0d10f",
 			SecretKeyRequired: true,
 		},
@@ -1411,7 +1429,7 @@ var (
 	UpdatePortalAppDescription = "Updating the application name like the shifting sands of Arrakis."
 	UpdatePortalAppEmoji       = types.AppEmoji("1F336")
 	UpdatePortalAppSettings    = &types.UpdateAppSettings{
-		Environment:       types.EnvironmentProduction,
+		Environment:       types.EnvProduction,
 		SecretKey:         "test_9d07c8a96ad53e7c288b0e86f37c5680",
 		SecretKeyRequired: true,
 		MonthlyRelayLimit: 2_500_000,

@@ -149,7 +149,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WritePortalApp() {
 			portalApp: types.PortalApp{
 				AppEmoji:  "1F31B",
 				Name:      "whatever",
-				Settings:  types.Settings{Environment: types.EnvironmentProduction},
+				Settings:  types.Settings{Environment: types.EnvProduction},
 				AccountID: "nonexistent-account",
 			},
 			aat: testdata.TestCreatePortalAppAAT,
@@ -208,7 +208,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 			testUpdatedDescription: testdata.UpdatePortalAppDescription,
 			testUpdatedAppEmoji:    testdata.UpdatePortalAppEmoji,
 			testUpdatedSettings: types.Settings{
-				Environment:       types.EnvironmentProduction,
+				Environment:       types.EnvProduction,
 				SecretKey:         "test_9d07c8a96ad53e7c288b0e86f37c5680",
 				SecretKeyRequired: true,
 				MonthlyRelayLimit: 2_500_000,
@@ -268,7 +268,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdatePortalApp() {
 			},
 			testUpdateTime: testdata.MockTimestamp,
 			testUpdatedSettings: types.Settings{
-				Environment:       types.EnvironmentProduction,
+				Environment:       types.EnvProduction,
 				SecretKey:         "test_9d07c8a96ad53e7c288b0e86f37c5680",
 				SecretKeyRequired: true,
 				MonthlyRelayLimit: 2_500_000,

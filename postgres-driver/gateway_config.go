@@ -41,17 +41,24 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	return config, nil
 }
 
-// ReadConfigJSON reads the raw JSON config from the database
-func (q *Queries) ReadConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
-	configJSON, err := q.SelectConfiguration(ctx)
+// ReadGatewayConfig reads the raw JSON config from the database
+func (q *Queries) ReadGatewayConfig(ctx context.Context) (map[types.Environment]types.GatewayConfig, error) {
+	latestGatewayConfigs, err := q.SelectLatestConfigurations(ctx)
 	if err != nil {
-		return types.GatewayConfig{}, err
+		return nil, err
 	}
 
-	return types.GatewayConfig{
-		Version: int(configJSON.Version),
-		Config:  json.RawMessage(configJSON.Configuration),
-	}, nil
+	gatewayConfigs := make(map[types.Environment]types.GatewayConfig, len(latestGatewayConfigs))
+
+	for _, gatewayConfig := range latestGatewayConfigs {
+		gatewayConfigs[gatewayConfig.Environment] = types.GatewayConfig{
+			Environment: gatewayConfig.Environment,
+			Version:     int(gatewayConfig.Version),
+			Description: gatewayConfig.Description,
+			Config:      json.RawMessage(gatewayConfig.Configuration),
+		}
+	}
+	return gatewayConfigs, nil
 }
 
 // ReadOpenAPISpecs reads the chain OpenAPI specs from the database
@@ -86,25 +93,29 @@ func (mv dbMethodValidator) toOutput() *types.ValidatorMethodConfig {
 	}
 }
 
-func (c dbConfigJSON) toOutput() *types.GatewayConfig {
+func (c dbGatewayConfig) toOutput() *types.GatewayConfig {
 	return &types.GatewayConfig{
-		Version: int(c.Version),
-		Config:  c.Configuration,
+		Environment: types.Environment(c.Environment),
+		Description: c.Description,
+		Version:     int(c.Version),
+		Config:      c.Configuration,
 	}
 }
 
 type dbChainConfig struct {
-	ChainID        types.RelayChainID
-	ValidRange     int32
-	LogLimitBlocks int32
+	ChainID        types.RelayChainID `json:"chain_id"`
+	ValidRange     int32              `json:"valid_range"`
+	LogLimitBlocks int32              `json:"log_limit_blocks"`
 }
 
 type dbMethodValidator struct {
-	Method    types.Method
-	Validator string
+	Method    types.Method `json:"method"`
+	Validator string       `json:"validator"`
 }
 
-type dbConfigJSON struct {
-	Version       int32           `db:"version"`
-	Configuration json.RawMessage `db:"configuration"`
+type dbGatewayConfig struct {
+	Environment   types.Environment `json:"environment"`
+	Description   string            `json:"description"`
+	Version       int32             `json:"version"`
+	Configuration json.RawMessage   `json:"configuration"`
 }

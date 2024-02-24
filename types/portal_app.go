@@ -7,7 +7,6 @@ import (
 
 /* Enums */
 type (
-	Environment   string
 	WhitelistType string
 
 	PortalAppPublicKey string
@@ -17,24 +16,12 @@ type (
 )
 
 const (
-	EnvironmentProduction Environment = "production"
-	EnvironmentTest       Environment = "test"
-
 	WhitelistTypeOrigins     WhitelistType = "origins"
 	WhitelistTypeBlockchains WhitelistType = "blockchains"
 	WhitelistTypeUserAgents  WhitelistType = "userAgents"
 	WhitelistTypeContracts   WhitelistType = "contracts"
 	WhitelistTypeMethods     WhitelistType = "methods"
 )
-
-func (e Environment) IsValid() bool {
-	switch e {
-	case EnvironmentProduction, EnvironmentTest:
-		return true
-	default:
-		return false
-	}
-}
 
 func (w WhitelistType) IsValid() bool {
 	switch w {

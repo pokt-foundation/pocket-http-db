@@ -45,7 +45,7 @@ func newTestRouter(t *testing.T) (*Router, error) {
 	readerMock.On("ReadBlockedContracts", context.Background()).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testUser, nil)
 	readerMock.On("ReadValidatorConfig", mock.Anything).Return(testdata.ValidatorPluginConfig(), nil)
-	readerMock.On("ReadConfigJSON", mock.Anything).Return(testdata.ConfigJSON("../testdata/config.json"), nil)
+	readerMock.On("ReadGatewayConfig", mock.Anything).Return(testdata.GatewayConfig("../testdata/config-prod.json", "../testdata/config-canary.json"), nil)
 	readerMock.On("ReadOpenAPISpecs", mock.Anything).Return(testdata.OpenAPISpecs("../testdata/radix-spec.json"), nil)
 
 	logger := logger.New()
@@ -1845,16 +1845,18 @@ func TestRouter_getValidatorConfig(t *testing.T) {
 
 /* ---------- V2 OpenAPI Handler Method Unit Tests ---------- */
 
-func TestRouter_getConfigJSON(t *testing.T) {
+func TestRouter_getGatewayConfig(t *testing.T) {
 	tests := []struct {
 		name             string
+		env              types.Environment
 		expectedStatus   int
 		expectedResponse types.GatewayConfig
 	}{
 		{
 			name:             "Should fetch config JSON",
+			env:              types.EnvProduction,
 			expectedStatus:   http.StatusOK,
-			expectedResponse: testdata.ConfigJSON("../testdata/config.json"),
+			expectedResponse: testdata.GatewayConfig("../testdata/config-prod.json", "../testdata/config-canary.json")[types.EnvProduction],
 		},
 	}
 
@@ -1867,7 +1869,7 @@ func TestRouter_getConfigJSON(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 
-			req, err := http.NewRequest(http.MethodGet, "/v2/config/gateway", nil)
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/config/gateway/%s", test.env), nil)
 			c.NoError(err)
 
 			router.Router.ServeHTTP(rr, req)

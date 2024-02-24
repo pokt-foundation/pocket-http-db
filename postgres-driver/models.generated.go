@@ -187,6 +187,8 @@ type Environment string
 
 const (
 	EnvironmentProduction Environment = "production"
+	EnvironmentCanary     Environment = "canary"
+	EnvironmentStaging    Environment = "staging"
 	EnvironmentTest       Environment = "test"
 )
 
@@ -600,9 +602,11 @@ type ChainsGigastakeApplication struct {
 	GigastakeApplicationID types.GigastakeAppID `json:"gigastake_application_id"`
 }
 
-type ConfigJSON struct {
-	Version       int32  `json:"version"`
-	Configuration []byte `json:"configuration"`
+type GatewayConfig struct {
+	Version       int32             `json:"version"`
+	Environment   types.Environment `json:"environment"`
+	Description   string            `json:"description"`
+	Configuration []byte            `json:"configuration"`
 }
 
 type ConfigOpenapi struct {

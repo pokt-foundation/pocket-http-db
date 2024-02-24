@@ -1227,12 +1227,26 @@ VALUES ('eth_call', 'blockRange'),
     ('eth_estimateGas', 'blockRange'),
     ('eth_getBalance', 'blockRange'),
     ('eth_getBlockByNumber', 'blockRange');
--- Seed data for chain_config
+-- Seed data for config_gateway
 DO $$
-DECLARE json_content JSONB;
-BEGIN json_content := pg_read_file('/data/config.json', 0, 1000000000);
-INSERT INTO config_gateway (configuration)
-VALUES (json_content);
+DECLARE prod_json_content JSONB;
+canary_json_content JSONB;
+BEGIN prod_json_content := pg_read_file('/data/config-prod.json', 0, 1000000000)::jsonb;
+INSERT INTO config_gateway (version, environment, description, configuration)
+VALUES (
+        1,
+        'production',
+        'Production environment',
+        prod_json_content
+    );
+canary_json_content := pg_read_file('/data/config-canary.json', 0, 1000000000)::jsonb;
+INSERT INTO config_gateway (version, environment, description, configuration)
+VALUES (
+        1,
+        'canary',
+        'Canary environment',
+        canary_json_content
+    );
 END $$;
 -- Seed data for config_openapi
 DO $$

@@ -34,23 +34,29 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadValidatorConfig() {
 	}
 }
 
-func (ts *PGDriverTestSuite) Test_PGDriver_ReadConfigJSON() {
+func (ts *PGDriverTestSuite) Test_PGDriver_ReadGatewayConfig() {
 	tests := []struct {
 		name     string
-		expected types.GatewayConfig
+		expected map[types.Environment]types.GatewayConfig
 	}{
 		{
-			name:     "should read the raw config JSON from the database",
-			expected: testdata.ConfigJSON("../testdata/config.json"),
+			name:     "should read the latest gateway configs for all environments from the database",
+			expected: testdata.GatewayConfig("../testdata/config-prod.json", "../testdata/config-canary.json"),
 		},
 	}
 
 	for _, test := range tests {
 		ts.Run(test.name, func() {
-			result, err := ts.driver.ReadConfigJSON(context.Background())
+			result, err := ts.driver.ReadGatewayConfig(context.Background())
 			ts.NoError(err)
-			ts.Equal(test.expected.Version, result.Version)
-			ts.JSONEq(string(test.expected.GetJSON()), string(result.GetJSON()))
+
+			for env, expectedConfig := range test.expected {
+				actualConfig, exists := result[env]
+				ts.True(exists)
+				ts.Equal(expectedConfig.Version, actualConfig.Version)
+				ts.Equal(expectedConfig.Environment, actualConfig.Environment)
+				ts.JSONEq(string(expectedConfig.Config), string(actualConfig.Config))
+			}
 		})
 	}
 }

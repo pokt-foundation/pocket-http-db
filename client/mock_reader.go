@@ -312,12 +312,12 @@ func (_m *MockIDBReader) GetChainByID(ctx context.Context, chainID types.RelayCh
 	return r0, r1
 }
 
-// GetConfigJSON provides a mock function with given fields: ctx
-func (_m *MockIDBReader) GetConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
+// GetGatewayConfig provides a mock function with given fields: ctx
+func (_m *MockIDBReader) GetGatewayConfig(ctx context.Context) (types.GatewayConfig, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetConfigJSON")
+		panic("no return value specified for GetGatewayConfig")
 	}
 
 	var r0 types.GatewayConfig

@@ -83,7 +83,7 @@ var testAccount = Account{
 				},
 			},
 			Settings: Settings{
-				Environment:       EnvironmentProduction,
+				Environment:       EnvProduction,
 				SecretKey:         "test_40f482d91a5ef2300ebb4e2308c",
 				SecretKeyRequired: true,
 				MonthlyRelayLimit: 2_500_000,
@@ -121,7 +121,7 @@ var testAccount = Account{
 				},
 			},
 			Settings: Settings{
-				Environment:       EnvironmentProduction,
+				Environment:       EnvProduction,
 				SecretKey:         "test_9c9e3b193cfba5348f93bb2f3e3fb794",
 				SecretKeyRequired: false,
 				MonthlyRelayLimit: 1_500_000,

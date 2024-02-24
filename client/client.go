@@ -86,8 +86,8 @@ type (
 
 		// GetValidatorConfig returns the method validator config - GET `/v2/config/validator`
 		GetValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
-		// GetConfigJSON fetches the current gateway configuration JSON - GET `/v2/config/gateway`
-		GetConfigJSON(ctx context.Context) (types.GatewayConfig, error)
+		// GetGatewayConfig fetches the current gateway configuration JSON - GET `/v2/config/gateway/{env}`
+		GetGatewayConfig(ctx context.Context, env types.Environment) (types.GatewayConfig, error)
 		// GetOpenAPISpecs returns the chain OpenAPI specs - GET `/v2/config/openapi`
 		GetOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
 	}
@@ -247,6 +247,7 @@ var (
 	errNoEmail            error = errors.New("no email")
 	errNoPlanTypeSet      error = errors.New("no plan type set")
 	errNoBlockedAddress   error = errors.New("no blocked address provided")
+	errNoEnvironment      error = errors.New("no environment provided")
 
 	errInvalidRoleName               error = errors.New("invalid role name filter provided")
 	errInvalidPortalAppJSON          error = errors.New("invalid portal app JSON")
@@ -652,11 +653,15 @@ func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPlu
 	return getReq[*types.ValidatorPluginConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
-/* --  Config JSON Read Methods -- */
+/* --  Gateway Config Read Methods -- */
 
-// GetConfigJSON fetches the current gateway configuration JSON - GET `/v2/config/gateway`
-func (db *DBClient) GetConfigJSON(ctx context.Context) (types.GatewayConfig, error) {
-	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(configPath), gatewayConfigPath)
+// GetGatewayConfig fetches the current gateway configuration JSON - GET `/v2/config/gateway/{env}`
+func (db *DBClient) GetGatewayConfig(ctx context.Context, env types.Environment) (types.GatewayConfig, error) {
+	if env == "" {
+		return types.GatewayConfig{}, errNoEnvironment
+	}
+
+	endpoint := fmt.Sprintf("%s/%s/%s", db.v2BasePath(configPath), gatewayConfigPath, env)
 
 	return getReq[types.GatewayConfig](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }

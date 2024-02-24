@@ -61,7 +61,7 @@ type (
 		blockedContracts types.GlobalBlockedContracts
 
 		validatorConfig *types.ValidatorPluginConfig
-		configJSON      types.GatewayConfig
+		gatewayConfig   map[types.Environment]types.GatewayConfig
 		openAPISpecs    map[types.RelayChainID]json.RawMessage
 	}
 
@@ -188,7 +188,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	configJSONData, err := c.fetchConfigJSONData(ctx)
+	gatewayConfigData, err := c.fetchGatewayConfigData(ctx)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func (c *Cache) setCache(ctx context.Context) error {
 	c.blockedContracts = blockedContractsData
 
 	c.validatorConfig = validatorConfigData
-	c.configJSON = configJSONData
+	c.gatewayConfig = gatewayConfigData
 	c.openAPISpecs = openAPISpecsData
 
 	return nil
@@ -375,14 +375,14 @@ func (c *Cache) fetchValidatorConfigData(ctx context.Context) (*types.ValidatorP
 	return validatorConfig, nil
 }
 
-// fetchConfigJSONData reads ConfigJSON from the database and returns it.
-func (c *Cache) fetchConfigJSONData(ctx context.Context) (types.GatewayConfig, error) {
-	configJSON, err := c.reader.ReadConfigJSON(ctx)
+// fetchGatewayConfigData reads GatewayConfig from the database and returns it.
+func (c *Cache) fetchGatewayConfigData(ctx context.Context) (map[types.Environment]types.GatewayConfig, error) {
+	gatewayConfig, err := c.reader.ReadGatewayConfig(ctx)
 	if err != nil {
-		return types.GatewayConfig{}, fmt.Errorf("ReadConfigJSON - %w", err)
+		return nil, fmt.Errorf("ReadGatewayConfig - %w", err)
 	}
 
-	return configJSON, nil
+	return gatewayConfig, nil
 }
 
 // fetchOpenAPISpecsData reads OpenAPISpecs from the database and returns them.
@@ -511,22 +511,26 @@ func (c *Cache) deleteMethodValidator(methodConfig *types.ValidatorMethodConfig)
 	c.validatorConfig.RemoveMethodValidator(methodConfig)
 }
 
-/* ---------- Config JSON ---------- */
+/* ---------- Gateway Config ---------- */
 
-// GetConfigJSON returns the ConfigJSON from the cache
-func (c *Cache) GetConfigJSON() types.GatewayConfig {
+// GetGatewayConfig returns the GatewayConfig from the cache
+func (c *Cache) GetGatewayConfig(env types.Environment) types.GatewayConfig {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	return c.configJSON
+	if gatewayConfig, ok := c.gatewayConfig[env]; ok {
+		return gatewayConfig
+	}
+
+	return types.GatewayConfig{}
 }
 
-// updateConfigJSON updates the ConfigJSON in cache to the latest version from the DB
-func (c *Cache) updateConfigJSON(configJSON *types.GatewayConfig) {
+// updateGatewayConfig updates the GatewayConfig in cache to the latest version from the DB
+func (c *Cache) updateGatewayConfig(gatewayConfig *types.GatewayConfig) {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
-	c.configJSON = *configJSON
+	c.gatewayConfig[gatewayConfig.Environment] = *gatewayConfig
 }
 
 /* ---------- OpenAPI Specs ---------- */

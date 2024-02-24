@@ -1665,21 +1665,6 @@ func (q *Queries) SelectChains(ctx context.Context, includeDeleted bool) ([]Sele
 	return items, nil
 }
 
-const selectConfiguration = `-- name: SelectConfiguration :one
-SELECT version,
-    configuration
-FROM config_gateway
-ORDER BY version DESC
-LIMIT 1
-`
-
-func (q *Queries) SelectConfiguration(ctx context.Context) (ConfigJSON, error) {
-	row := q.db.QueryRow(ctx, selectConfiguration)
-	var i ConfigJSON
-	err := row.Scan(&i.Version, &i.Configuration)
-	return i, err
-}
-
 const selectGigastakeApplications = `-- name: SelectGigastakeApplications :many
 SELECT ga.id,
     ga.name,
@@ -1777,6 +1762,48 @@ func (q *Queries) SelectGlobalBlockedContract(ctx context.Context) ([]SelectGlob
 	for rows.Next() {
 		var i SelectGlobalBlockedContractRow
 		if err := rows.Scan(&i.ID, &i.BlockedAddress); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const selectLatestConfigurations = `-- name: SelectLatestConfigurations :many
+SELECT DISTINCT ON (environment) environment,
+    version,
+    description,
+    configuration
+FROM config_gateway
+ORDER BY environment,
+    version DESC
+`
+
+type SelectLatestConfigurationsRow struct {
+	Environment   types.Environment `json:"environment"`
+	Version       int32             `json:"version"`
+	Description   string            `json:"description"`
+	Configuration []byte            `json:"configuration"`
+}
+
+func (q *Queries) SelectLatestConfigurations(ctx context.Context) ([]SelectLatestConfigurationsRow, error) {
+	rows, err := q.db.Query(ctx, selectLatestConfigurations)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectLatestConfigurationsRow
+	for rows.Next() {
+		var i SelectLatestConfigurationsRow
+		if err := rows.Scan(
+			&i.Environment,
+			&i.Version,
+			&i.Description,
+			&i.Configuration,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -244,14 +244,14 @@ func Test_PGDriver_Listen(t *testing.T) {
 			},
 		},
 		{
-			name: "Should process ConfigJSON notifications",
+			name: "Should process GatewayConfig notifications",
 			content: &types.GatewayConfig{
 				Version: 1,
 				Config:  json.RawMessage(`{"key":"value"}`),
 			},
 			expectedNotifications: map[types.Table]*types.Notification{
-				types.TableConfigJSON: {
-					Table:  types.TableConfigJSON,
+				types.TableGatewayConfig: {
+					Table:  types.TableGatewayConfig,
 					Action: types.ActionInsert,
 					Data: &types.GatewayConfig{
 						Version: 1,
