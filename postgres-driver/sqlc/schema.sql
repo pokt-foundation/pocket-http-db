@@ -524,3 +524,11 @@ INSERT
     OR
 UPDATE
     OR DELETE ON config_gateway FOR EACH ROW EXECUTE PROCEDURE notify_event();
+-- Create a dummy portalapprw user
+CREATE ROLE portalapprw WITH LOGIN PASSWORD 'password_123';
+GRANT SELECT,
+    INSERT,
+    UPDATE,
+    DELETE ON ALL TABLES IN SCHEMA public TO portalapprw;
+GRANT USAGE,
+    SELECT ON ALL SEQUENCES IN SCHEMA public TO portalapprw;

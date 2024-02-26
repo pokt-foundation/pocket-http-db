@@ -144,10 +144,10 @@ func NewRouter(config Config) (*Router, error) {
 
 	// DEPRECATED - keep until all clients are updated
 	rt.Router.HandleFunc("/v2/validator_config", rt.getValidatorConfig).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v2/config", rt.getGatewayGatewayConfig).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config", rt.getGatewayConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/openapi_specs", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
-	rt.Router.HandleFunc("/v2/config/gateway/{env}", rt.getGatewayGatewayConfig).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config/gateway/{env}", rt.getGatewayConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/config/validator", rt.getValidatorConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/config/openapi", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
@@ -1098,11 +1098,15 @@ func (rt *Router) getValidatorConfig(w http.ResponseWriter, r *http.Request) {
 /* ---------- V2 Gateway Config Handler Methods ---------- */
 
 // GET /v2/config/gateway/{env} - Get the current config.
-func (rt *Router) getGatewayGatewayConfig(w http.ResponseWriter, r *http.Request) {
+func (rt *Router) getGatewayConfig(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	env := types.Environment(vars["env"])
 
 	config := rt.cache.GetGatewayConfig(env)
+	if config.IsEmpty() {
+		rt.handleError(w, "getGatewayConfig", http.StatusNotFound, fmt.Errorf("gateway config for environment %s not found", env))
+		return
+	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, config)
 }
