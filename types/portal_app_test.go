@@ -25,7 +25,7 @@ var (
 			},
 		},
 		Settings: Settings{
-			Environment:       EnvironmentProduction,
+			Environment:       EnvProduction,
 			SecretKey:         "test_90210ac4bdd3423e24877d1ff92",
 			SecretKeyRequired: true,
 			MonthlyRelayLimit: 250_000,

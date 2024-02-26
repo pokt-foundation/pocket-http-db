@@ -144,10 +144,10 @@ func NewRouter(config Config) (*Router, error) {
 
 	// DEPRECATED - keep until all clients are updated
 	rt.Router.HandleFunc("/v2/validator_config", rt.getValidatorConfig).Methods(http.MethodGet)
-	rt.Router.HandleFunc("/v2/config", rt.getConfigJSON).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config", rt.getGatewayConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/openapi_specs", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
-	rt.Router.HandleFunc("/v2/config/gateway", rt.getConfigJSON).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config/gateway/{env}", rt.getGatewayConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/config/validator", rt.getValidatorConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/config/openapi", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
@@ -1088,25 +1088,32 @@ func (rt *Router) removeBlockedContract(w http.ResponseWriter, r *http.Request) 
 
 /* ---------- V2 Validator Config Handler Methods ---------- */
 
-// GET /v2/validator_config - Get the current validator config.
+// GET /v2/config/validator - Get the current validator config.
 func (rt *Router) getValidatorConfig(w http.ResponseWriter, r *http.Request) {
 	validatorConfig := rt.cache.GetValidatorConfig()
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, validatorConfig)
 }
 
-/* ---------- V2 Config JSON Handler Methods ---------- */
+/* ---------- V2 Gateway Config Handler Methods ---------- */
 
-// GET /v2/config - Get the current config.
-func (rt *Router) getConfigJSON(w http.ResponseWriter, r *http.Request) {
-	config := rt.cache.GetConfigJSON()
+// GET /v2/config/gateway/{env} - Get the current config.
+func (rt *Router) getGatewayConfig(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	env := types.Environment(vars["env"])
+
+	config := rt.cache.GetGatewayConfig(env)
+	if config.IsEmpty() {
+		rt.handleError(w, "getGatewayConfig", http.StatusNotFound, fmt.Errorf("gateway config for environment %s not found", env))
+		return
+	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, config)
 }
 
 /* ---------- V2 Open API Spec Handler Methods ---------- */
 
-// GET /v2/openapi_specs - Get the current OpenAPI spec.
+// GET /v2/config/openapi_specs - Get the current OpenAPI spec.
 func (rt *Router) getOpenAPISpecs(w http.ResponseWriter, r *http.Request) {
 	openAPISpec := rt.cache.GetOpenAPISpecs()
 

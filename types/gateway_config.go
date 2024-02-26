@@ -37,8 +37,10 @@ type (
 	}
 
 	GatewayConfig struct {
-		Version int             `json:"version"`
-		Config  json.RawMessage `json:"config"`
+		Environment Environment     `json:"environment"`
+		Version     int             `json:"version"`
+		Description string          `json:"description"`
+		Config      json.RawMessage `json:"config"`
 	}
 )
 
@@ -85,6 +87,10 @@ func (v *ValidatorPluginConfig) RemoveMethodValidator(methodConfig *ValidatorMet
 	}
 }
 
+func (c *GatewayConfig) IsEmpty() bool {
+	return c.Environment == "" && c.Version == 0 && c.Description == "" && len(c.Config) == 0
+}
+
 func (v *ValidatorChainConfig) Table() Table {
 	return TableChainConfig
 }
@@ -94,7 +100,7 @@ func (v *ValidatorMethodConfig) Table() Table {
 }
 
 func (g *GatewayConfig) Table() Table {
-	return TableConfigJSON
+	return TableGatewayConfig
 }
 
 func (g *GatewayConfig) GetVersion() int {

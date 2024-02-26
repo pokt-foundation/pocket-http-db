@@ -92,9 +92,8 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseChainConfigNotification(n)
 	case types.TableMethodValidators:
 		c.parseMethodValidatorNotification(n)
-
-	case types.TableConfigJSON:
-		c.parseConfigJSONNotification(n)
+	case types.TableGatewayConfig:
+		c.parseGatewayConfigNotification(n)
 
 	default:
 		c.logger.Error("unknown table", slog.String("table", string(n.Table)))
@@ -353,7 +352,8 @@ func (c *Cache) parseGlobalBlockedContractsNotification(n types.Notification) {
 	}
 }
 
-/* ---------- Method Validator Config ---------- */
+/* ---------- Gateway Config ---------- */
+
 func (c *Cache) parseChainConfigNotification(n types.Notification) {
 	chainConfig, ok := n.Data.(*types.ValidatorChainConfig)
 	if !ok {
@@ -384,17 +384,15 @@ func (c *Cache) parseMethodValidatorNotification(n types.Notification) {
 	}
 }
 
-/* ---------- Config JSON ---------- */
-
-func (c *Cache) parseConfigJSONNotification(n types.Notification) {
-	configJSON, ok := n.Data.(*types.GatewayConfig)
+func (c *Cache) parseGatewayConfigNotification(n types.Notification) {
+	gatewayConfig, ok := n.Data.(*types.GatewayConfig)
 	if !ok {
-		c.logger.Error("parseConfigJSONNotification failed")
+		c.logger.Error("parseGatewayConfigNotification failed")
 		return
 	}
 
 	// config_gateway table may only have new rows inserted, never updated
 	if n.Action == types.ActionInsert {
-		c.updateConfigJSON(configJSON)
+		c.updateGatewayConfig(gatewayConfig)
 	}
 }

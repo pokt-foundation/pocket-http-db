@@ -23,7 +23,7 @@ func newTestListenerCache(t *testing.T, readerMock *ReaderMock) *Cache {
 	readerMock.On("ReadChains", testCtx, types.DriverOptions{IncludeDeleted: false}).Return(testdata.Chains(), nil)
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadValidatorConfig", testCtx).Return(testdata.ValidatorPluginConfig(), nil)
-	readerMock.On("ReadConfigJSON", testCtx).Return(testdata.ConfigJSON("../testdata/config.json"), nil)
+	readerMock.On("ReadGatewayConfig", testCtx).Return(testdata.GatewayConfig("../testdata/config-prod.json", "../testdata/config-canary.json"), nil)
 	readerMock.On("ReadOpenAPISpecs", testCtx).Return(testdata.OpenAPISpecs("../testdata/radix-spec.json"), nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
@@ -227,7 +227,7 @@ func Test_parsePortalAppNotification(t *testing.T) {
 					},
 				},
 				Settings: types.Settings{
-					Environment:       types.EnvironmentProduction,
+					Environment:       types.EnvProduction,
 					SecretKey:         "test_59a1cc884196e66cdfabe1f130159124",
 					SecretKeyRequired: true,
 				},
@@ -243,7 +243,7 @@ func Test_parsePortalAppNotification(t *testing.T) {
 				AccountID: "account_1",
 				AATs:      map[types.ProtocolAppID]types.AAT{"": {}},
 				Settings: types.Settings{
-					Environment:       types.EnvironmentProduction,
+					Environment:       types.EnvProduction,
 					SecretKey:         "test_849c1397586f9fb6f902576120d0d10f",
 					SecretKeyRequired: true,
 				},
@@ -1006,7 +1006,7 @@ func Test_parseMethodValidatorNotification(t *testing.T) {
 	}
 }
 
-func Test_parseConfigJSONNotification(t *testing.T) {
+func Test_parseGatewayConfigNotification(t *testing.T) {
 	tests := []struct {
 		name            string
 		action          types.Action
@@ -1016,7 +1016,7 @@ func Test_parseConfigJSONNotification(t *testing.T) {
 		expectedConfig  json.RawMessage
 	}{
 		{
-			name:            "should update cache with new ConfigJSON on insert",
+			name:            "should update cache with new GatewayConfig on insert",
 			action:          types.ActionInsert,
 			version:         1,
 			configuration:   json.RawMessage(`{"key": "new value"}`),
@@ -1024,7 +1024,7 @@ func Test_parseConfigJSONNotification(t *testing.T) {
 			expectedConfig:  json.RawMessage(`{"key": "new value"}`),
 		},
 		{
-			name:            "should update cache again with new ConfigJSON on insert",
+			name:            "should update cache again with new GatewayConfig on insert",
 			action:          types.ActionInsert,
 			version:         2,
 			configuration:   json.RawMessage(`{"newKey2": "newValue2"}`),
@@ -1043,17 +1043,18 @@ func Test_parseConfigJSONNotification(t *testing.T) {
 
 			notification := types.Notification{
 				Action: test.action,
-				Table:  types.TableConfigJSON,
+				Table:  types.TableGatewayConfig,
 				Data: &types.GatewayConfig{
-					Version: test.version,
-					Config:  test.configuration,
+					Environment: types.EnvProduction,
+					Version:     test.version,
+					Config:      test.configuration,
 				},
 			}
 
-			cache.parseConfigJSONNotification(notification)
+			cache.parseGatewayConfigNotification(notification)
 
-			c.Equal(test.expectedVersion, cache.GetConfigJSON().Version)
-			c.JSONEq(string(test.expectedConfig), string(cache.GetConfigJSON().Config))
+			c.Equal(test.expectedVersion, cache.GetGatewayConfig(types.EnvProduction).Version)
+			c.JSONEq(string(test.expectedConfig), string(cache.GetGatewayConfig(types.EnvProduction).Config))
 		})
 	}
 }

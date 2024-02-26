@@ -41,8 +41,8 @@ type (
 
 		/* ReadValidatorConfig returns the ValidatorPluginConfig from the DB */
 		ReadValidatorConfig(ctx context.Context) (*types.ValidatorPluginConfig, error)
-		/* ReadConfigJSON returns the raw JSON config from the DB */
-		ReadConfigJSON(ctx context.Context) (types.GatewayConfig, error)
+		/* ReadGatewayConfig returns the Gateway config JSON from the DB */
+		ReadGatewayConfig(ctx context.Context) (map[types.Environment]types.GatewayConfig, error)
 		/* ReadOpenAPISpecs returns the OpenAPISpecs from the DB */
 		ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]json.RawMessage, error)
 

@@ -1,0 +1,49 @@
+{
+  "app_informer_config": { "session_refresh_interval": 60 },
+  "backend_url": "https://test.grove-canary.city",
+  "metrics_store_config": {
+    "sample_process_interval": 2000,
+    "sample_batch_size_limit": 10000,
+    "sample_receive_channel_size": 1000
+  },
+  "qos_client_config": {
+    "regional_qos_url": "http://qos.test-canary:8091/qos",
+    "regional_qos_token": "token",
+    "regional_qos_results_update_interval": 30,
+    "regional_qos_http_timeout": 30
+  },
+  "qos_service_config": { "inspect_interval": 360, "app_pool_size": 100 },
+  "provider_config": { "timeout": 5 },
+  "scheduled_relay_check_interval": 50,
+  "plugins_config": {
+    "plugins": [
+      "endpoint-blocker",
+      "ratelimiter",
+      "throughputlimiter",
+      "validator",
+      "address-blocker",
+      "user-security",
+      "mev"
+    ],
+    "endpoint_blocker": {
+      "public_endpoint_response": {
+        "code": -32010,
+        "message": "Hello this is a test"
+      }
+    },
+    "mev": {
+      "chains": {
+        "0021": {
+          "provider": "https://test.io/?refundRecipient=token",
+          "rewards_address": "token"
+        }
+      }
+    },
+    "user-security": { "database_encryption_key": "token" },
+    "blocked_addresses": ["token"]
+  },
+  "metrics_recorder_config": {
+    "relays_chan_size": 20000,
+    "samples_chan_size": 10000
+  }
+}

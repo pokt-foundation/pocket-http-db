@@ -50,7 +50,7 @@ const (
 type (
 	// Environment Options
 	options struct {
-		appEnv types.AppEnv
+		appEnv types.Environment
 
 		pgHost, pgPort, pgUser, pgPassword, pgDatabase,
 		dbInstanceConnectionName, dbPublicIP, dbPrivateIP,
@@ -77,7 +77,7 @@ type (
 
 // gatherOptions collects and returns the required environment variables.
 func gatherOptions() options {
-	appEnv := types.AppEnv(environment.MustGetString(appEnv))
+	appEnv := types.Environment(environment.MustGetString(appEnv))
 	if !appEnv.IsValid() {
 		panic(fmt.Sprintf("invalid APP_ENV: %s", appEnv))
 	}
@@ -95,7 +95,7 @@ func gatherOptions() options {
 	}
 
 	switch appEnv {
-	case types.AppEnvProduction:
+	case types.EnvProduction:
 		// For CloudSQL DB
 		options.dbInstanceConnectionName = environment.MustGetString(dbInstanceConnectionName)
 		options.dbPublicIP = environment.GetString(dbPublicIP, "")
@@ -152,7 +152,7 @@ func (c *TestDBConfig) GetConn(ctx context.Context) (mainConnPool *pgxpool.Pool,
 func httpHandler(router *router.Router, options options, logger *logger.Logger) {
 	logger.Info(fmt.Sprintf("Portal HTTP DB %s running on port: %s", options.imageTag, options.port))
 	logger.Info(fmt.Sprintf("Log level is: %s", logger.LogLevel()))
-	if options.appEnv != types.AppEnvProduction {
+	if options.appEnv != types.EnvProduction {
 		logger.Info(fmt.Sprintf("Running in %s mode. Connected to DB at %s:%s", options.appEnv, options.pgHost, options.pgPort))
 	}
 	// Run the HTTP server
@@ -169,7 +169,7 @@ func main() {
 	// Choose DB configuration based on APP_ENV
 	var dbConfig DBConfig
 	switch options.appEnv {
-	case types.AppEnvProduction:
+	case types.EnvProduction:
 		// For CloudSQL DB
 		dbConfig = &CloudSQLConfig{options: options}
 	default:

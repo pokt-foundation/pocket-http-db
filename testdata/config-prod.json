@@ -1,13 +1,13 @@
 {
   "app_informer_config": { "session_refresh_interval": 60 },
-  "backend_url": "https://test.grove.city",
+  "backend_url": "https://test.grove-prod.city",
   "metrics_store_config": {
     "sample_process_interval": 2000,
     "sample_batch_size_limit": 10000,
     "sample_receive_channel_size": 1000
   },
   "qos_client_config": {
-    "regional_qos_url": "http://qos.test:8091/qos",
+    "regional_qos_url": "http://qos.test-prod:8091/qos",
     "regional_qos_token": "token",
     "regional_qos_results_update_interval": 30,
     "regional_qos_http_timeout": 30

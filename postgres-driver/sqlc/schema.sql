@@ -3,7 +3,7 @@ CREATE TYPE auth_provider AS ENUM ('auth0');
 CREATE TYPE auth_type AS ENUM ('auth0_github', 'auth0_username', 'auth0_google');
 CREATE TYPE chain_auth_type AS ENUM ('basic_auth', 'bearer_token', 'none');
 CREATE TYPE chain_check_type AS ENUM ('archival', 'chain', 'merge', 'sync');
-CREATE TYPE environment AS ENUM ('production', 'test');
+CREATE TYPE environment AS ENUM ('production', 'canary', 'staging', 'test');
 CREATE TYPE notification_event AS ENUM (
     'full',
     'half',
@@ -294,7 +294,7 @@ CREATE TABLE global_blocked_contracts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
--- Validator Config Tables
+-- Gateway Config Tables
 CREATE TABLE chain_config (
     id SERIAL PRIMARY KEY,
     chain_id VARCHAR(4) REFERENCES chains(id),
@@ -309,36 +309,56 @@ CREATE TABLE method_validators (
     validator validator_method_str,
     UNIQUE (method, validator)
 );
-CREATE TABLE config_gateway (
-    version SERIAL PRIMARY KEY,
-    configuration JSONB
-);
--- Do not allow updates to config_gateway table
-CREATE OR REPLACE RULE config_gateway_no_update AS ON UPDATE TO config_gateway DO INSTEAD NOTHING;
--- Do not allow inserts if the config is the same as the latest config, regardless of order
-CREATE OR REPLACE FUNCTION check_json_change() RETURNS TRIGGER AS $$
-DECLARE latest_config JSONB;
-BEGIN
-SELECT INTO latest_config configuration
-FROM config_gateway
-ORDER BY version DESC
-LIMIT 1;
--- Use the JSONB equality operator to compare the JSONB objects directly
-IF (
-    jsonb_strip_nulls(NEW.configuration) = jsonb_strip_nulls(latest_config)
-) THEN RAISE EXCEPTION 'Blocking config_gateway row insert: Gateway configuration JSON has not changed';
-END IF;
-RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-CREATE TRIGGER config_gateway_check_change BEFORE
-INSERT ON config_gateway FOR EACH ROW EXECUTE PROCEDURE check_json_change();
 CREATE TABLE config_openapi (
     id SERIAL PRIMARY KEY,
     chain_id VARCHAR(4) REFERENCES chains(id),
     open_api_spec JSONB NOT NULL,
     UNIQUE (chain_id)
 );
+CREATE TABLE config_gateway (
+    version INT NOT NULL,
+    environment environment NOT NULL,
+    description VARCHAR NOT NULL,
+    configuration JSONB NOT NULL,
+    PRIMARY KEY (version, environment)
+);
+-- Auto Increment Trigger Function
+CREATE OR REPLACE FUNCTION increment_version() RETURNS TRIGGER AS $$
+DECLARE latest_version INT;
+BEGIN -- Find the latest version for the current environment
+SELECT COALESCE(MAX(version), 0) INTO latest_version
+FROM config_gateway
+WHERE environment = NEW.environment;
+-- Increment the version for the new row
+NEW.version := latest_version + 1;
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+-- Create Trigger
+CREATE TRIGGER before_insert_config_gateway BEFORE
+INSERT ON config_gateway FOR EACH ROW EXECUTE FUNCTION increment_version();
+-- Do not allow updates to config_gateway table
+CREATE OR REPLACE RULE config_gateway_no_update AS ON UPDATE TO config_gateway DO INSTEAD NOTHING;
+-- Do not allow inserts if the config is the same as the latest config for the same environment, regardless of order
+CREATE OR REPLACE FUNCTION check_json_change() RETURNS TRIGGER AS $$
+DECLARE latest_config JSONB;
+BEGIN
+SELECT configuration INTO latest_config
+FROM config_gateway
+WHERE environment = NEW.environment
+ORDER BY version DESC
+LIMIT 1;
+-- Use the JSONB equality operator to compare the JSONB objects directly
+IF (
+    jsonb_strip_nulls(NEW.configuration) = jsonb_strip_nulls(latest_config)
+) THEN RAISE EXCEPTION 'Blocking config_gateway row insert: Gateway configuration JSON has not changed for the environment %',
+NEW.environment;
+END IF;
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER config_gateway_check_change BEFORE
+INSERT ON config_gateway FOR EACH ROW EXECUTE PROCEDURE check_json_change();
 -- Listener Notification Function
 CREATE OR REPLACE FUNCTION notify_event() RETURNS TRIGGER AS $$
 DECLARE data json;
@@ -504,3 +524,11 @@ INSERT
     OR
 UPDATE
     OR DELETE ON config_gateway FOR EACH ROW EXECUTE PROCEDURE notify_event();
+-- Create a dummy portalapprw user
+CREATE ROLE portalapprw WITH LOGIN PASSWORD 'password_123';
+GRANT SELECT,
+    INSERT,
+    UPDATE,
+    DELETE ON ALL TABLES IN SCHEMA public TO portalapprw;
+GRANT USAGE,
+    SELECT ON ALL SEQUENCES IN SCHEMA public TO portalapprw;

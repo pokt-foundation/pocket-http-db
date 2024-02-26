@@ -31,7 +31,7 @@ func NewTestCache(t *testing.T) *Cache {
 	readerMock.On("ReadBlockedContracts", testCtx).Return(testdata.GlobalBlockedContracts(), nil)
 	readerMock.On("ReadUserByUserID", mock.Anything, types.UserID("usertest")).Return(testdata.Users()[types.UserID("usertest")], nil)
 	readerMock.On("ReadValidatorConfig", mock.Anything).Return(testdata.ValidatorPluginConfig(), nil)
-	readerMock.On("ReadConfigJSON", mock.Anything).Return(testdata.ConfigJSON("../testdata/config.json"), nil)
+	readerMock.On("ReadGatewayConfig", mock.Anything).Return(testdata.GatewayConfig("../testdata/config-prod.json", "../testdata/config-canary.json"), nil)
 	readerMock.On("ReadOpenAPISpecs", mock.Anything).Return(testdata.OpenAPISpecs("../testdata/radix-spec.json"), nil)
 
 	cacheInstance, err := NewCache(testCtx, Config{
@@ -162,9 +162,12 @@ func Test_SetCache(t *testing.T) {
 			expected: *testdata.ValidatorPluginConfig(),
 		},
 		{
-			name:     "Should return the Config JSON",
-			actual:   cache.GetConfigJSON(),
-			expected: testdata.ConfigJSON("../testdata/config.json"),
+			name:   "Should return the Gateway Config for a given environment",
+			actual: cache.GetGatewayConfig(types.EnvProduction),
+			expected: testdata.GatewayConfig(
+				"../testdata/config-prod.json",
+				"../testdata/config-canary.json",
+			)[types.EnvProduction],
 		},
 		{
 			name:     "Should return the OpenAPI specs",

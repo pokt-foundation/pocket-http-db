@@ -18,7 +18,7 @@ overrides:
       aat_id: "AATID"
       icon_url: "IconURL"
       stripe_subscription_id: "StripeSubscriptionID"
-      config_gateway: "ConfigJSON"
+      config_gateway: "GatewayConfig"
 
 sql:
   - schema: "schema.sql"
@@ -147,3 +147,5 @@ sql:
             go_type: "github.com/pokt-foundation/portal-http-db/v2/types.ChainAlias"
           - column: "config_openapi.chain_id"
             go_type: "github.com/pokt-foundation/portal-http-db/v2/types.RelayChainID"
+          - column: "config_gateway.environment"
+            go_type: "github.com/pokt-foundation/portal-http-db/v2/types.Environment"

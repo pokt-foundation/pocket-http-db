@@ -1003,9 +1003,9 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}
 	})
 
-	/* ------ V2 Config JSON Read Tests ------ */
+	/* ------ V2 Gateway Config Read Tests ------ */
 
-	ts.Run("Test_GetConfigJSON", func() {
+	ts.Run("Test_GetGatewayConfig", func() {
 		testUpdateConfig := `{
 			"characters": [
 				{
@@ -1033,40 +1033,59 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		tests := []struct {
 			name             string
+			env              types.Environment
 			expectedResponse types.GatewayConfig
 			updatedConfig    string
 			err              error
 		}{
 			{
 				name:             "Should get config JSON",
-				expectedResponse: testdata.ConfigJSON("./testdata/config.json"),
+				env:              types.EnvProduction,
+				expectedResponse: testdata.GatewayConfig("./testdata/config-prod.json", "./testdata/config-canary.json")[types.EnvProduction],
 			},
 			{
 				name:          "Should set new config JSON",
 				updatedConfig: testUpdateConfig,
+				env:           types.EnvProduction,
 				expectedResponse: types.GatewayConfig{
-					Version: 2,
-					Config:  json.RawMessage(testUpdateConfig),
+					Environment: types.EnvProduction,
+					Version:     2,
+					Description: "test update",
+					Config:      json.RawMessage(testUpdateConfig),
 				},
 			},
 			{
 				name:          "Should fail if new config JSON is identical to current config JSON",
 				updatedConfig: testUpdateConfig,
+				env:           types.EnvProduction,
 				expectedResponse: types.GatewayConfig{
-					Version: 2,
-					Config:  json.RawMessage(testUpdateConfig),
+					Environment: types.EnvProduction,
+					Version:     2,
+					Description: "test update",
+					Config:      json.RawMessage(testUpdateConfig),
 				},
-				err: fmt.Errorf("Failed to execute the SQL statement: ERROR: Blocking config_gateway row insert: Gateway configuration JSON has not changed (SQLSTATE P0001)"),
+				err: fmt.Errorf("Failed to execute the SQL statement: ERROR: Blocking config_gateway row insert: Gateway configuration JSON has not changed for the environment production (SQLSTATE P0001)"),
+			},
+			{
+				name: "Should fail if no environment provided",
+				env:  "",
+				err:  fmt.Errorf("no environment provided"),
+			},
+			{
+				name: "Should fail if invalid environment provided",
+				env:  "wonderland",
+				err:  fmt.Errorf("invalid environment provided: wonderland"),
 			},
 		}
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
 				if test.updatedConfig != "" {
-					err := insertConfigJSON(test.updatedConfig)
+					err := insertGatewayConfig(test.updatedConfig)
 					if test.err != nil {
 						ts.Error(err)
 						ts.Contains(err.Error(), test.err.Error())
+						return
 					} else {
 						ts.NoError(err)
 					}
@@ -1074,14 +1093,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					<-time.After(50 * time.Millisecond)
 				}
 
-				response, err := ts.client1.GetConfigJSON(context.Background())
-				ts.NoError(err)
+				response, err := ts.client1.GetGatewayConfig(context.Background(), test.env)
+				ts.Equal(test.err, err)
 
 				if err == nil {
 					ts.Equal(test.expectedResponse.Version, response.Version)
 					ts.JSONEq(string(test.expectedResponse.GetJSON()), string(response.GetJSON()))
-					response, err = ts.client2.GetConfigJSON(context.Background())
-					ts.NoError(err)
+					response, err = ts.client2.GetGatewayConfig(context.Background(), test.env)
+					ts.Equal(test.err, err)
 
 					ts.Equal(test.expectedResponse.Version, response.Version)
 					ts.JSONEq(string(test.expectedResponse.GetJSON()), string(response.GetJSON()))
@@ -1664,7 +1683,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				testUpdateTime:  testdata.MockTimestamp,
 				testUpdatedName: "portal-app-updated",
 				testUpdatedSettings: types.Settings{
-					Environment:       types.EnvironmentProduction,
+					Environment:       types.EnvProduction,
 					SecretKey:         "test_9d07c8a96ad53e7c288b0e86f37c5680",
 					SecretKeyRequired: true,
 					MonthlyRelayLimit: 2_500_000,
@@ -1705,7 +1724,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 				testUpdateTime: testdata.MockTimestamp,
 				testUpdatedSettings: types.Settings{
-					Environment:       types.EnvironmentProduction,
+					Environment:       types.EnvProduction,
 					SecretKey:         "test_9d07c8a96ad53e7c288b0e86f37c5680",
 					SecretKeyRequired: true,
 					MonthlyRelayLimit: 2_500_000,
@@ -3413,9 +3432,9 @@ func (ts *phdE2EWriteTestSuite) NoError(err error) {
 	ts.Suite.NoError(err)
 }
 
-// insertConfigJSON inserts a config JSON directly into the database to test that
+// insertGatewayConfig inserts a config JSON directly into the database to test that
 // the listener update is working for direct DB config updates eg. from portal admin
-func insertConfigJSON(configJSON string) error {
+func insertGatewayConfig(gatewayConfig string) error {
 	dbUser := "postgres"
 	dbPassword := "pgpassword"
 	dbHost := "localhost"
@@ -3430,7 +3449,7 @@ func insertConfigJSON(configJSON string) error {
 	}
 	defer dbConn.Close(context.Background())
 
-	stmt := fmt.Sprintf("INSERT INTO config_gateway (configuration) VALUES ('%s')", configJSON)
+	stmt := fmt.Sprintf("INSERT INTO config_gateway (configuration, description, environment) VALUES ('%s', 'test update', 'production')", gatewayConfig)
 
 	_, err = dbConn.Exec(context.Background(), stmt)
 	if err != nil {
