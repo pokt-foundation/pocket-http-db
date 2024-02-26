@@ -87,6 +87,10 @@ func (v *ValidatorPluginConfig) RemoveMethodValidator(methodConfig *ValidatorMet
 	}
 }
 
+func (c *GatewayConfig) IsEmpty() bool {
+	return c.Environment == "" && c.Version == 0 && c.Description == "" && len(c.Config) == 0
+}
+
 func (v *ValidatorChainConfig) Table() Table {
 	return TableChainConfig
 }
