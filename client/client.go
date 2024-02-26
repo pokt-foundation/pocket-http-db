@@ -248,6 +248,7 @@ var (
 	errNoPlanTypeSet      error = errors.New("no plan type set")
 	errNoBlockedAddress   error = errors.New("no blocked address provided")
 	errNoEnvironment      error = errors.New("no environment provided")
+	errInvalidEnvironment error = errors.New("invalid environment provided: %s")
 
 	errInvalidRoleName               error = errors.New("invalid role name filter provided")
 	errInvalidPortalAppJSON          error = errors.New("invalid portal app JSON")
@@ -659,6 +660,9 @@ func (db *DBClient) GetValidatorConfig(ctx context.Context) (*types.ValidatorPlu
 func (db *DBClient) GetGatewayConfig(ctx context.Context, env types.Environment) (types.GatewayConfig, error) {
 	if env == "" {
 		return types.GatewayConfig{}, errNoEnvironment
+	}
+	if !env.IsValid() {
+		return types.GatewayConfig{}, fmt.Errorf(errInvalidEnvironment.Error(), env)
 	}
 
 	endpoint := fmt.Sprintf("%s/%s/%s", db.v2BasePath(configPath), gatewayConfigPath, env)

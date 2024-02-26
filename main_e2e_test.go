@@ -1071,6 +1071,11 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				env:  "",
 				err:  fmt.Errorf("no environment provided"),
 			},
+			{
+				name: "Should fail if invalid environment provided",
+				env:  "wonderland",
+				err:  fmt.Errorf("invalid environment provided: wonderland"),
+			},
 		}
 
 		for _, test := range tests {
