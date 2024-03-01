@@ -190,6 +190,7 @@ const (
 	EnvironmentCanary     Environment = "canary"
 	EnvironmentStaging    Environment = "staging"
 	EnvironmentTest       Environment = "test"
+	EnvironmentLocal      Environment = "local"
 )
 
 func (e *Environment) Scan(src interface{}) error {
@@ -602,17 +603,17 @@ type ChainsGigastakeApplication struct {
 	GigastakeApplicationID types.GigastakeAppID `json:"gigastake_application_id"`
 }
 
+type ConfigOpenapi struct {
+	ID          int32              `json:"id"`
+	ChainID     types.RelayChainID `json:"chain_id"`
+	OpenApiSpec []byte             `json:"open_api_spec"`
+}
+
 type GatewayConfig struct {
 	Version       int32             `json:"version"`
 	Environment   types.Environment `json:"environment"`
 	Description   string            `json:"description"`
 	Configuration []byte            `json:"configuration"`
-}
-
-type ConfigOpenapi struct {
-	ID          int32              `json:"id"`
-	ChainID     types.RelayChainID `json:"chain_id"`
-	OpenApiSpec []byte             `json:"open_api_spec"`
 }
 
 type GigastakeApplication struct {

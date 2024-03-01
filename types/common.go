@@ -22,11 +22,12 @@ const (
 	EnvCanary     Environment = "canary"
 	EnvStaging    Environment = "staging"
 	EnvTest       Environment = "test"
+	EnvLocal      Environment = "local"
 )
 
 func (e Environment) IsValid() bool {
 	switch e {
-	case EnvProduction, EnvCanary, EnvStaging, EnvTest:
+	case EnvProduction, EnvCanary, EnvStaging, EnvTest, EnvLocal:
 		return true
 	default:
 		return false

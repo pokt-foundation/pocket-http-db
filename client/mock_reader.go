@@ -312,9 +312,9 @@ func (_m *MockIDBReader) GetChainByID(ctx context.Context, chainID types.RelayCh
 	return r0, r1
 }
 
-// GetGatewayConfig provides a mock function with given fields: ctx
-func (_m *MockIDBReader) GetGatewayConfig(ctx context.Context) (types.GatewayConfig, error) {
-	ret := _m.Called(ctx)
+// GetGatewayConfig provides a mock function with given fields: ctx, env
+func (_m *MockIDBReader) GetGatewayConfig(ctx context.Context, env types.Environment) (types.GatewayConfig, error) {
+	ret := _m.Called(ctx, env)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetGatewayConfig")
@@ -322,17 +322,17 @@ func (_m *MockIDBReader) GetGatewayConfig(ctx context.Context) (types.GatewayCon
 
 	var r0 types.GatewayConfig
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (types.GatewayConfig, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, types.Environment) (types.GatewayConfig, error)); ok {
+		return rf(ctx, env)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) types.GatewayConfig); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, types.Environment) types.GatewayConfig); ok {
+		r0 = rf(ctx, env)
 	} else {
 		r0 = ret.Get(0).(types.GatewayConfig)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, types.Environment) error); ok {
+		r1 = rf(ctx, env)
 	} else {
 		r1 = ret.Error(1)
 	}
