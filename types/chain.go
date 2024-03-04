@@ -112,9 +112,6 @@ type (
 		UpdatedAt    time.Time                    `json:"updatedAt"`
 		Deleted      bool                         `json:"deleted"`
 
-		// DEPRECATED - remove when middleware using new protocol map
-		GigastakeAppsByID map[GigastakeAppID]*GigastakeApp `json:"chainGigastakeApps,omitempty"`
-
 		// GigastakeApps are set inside PHD
 		GigastakeApps map[ProtocolID]map[GigastakeAppID]*GigastakeApp `json:"gigastakeAppsByProtocol,omitempty"`
 	}
@@ -216,18 +213,6 @@ func (c *Chain) GetChainDomains() []ChainDomain {
 	return chainDomains
 }
 
-// GetGigastakeAATs returns a slice of all of a Chain's GigastakeApps
-// DEPRECATED - remove when middleware using new protocol map
-func (c *Chain) GetGigastakeApps() []GigastakeApp {
-	gigastakeAppsSlice := []GigastakeApp{}
-
-	for _, gigastakeApp := range c.GigastakeAppsByID {
-		gigastakeAppsSlice = append(gigastakeAppsSlice, *gigastakeApp)
-	}
-
-	return gigastakeAppsSlice
-}
-
 // GetGigastakeAppsByProtocolID returns a slice of a Chain's GigastakeApps for a specific protocol
 func (c *Chain) GetGigastakeAppsByProtocolID(protocolID ProtocolID) []GigastakeApp {
 	gigastakeAppsSlice := []GigastakeApp{}
@@ -241,13 +226,6 @@ func (c *Chain) GetGigastakeAppsByProtocolID(protocolID ProtocolID) []GigastakeA
 
 // SetGigastakeApp adds a GigastakeApp to the Chain, updating both the GigastakeAppsByID map (deprecated) and the GigastakeApps map.
 func (c *Chain) SetGigastakeApp(gigastakeApp *GigastakeApp) {
-	// DEPRECATED
-	if c.GigastakeAppsByID == nil {
-		c.GigastakeAppsByID = make(map[GigastakeAppID]*GigastakeApp)
-	}
-	c.GigastakeAppsByID[gigastakeApp.ID] = gigastakeApp
-	// DEPRECATED
-
 	if c.GigastakeApps == nil {
 		c.GigastakeApps = make(map[ProtocolID]map[GigastakeAppID]*GigastakeApp)
 	}
@@ -260,7 +238,6 @@ func (c *Chain) SetGigastakeApp(gigastakeApp *GigastakeApp) {
 // ClearGigastakeApps clears the Chain's GigastakesApps map and returns the updated Chain
 // Used in the PHD cache when cache.Options.ExcludeGigastakeApps is true
 func (c Chain) ClearGigastakeApps() Chain {
-	c.GigastakeAppsByID = nil // DEPRECATED
 	c.GigastakeApps = nil
 	return c
 }
