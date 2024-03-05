@@ -316,8 +316,10 @@ func (rt *Router) getAllGigastakeAppsByChain(w http.ResponseWriter, r *http.Requ
 	}
 
 	gigastakeAppsByChain := []types.GigastakeApp{}
-	for _, gigastakeApp := range chain.GigastakeAppsByID {
-		gigastakeAppsByChain = append(gigastakeAppsByChain, *gigastakeApp)
+	for _, gigastakeAppsByProtocol := range chain.GigastakeApps {
+		for _, gigastakeApp := range gigastakeAppsByProtocol {
+			gigastakeAppsByChain = append(gigastakeAppsByChain, *gigastakeApp)
+		}
 	}
 
 	if len(gigastakeAppsByChain) == 0 {
@@ -397,7 +399,6 @@ func (rt *Router) updateChain(w http.ResponseWriter, r *http.Request) {
 	chainInCache := rt.cache.GetChain(chainID, cache.Options{})
 	if chainInCache.ID != "" {
 		updatedChain.GigastakeApps = chainInCache.GigastakeApps
-		updatedChain.GigastakeAppsByID = chainInCache.GigastakeAppsByID // DEPRECATED
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, updatedChain)
