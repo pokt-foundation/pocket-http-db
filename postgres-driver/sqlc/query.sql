@@ -629,6 +629,12 @@ SET role_name = $3,
     updated_at = $4
 WHERE account_id = $1
     AND user_id = $2;
+-- name: GetInvitedUserID :one
+SELECT id
+FROM users
+WHERE email = $1
+    AND signed_up = false
+LIMIT 1;
 -- name: CreateUserNewSignUp :one
 WITH inserted_user AS (
     INSERT INTO users (id, email, signed_up, created_at, updated_at)

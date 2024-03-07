@@ -632,6 +632,21 @@ func (q *Queries) GetGigastakeApplicationsCount(ctx context.Context) (int64, err
 	return count, err
 }
 
+const getInvitedUserID = `-- name: GetInvitedUserID :one
+SELECT id
+FROM users
+WHERE email = $1
+    AND signed_up = false
+LIMIT 1
+`
+
+func (q *Queries) GetInvitedUserID(ctx context.Context, email types.Email) (types.UserID, error) {
+	row := q.db.QueryRow(ctx, getInvitedUserID, email)
+	var id types.UserID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const getLastCreatedUserID = `-- name: GetLastCreatedUserID :one
 SELECT id
 FROM users

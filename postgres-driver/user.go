@@ -198,11 +198,26 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 		return nil, "", err
 	}
 
-	id, err := pg.generateID(ctx)
-	if err != nil {
-		return nil, "", err
+	// A new sign up may be one of 3 types:
+	// 1. brand new user - never signed up with any auth provider
+	// 2. existing user - signing up with a new auth provider (eg. Github or Google).
+	// 3. invited user - a user that has been invited to a team signing up for the first time
+	// (in which case they will already have a user ID in the DB)
+	var userID types.UserID
+	//  First check if this sign is an invited user
+	if invitedUserID, err := pg.GetInvitedUserID(ctx, user.Email); err != nil || invitedUserID == "" {
+		// They are a brand new user so they need a new user ID generated
+		// Existing users will also trigger this step but the user ID is not used (they already have one)
+		generatedUserID, err := pg.generateID(ctx)
+		if err != nil {
+			return nil, "", err
+		}
+
+		userID = types.UserID(generatedUserID)
+	} else {
+		// They are an invited user so use the user ID that was created when they were invited
+		userID = invitedUserID
 	}
-	userID := types.UserID(id)
 
 	authType := user.ProviderUserID.AuthType()
 
@@ -225,8 +240,6 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 
 	qtx := pg.WithTx(tx)
 
-	// A new sign up may be either a brand new user or an existing user
-	// signing up with an new auth provider (eg. Github or Google).
 	createdUserID, err := qtx.CreateUserNewSignUp(ctx, newUserParams)
 	if err != nil {
 		return nil, "", err
