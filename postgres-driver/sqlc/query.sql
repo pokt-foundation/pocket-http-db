@@ -635,6 +635,31 @@ FROM users
 WHERE email = $1
     AND signed_up = false
 LIMIT 1;
+-- name: IsUserNew :one
+SELECT NOT EXISTS (
+        SELECT 1
+        FROM users
+        WHERE email = $1
+    ) AS is_new;
+-- name: IsUserExisting :one
+SELECT EXISTS (
+        SELECT 1
+        FROM users
+        WHERE email = $1
+            AND signed_up = true
+    ) AS is_existing;
+-- name: IsUserInvited :one
+SELECT EXISTS (
+        SELECT 1
+        FROM users
+        WHERE email = $1
+            AND signed_up = false
+    ) AS is_invited;
+-- name: GetUserIDFromEmail :one
+SELECT id
+FROM users
+WHERE email = $1
+LIMIT 1;
 -- name: CreateUserNewSignUp :one
 WITH inserted_user AS (
     INSERT INTO users (id, email, signed_up, created_at, updated_at)

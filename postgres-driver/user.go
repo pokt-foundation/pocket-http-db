@@ -12,7 +12,15 @@ import (
 	"github.com/pokt-foundation/portal-http-db/v2/types"
 )
 
+const (
+	newUser      newUserCase = "new"
+	existingUser newUserCase = "existing"
+	invitedUser  newUserCase = "invited"
+)
+
 type (
+	newUserCase string
+
 	authProviderDBRow struct {
 		UserID         types.UserID         `json:"user_id"`
 		Type           types.AuthType       `json:"type"`
@@ -191,32 +199,50 @@ func (u *UserRow) toUser() (*types.User, error) {
 // If a brand new user is created they need to have a default account so we also create a default Account for them using the free tier plan.
 // If a new account is created for the user, the account ID is returned; otherwise it is an empty string.
 func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.CreateUser, createdAt time.Time) (*types.User, types.AccountID, error) {
-	accountID := types.AccountID("")
+	var (
+		userID    types.UserID
+		accountID types.AccountID
+	)
 
 	err := pg.validateWriteUserNewSignUpInput(ctx, user)
 	if err != nil {
 		return nil, "", err
 	}
 
-	// A new sign up may be one of 3 types:
+	tx, err := pg.DB.Begin(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := pg.WithTx(tx)
+
+	// A new user creation may be one of 3 types: new, existing, or invited
+	newUserCase, err := pg.determineNewUserCase(ctx, user.Email)
+	if err != nil {
+		return nil, "", err
+	}
+
+	switch newUserCase {
 	// 1. brand new user - never signed up with any auth provider
-	// 2. existing user - signing up with a new auth provider (eg. Github or Google).
-	// 3. invited user - a user that has been invited to a team signing up for the first time
-	// (in which case they will already have a user ID in the DB)
-	var userID types.UserID
-	//  First check if this sign is an invited user
-	if invitedUserID, err := pg.GetInvitedUserID(ctx, user.Email); err != nil || invitedUserID == "" {
-		// They are a brand new user so they need a new user ID generated
-		// Existing users will also trigger this step but the user ID is not used (they already have one)
+	case newUser:
 		generatedUserID, err := pg.generateID(ctx)
 		if err != nil {
 			return nil, "", err
 		}
-
 		userID = types.UserID(generatedUserID)
-	} else {
-		// They are an invited user so use the user ID that was created when they were invited
-		userID = invitedUserID
+	// 2. existing user - signing up with a new auth provider (eg. Github or Google)
+	case existingUser:
+		userID, err = pg.GetUserIDFromEmail(ctx, user.Email)
+		if err != nil {
+			return nil, "", err
+		}
+	// 3. invited user - a user that has been invited to a team signing up for the first time
+	case invitedUser:
+		userID, err = pg.GetUserIDFromEmail(ctx, user.Email)
+		if err != nil {
+			return nil, "", err
+		}
 	}
 
 	authType := user.ProviderUserID.AuthType()
@@ -232,29 +258,23 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 		UpdatedAt:      newTimestamptz(createdAt),
 	}
 
-	tx, err := pg.DB.Begin(ctx)
-	if err != nil {
-		return nil, "", err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-
-	qtx := pg.WithTx(tx)
-
 	createdUserID, err := qtx.CreateUserNewSignUp(ctx, newUserParams)
 	if err != nil {
 		return nil, "", err
 	}
 
-	// If a brand new user is created they need to have a default account
-	// so we also create a default Account for them using the free tier plan.
-	userHasAccount, err := pg.CheckUserHasOwnAccount(ctx, createdUserID)
-	if err != nil {
-		return nil, "", err
-	}
-	if !userHasAccount {
-		accountID, err = pg.createDefaultAccountForNewUser(ctx, qtx, newUserParams, createdAt)
+	if newUserCase != existingUser {
+		// If a new user is created they need to have a default account
+		// so we also create a default Account for them using the free tier plan.
+		userHasAccount, err := pg.CheckUserHasOwnAccount(ctx, createdUserID)
 		if err != nil {
 			return nil, "", err
+		}
+		if !userHasAccount {
+			accountID, err = pg.createDefaultAccountForNewUser(ctx, qtx, newUserParams, createdAt)
+			if err != nil {
+				return nil, "", err
+			}
 		}
 	}
 
@@ -269,6 +289,35 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 	}
 
 	return createdUser, accountID, nil
+}
+
+// determineNewUserCase checks the user's status and returns a string indicating the status.
+func (pg *PostgresDriver) determineNewUserCase(ctx context.Context, email types.Email) (newUserCase, error) {
+	isNewUser, err := pg.IsUserNew(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	if isNewUser {
+		return newUser, nil
+	}
+
+	isExistingUser, err := pg.IsUserExisting(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	if isExistingUser {
+		return existingUser, nil
+	}
+
+	isInvitedUser, err := pg.IsUserInvited(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	if isInvitedUser {
+		return invitedUser, nil
+	}
+
+	return "", errors.New("user status could not be determined")
 }
 
 // createDefaultAccountForNewUser creates a default Account for a new User using the free tier plan.

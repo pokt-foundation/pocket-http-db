@@ -801,6 +801,20 @@ func (q *Queries) GetUserFields(ctx context.Context, id types.UserID) (GetUserFi
 	return i, err
 }
 
+const getUserIDFromEmail = `-- name: GetUserIDFromEmail :one
+SELECT id
+FROM users
+WHERE email = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserIDFromEmail(ctx context.Context, email types.Email) (types.UserID, error) {
+	row := q.db.QueryRow(ctx, getUserIDFromEmail, email)
+	var id types.UserID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const insertAccount = `-- name: InsertAccount :one
 INSERT INTO accounts (
         id,
@@ -1251,6 +1265,53 @@ func (q *Queries) InsertPortalApplicationSetting(ctx context.Context, arg Insert
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const isUserExisting = `-- name: IsUserExisting :one
+SELECT EXISTS (
+        SELECT 1
+        FROM users
+        WHERE email = $1
+            AND signed_up = true
+    ) AS is_existing
+`
+
+func (q *Queries) IsUserExisting(ctx context.Context, email types.Email) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserExisting, email)
+	var is_existing bool
+	err := row.Scan(&is_existing)
+	return is_existing, err
+}
+
+const isUserInvited = `-- name: IsUserInvited :one
+SELECT EXISTS (
+        SELECT 1
+        FROM users
+        WHERE email = $1
+            AND signed_up = false
+    ) AS is_invited
+`
+
+func (q *Queries) IsUserInvited(ctx context.Context, email types.Email) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserInvited, email)
+	var is_invited bool
+	err := row.Scan(&is_invited)
+	return is_invited, err
+}
+
+const isUserNew = `-- name: IsUserNew :one
+SELECT NOT EXISTS (
+        SELECT 1
+        FROM users
+        WHERE email = $1
+    ) AS is_new
+`
+
+func (q *Queries) IsUserNew(ctx context.Context, email types.Email) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserNew, email)
+	var is_new bool
+	err := row.Scan(&is_new)
+	return is_new, err
 }
 
 const removeGlobalBlockedContract = `-- name: RemoveGlobalBlockedContract :one
