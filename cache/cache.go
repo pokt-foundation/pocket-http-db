@@ -1172,6 +1172,7 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		chain.Aliases = existingChain.Aliases
 		chain.Checks = existingChain.Checks
 		chain.GigastakeApps = existingChain.GigastakeApps
+		chain.GigastakeAppsByID = existingChain.GigastakeAppsByID // DEPRECATED
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		chain.AliasDomains = existingChain.AliasDomains
 	}
