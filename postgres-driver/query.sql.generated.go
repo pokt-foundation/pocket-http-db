@@ -354,9 +354,12 @@ func (q *Queries) CheckUserProviderExists(ctx context.Context, arg CheckUserProv
 }
 
 const createUserNewSignUp = `-- name: CreateUserNewSignUp :one
-WITH inserted_user AS (
+WITH inserted_or_updated_user AS (
     INSERT INTO users (id, email, signed_up, created_at, updated_at)
-    VALUES ($1, $2, true, $3, $4) ON CONFLICT (email) DO NOTHING
+    VALUES ($1, $2, true, $3, $4) ON CONFLICT (email) DO
+    UPDATE
+    SET signed_up = true,
+        updated_at = EXCLUDED.updated_at
     RETURNING id
 )
 INSERT INTO user_auth_providers (
@@ -371,7 +374,7 @@ VALUES (
             SELECT COALESCE(
                     (
                         SELECT id
-                        FROM inserted_user
+                        FROM inserted_or_updated_user
                     ),
                     (
                         SELECT id
