@@ -118,20 +118,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 				ts.Equal(test.err, err)
 
 				if err == nil {
-					test.expectedChain.GigastakeApps = make(map[types.ProtocolID]map[types.GigastakeAppID]*types.GigastakeApp)
-					if test.expectedChain.GigastakeApps[types.ProtocolMorseMainnet] == nil {
-						test.expectedChain.GigastakeApps[types.ProtocolMorseMainnet] = make(map[types.GigastakeAppID]*types.GigastakeApp)
-					}
-					test.expectedChain.GigastakeApps[types.ProtocolMorseMainnet][test.gigastakeApp.ID] = test.gigastakeApp
+					test.expectedChain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
+					test.expectedChain.GigastakeAppsByID[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 
 					chain, err = ts.client2.GetChainByID(context.Background(), test.chainID)
 					ts.Equal(test.err, err)
-					test.expectedChain.GigastakeApps = make(map[types.ProtocolID]map[types.GigastakeAppID]*types.GigastakeApp)
-					if test.expectedChain.GigastakeApps[types.ProtocolMorseMainnet] == nil {
-						test.expectedChain.GigastakeApps[types.ProtocolMorseMainnet] = make(map[types.GigastakeAppID]*types.GigastakeApp)
-					}
-					test.expectedChain.GigastakeApps[types.ProtocolMorseMainnet] = map[types.GigastakeAppID]*types.GigastakeApp{test.gigastakeApp.ID: test.gigastakeApp}
+					test.expectedChain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
+					test.expectedChain.GigastakeAppsByID[test.gigastakeApp.ID] = test.gigastakeApp
 					ts.Equal(test.expectedChain, chain)
 				}
 			})
@@ -202,17 +196,14 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 
 		for _, test := range tests {
 			ts.Run(test.name, func() {
-				// Set pointers to Chain GigastakeApps
+				// Set pointers to Chain GigastakeAppsByID
 				for aatID, gigastakeApp := range test.gigastakeApps {
 					for chainID := range gigastakeApp.ChainIDs {
 						if chain, ok := test.expectedChains[chainID]; ok {
-							if chain.GigastakeApps == nil {
-								chain.GigastakeApps = make(map[types.ProtocolID]map[types.GigastakeAppID]*types.GigastakeApp)
+							if chain.GigastakeAppsByID == nil {
+								chain.GigastakeAppsByID = make(map[types.GigastakeAppID]*types.GigastakeApp)
 							}
-							if chain.GigastakeApps[types.ProtocolMorseMainnet] == nil {
-								chain.GigastakeApps[types.ProtocolMorseMainnet] = make(map[types.GigastakeAppID]*types.GigastakeApp)
-							}
-							chain.GigastakeApps[types.ProtocolMorseMainnet][aatID] = gigastakeApp
+							chain.GigastakeAppsByID[aatID] = gigastakeApp
 						}
 					}
 				}
@@ -1211,7 +1202,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
 					ts.Len(createdChainByID.GigastakeApps, 1)
-					createdChainByID.GigastakeApps = nil
+					createdChainByID.GigastakeAppsByID = nil
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 
@@ -1220,7 +1211,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					createdChainByID.CreatedAt = timestamp
 					createdChainByID.UpdatedAt = timestamp
 					ts.Len(createdChainByID.GigastakeApps, 1)
-					createdChainByID.GigastakeApps = nil
+					createdChainByID.GigastakeAppsByID = nil
 					createdChainByID.GigastakeApps = nil
 					ts.Equal(createdChain, createdChainByID)
 				}
@@ -1272,15 +1263,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					for chainID := range test.gigastakeAppInput.ChainIDs {
 						chain, err := ts.client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						chain.GigastakeApps[test.expected.ProtocolID][test.expected.ID].CreatedAt = timestamp
-						chain.GigastakeApps[test.expected.ProtocolID][test.expected.ID].UpdatedAt = timestamp
-						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ProtocolID][test.expected.ID])
+						chain.GigastakeAppsByID[test.expected.ID].CreatedAt = timestamp
+						chain.GigastakeAppsByID[test.expected.ID].UpdatedAt = timestamp
+						ts.Equal(test.expected, chain.GigastakeAppsByID[test.expected.ID])
 
 						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						chain.GigastakeApps[test.expected.ProtocolID][test.expected.ID].CreatedAt = timestamp
-						chain.GigastakeApps[test.expected.ProtocolID][test.expected.ID].UpdatedAt = timestamp
-						ts.Equal(test.expected, chain.GigastakeApps[test.expected.ProtocolID][test.expected.ID])
+						chain.GigastakeAppsByID[test.expected.ID].CreatedAt = timestamp
+						chain.GigastakeAppsByID[test.expected.ID].UpdatedAt = timestamp
+						ts.Equal(test.expected, chain.GigastakeAppsByID[test.expected.ID])
 					}
 				}
 			})
@@ -1419,17 +1410,15 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 
 	ts.Run("Test_UpdateGigastakeApp", func() {
 		tests := []struct {
-			name                string
-			gigastakeAppID      types.GigastakeAppID
-			gigastakeProtocolID types.ProtocolID
-			gigastakeAppUpdate  types.UpdateGigastakeApp
-			err                 error
-			expected            *types.UpdateGigastakeApp
+			name               string
+			gigastakeAppID     types.GigastakeAppID
+			gigastakeAppUpdate types.UpdateGigastakeApp
+			err                error
+			expected           *types.UpdateGigastakeApp
 		}{
 			{
-				name:                "Should update GigastakeApp ChainIDs in the database",
-				gigastakeAppID:      "test_gigastake_app_1",
-				gigastakeProtocolID: types.ProtocolMorseMainnet,
+				name:           "Should update GigastakeApp ChainIDs in the database",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
 					ChainIDs: []types.RelayChainID{"0001", "0040"},
 				},
@@ -1440,9 +1429,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name:                "Should update both GigastakeApp name and ChainIDs in the database",
-				gigastakeAppID:      "test_gigastake_app_1",
-				gigastakeProtocolID: types.ProtocolMorseMainnet,
+				name:           "Should update both GigastakeApp name and ChainIDs in the database",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
 					ID:       "test_gigastake_app_1",
 					ChainIDs: []types.RelayChainID{"0001", "0040", "0053"},
@@ -1454,9 +1442,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name:                "Should update both GigastakeApp name and ChainIDs in the database back to original values",
-				gigastakeAppID:      "test_gigastake_app_1",
-				gigastakeProtocolID: types.ProtocolMorseMainnet,
+				name:           "Should update both GigastakeApp name and ChainIDs in the database back to original values",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
 					ChainIDs: []types.RelayChainID{"0001"},
 				},
@@ -1467,16 +1454,14 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name:                "Should return an error if the GigastakeApp ID is empty",
-				gigastakeAppID:      "",
-				gigastakeProtocolID: types.ProtocolMorseMainnet,
-				err:                 fmt.Errorf("no gigastake app ID"),
-				expected:            nil,
+				name:           "Should return an error if the GigastakeApp ID is empty",
+				gigastakeAppID: "",
+				err:            fmt.Errorf("no gigastake app ID"),
+				expected:       nil,
 			},
 			{
-				name:                "Should return an error if the GigastakeApp ChainIDs is empty",
-				gigastakeAppID:      "test_gigastake_app_1",
-				gigastakeProtocolID: types.ProtocolMorseMainnet,
+				name:           "Should return an error if the GigastakeApp ChainIDs is empty",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
 					ChainIDs: []types.RelayChainID{},
 				},
@@ -1484,9 +1469,8 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				expected: nil,
 			},
 			{
-				name:                "Should return an error if the chain doesn't exist",
-				gigastakeAppID:      "test_gigastake_app_1",
-				gigastakeProtocolID: types.ProtocolMorseMainnet,
+				name:           "Should return an error if the chain doesn't exist",
+				gigastakeAppID: "test_gigastake_app_1",
 				gigastakeAppUpdate: types.UpdateGigastakeApp{
 					ChainIDs: []types.RelayChainID{"0666"},
 				},
@@ -1510,11 +1494,11 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					for _, chainID := range test.gigastakeAppUpdate.ChainIDs {
 						chain, err := ts.client1.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						ts.Contains(chain.GigastakeApps[test.gigastakeProtocolID], updatedGigastakeApp.ID)
+						ts.Contains(chain.GigastakeAppsByID, updatedGigastakeApp.ID)
 
 						chain, err = ts.client2.GetChainByID(context.Background(), chainID)
 						ts.NoError(err)
-						ts.Contains(chain.GigastakeApps[test.gigastakeProtocolID], updatedGigastakeApp.ID)
+						ts.Contains(chain.GigastakeAppsByID, updatedGigastakeApp.ID)
 					}
 				}
 			})
