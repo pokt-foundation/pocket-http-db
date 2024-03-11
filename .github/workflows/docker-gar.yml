@@ -16,67 +16,67 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Check for disabled pre-commit checks in .pre-commit-config.yaml
-      run: |
-        if grep '^[[:space:]]*#' .pre-commit-config.yaml; then
-          echo "Found commented lines in .pre-commit-config.yaml. Please remove them to proceed."
-          exit 1
-        fi
+      - name: Check for disabled pre-commit checks in .pre-commit-config.yaml
+        run: |
+          if grep '^[[:space:]]*#' .pre-commit-config.yaml; then
+            echo "Found commented lines in .pre-commit-config.yaml. Please remove them to proceed."
+            exit 1
+          fi
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: 1.21
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
 
-    - name: Cache Go and pre-commit data
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-          ~/.cache/pip
-          ~/pre-commit-2.20.0.pyz
-          $(go env GOPATH)/bin
-        key: ${{ runner.os }}-go-precommit-${{ hashFiles('**/go.sum', '**/requirements*.txt', 'pre-commit-2.20.0.pyz') }}
-        restore-keys: |
-          ${{ runner.os }}-go-precommit-
+      - name: Cache Go and pre-commit data
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+            ~/.cache/pip
+            ~/pre-commit-2.20.0.pyz
+            $(go env GOPATH)/bin
+          key: ${{ runner.os }}-go-precommit-${{ hashFiles('**/go.sum', '**/requirements*.txt', 'pre-commit-2.20.0.pyz') }}
+          restore-keys: |
+            ${{ runner.os }}-go-precommit-
 
-    - name: Install Go tools
-      run: |
-        PATH="$(go env GOPATH)/bin:$PATH"
-        if ! command -v goimports &> /dev/null; then
-          go install golang.org/x/tools/cmd/goimports@v0.6.0
-        fi
-        if ! command -v golangci-lint &> /dev/null; then
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0
-        fi
-        if ! command -v gocritic &> /dev/null; then
-          go install github.com/go-critic/go-critic/cmd/gocritic@v0.6.5
-        fi
-      env:
-        PATH: $(go env GOPATH)/bin:$PATH
+      - name: Install Go tools
+        run: |
+          PATH="$(go env GOPATH)/bin:$PATH"
+          if ! command -v goimports &> /dev/null; then
+            go install golang.org/x/tools/cmd/goimports@v0.6.0
+          fi
+          if ! command -v golangci-lint &> /dev/null; then
+            go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0
+          fi
+          if ! command -v gocritic &> /dev/null; then
+            go install github.com/go-critic/go-critic/cmd/gocritic@v0.6.5
+          fi
+        env:
+          PATH: $(go env GOPATH)/bin:$PATH
 
-    - name: Download pre-commit if not cached
-      run: |
-        if [ ! -f ~/pre-commit-2.20.0.pyz ]; then
-          echo "Downloading pre-commit..."
-          wget -P ~ https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz
-        else
-          echo "Using cached pre-commit."
-        fi
+      - name: Download pre-commit if not cached
+        run: |
+          if [ ! -f ~/pre-commit-2.20.0.pyz ]; then
+            echo "Downloading pre-commit..."
+            wget -P ~ https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz
+          else
+            echo "Using cached pre-commit."
+          fi
 
-    - name: Comment out 'no-commit-to-branch' in .pre-commit-config.yaml
-      run: |
-        sed -i 's/^\(\s*- id: no-commit-to-branch\)/# \1/' .pre-commit-config.yaml
-      working-directory: ${{ github.workspace }}
+      - name: Comment out 'no-commit-to-branch' in .pre-commit-config.yaml
+        run: |
+          sed -i 's/^\(\s*- id: no-commit-to-branch\)/# \1/' .pre-commit-config.yaml
+        working-directory: ${{ github.workspace }}
 
-    - name: Run pre-commit checks on all files
-      run: python3 ~/pre-commit-2.20.0.pyz run --all-files
+      - name: Run pre-commit checks on all files
+        run: python3 ~/pre-commit-2.20.0.pyz run --all-files
 
   test:
     name: Test
@@ -154,8 +154,12 @@ jobs:
         with:
           go-version: 1.21
 
+      - name: Setup Git Authentication
+        run: |
+          git config --global url."https://${{ secrets.POKT_BOT_GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+
       - name: Go List
-        run: GOPROXY=proxy.golang.org go list -m github.com/pokt-foundation/portal-http-db/v2@v${{ needs.tag.outputs.version }}
+        run: GOPRIVATE=github.com/pokt-foundation/* go list -m github.com/pokt-foundation/portal-http-db/v2@v${{ needs.tag.outputs.version }}
 
   publish-test-db:
     if: needs.tag.outputs.new == 'true'
