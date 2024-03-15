@@ -2,12 +2,6 @@
     <img src=".github/grove_logo.png" alt="Portal Network logo" width="600"/>
     <h1>Portal HTTP Database</h1>
     <big>The Portal HTTP DB (PHD) provides access to the Portal database through a REST API.</big>
-    <div>
-       <br/>
-        <a href="https://github.com/pokt-foundation/portal-http-db/v2/pulse"><img src="https://img.shields.io/github/last-commit/pokt-foundation/portal-http-db.svg"/></a>
-        <a href="https://github.com/pokt-foundation/portal-http-db/v2/pulls"><img src="https://img.shields.io/github/issues-pr/pokt-foundation/portal-http-db.svg"/></a>
-        <a href="https://github.com/pokt-foundation/portal-http-db/v2/issues"><img src="https://img.shields.io/github/issues-closed/pokt-foundation/portal-http-db.svg"/></a>
-    </div>
 </div>
 <br/>
 
