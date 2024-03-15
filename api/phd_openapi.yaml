@@ -1,0 +1,3452 @@
+openapi: 3.0.3
+info:
+  title: Portal HTTP Database
+  description: The Portal HTTP Database (PHD) provides access to the Portal database through a REST API.
+  version: 1.0.0
+  contact:
+    name: Pascal
+    email: pascal@grove.city
+servers:
+  - url: https://phd.portal.grove.city
+    description: Production PHD URL
+  - url: https://phd.portal.grove.town
+    description: Staging PHD URL
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+security:
+  - ApiKeyAuth: []
+paths:
+  /v2/chain:
+    get:
+      tags:
+        - Chains
+      summary: Get All Chains
+      description: Returns a list of all chain in the database.
+      operationId: getAllChains
+      parameters:
+        - name: include_inactive
+          in: query
+          schema:
+            type: string
+            example: "true"
+        - name: include_deleted
+          in: query
+          schema:
+            type: string
+            example: "true"
+      responses:
+        "200":
+          description: A list of all chains.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    blockchain:
+                      type: string
+                    description:
+                      type: string
+                    iconURL:
+                      type: string
+                    enforceResult:
+                      type: string
+                    path:
+                      type: string
+                    ticker:
+                      type: string
+                    allowedMethods:
+                      type: array
+                      items:
+                        type: string
+                    logLimitBlocks:
+                      type: integer
+                    requestTimeout:
+                      type: integer
+                    active:
+                      type: boolean
+                    altruists:
+                      type: object
+                    chainChecks:
+                      type: object
+                    chainAliases:
+                      type: object
+                    domains:
+                      type: object
+                    createdAt:
+                      type: string
+                    updatedAt:
+                      type: string
+                    deleted:
+                      type: boolean
+                    gigastakeAppsByProtocol:
+                      type: object
+              examples:
+                example1:
+                  value:
+                    - id: "0001"
+                      blockchain: "mainnet"
+                      description: "POKT Network Mainnet"
+                      iconURL: ""
+                      enforceResult: "REST"
+                      path: "/v1/query/height"
+                      ticker: "POKT"
+                      allowedMethods: null
+                      logLimitBlocks: 0
+                      requestTimeout: 0
+                      active: true
+                      altruists:
+                        "https://0001.altruist.test.tools:1234":
+                          url: "https://0001.altruist.test.tools:1234"
+                          auth: "user:password"
+                          authType: "basic_auth"
+                      chainChecks:
+                        sync:
+                          type: "sync"
+                          payload: "{}"
+                          resultKey: "height"
+                          allowance: 1
+                          evmChainID: 0
+                      chainAliases:
+                        mainnet: {}
+                        pokt-rpc: {}
+                      domains:
+                        mainnet: ["mainnet.rpc.grove.city"]
+                      createdAt: "2023-07-06T16:28:20.478504Z"
+                      updatedAt: "2024-02-15T12:34:45.84326Z"
+                      deleted: false
+                      gigastakeAppsByProtocol:
+                        morse-mainnet:
+                          "1a2b3c4d":
+                            id: "1a2b3c4d"
+                            protocolID: "morse-mainnet"
+                            chainIDs:
+                              "0001": {}
+                            name: "articuno"
+                            address: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                            publicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                            clientPublicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                            signature: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                            version: "0.0.1"
+                            createdAt: "2023-08-09T12:48:56.300505Z"
+                            updatedAt: "2024-02-08T22:12:46.916389Z"
+                            deleted: false
+    post:
+      tags:
+        - Chains
+        - Gigastake Apps
+      summary: Create Chain and Gigastake Apps
+      description: Creates a new chain along with associated Gigastake apps. If not creating Gigastake apps that do not exist in the database, the gigastakeApps array should be excluded. Existing Gigastake apps should be updated using the updateGigastakeApps endpoint.
+      operationId: createChainAndGigastakeApps
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chain:
+                  type: object
+                  properties:
+                    active:
+                      type: boolean
+                      example: true
+                    altruists:
+                      type: object
+                      properties:
+                        https://altruist-0002.com:1234:
+                          type: object
+                          properties:
+                            auth:
+                              type: string
+                              example: test_pocket2:auth654321
+                            authType:
+                              type: string
+                              example: basic_auth
+                            url:
+                              type: string
+                              example: https://altruist-0002.com:1234
+                    blockchain:
+                      type: string
+                      example: mainnet
+                    chainChecks:
+                      type: object
+                      properties:
+                        chain:
+                          type: object
+                          properties:
+                            evm_chain_id:
+                              type: string
+                              example: "021"
+                            payload:
+                              type: string
+                              example: '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}'
+                            resultKey:
+                              type: string
+                              example: id
+                            type:
+                              type: string
+                              example: chain
+                        sync:
+                          type: object
+                          properties:
+                            allowance:
+                              type: number
+                              example: 2
+                            payload:
+                              type: string
+                              example: '{"id":2,"jsonrpc":"2.0","method":"query_test"}'
+                            resultKey:
+                              type: string
+                              example: result.sync_info_test
+                            type:
+                              type: string
+                              example: sync
+                    description:
+                      type: string
+                      example: Pocket Network
+                    domains:
+                      type: object
+                      properties:
+                        mainnet:
+                          type: array
+                          items:
+                            type: string
+                            example: mainnet.rpc.grove.city
+                          example:
+                            - mainnet.rpc.grove.city
+                    enforceResult:
+                      type: string
+                      example: JSON
+                    id:
+                      type: string
+                      example: "0001"
+                    path:
+                      type: string
+                      example: /v1/query/test-height
+                    ticker:
+                      type: string
+                      example: POKT
+                gigastakeApps:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      address:
+                        type: string
+                        example: test_7d5f7a4a0c7d9f2cd11c2a563e7e8c6
+                      clientPublicKey:
+                        type: string
+                        example: test_75d39g1dd93f419b91b528b1d0783a10
+                      privateKey:
+                        type: string
+                        example: test_1b7gf3c98bf647eb94f2b00c9c1f2e94
+                      protocolID:
+                        type: string
+                        example: morse-mainnet
+                      publicKey:
+                        type: string
+                        example: test_47b1e9527g6049ec98b9b6b308efc3d1
+                      signature:
+                        type: string
+                        example: test_g33762gb677457hcb41c716f6g57f4db
+                      version:
+                        type: string
+                        example: 0.0.1
+                  example:
+                    - address: test_7d5f7a4a0c7d9f2cd11c2a563e7e8c6
+                      clientPublicKey: test_75d39g1dd93f419b91b528b1d0783a10
+                      privateKey: test_1b7gf3c98bf647eb94f2b00c9c1f2e94
+                      protocolID: morse-mainnet
+                      publicKey: test_47b1e9527g6049ec98b9b6b308efc3d1
+                      signature: test_g33762gb677457hcb41c716f6g57f4db
+                      version: 0.0.1
+            examples:
+              Create Chain and Gigastake Apps:
+                value:
+                  chain:
+                    active: true
+                    altruists:
+                      https://altruist-0002.com:1234:
+                        auth: test_pocket2:auth654321
+                        authType: basic_auth
+                        url: https://altruist-0002.com:1234
+                    blockchain: mainnet
+                    chainChecks:
+                      chain:
+                        evm_chain_id: "021"
+                        payload: '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}'
+                        resultKey: id
+                        type: chain
+                      sync:
+                        allowance: 2
+                        payload: '{"id":2,"jsonrpc":"2.0","method":"query_test"}'
+                        resultKey: result.sync_info_test
+                        type: sync
+                    description: Pocket Network
+                    domains:
+                      mainnet:
+                        - mainnet.rpc.grove.city
+                    enforceResult: JSON
+                    id: "0001"
+                    path: /v1/query/test-height
+                    ticker: POKT
+                  gigastakeApps:
+                    - address: test_7d5f7a4a0c7d9f2cd11c2a563e7e8c6
+                      clientPublicKey: test_75d39g1dd93f419b91b528b1d0783a10
+                      privateKey: test_1b7gf3c98bf647eb94f2b00c9c1f2e94
+                      protocolID: morse-mainnet
+                      publicKey: test_47b1e9527g6049ec98b9b6b308efc3d1
+                      signature: test_g33762gb677457hcb41c716f6g57f4db
+                      version: 0.0.1
+      responses:
+        "200":
+          description: Chain and gigastakes created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chain:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      blockchain:
+                        type: string
+                      description:
+                        type: string
+                      iconURL:
+                        type: string
+                      enforceResult:
+                        type: string
+                      path:
+                        type: string
+                      ticker:
+                        type: string
+                      allowedMethods:
+                        type: array
+                        items:
+                          type: string
+                      logLimitBlocks:
+                        type: integer
+                      requestTimeout:
+                        type: integer
+                      active:
+                        type: boolean
+                      altruists:
+                        type: object
+                      chainChecks:
+                        type: object
+                      domains:
+                        type: object
+                      createdAt:
+                        type: string
+                      updatedAt:
+                        type: string
+                      deleted:
+                        type: boolean
+                  gigastakeApps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        protocolID:
+                          type: string
+                        chainIDs:
+                          type: object
+                        name:
+                          type: string
+                        address:
+                          type: string
+                        publicKey:
+                          type: string
+                        clientPublicKey:
+                          type: string
+                        signature:
+                          type: string
+                        version:
+                          type: string
+                        createdAt:
+                          type: string
+                        updatedAt:
+                          type: string
+                        deleted:
+                          type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    chain:
+                      id: "4444"
+                      blockchain: "pokt-mainnet"
+                      description: "Pocket Network"
+                      iconURL: ""
+                      enforceResult: "JSON"
+                      path: "/v1/query/test-height"
+                      ticker: "POKT"
+                      allowedMethods: null
+                      logLimitBlocks: 0
+                      requestTimeout: 0
+                      active: true
+                      altruists:
+                        "https://altruist-0002.com:1234":
+                          url: "https://altruist-0002.com:1234"
+                          auth: "test_pocket2:auth654321"
+                          authType: "basic_auth"
+                      chainChecks:
+                        chain:
+                          type: "chain"
+                          payload: '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}'
+                          resultKey: "id"
+                          allowance: 0
+                          evmChainID: 21
+                        sync:
+                          type: "sync"
+                          payload: '{"id":2,"jsonrpc":"2.0","method":"query_test"}'
+                          resultKey: "result.sync_info_test"
+                          allowance: 2
+                          evmChainID: 0
+                      domains:
+                        pokt-mainnet:
+                          - "mainnet.rpc.grove.city"
+                      createdAt: "2024-03-14T18:49:19.47183Z"
+                      updatedAt: "2024-03-14T18:49:19.47183Z"
+                      deleted: false
+                    gigastakeApps:
+                      - id: "fa88fcc6"
+                        protocolID: "morse-mainnet"
+                        chainIDs:
+                          "4444": {}
+                        name: "swinub"
+                        address: "test_7d5f7a4a0c7d9f2cd11c2a563e7e8c6"
+                        publicKey: "test_47b1e9527g6049ec98b9b6b308efc3d1"
+                        clientPublicKey: "test_75d39g1dd93f419b91b528b1d0783a10"
+                        signature: "test_g33762gb677457hcb41c716f6g57f4db"
+                        version: "0.0.1"
+                        createdAt: "2024-03-14T18:49:19.47183Z"
+                        updatedAt: "2024-03-14T18:49:19.47183Z"
+                        deleted: false
+  /v2/chain/{chainID}:
+    parameters:
+      - name: chainID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the chain
+    get:
+      tags:
+        - Chains
+      summary: Get Chain by ID
+      description: Returns detail of the chain identified by the given ID.
+      operationId: getChainById
+      responses:
+        "200":
+          description: Successful response with chain details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  blockchain:
+                    type: string
+                  description:
+                    type: string
+                  iconURL:
+                    type: string
+                  enforceResult:
+                    type: string
+                  path:
+                    type: string
+                  ticker:
+                    type: string
+                  allowedMethods:
+                    type: array
+                    items:
+                      type: string
+                  logLimitBlocks:
+                    type: integer
+                  requestTimeout:
+                    type: integer
+                  active:
+                    type: boolean
+                  altruists:
+                    type: object
+                  chainChecks:
+                    type: object
+                  chainAliases:
+                    type: object
+                  domains:
+                    type: object
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  deleted:
+                    type: boolean
+                  gigastakeAppsByProtocol:
+                    type: object
+              examples:
+                example1:
+                  value:
+                    id: "0001"
+                    blockchain: "mainnet"
+                    description: "POKT Network Mainnet"
+                    iconURL: ""
+                    enforceResult: "REST"
+                    path: "/v1/query/height"
+                    ticker: "POKT"
+                    allowedMethods: null
+                    logLimitBlocks: 0
+                    requestTimeout: 0
+                    active: true
+                    altruists:
+                      "https://0001.altruist.test.tools:1234":
+                        url: "https://0001.altruist.test.tools:1234"
+                        auth: "user:password"
+                        authType: "basic_auth"
+                    chainChecks:
+                      sync:
+                        type: "sync"
+                        payload: "{}"
+                        resultKey: "height"
+                        allowance: 1
+                        evmChainID: 0
+                    chainAliases:
+                      mainnet: {}
+                      pokt-rpc: {}
+                    domains:
+                      mainnet: ["mainnet.rpc.grove.city"]
+                    createdAt: "2023-07-06T16:28:20.478504Z"
+                    updatedAt: "2024-02-15T12:34:45.84326Z"
+                    deleted: false
+                    gigastakeAppsByProtocol:
+                      morse-mainnet:
+                        "1a2b3c4d":
+                          id: "1a2b3c4d"
+                          protocolID: "morse-mainnet"
+                          chainIDs:
+                            "0001": {}
+                          name: "articuno"
+                          address: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          publicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          clientPublicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          signature: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          version: "0.0.1"
+                          createdAt: "2023-08-09T12:48:56.300505Z"
+                          updatedAt: "2024-02-08T22:12:46.916389Z"
+                          deleted: false
+    put:
+      tags:
+        - Chains
+      summary: Update Chain
+      description: Update the chain identified by the given ID with new information.
+      operationId: updateChain
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                blockchain:
+                  type: string
+                  example: pokt-testnet
+                description:
+                  type: string
+                  example: Pocket Network Testnet
+                enforceResult:
+                  type: string
+                  example: JSON
+                path:
+                  type: string
+                  example: /v1/query/test-height
+                ticker:
+                  type: string
+                  example: POKT
+                active:
+                  type: boolean
+                  example: true
+                altruists:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      url:
+                        type: string
+                      authType:
+                        type: string
+                      auth:
+                        type: string
+                    required:
+                      - url
+                      - authType
+                      - auth
+                chainChecks:
+                  type: object
+                  properties:
+                    sync:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          example: sync
+                        payload:
+                          type: string
+                          example: '{"id":2,"jsonrpc":"2.0","method":"query_test"}'
+                        resultKey:
+                          type: string
+                          example: result.sync_info_test
+                        allowance:
+                          type: number
+                          example: 2
+                domains:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+            examples:
+              Update Chain:
+                value:
+                  blockchain: pokt-testnet
+                  description: Pocket Network Testnet
+                  enforceResult: JSON
+                  path: /v1/query/test-height
+                  ticker: POKT
+                  active: true
+                  altruists:
+                    "https://altruist-0002.com:1234":
+                      url: "https://altruist-0002.com:1234"
+                      authType: basic_auth
+                      auth: "test_pocket2:auth654321"
+                  chainChecks:
+                    sync:
+                      type: sync
+                      payload: '{"id":2,"jsonrpc":"2.0","method":"query_test"}'
+                      resultKey: result.sync_info_test
+                      allowance: 2
+                  domains:
+                    pokt-testnet: ["mainnet.rpc.grove.city"]
+      responses:
+        "200":
+          description: Successful response with chain details.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  blockchain:
+                    type: string
+                  description:
+                    type: string
+                  iconURL:
+                    type: string
+                  enforceResult:
+                    type: string
+                  path:
+                    type: string
+                  ticker:
+                    type: string
+                  allowedMethods:
+                    type: array
+                    items:
+                      type: string
+                  logLimitBlocks:
+                    type: integer
+                  requestTimeout:
+                    type: integer
+                  active:
+                    type: boolean
+                  altruists:
+                    type: object
+                  chainChecks:
+                    type: object
+                  chainAliases:
+                    type: object
+                  domains:
+                    type: object
+                  createdAt:
+                    type: string
+                  updatedAt:
+                    type: string
+                  deleted:
+                    type: boolean
+                  gigastakeAppsByProtocol:
+                    type: object
+              examples:
+                example1:
+                  value:
+                    id: "0001"
+                    blockchain: "mainnet"
+                    description: "POKT Network Mainnet"
+                    iconURL: ""
+                    enforceResult: "REST"
+                    path: "/v1/query/height"
+                    ticker: "POKT"
+                    allowedMethods: null
+                    logLimitBlocks: 0
+                    requestTimeout: 0
+                    active: true
+                    altruists:
+                      "https://0001.altruist.test.tools:1234":
+                        url: "https://0001.altruist.test.tools:1234"
+                        auth: "user:password"
+                        authType: "basic_auth"
+                    chainChecks:
+                      sync:
+                        type: "sync"
+                        payload: "{}"
+                        resultKey: "height"
+                        allowance: 1
+                        evmChainID: 0
+                    chainAliases:
+                      mainnet: {}
+                      pokt-rpc: {}
+                    domains:
+                      mainnet: ["mainnet.rpc.grove.city"]
+                    createdAt: "2023-07-06T16:28:20.478504Z"
+                    updatedAt: "2024-02-15T12:34:45.84326Z"
+                    deleted: false
+                    gigastakeAppsByProtocol:
+                      morse-mainnet:
+                        "1a2b3c4d":
+                          id: "1a2b3c4d"
+                          protocolID: "morse-mainnet"
+                          chainIDs:
+                            "0001": {}
+                          name: "articuno"
+                          address: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          publicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          clientPublicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          signature: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                          version: "0.0.1"
+                          createdAt: "2023-08-09T12:48:56.300505Z"
+                          updatedAt: "2024-02-08T22:12:46.916389Z"
+                          deleted: false
+  /v2/chain/{chainID}/activate:
+    parameters:
+      - name: chainID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the chain
+    put:
+      tags:
+        - Chains
+      summary: Activate Chain
+      description: Activate the chain identified by the given ID. Pass true to activate and false to deactivate.
+      operationId: activateChain
+      requestBody:
+        content:
+          application/json:
+            examples:
+              Activate Chain:
+                value: "true"
+      responses:
+        "200":
+          description: Successfully activated the chain.
+          content:
+            application/json:
+              schema:
+                type: boolean
+              examples:
+                successResponse:
+                  value: true
+  /v2/gigastake:
+    get:
+      tags:
+        - Gigastake Apps
+      summary: Get All Gigastake Apps
+      description: Get All Gigastake Apps
+      operationId: getAllGigastakeApps
+      parameters:
+        - name: include_deleted
+          in: query
+          schema:
+            type: string
+            example: "true"
+      responses:
+        "200":
+          description: Successfully retrieved the gigastake apps details.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    protocolID:
+                      type: string
+                    chainIDs:
+                      type: object
+                      additionalProperties: {}
+                    name:
+                      type: string
+                    address:
+                      type: string
+                    publicKey:
+                      type: string
+                    clientPublicKey:
+                      type: string
+                    signature:
+                      type: string
+                    version:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                    deleted:
+                      type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    - id: "1a2b3c4d"
+                      protocolID: "morse-mainnet"
+                      chainIDs:
+                        "0009": {}
+                      name: "clefable"
+                      address: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      publicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      clientPublicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      signature: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      version: "0.0.1"
+                      createdAt: "2023-07-26T03:02:30.217721Z"
+                      updatedAt: "2024-02-08T22:12:50.894316Z"
+                      deleted: false
+  /v2/gigastake/{gigastakeID}:
+    parameters:
+      - name: gigastakeID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the gigastake app
+    get:
+      tags:
+        - Gigastake Apps
+      summary: Get Gigastake App By ID
+      description: Returns a single gigastake app by its unique ID.
+      operationId: getGigastakeAppById
+      responses:
+        "200":
+          description: Successfully fetched the gigastake.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  protocolID:
+                    type: string
+                  chainIDs:
+                    type: object
+                    additionalProperties: {}
+                  name:
+                    type: string
+                  address:
+                    type: string
+                  publicKey:
+                    type: string
+                  clientPublicKey:
+                    type: string
+                  signature:
+                    type: string
+                  version:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  deleted:
+                    type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    id: "1a2b3c4d"
+                    protocolID: "morse-mainnet"
+                    chainIDs:
+                      "0009": {}
+                      "0040": {}
+                    name: "clefable"
+                    address: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    publicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    clientPublicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    signature: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    version: "0.0.1"
+                    createdAt: "2023-07-26T03:02:30.217721Z"
+                    updatedAt: "2024-02-08T22:12:50.894316Z"
+                    deleted: false
+  /v2/chain/{chainID}/gigastake:
+    parameters:
+      - name: chainID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the chain
+    get:
+      tags:
+        - Chains
+        - Gigastake Apps
+      summary: Get Gigastake Apps By Chain ID
+      description: Returns all gigastake app for a given chain ID.
+      operationId: getGigastakeAppsByChainId
+      responses:
+        "200":
+          description: ""
+  /v2/chain/gigastake:
+    post:
+      tags:
+        - Chains
+        - Gigastake Apps
+      summary: Create Gigastake App
+      description: Create a new Gigastake app with the specified details.
+      operationId: createGigastakeApp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                address:
+                  type: string
+                  example: test_7d5f7a4a0c7d9f2cd11c2a563e7e8c6
+                chainIDs:
+                  type: object
+                  properties:
+                    "0001":
+                      type: object
+                      properties: {}
+                clientPublicKey:
+                  type: string
+                  example: test_75d39g1dd93f419b91b528b1d0783a10
+                privateKey:
+                  type: string
+                  example: test_1b7gf3c98bf647eb94f2b00c9c1f2e94
+                protocolID:
+                  type: string
+                  example: morse-mainnet
+                publicKey:
+                  type: string
+                  example: test_47b1e9527g6049ec98b9b6b308efc3d1
+                signature:
+                  type: string
+                  example: test_g33762gb677457hcb41c716f6g57f4db
+                version:
+                  type: string
+                  example: 0.0.1
+            examples:
+              Create Gigastake App:
+                value:
+                  address: test_7d5f7a4a0c7d9f2cd11c2a563e7e8c6
+                  chainIDs:
+                    "0001": {}
+                  clientPublicKey: test_75d39g1dd93f419b91b528b1d0783a10
+                  privateKey: test_1b7gf3c98bf647eb94f2b00c9c1f2e94
+                  protocolID: morse-mainnet
+                  publicKey: test_47b1e9527g6049ec98b9b6b308efc3d1
+                  signature: test_g33762gb677457hcb41c716f6g57f4db
+                  version: 0.0.1
+      responses:
+        "200":
+          description: Successfully created the gigastake app.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  protocolID:
+                    type: string
+                  chainIDs:
+                    type: object
+                    additionalProperties: {}
+                  name:
+                    type: string
+                  address:
+                    type: string
+                  publicKey:
+                    type: string
+                  clientPublicKey:
+                    type: string
+                  signature:
+                    type: string
+                  version:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  deleted:
+                    type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    id: "1a2b3c4d"
+                    protocolID: "morse-mainnet"
+                    chainIDs:
+                      "0009": {}
+                      "0040": {}
+                    name: "clefable"
+                    address: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    publicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    clientPublicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    signature: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                    version: "0.0.1"
+                    createdAt: "2023-07-26T03:02:30.217721Z"
+                    updatedAt: "2024-02-08T22:12:50.894316Z"
+                    deleted: false
+  /v2/chain/gigastake/{gigastakeID}:
+    parameters:
+      - name: gigastakeID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the gigastake app
+    put:
+      tags:
+        - Gigastake Apps
+      summary: Update Gigastake
+      description: Update the chain IDs for an existing gigastake app by it unique ID.
+      operationId: updateGigastake
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                chainIDs:
+                  type: array
+                  items:
+                    type: string
+                    example: "0009"
+                  example:
+                    - 0021
+                    - 0060
+                    - 0001
+            examples:
+              Update Gigastake:
+                value:
+                  chainIDs:
+                    - 0021
+                    - 0060
+                    - 0001
+      responses:
+        "200":
+          description: Successfully updated the gigastake apps details by chain.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    protocolID:
+                      type: string
+                    chainIDs:
+                      type: object
+                      additionalProperties: {}
+                    name:
+                      type: string
+                    address:
+                      type: string
+                    publicKey:
+                      type: string
+                    clientPublicKey:
+                      type: string
+                    signature:
+                      type: string
+                    version:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                    deleted:
+                      type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    - id: "1a2b3c4d"
+                      protocolID: "morse-mainnet"
+                      chainIDs:
+                        "0009": {}
+                      name: "clefable"
+                      address: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      publicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      clientPublicKey: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      signature: "test_e9f33cf0e807dc9ed9c2b9776b82e548"
+                      version: "0.0.1"
+                      createdAt: "2023-07-26T03:02:30.217721Z"
+                      updatedAt: "2024-02-08T22:12:50.894316Z"
+                      deleted: false
+  /v2/portal_app:
+    get:
+      tags:
+        - Portal Apps
+      summary: Get All Portal Apps
+      description: Returns all portal applications.
+      operationId: getAllPortalApps
+      parameters:
+        - name: include_deleted
+          in: query
+          schema:
+            type: string
+            example: "true"
+      responses:
+        "200":
+          description: Successfully retrieved portal apps.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    appEmoji:
+                      type: string
+                    accountID:
+                      type: string
+                    settings:
+                      type: object
+                      properties:
+                        environment:
+                          type: string
+                        secretKey:
+                          type: string
+                        secretKeyRequired:
+                          type: boolean
+                        favoritedBlockchainIDs:
+                          type: array
+                          items:
+                            type: string
+                        monthlyRelayLimit:
+                          type: integer
+                    whitelists:
+                      type: object
+                      properties:
+                        origins:
+                          type: object
+                        userAgents:
+                          type: object
+                        blockchains:
+                          type: object
+                        contracts:
+                          type: object
+                        methods:
+                          type: object
+                    aat:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          publicKey:
+                            type: string
+                          address:
+                            type: string
+                          clientPublicKey:
+                            type: string
+                          signature:
+                            type: string
+                          version:
+                            type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                    deleted:
+                      type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    - id: "1a2b3c4d"
+                      name: "The Expanse"
+                      accountID: "1a2b3c4d"
+                      settings:
+                        environment: "production"
+                        secretKey: "test_1a8b64a1a7f66fa48237"
+                        secretKeyRequired: false
+                        favoritedBlockchainIDs: null
+                        monthlyRelayLimit: 0
+                      whitelists:
+                        origins:
+                          "BOBA Mainnet": {}
+                        userAgents:
+                          "https://eth-goerli.rpc.grove.city/v1/lb/1a2b3c4d": {}
+                          "metamask ": {}
+                        blockchains:
+                          "0048": {}
+                        contracts:
+                          "0021":
+                            Ethe: {}
+                        methods:
+                          "0068":
+                            Ethernet: {}
+                      aat:
+                        "1a2b3c4d":
+                          id: "1a2b3c4d"
+                          publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          version: "0.0.1"
+                      createdAt: "2022-06-09T00:07:10Z"
+                      updatedAt: "2022-06-09T00:07:10Z"
+                      deleted: false
+    post:
+      tags:
+        - Portal Apps
+      summary: Create Portal App
+      description: Create a new portal application.
+      operationId: createPortalApp
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                aat:
+                  type: object
+                  properties:
+                    "0":
+                      type: object
+                      properties:
+                        address:
+                          type: string
+                          example: test_1a8b64a1a7f66fa48237c72345f12dgr
+                        clientPublicKey:
+                          type: string
+                          example: test_d4222e83c836a29b423a47d8e18c779f
+                        legacyAppID:
+                          type: string
+                          example: test_create_protocol_app
+                        privateKey:
+                          type: string
+                          example: test_a92f40416b6f1d7d8af17e0204c71d90
+                        publicKey:
+                          type: string
+                          example: test_8237c72345f1a7f66fa41b1b8b644g2f
+                        signature:
+                          type: string
+                          example: test_da5af48d33b30ddaf60a1e5bb50d2b8f
+                        version:
+                          type: string
+                          example: 0.0.1
+                accountID:
+                  type: string
+                  example: 1a2b3c4d
+                createdAt:
+                  type: string
+                  example: "2023-06-08T00:00:00Z"
+                legacyFields:
+                  type: object
+                  properties:
+                    customLimit:
+                      type: number
+                      example: 0
+                    dailyLimit:
+                      type: number
+                      example: 250000
+                    firstDateSurpassed:
+                      type: string
+                      example: "2023-06-08T00:00:00Z"
+                    planType:
+                      type: string
+                      example: FREETIER_V0
+                    requestTimeout:
+                      type: number
+                      example: 15000
+                name:
+                  type: string
+                  example: test_staging_June_29
+                notifications:
+                  type: object
+                  properties:
+                    email:
+                      type: object
+                      properties:
+                        active:
+                          type: boolean
+                          example: true
+                        destination:
+                          type: string
+                          example: ulfric.stormcloak123@test.com
+                        events:
+                          type: object
+                          properties:
+                            full:
+                              type: boolean
+                              example: true
+                            signedUp:
+                              type: boolean
+                              example: true
+                            threeQuarters:
+                              type: boolean
+                              example: true
+                settings:
+                  type: object
+                  properties:
+                    environment:
+                      type: string
+                      example: production
+                    secretKey:
+                      type: string
+                      example: test_3e3fb7949c9e3b193cfba5348f93bb2f
+                    secretKeyRequired:
+                      type: boolean
+                      example: true
+                updatedAt:
+                  type: string
+                  example: "2023-06-08T00:00:00Z"
+            examples:
+              Create Portal App:
+                value:
+                  aat:
+                    "0":
+                      address: test_1a8b64a1a7f66fa48237c72345f12dgr
+                      clientPublicKey: test_d4222e83c836a29b423a47d8e18c779f
+                      legacyAppID: test_create_protocol_app
+                      privateKey: test_a92f40416b6f1d7d8af17e0204c71d90
+                      publicKey: test_8237c72345f1a7f66fa41b1b8b644g2f
+                      signature: test_da5af48d33b30ddaf60a1e5bb50d2b8f
+                      version: 0.0.1
+                  accountID: 1a2b3c4d
+                  createdAt: "2023-06-08T00:00:00Z"
+                  legacyFields:
+                    customLimit: 0
+                    dailyLimit: 250000
+                    firstDateSurpassed: "2023-06-08T00:00:00Z"
+                    planType: FREETIER_V0
+                    requestTimeout: 15000
+                  name: test_staging_June_29
+                  notifications:
+                    email:
+                      active: true
+                      destination: ulfric.stormcloak123@test.com
+                      events:
+                        full: true
+                        signedUp: true
+                        threeQuarters: true
+                  settings:
+                    environment: production
+                    secretKey: test_3e3fb7949c9e3b193cfba5348f93bb2f
+                    secretKeyRequired: true
+                  updatedAt: "2023-06-08T00:00:00Z"
+      responses:
+        "200":
+          description: Successfully created portal app.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  appEmoji:
+                    type: string
+                  accountID:
+                    type: string
+                  settings:
+                    type: object
+                    properties:
+                      environment:
+                        type: string
+                      secretKey:
+                        type: string
+                      secretKeyRequired:
+                        type: boolean
+                      favoritedBlockchainIDs:
+                        type: array
+                        items:
+                          type: string
+                      monthlyRelayLimit:
+                        type: integer
+                  whitelists:
+                    type: object
+                    properties:
+                      origins:
+                        type: object
+                      userAgents:
+                        type: object
+                      blockchains:
+                        type: object
+                      contracts:
+                        type: object
+                      methods:
+                        type: object
+                  aat:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        publicKey:
+                          type: string
+                        address:
+                          type: string
+                        clientPublicKey:
+                          type: string
+                        signature:
+                          type: string
+                        version:
+                          type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  deleted:
+                    type: boolean
+              examples:
+                portalAppExample:
+                  value:
+                    id: "1a2b3c4d"
+                    name: "The Expanse"
+                    description: ""
+                    appEmoji: ""
+                    accountID: "1a2b3c4d"
+                    settings:
+                      environment: "production"
+                      secretKey: "test_1a8b64a1a7f66fa48237"
+                      secretKeyRequired: false
+                      favoritedBlockchainIDs: null
+                      monthlyRelayLimit: 0
+                    whitelists:
+                      origins:
+                        "BOBA Mainnet": {}
+                      userAgents:
+                        "https://eth-goerli.rpc.grove.city/v1/lb/1a2b3c4d": {}
+                        "metamask ": {}
+                      blockchains:
+                        "0048": {}
+                      contracts:
+                        "0021":
+                          Ethe: {}
+                      methods:
+                        "0068":
+                          Ethernet: {}
+                    aat:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        version: "0.0.1"
+                    createdAt: "2022-06-09T00:07:10Z"
+                    updatedAt: "2022-06-09T00:07:10Z"
+                    deleted: false
+  /v2/middleware/portal_apps:
+    get:
+      tags:
+        - Portal Apps
+      summary: Get All Middleware Portal Apps
+      description: Returns all middleware portal applications.
+      operationId: getAllMiddlewarePortalApps
+      responses:
+        "200":
+          description: Successfully retrieved data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    accountID:
+                      type: string
+                    publicKeys:
+                      type: array
+                      items:
+                        type: string
+                    settings:
+                      type: object
+                      properties:
+                        secretKey:
+                          type: string
+                        secretKeyRequired:
+                          type: boolean
+                    whitelists:
+                      type: object
+                      properties:
+                        origins:
+                          type: object
+                        userAgents:
+                          type: object
+                        blockchains:
+                          type: object
+                        contracts:
+                          type: object
+                        methods:
+                          type: object
+                    plan:
+                      type: object
+                      properties:
+                        planType:
+                          type: string
+                        throughputLimit:
+                          type: integer
+              examples:
+                exampleResponse:
+                  value:
+                    - id: "1a2b3c4d"
+                      accountID: "1a2b3c4d"
+                      publicKeys:
+                        - "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                      settings:
+                        secretKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        secretKeyRequired: true
+                      whitelists:
+                        origins:
+                          "BOBA Mainnet": {}
+                        userAgents:
+                          "metamask ": {}
+                        blockchains:
+                          "0048": {}
+                        contracts:
+                          "0021":
+                            Ethe: {}
+                        methods:
+                          "0068":
+                            Ethernet: {}
+                      plan:
+                        planType: "FREETIER_V0"
+                        throughputLimit: 30
+  /v2/portal_app/{portalAppID}:
+    parameters:
+      - name: portalAppID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the portal app
+    get:
+      tags:
+        - Portal Apps
+      summary: Get Portal App By ID
+      description: Returns a single portal application by it ID.
+      operationId: getPortalAppById
+      responses:
+        "200":
+          description: Successfully fetched portal app.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  appEmoji:
+                    type: string
+                  accountID:
+                    type: string
+                  settings:
+                    type: object
+                    properties:
+                      environment:
+                        type: string
+                      secretKey:
+                        type: string
+                      secretKeyRequired:
+                        type: boolean
+                      favoritedBlockchainIDs:
+                        type: array
+                        items:
+                          type: string
+                      monthlyRelayLimit:
+                        type: integer
+                  whitelists:
+                    type: object
+                    properties:
+                      origins:
+                        type: object
+                      userAgents:
+                        type: object
+                      blockchains:
+                        type: object
+                      contracts:
+                        type: object
+                      methods:
+                        type: object
+                  aat:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        publicKey:
+                          type: string
+                        address:
+                          type: string
+                        clientPublicKey:
+                          type: string
+                        signature:
+                          type: string
+                        version:
+                          type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  deleted:
+                    type: boolean
+              examples:
+                portalAppExample:
+                  value:
+                    id: "1a2b3c4d"
+                    name: "The Expanse"
+                    description: ""
+                    appEmoji: ""
+                    accountID: "1a2b3c4d"
+                    settings:
+                      environment: "production"
+                      secretKey: "test_1a8b64a1a7f66fa48237"
+                      secretKeyRequired: false
+                      favoritedBlockchainIDs: null
+                      monthlyRelayLimit: 0
+                    whitelists:
+                      origins:
+                        "BOBA Mainnet": {}
+                      userAgents:
+                        "https://eth-goerli.rpc.grove.city/v1/lb/1a2b3c4d": {}
+                        "metamask ": {}
+                      blockchains:
+                        "0048": {}
+                      contracts:
+                        "0021":
+                          Ethe: {}
+                      methods:
+                        "0068":
+                          Ethernet: {}
+                    aat:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        version: "0.0.1"
+                    createdAt: "2022-06-09T00:07:10Z"
+                    updatedAt: "2022-06-09T00:07:10Z"
+                    deleted: false
+    put:
+      tags:
+        - Portal Apps
+      summary: Update Portal App By ID
+      description: Update an existing portal application by it ID.
+      operationId: updatePortalAppById
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                appSettings:
+                  type: object
+                  properties:
+                    secretKeyRequired:
+                      type: boolean
+                      example: true
+            examples:
+              Update Portal App By ID:
+                value:
+                  appSettings:
+                    secretKeyRequired: true
+      responses:
+        "200":
+          description: Successfully updated portal app.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  appEmoji:
+                    type: string
+                  accountID:
+                    type: string
+                  settings:
+                    type: object
+                    properties:
+                      environment:
+                        type: string
+                      secretKey:
+                        type: string
+                      secretKeyRequired:
+                        type: boolean
+                      favoritedBlockchainIDs:
+                        type: array
+                        items:
+                          type: string
+                      monthlyRelayLimit:
+                        type: integer
+                  whitelists:
+                    type: object
+                    properties:
+                      origins:
+                        type: object
+                      userAgents:
+                        type: object
+                      blockchains:
+                        type: object
+                      contracts:
+                        type: object
+                      methods:
+                        type: object
+                  aat:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        publicKey:
+                          type: string
+                        address:
+                          type: string
+                        clientPublicKey:
+                          type: string
+                        signature:
+                          type: string
+                        version:
+                          type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  deleted:
+                    type: boolean
+              examples:
+                portalAppExample:
+                  value:
+                    id: "1a2b3c4d"
+                    name: "The Expanse"
+                    description: ""
+                    appEmoji: ""
+                    accountID: "1a2b3c4d"
+                    settings:
+                      environment: "production"
+                      secretKey: "test_1a8b64a1a7f66fa48237"
+                      secretKeyRequired: false
+                      favoritedBlockchainIDs: null
+                      monthlyRelayLimit: 0
+                    whitelists:
+                      origins:
+                        "BOBA Mainnet": {}
+                      userAgents:
+                        "https://eth-goerli.rpc.grove.city/v1/lb/1a2b3c4d": {}
+                        "metamask ": {}
+                      blockchains:
+                        "0048": {}
+                      contracts:
+                        "0021":
+                          Ethe: {}
+                      methods:
+                        "0068":
+                          Ethernet: {}
+                    aat:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        version: "0.0.1"
+                    createdAt: "2022-06-09T00:07:10Z"
+                    updatedAt: "2022-06-09T00:07:10Z"
+                    deleted: false
+    delete:
+      tags:
+        - Portal Apps
+      summary: Delete Portal App By ID
+      description: Delete a portal application by it ID.
+      operationId: deletePortalAppById
+      responses:
+        "200":
+          description: Successfully deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+              examples:
+                deleteResponse:
+                  value:
+                    status: "deleted"
+  /v2/user/{userID}/portal_apps:
+    parameters:
+      - name: userID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the user
+    get:
+      tags:
+        - Portal Apps
+      summary: Get Portal Apps By User
+      description: Returns all portal application for a specific user.
+      operationId: getPortalAppsByUser
+      responses:
+        "200":
+          description: ""
+  /v2/account:
+    get:
+      tags:
+        - Accounts
+      summary: Get All Accounts
+      description: Returns a list of all accounts.
+      operationId: getAllAccounts
+      parameters:
+        - name: include_deleted
+          in: query
+          schema:
+            type: string
+            example: "true"
+      responses:
+        "200":
+          description: Successfully retrieved portal apps for a given user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    appEmoji:
+                      type: string
+                    accountID:
+                      type: string
+                    settings:
+                      type: object
+                      properties:
+                        environment:
+                          type: string
+                        secretKey:
+                          type: string
+                        secretKeyRequired:
+                          type: boolean
+                        favoritedBlockchainIDs:
+                          type: array
+                          items:
+                            type: string
+                        monthlyRelayLimit:
+                          type: integer
+                    whitelists:
+                      type: object
+                      properties:
+                        origins:
+                          type: object
+                        userAgents:
+                          type: object
+                        blockchains:
+                          type: object
+                        contracts:
+                          type: object
+                        methods:
+                          type: object
+                    aat:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          publicKey:
+                            type: string
+                          address:
+                            type: string
+                          clientPublicKey:
+                            type: string
+                          signature:
+                            type: string
+                          version:
+                            type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                    deleted:
+                      type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    - id: "1a2b3c4d"
+                      name: "The Expanse"
+                      accountID: "1a2b3c4d"
+                      settings:
+                        environment: "production"
+                        secretKey: "test_1a8b64a1a7f66fa48237"
+                        secretKeyRequired: false
+                        favoritedBlockchainIDs: null
+                        monthlyRelayLimit: 0
+                      whitelists:
+                        origins:
+                          "BOBA Mainnet": {}
+                        userAgents:
+                          "https://eth-goerli.rpc.grove.city/v1/lb/1a2b3c4d": {}
+                          "metamask ": {}
+                        blockchains:
+                          "0048": {}
+                        contracts:
+                          "0021":
+                            Ethe: {}
+                        methods:
+                          "0068":
+                            Ethernet: {}
+                      aat:
+                        "1a2b3c4d":
+                          id: "1a2b3c4d"
+                          publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          version: "0.0.1"
+                      createdAt: "2022-06-09T00:07:10Z"
+                      updatedAt: "2022-06-09T00:07:10Z"
+                      deleted: false
+  /v2/user/{userID}/account:
+    parameters:
+      - name: userID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the user
+    get:
+      tags:
+        - Accounts
+      summary: Get User Accounts
+      description: Returns a list of all accounts for a given user ID.
+      operationId: getUserAccounts
+      parameters:
+        - name: accepted
+          in: query
+          schema:
+            type: string
+            example: "false"
+        - name: filters
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - OWNER
+                - ADMIN
+                - MEMBER
+          style: form
+          explode: false
+          description: Filters the results based on the specified roles.
+      responses:
+        "200":
+          description: Successfully retrieved data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    iconURL:
+                      type: string
+                    planType:
+                      type: string
+                    partnerBlockchainIDs:
+                      type: array
+                      items:
+                        type: string
+                    partnerThroughputLimit:
+                      type: integer
+                    partnerAppLimit:
+                      type: integer
+                    integrations:
+                      type: object
+                      properties:
+                        stripeSubscriptionID:
+                          type: string
+                        covalentAPIKeyFree:
+                          type: string
+                        covalentAPIKeyPaid:
+                          type: string
+                    enterpriseLimit:
+                      type: integer
+                    notifications:
+                      type: object
+                      properties:
+                        email:
+                          type: object
+                          properties:
+                            type:
+                              type: string
+                            active:
+                              type: boolean
+                            destination:
+                              type: string
+                            trigger:
+                              type: string
+                            events:
+                              type: object
+                              properties:
+                                full:
+                                  type: boolean
+                                threeQuarters:
+                                  type: boolean
+                    createdAt:
+                      type: string
+                      format: date-time
+                    updatedAt:
+                      type: string
+                      format: date-time
+                    deleted:
+                      type: boolean
+                    portalApps:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          description:
+                            type: string
+                          appEmoji:
+                            type: string
+                          accountID:
+                            type: string
+                          settings:
+                            type: object
+                            properties:
+                              environment:
+                                type: string
+                              secretKey:
+                                type: string
+                              secretKeyRequired:
+                                type: boolean
+                              favoritedBlockchainIDs:
+                                type: array
+                                items:
+                                  type: string
+                              monthlyRelayLimit:
+                                type: integer
+                          whitelists:
+                            type: object
+                          aat:
+                            type: object
+                            additionalProperties:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                publicKey:
+                                  type: string
+                                address:
+                                  type: string
+                                clientPublicKey:
+                                  type: string
+                                signature:
+                                  type: string
+                                version:
+                                  type: string
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                          deleted:
+                            type: boolean
+                    payPlan:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        planType:
+                          type: string
+                        chainIDs:
+                          type: object
+                        dailyLimit:
+                          type: integer
+                        throughputLimit:
+                          type: integer
+                        appLimit:
+                          type: integer
+                        monthlyRelayLimit:
+                          type: integer
+                        createdAt:
+                          type: string
+                          format: date-time
+                    users:
+                      type: object
+                      additionalProperties:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          email:
+                            type: string
+                          roleName:
+                            type: string
+                          accepted:
+                            type: boolean
+              examples:
+                exampleResponse:
+                  value:
+                    - id: "1a2b3c4d"
+                      name: "Tyrion's Account"
+                      iconURL: ""
+                      planType: "FREETIER_V0"
+                      partnerBlockchainIDs: null
+                      partnerThroughputLimit: 0
+                      partnerAppLimit: 0
+                      integrations:
+                        stripeSubscriptionID: ""
+                        covalentAPIKeyFree: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                        covalentAPIKeyPaid: ""
+                      enterpriseLimit: 0
+                      notifications:
+                        email:
+                          type: "email"
+                          active: true
+                          destination: "tyrion.lannister789@test.com"
+                          trigger: ""
+                          events:
+                            full: true
+                            threeQuarters: true
+                      createdAt: "2023-01-31T16:15:01.481182Z"
+                      updatedAt: "2023-11-30T14:48:15.041366Z"
+                      deleted: false
+                      portalApps:
+                        "1a2b3c4d":
+                          id: "1a2b3c4d"
+                          name: "Tyrion's App"
+                          description: ""
+                          appEmoji: ""
+                          accountID: "1a2b3c4d"
+                          settings:
+    post:
+      tags:
+        - Accounts
+      summary: Create Account
+      description: Creates a new account for a given user ID.
+      operationId: createAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: AvasaralasEnterpriseAccount
+                planType:
+                  type: string
+                  example: FREETIER_V0
+            examples:
+              Create Account:
+                value:
+                  name: AvasaralasEnterpriseAccount
+                  planType: FREETIER_V0
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              examples:
+                exampleResponse:
+                  value:
+                    id: "1a2b3c4d"
+                    name: "Tyrion's Account"
+                    iconURL: ""
+                    planType: "FREETIER_V0"
+                    partnerBlockchainIDs: null
+                    partnerThroughputLimit: 0
+                    partnerAppLimit: 0
+                    integrations:
+                      stripeSubscriptionID: ""
+                      covalentAPIKeyFree: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                      covalentAPIKeyPaid: ""
+                    enterpriseLimit: 0
+                    notifications:
+                      email:
+                        type: "email"
+                        active: true
+                        destination: "tyrion.lannister789@test.com"
+                        trigger: ""
+                        events:
+                          full: true
+                          threeQuarters: true
+                    createdAt: "2023-01-31T16:15:01.481182Z"
+                    updatedAt: "2023-11-30T14:48:15.041366Z"
+                    deleted: false
+                    portalApps:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        name: "Tyrion's App"
+                        description: ""
+                        appEmoji: ""
+                        accountID: "1a2b3c4d"
+                        settings:
+                          environment: "production"
+                          secretKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          secretKeyRequired: false
+                          favoritedBlockchainIDs: null
+                          monthlyRelayLimit: 0
+                        whitelists: {}
+                        aat:
+                          "1a2b3c4d":
+                            id: "1a2b3c4d"
+                            publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            version: "0.0.1"
+                        createdAt: "2022-05-13T00:03:54Z"
+                        updatedAt: "2022-05-13T00:03:54Z"
+                        deleted: false
+                    payPlan:
+                      id: ""
+                      name: ""
+                      description: ""
+                      planType: "FREETIER_V0"
+                      chainIDs: {}
+                      dailyLimit: 100000
+                      throughputLimit: 30
+                      appLimit: 2
+                      monthlyRelayLimit: 0
+                      createdAt: "2023-07-06T16:20:56.57922Z"
+                    users:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        email: "tyrion.lannister789@test.com"
+                        roleName: "OWNER"
+                        accepted: true
+  /v2/user/{userID}/account/{accountID}:
+    parameters:
+      - name: userID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the user
+      - name: accountID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the account
+    get:
+      tags:
+        - Accounts
+      summary: Get User Account
+      description: Returns a single account for a single user ID.
+      operationId: getUserAccount
+      parameters:
+        - name: accepted
+          in: query
+          schema:
+            type: string
+            example: "false"
+        - name: filters
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - OWNER
+                - ADMIN
+                - MEMBER
+          style: form
+          explode: false
+          description: Filters the results based on the specified roles.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              examples:
+                exampleResponse:
+                  value:
+                    id: "1a2b3c4d"
+                    name: "Tyrion's Account"
+                    iconURL: ""
+                    planType: "FREETIER_V0"
+                    partnerBlockchainIDs: null
+                    partnerThroughputLimit: 0
+                    partnerAppLimit: 0
+                    integrations:
+                      stripeSubscriptionID: ""
+                      covalentAPIKeyFree: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                      covalentAPIKeyPaid: ""
+                    enterpriseLimit: 0
+                    notifications:
+                      email:
+                        type: "email"
+                        active: true
+                        destination: "tyrion.lannister789@test.com"
+                        trigger: ""
+                        events:
+                          full: true
+                          threeQuarters: true
+                    createdAt: "2023-01-31T16:15:01.481182Z"
+                    updatedAt: "2023-11-30T14:48:15.041366Z"
+                    deleted: false
+                    portalApps:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        name: "Tyrion's App"
+                        description: ""
+                        appEmoji: ""
+                        accountID: "1a2b3c4d"
+                        settings:
+                          environment: "production"
+                          secretKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          secretKeyRequired: false
+                          favoritedBlockchainIDs: null
+                          monthlyRelayLimit: 0
+                        whitelists: {}
+                        aat:
+                          "1a2b3c4d":
+                            id: "1a2b3c4d"
+                            publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            version: "0.0.1"
+                        createdAt: "2022-05-13T00:03:54Z"
+                        updatedAt: "2022-05-13T00:03:54Z"
+                        deleted: false
+                    payPlan:
+                      id: ""
+                      name: ""
+                      description: ""
+                      planType: "FREETIER_V0"
+                      chainIDs: {}
+                      dailyLimit: 100000
+                      throughputLimit: 30
+                      appLimit: 2
+                      monthlyRelayLimit: 0
+                      createdAt: "2023-07-06T16:20:56.57922Z"
+                    users:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        email: "tyrion.lannister789@test.com"
+                        roleName: "OWNER"
+                        accepted: true
+  /v2/account/{accountID}:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the account
+    get:
+      tags:
+        - Accounts
+      summary: Get Account By ID
+      description: Returns a single account.
+      operationId: getAccountById
+      responses:
+        "200":
+          description: ""
+    put:
+      tags:
+        - Accounts
+      summary: Update Account
+      description: Update the specified account with new information.
+      operationId: updateAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enterpriseLimit:
+                  type: number
+                  example: 1000000
+                planType:
+                  type: string
+                  example: ENTERPRISE
+            examples:
+              Update Account:
+                value:
+                  enterpriseLimit: 1000000
+                  planType: ENTERPRISE
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              examples:
+                exampleResponse:
+                  value:
+                    id: "1a2b3c4d"
+                    name: "Tyrion's Account"
+                    iconURL: ""
+                    planType: "FREETIER_V0"
+                    partnerBlockchainIDs: null
+                    partnerThroughputLimit: 0
+                    partnerAppLimit: 0
+                    integrations:
+                      stripeSubscriptionID: ""
+                      covalentAPIKeyFree: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                      covalentAPIKeyPaid: ""
+                    enterpriseLimit: 0
+                    notifications:
+                      email:
+                        type: "email"
+                        active: true
+                        destination: "tyrion.lannister789@test.com"
+                        trigger: ""
+                        events:
+                          full: true
+                          threeQuarters: true
+                    createdAt: "2023-01-31T16:15:01.481182Z"
+                    updatedAt: "2023-11-30T14:48:15.041366Z"
+                    deleted: false
+                    portalApps:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        name: "Tyrion's App"
+                        description: ""
+                        appEmoji: ""
+                        accountID: "1a2b3c4d"
+                        settings:
+                          environment: "production"
+                          secretKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                          secretKeyRequired: false
+                          favoritedBlockchainIDs: null
+                          monthlyRelayLimit: 0
+                        whitelists: {}
+                        aat:
+                          "1a2b3c4d":
+                            id: "1a2b3c4d"
+                            publicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            address: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            clientPublicKey: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            signature: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                            version: "0.0.1"
+                        createdAt: "2022-05-13T00:03:54Z"
+                        updatedAt: "2022-05-13T00:03:54Z"
+                        deleted: false
+                    payPlan:
+                      id: ""
+                      name: ""
+                      description: ""
+                      planType: "FREETIER_V0"
+                      chainIDs: {}
+                      dailyLimit: 100000
+                      throughputLimit: 30
+                      appLimit: 2
+                      monthlyRelayLimit: 0
+                      createdAt: "2023-07-06T16:20:56.57922Z"
+                    users:
+                      "1a2b3c4d":
+                        id: "1a2b3c4d"
+                        email: "tyrion.lannister789@test.com"
+                        roleName: "OWNER"
+                        accepted: true
+    delete:
+      tags:
+        - Accounts
+      summary: Delete Account
+      description: Delete the specified account.
+      operationId: deleteAccount
+      responses:
+        "200":
+          description: Successfully deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+              examples:
+                deleteResponse:
+                  value:
+                    status: "deleted"
+  /v2/account/{accountID}/integration:
+    parameters:
+      - name: accountID
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Unique identifier of the account
+    post:
+      tags:
+        - Accounts
+      summary: Create Account Integration
+      description: Creates an account integration for a newly created account (eg. Covalent API Key)
+      operationId: createAccountIntegration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                covalentAPIKeyFree:
+                  type: string
+                  example: test_3d73a31c17828318c97781cdbeac510133b4d11854
+                id:
+                  type: string
+                  example: 1a2b3c4d
+            examples:
+              Create Account Integration:
+                value:
+                  covalentAPIKeyFree: test_3d73a31c17828318c97781cdbeac510133b4d11854
+                  id: 1a2b3c4d
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  stripeSubscriptionID:
+                    type: string
+                  covalentAPIKeyFree:
+                    type: string
+                  covalentAPIKeyPaid:
+                    type: string
+              examples:
+                exampleResponse:
+                  value:
+                    id: "83fa390b"
+                    stripeSubscriptionID: ""
+                    covalentAPIKeyFree: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                    covalentAPIKeyPaid: ""
+    put:
+      tags:
+        - Accounts
+      summary: Update Account Integration
+      description: Update the specified account integrations with new information.
+      operationId: updateAccountIntegration
+      requestBody:
+        content:
+          text/plain:
+            examples:
+              Update Account Integration:
+                value: ""
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  stripeSubscriptionID:
+                    type: string
+                  covalentAPIKeyFree:
+                    type: string
+                  covalentAPIKeyPaid:
+                    type: string
+              examples:
+                exampleResponse:
+                  value:
+                    id: "1a2b3c4d"
+                    stripeSubscriptionID: ""
+                    covalentAPIKeyFree: "test_1a8b64a1a7f66fa48237c72345f12dgr"
+                    covalentAPIKeyPaid: ""
+  /v2/account/user:
+    post:
+      tags:
+        - Account Users
+      summary: Create Account User
+      description: Creates a new account user for a given account ID.
+      operationId: createAccountUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountID:
+                  type: string
+                  example: 1a2b3c4d
+                email:
+                  type: string
+                  example: frodo.baggins123@test.com
+                roleName:
+                  type: string
+                  example: ADMIN
+            examples:
+              Create Account User:
+                value:
+                  accountID: 1a2b3c4d
+                  email: frodo.baggins123@test.com
+                  roleName: ADMIN
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userID:
+                    type: string
+              examples:
+                exampleResponse:
+                  value:
+                    userID: "1a2b3c4d"
+  /v2/account/user/update_role:
+    put:
+      tags:
+        - Account Users
+      summary: Update Account User Role
+      description: Updates the account role for a single user ID.
+      operationId: updateAccountUserRole
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userID:
+                  type: string
+                accountID:
+                  type: string
+                roleName:
+                  type: string
+            examples:
+              Update Account User Role:
+                value:
+                  userID: "1a2b3c4d"
+                  accountID: "1a2b3c4d"
+                  roleName: "MEMBER"
+      responses:
+        "200":
+          description: Successfully updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+              examples:
+                exampleResponse:
+                  value:
+                    status: "updated"
+  /v2/account/user/accept:
+    put:
+      tags:
+        - Account Users
+      summary: Accept Account User
+      description: Updates a single user's status to accepted for a given account ID.
+      operationId: acceptAccountUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountID:
+                  type: string
+                  example: 1a2b3c4d
+                providerUserID:
+                  type: string
+                  example: auth0|04f1e485d6a5e5b17daa38b3
+                type:
+                  type: string
+                  example: auth0_username
+                userID:
+                  type: string
+                  example: 1a2b3c4b
+            examples:
+              Accept Account User:
+                value:
+                  accountID: 1a2b3c4d
+                  providerUserID: auth0|04f1e485d6a5e5b17daa38b3
+                  type: auth0_username
+                  userID: 1a2b3c4b
+      responses:
+        "200":
+          description: Request successfully processed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+              examples:
+                exampleResponse:
+                  value:
+                    status: "accepted"
+  /v2/account/user/remove:
+    put:
+      tags:
+        - Account Users
+      summary: Remove Account User
+      description: Removes a single user from a given account.
+      operationId: removeAccountUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                accountID:
+                  type: string
+                  example: ""
+                userID:
+                  type: string
+                  example: 1a2b3c4b
+            examples:
+              Remove Account User:
+                value:
+                  accountID: ""
+                  userID: 1a2b3c4b
+      responses:
+        "200":
+          description: ""
+  /v2/user:
+    get:
+      tags:
+        - Users
+      summary: Get Portal User
+      description: Returns a portal user's ID or full details. The {userID} path param may be eitheran Auth0 user ID or a portal user ID. If full_details=true is not set returns only the portal user ID.
+      operationId: getPortalUser
+      parameters:
+        - name: full_details
+          in: query
+          schema:
+            type: string
+            example: "true"
+          description: Determines whether to send the full details of the user or just the portal user ID
+      responses:
+        "200":
+          description: Successfully fetched user.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: string
+                  - type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      iconURL:
+                        type: string
+                      signedUp:
+                        type: boolean
+                      updatesProduct:
+                        type: boolean
+                      updatesMarketing:
+                        type: boolean
+                      betaTester:
+                        type: boolean
+                      permissions:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            accepted:
+                              type: boolean
+                            roleName:
+                              type: string
+                            permissions:
+                              type: array
+                              items:
+                                type: string
+                      authProviders:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            providerUserID:
+                              type: string
+                            type:
+                              type: string
+                            provider:
+                              type: string
+                            federated:
+                              type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+              examples:
+                withFullDetailsFalse:
+                  value: "1a2b3c4d"
+                withFullDetailsTrue:
+                  value:
+                    id: "1a2b3c4d"
+                    email: "james.holden123@test.com"
+                    iconURL: ""
+                    signedUp: true
+                    updatesProduct: false
+                    updatesMarketing: false
+                    betaTester: false
+                    permissions:
+                      "1a2b3c4d":
+                        accepted: true
+                        roleName: "OWNER"
+                        permissions:
+                          - "read:endpoint"
+                          - "write:endpoint"
+                          - "delete:endpoint"
+                          - "transfer:endpoint"
+                    authProviders:
+                      auth0_google:
+                        providerUserID: "google-oauth2|ab29e4be1b2d006701d14"
+                        type: "auth0_google"
+                        provider: "auth0"
+                        federated: true
+                      auth0_username:
+                        providerUserID: "auth0|ab29e4be1b2d006701d14"
+                        type: "auth0_username"
+                        provider: "auth0"
+                        federated: false
+                    createdAt: "2023-09-27T20:19:39.058615Z"
+                    updatedAt: "2024-03-14T20:48:56.3587Z"
+    post:
+      tags:
+        - Users
+      summary: Create User
+      description: Creates a new portal user.
+      operationId: createUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: james.holden123@test.com
+                providerUserID:
+                  type: string
+                  example: google-oauth2|ab29e4be1b2d006701d14
+            examples:
+              Create User:
+                value:
+                  email: james.holden123@test.com
+                  providerUserID: google-oauth2|ab29e4be1b2d006701d14
+      responses:
+        "200":
+          description: Successfully created user.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      email:
+                        type: string
+                      iconURL:
+                        type: string
+                      signedUp:
+                        type: boolean
+                      updatesProduct:
+                        type: boolean
+                      updatesMarketing:
+                        type: boolean
+                      betaTester:
+                        type: boolean
+                      permissions:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            accepted:
+                              type: boolean
+                            roleName:
+                              type: string
+                            permissions:
+                              type: array
+                              items:
+                                type: string
+                      authProviders:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            providerUserID:
+                              type: string
+                            type:
+                              type: string
+                            provider:
+                              type: string
+                            federated:
+                              type: boolean
+                      createdAt:
+                        type: string
+                        format: date-time
+                      updatedAt:
+                        type: string
+                        format: date-time
+                  accountID:
+                    type: string
+              examples:
+                exampleResponse:
+                  value:
+                    user:
+                      id: "1a2b3c4d"
+                      email: "james.holden123@test.com"
+                      iconURL: ""
+                      signedUp: true
+                      updatesProduct: false
+                      updatesMarketing: false
+                      betaTester: false
+                      permissions:
+                        "1a2b3c4d":
+                          accepted: true
+                          roleName: "OWNER"
+                          permissions:
+                            - "read:endpoint"
+                            - "write:endpoint"
+                            - "delete:endpoint"
+                            - "transfer:endpoint"
+                      authProviders:
+                        auth0_google:
+                          providerUserID: "google-oauth2|04f1e485d6a5e5b17daa38b3"
+                          type: "auth0_google"
+                          provider: "auth0"
+                          federated: true
+                        auth0_username:
+                          providerUserID: "auth0|04f1e485d6a5e5b17daa38b3"
+                          type: "auth0_username"
+                          provider: "auth0"
+                          federated: false
+                      createdAt: "2023-09-27T20:19:39.058615Z"
+                      updatedAt: "2024-03-14T20:48:56.3587Z"
+                    accountID: "1a2b3c4d"
+    delete:
+      tags:
+        - Users
+      summary: Delete User
+      description: Deletes a portal user.
+      operationId: deleteUser
+      responses:
+        "200":
+          description: Successfully deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+              examples:
+                deleteResponse:
+                  value:
+                    status: "deleted"
+  /v2/blocked_contract:
+    get:
+      tags:
+        - Blocked Contracts
+      summary: Get Blocked Contracts
+      description: Gets all blocked contract addresses.
+      operationId: getBlockedContracts
+      responses:
+        "200":
+          description: ""
+    post:
+      tags:
+        - Blocked Contracts
+      summary: Add Blocked Contract
+      description: Adds a new blocked contract address.
+      operationId: addBlockedContract
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                  example: true
+                blocked_address:
+                  type: string
+                  example: test_c55dab9b01906d18095894014c70fa8f0260f
+            examples:
+              Add Blocked Contract:
+                value:
+                  active: true
+                  blocked_address: test_c55dab9b01906d18095894014c70fa8f0260f
+      responses:
+        "200":
+          description: ""
+  /v2/blocked_contract/{contractAddress}/active:
+    parameters:
+      - name: contractAddress
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Contract address to be blocked
+    put:
+      tags:
+        - Blocked Contracts
+      summary: Update Blocked Contract Active
+      description: Updates a blocked contract address.
+      operationId: updateBlockedContractActive
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+                  example: false
+                blocked_address:
+                  type: string
+                  example: test_c55dab9b01906d18095894014c70fa8f0260f
+            examples:
+              Update Blocked Contract Active:
+                value:
+                  active: false
+                  blocked_address: test_c55dab9b01906d18095894014c70fa8f0260f
+      responses:
+        "200":
+          description: ""
+  /v2/blocked_contract/{contractAddress}:
+    parameters:
+      - name: contractAddress
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Contract address to be blocked
+    delete:
+      tags:
+        - Blocked Contracts
+      summary: Remove Blocked Contract
+      description: Deletes a blocked contract address.
+      operationId: removeBlockedContract
+      responses:
+        "200":
+          description: ""
+  /v2/plan:
+    get:
+      tags:
+        - Plans
+      summary: Get All Plans
+      description: Returns all plans.
+      operationId: getAllPlans
+      responses:
+        "200":
+          description: Successfully retrieved the list of plans.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    name:
+                      type: string
+                    description:
+                      type: string
+                    planType:
+                      type: string
+                    chainIDs:
+                      type: object
+                    dailyLimit:
+                      type: integer
+                    throughputLimit:
+                      type: integer
+                    appLimit:
+                      type: integer
+                    monthlyRelayLimit:
+                      type: integer
+                    createdAt:
+                      type: string
+                      format: date-time
+              examples:
+                planListExample:
+                  value:
+                    - id: ""
+                      name: ""
+                      description: ""
+                      planType: "ENTERPRISE"
+                      chainIDs: {}
+                      dailyLimit: 0
+                      throughputLimit: 0
+                      appLimit: 0
+                      monthlyRelayLimit: 0
+                      createdAt: "2023-07-06T16:20:56.57922Z"
+                    - id: ""
+                      name: ""
+                      description: ""
+                      planType: "FREETIER_V0"
+                      chainIDs: {}
+                      dailyLimit: 100000
+                      throughputLimit: 30
+                      appLimit: 2
+                      monthlyRelayLimit: 0
+                      createdAt: "2023-07-06T16:20:56.57922Z"
+                    - id: ""
+                      name: ""
+                      description: ""
+                      planType: "PAY_AS_YOU_GO_V0"
+                      chainIDs: {}
+                      dailyLimit: 0
+                      throughputLimit: 0
+                      appLimit: 2
+                      monthlyRelayLimit: 0
+                      createdAt: "2023-07-06T16:20:56.57922Z"
+  /v2/config/gateway/production:
+    get:
+      tags:
+        - Config
+      summary: Get Production Config
+      description: Gets the Gateway config JSON for production.
+      operationId: getProductionConfig
+      responses:
+        "200":
+          description: Successfully retrieved the configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    type: string
+                  version:
+                    type: integer
+                  description:
+                    type: string
+                  config:
+                    type: object
+              examples:
+                exampleResponse:
+                  value:
+                    environment: "production"
+                    version: 2
+                    description: "Initial gateway config"
+                    config: {} # Gateway Config JSON is complex and varies often
+  /v2/config/gateway/canary:
+    get:
+      tags:
+        - Config
+      summary: Get Canary Config
+      description: Gets the Gateway config JSON for canary.
+      operationId: getCanaryConfig
+      responses:
+        "200":
+          description: Successfully retrieved the configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    type: string
+                  version:
+                    type: integer
+                  description:
+                    type: string
+                  config:
+                    type: object
+              examples:
+                exampleResponse:
+                  value:
+                    environment: "canary"
+                    version: 2
+                    description: "Initial gateway config"
+                    config: {} # Gateway Config JSON is complex and varies often
+  /v2/config/gateway/staging:
+    get:
+      tags:
+        - Config
+      summary: Get Staging Config
+      description: Gets the Gateway config JSON for staging.
+      operationId: getStagingConfig
+      responses:
+        "200":
+          description: Successfully retrieved the configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    type: string
+                  version:
+                    type: integer
+                  description:
+                    type: string
+                  config:
+                    type: object
+              examples:
+                exampleResponse:
+                  value:
+                    environment: "staging"
+                    version: 2
+                    description: "Initial gateway config"
+                    config: {} # Gateway Config JSON is complex and varies often
+  /v2/config/gateway/test:
+    get:
+      tags:
+        - Config
+      summary: Get Test Config
+      description: Gets the Gateway config JSON for E2E tests.
+      operationId: getTestConfig
+      responses:
+        "200":
+          description: Successfully retrieved the configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    type: string
+                  version:
+                    type: integer
+                  description:
+                    type: string
+                  config:
+                    type: object
+              examples:
+                exampleResponse:
+                  value:
+                    environment: "test"
+                    version: 2
+                    description: "Initial gateway config"
+                    config: {} # Gateway Config JSON is complex and varies often
+  /v2/config/gateway/local:
+    get:
+      tags:
+        - Config
+      summary: Get Local Config
+      description: Gets the Gateway config JSON for local development.
+      operationId: getLocalConfig
+      responses:
+        "200":
+          description: Successfully retrieved the configuration.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    type: string
+                  version:
+                    type: integer
+                  description:
+                    type: string
+                  config:
+                    type: object
+              examples:
+                exampleResponse:
+                  value:
+                    environment: "local"
+                    version: 2
+                    description: "Initial gateway config"
+                    config: {} # Gateway Config JSON is complex and varies often
+  /v2/validator_config:
+    get:
+      tags:
+        - Config
+      summary: Get Validator Config
+      description: Gets the Gateway method validator config.
+      operationId: getValidatorConfig
+      responses:
+        "200":
+          description: Example response data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  chains_valid_ranges:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  chains_log_limit_blocks:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  archival_chains:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  method_validators:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+              examples:
+                exampleResponse:
+                  value:
+                    chains_valid_ranges:
+                      "0001": 128
+                    chains_log_limit_blocks:
+                      "0001": 100000
+                    archival_chains:
+                      "0003": "A003"
+                    method_validators:
+                      eth_call: ["blockRange"]
+                      eth_getLogs: ["logLimitBlocks"]
+  /v2/openapi_specs:
+    get:
+      tags:
+        - Config
+      summary: Get Open API Spec
+      description: Gets the Gateway Open API spec details for applicable REST chains.
+      operationId: getOpenApiSpec
+      responses:
+        "200":
+          description: Example response data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  0083:
+                    type: object
+                  B021:
+                    type: object
+              examples:
+                exampleResponse:
+                  value:
+                    0083: {} # Open API spec is too complex to provide an example
+                    B021: {} # Open API spec is too complex to provide an example
+  /reset_cache:
+    post:
+      summary: Reset Cache
+      description: Manually resets the PHD cache.
+      operationId: resetCache
+      responses:
+        "200":
+          description: Cache manually reset successfully.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                cacheResetSuccess:
+                  value: "cache manually reset successfully in 877ms"
+  /healthz:
+    get:
+      summary: PHD Health Check
+      description: Returns the health status of PHD, including its version tag.
+      operationId: phdHealthCheck
+      responses:
+        "200":
+          description: Operation successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "DB Check Done. Portal HTTP DB is up and running!\nImage Tag: 2.15.3"
+      security: [] # /healthz is the only path without API key auth
+tags:
+  - name: Chains
+  - name: Gigastake Apps
+  - name: Portal Apps
+  - name: Accounts
+  - name: Account Users
+  - name: Users
+  - name: Blocked Contracts
+  - name: Plans
+  - name: Config
