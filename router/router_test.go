@@ -104,8 +104,8 @@ func TestRouter_getChainByID(t *testing.T) {
 			var chainResp types.Chain
 			err = json.Unmarshal(rr.Body.Bytes(), &chainResp)
 			c.NoError(err)
-			test.expectedChain.GigastakeAppsByID = map[types.GigastakeAppID]*types.GigastakeApp{
-				test.expectedChainGigastake.ID: test.expectedChainGigastake,
+			test.expectedChain.GigastakeApps = map[types.ProtocolID]map[types.GigastakeAppID]*types.GigastakeApp{
+				types.ProtocolMorseMainnet: {test.expectedChainGigastake.ID: test.expectedChainGigastake},
 			}
 			c.Equal(test.expectedChain, chainResp)
 		})
