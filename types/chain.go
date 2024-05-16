@@ -213,6 +213,19 @@ func (c *Chain) GetChainDomains() []ChainDomain {
 	return chainDomains
 }
 
+// GetAllGigastakeApps returns a slice of all of a Chain's GigastakeApps
+func (c *Chain) GetAllGigastakeApps() []GigastakeApp {
+	gigastakeAppsSlice := []GigastakeApp{}
+
+	for _, gigastakeApppForProtocol := range c.GigastakeApps {
+		for _, gigastakeApp := range gigastakeApppForProtocol {
+			gigastakeAppsSlice = append(gigastakeAppsSlice, *gigastakeApp)
+		}
+	}
+
+	return gigastakeAppsSlice
+}
+
 // GetGigastakeAppsByProtocolID returns a slice of a Chain's GigastakeApps for a specific protocol
 func (c *Chain) GetGigastakeAppsByProtocolID(protocolID ProtocolID) []GigastakeApp {
 	gigastakeAppsSlice := []GigastakeApp{}

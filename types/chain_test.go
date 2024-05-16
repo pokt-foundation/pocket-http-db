@@ -361,6 +361,48 @@ func Test_GetChainDomains(t *testing.T) {
 	}
 }
 
+func Test_GetAllGigastakeApps(t *testing.T) {
+	tests := []struct {
+		name     string
+		chain    Chain
+		expected []GigastakeApp
+	}{
+		{
+			name: "Should return all GigastakeApps across all protocols",
+			chain: Chain{
+				GigastakeApps: map[ProtocolID]map[GigastakeAppID]*GigastakeApp{
+					"protocol_1": {
+						"app_1": {Version: "1.0", ClientPublicKey: "key1", PublicKey: "pubKey1", Signature: "sig1"},
+						"app_2": {Version: "1.1", ClientPublicKey: "key2", PublicKey: "pubKey2", Signature: "sig2"},
+					},
+					"protocol_2": {
+						"app_3": {Version: "2.0", ClientPublicKey: "key3", PublicKey: "pubKey3", Signature: "sig3"},
+					},
+				},
+			},
+			expected: []GigastakeApp{
+				{Version: "1.0", ClientPublicKey: "key1", PublicKey: "pubKey1", Signature: "sig1"},
+				{Version: "1.1", ClientPublicKey: "key2", PublicKey: "pubKey2", Signature: "sig2"},
+				{Version: "2.0", ClientPublicKey: "key3", PublicKey: "pubKey3", Signature: "sig3"},
+			},
+		},
+		{
+			name: "Should return an empty slice when there are no GigastakeApps",
+			chain: Chain{
+				GigastakeApps: map[ProtocolID]map[GigastakeAppID]*GigastakeApp{},
+			},
+			expected: []GigastakeApp{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gigastakeApps := test.chain.GetAllGigastakeApps()
+			assert.ElementsMatch(t, test.expected, gigastakeApps)
+		})
+	}
+}
+
 func Test_GetGigastakeAppsByProtocolID(t *testing.T) {
 	tests := []struct {
 		name       string
