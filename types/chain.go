@@ -15,6 +15,7 @@ type (
 	AltruistURL string
 	ChainAlias  string
 	ChainDomain string
+	NodeAddress string
 )
 
 const (
@@ -108,6 +109,7 @@ type (
 		Aliases        map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomains map[ChainAlias][]ChainDomain `json:"domains,omitempty"`
+		Fallback     FallbackSession              `json:"fallback,omitempty"`
 		CreatedAt    time.Time                    `json:"createdAt"`
 		UpdatedAt    time.Time                    `json:"updatedAt"`
 		Deleted      bool                         `json:"deleted"`
@@ -140,6 +142,17 @@ type (
 		ChainID RelayChainID  `json:"chainID,omitempty"`
 		Alias   ChainAlias    `json:"alias"`
 		Domains []ChainDomain `json:"domains"`
+	}
+
+	FallbackSession struct {
+		GigastakeApp GigastakeApp   `json:"gigastake_app"`
+		Key          string         `json:"key"` // TODO - is key needed?
+		Nodes        []FallbackNode `json:"nodes"`
+	}
+	FallbackNode struct {
+		Address    string `json:"address"`
+		PublicKey  string `json:"public_key"`
+		ServiceURL string `json:"service_url"`
 	}
 
 	// NewChainInput is used for creating a new Chain, including its Gigastake App
@@ -246,6 +259,18 @@ func (c *Chain) SetGigastakeApp(gigastakeApp *GigastakeApp) {
 		c.GigastakeApps[gigastakeApp.ProtocolID] = make(map[GigastakeAppID]*GigastakeApp)
 	}
 	c.GigastakeApps[gigastakeApp.ProtocolID][gigastakeApp.ID] = gigastakeApp
+}
+
+func (c *Chain) HasFallback() bool {
+	return c.Fallback.GigastakeApp.ID != "" && len(c.Fallback.Nodes) > 0
+}
+
+func (c *Chain) GetFallbackGigastakeApp() GigastakeApp {
+	return c.Fallback.GigastakeApp
+}
+
+func (c *Chain) GetFallbackNodes() []FallbackNode {
+	return c.Fallback.Nodes
 }
 
 // ClearGigastakeApps clears the Chain's GigastakesApps map and returns the updated Chain
