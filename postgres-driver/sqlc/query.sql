@@ -812,11 +812,60 @@ SELECT c.*,
         SELECT DISTINCT alias
         FROM chain_aliases
         WHERE chain_id = c.id
-    )::VARCHAR [] AS chain_aliases
+    )::VARCHAR [] AS chain_aliases,
+    COALESCE(
+        json_object_agg(
+            cos.protocol_id,
+            json_build_object(
+                'gigastake_app',
+                json_build_object(
+                    'id',
+                    ga.id,
+                    'protocol_id',
+                    ga.protocol_id,
+                    'name',
+                    ga.name,
+                    'address',
+                    ga.address,
+                    'public_key',
+                    ga.public_key,
+                    'client_public_key',
+                    ga.client_public_key,
+                    'signature',
+                    ga.signature,
+                    'version',
+                    ga.version,
+                    'created_at',
+                    ga.created_at,
+                    'updated_at',
+                    ga.updated_at
+                ),
+                'nodes',
+                json_agg(
+                    json_build_object(
+                        'address',
+                        con.address,
+                        'public_key',
+                        con.public_key,
+                        'service_url',
+                        con.service_url
+                    )
+                ),
+                'active',
+                cos.active
+            )
+        ) FILTER (
+            WHERE cos.id IS NOT NULL
+        ),
+        '{}'
+    )::json AS overrides
 FROM chains c
     LEFT JOIN chain_altruists ca ON c.id = ca.chain_id
     LEFT JOIN chain_checks cc ON c.id = cc.chain_id
     LEFT JOIN chain_alias_domains cga ON c.id = cga.chain_id
+    LEFT JOIN chain_override_sessions cos ON c.id = cos.chain_id
+    LEFT JOIN gigastake_applications ga ON cos.gigastake_application_id = ga.id
+    LEFT JOIN chain_override_nodes con ON cos.id = con.override_id
 WHERE (
         @include_deleted::BOOLEAN
         OR c.deleted = false
@@ -847,11 +896,60 @@ SELECT c.*,
         SELECT DISTINCT alias
         FROM chain_aliases
         WHERE chain_id = c.id
-    )::VARCHAR [] AS chain_aliases
+    )::VARCHAR [] AS chain_aliases,
+    COALESCE(
+        json_object_agg(
+            cos.protocol_id,
+            json_build_object(
+                'gigastake_app',
+                json_build_object(
+                    'id',
+                    ga.id,
+                    'protocol_id',
+                    ga.protocol_id,
+                    'name',
+                    ga.name,
+                    'address',
+                    ga.address,
+                    'public_key',
+                    ga.public_key,
+                    'client_public_key',
+                    ga.client_public_key,
+                    'signature',
+                    ga.signature,
+                    'version',
+                    ga.version,
+                    'created_at',
+                    ga.created_at,
+                    'updated_at',
+                    ga.updated_at
+                ),
+                'nodes',
+                json_agg(
+                    json_build_object(
+                        'address',
+                        con.address,
+                        'public_key',
+                        con.public_key,
+                        'service_url',
+                        con.service_url
+                    )
+                ),
+                'active',
+                cos.active
+            )
+        ) FILTER (
+            WHERE cos.id IS NOT NULL
+        ),
+        '{}'
+    )::json AS overrides
 FROM chains c
     LEFT JOIN chain_altruists ca ON c.id = ca.chain_id
     LEFT JOIN chain_checks cc ON c.id = cc.chain_id
     LEFT JOIN chain_alias_domains cga ON c.id = cga.chain_id
+    LEFT JOIN chain_override_sessions cos ON c.id = cos.chain_id
+    LEFT JOIN gigastake_applications ga ON cos.gigastake_application_id = ga.id
+    LEFT JOIN chain_override_nodes con ON cos.id = con.override_id
 WHERE c.id = $1
 GROUP BY c.id;
 -- name: InsertChain :one

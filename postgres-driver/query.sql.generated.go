@@ -1587,11 +1587,60 @@ SELECT c.id, c.blockchain, c.description, c.enforce_result, c.ticker, c.path, c.
         SELECT DISTINCT alias
         FROM chain_aliases
         WHERE chain_id = c.id
-    )::VARCHAR [] AS chain_aliases
+    )::VARCHAR [] AS chain_aliases,
+    COALESCE(
+        json_object_agg(
+            cos.protocol_id,
+            json_build_object(
+                'gigastake_app',
+                json_build_object(
+                    'id',
+                    ga.id,
+                    'protocol_id',
+                    ga.protocol_id,
+                    'name',
+                    ga.name,
+                    'address',
+                    ga.address,
+                    'public_key',
+                    ga.public_key,
+                    'client_public_key',
+                    ga.client_public_key,
+                    'signature',
+                    ga.signature,
+                    'version',
+                    ga.version,
+                    'created_at',
+                    ga.created_at,
+                    'updated_at',
+                    ga.updated_at
+                ),
+                'nodes',
+                json_agg(
+                    json_build_object(
+                        'address',
+                        con.address,
+                        'public_key',
+                        con.public_key,
+                        'service_url',
+                        con.service_url
+                    )
+                ),
+                'active',
+                cos.active
+            )
+        ) FILTER (
+            WHERE cos.id IS NOT NULL
+        ),
+        '{}'
+    )::json AS overrides
 FROM chains c
     LEFT JOIN chain_altruists ca ON c.id = ca.chain_id
     LEFT JOIN chain_checks cc ON c.id = cc.chain_id
     LEFT JOIN chain_alias_domains cga ON c.id = cga.chain_id
+    LEFT JOIN chain_override_sessions cos ON c.id = cos.chain_id
+    LEFT JOIN gigastake_applications ga ON cos.gigastake_application_id = ga.id
+    LEFT JOIN chain_override_nodes con ON cos.id = con.override_id
 WHERE c.id = $1
 GROUP BY c.id
 `
@@ -1616,6 +1665,7 @@ type SelectChainRow struct {
 	ChainChecks     []byte             `json:"chain_checks"`
 	AliasDomainsMap []byte             `json:"alias_domains_map"`
 	ChainAliases    []string           `json:"chain_aliases"`
+	Overrides       []byte             `json:"overrides"`
 }
 
 func (q *Queries) SelectChain(ctx context.Context, id types.RelayChainID) (SelectChainRow, error) {
@@ -1641,6 +1691,7 @@ func (q *Queries) SelectChain(ctx context.Context, id types.RelayChainID) (Selec
 		&i.ChainChecks,
 		&i.AliasDomainsMap,
 		&i.ChainAliases,
+		&i.Overrides,
 	)
 	return i, err
 }
@@ -1670,11 +1721,60 @@ SELECT c.id, c.blockchain, c.description, c.enforce_result, c.ticker, c.path, c.
         SELECT DISTINCT alias
         FROM chain_aliases
         WHERE chain_id = c.id
-    )::VARCHAR [] AS chain_aliases
+    )::VARCHAR [] AS chain_aliases,
+    COALESCE(
+        json_object_agg(
+            cos.protocol_id,
+            json_build_object(
+                'gigastake_app',
+                json_build_object(
+                    'id',
+                    ga.id,
+                    'protocol_id',
+                    ga.protocol_id,
+                    'name',
+                    ga.name,
+                    'address',
+                    ga.address,
+                    'public_key',
+                    ga.public_key,
+                    'client_public_key',
+                    ga.client_public_key,
+                    'signature',
+                    ga.signature,
+                    'version',
+                    ga.version,
+                    'created_at',
+                    ga.created_at,
+                    'updated_at',
+                    ga.updated_at
+                ),
+                'nodes',
+                json_agg(
+                    json_build_object(
+                        'address',
+                        con.address,
+                        'public_key',
+                        con.public_key,
+                        'service_url',
+                        con.service_url
+                    )
+                ),
+                'active',
+                cos.active
+            )
+        ) FILTER (
+            WHERE cos.id IS NOT NULL
+        ),
+        '{}'
+    )::json AS overrides
 FROM chains c
     LEFT JOIN chain_altruists ca ON c.id = ca.chain_id
     LEFT JOIN chain_checks cc ON c.id = cc.chain_id
     LEFT JOIN chain_alias_domains cga ON c.id = cga.chain_id
+    LEFT JOIN chain_override_sessions cos ON c.id = cos.chain_id
+    LEFT JOIN gigastake_applications ga ON cos.gigastake_application_id = ga.id
+    LEFT JOIN chain_override_nodes con ON cos.id = con.override_id
 WHERE (
         $1::BOOLEAN
         OR c.deleted = false
@@ -1702,6 +1802,7 @@ type SelectChainsRow struct {
 	ChainChecks     []byte             `json:"chain_checks"`
 	AliasDomainsMap []byte             `json:"alias_domains_map"`
 	ChainAliases    []string           `json:"chain_aliases"`
+	Overrides       []byte             `json:"overrides"`
 }
 
 func (q *Queries) SelectChains(ctx context.Context, includeDeleted bool) ([]SelectChainsRow, error) {
@@ -1733,6 +1834,7 @@ func (q *Queries) SelectChains(ctx context.Context, includeDeleted bool) ([]Sele
 			&i.ChainChecks,
 			&i.AliasDomainsMap,
 			&i.ChainAliases,
+			&i.Overrides,
 		); err != nil {
 			return nil, err
 		}

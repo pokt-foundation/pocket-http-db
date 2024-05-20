@@ -402,7 +402,7 @@ func (c *Cache) cacheRefreshHandler(ctx context.Context, cacheRefreshMinutes tim
 
 		err := c.setCache(ctx)
 		if err != nil {
-			c.logger.Error("err in cacheRefreshHandler: %w", err)
+			c.logger.Error(fmt.Sprintf("err in cacheRefreshHandler: %v", err))
 
 			os.Exit(1) // Kill PHD if cache refresh fails to trigger pod restart
 		}

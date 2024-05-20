@@ -108,11 +108,11 @@ type (
 		Checks         map[ChainCheckType]Check `json:"chainChecks,omitempty"`
 		Aliases        map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
 		// DEPRECATED - TODO remove when move to only store aliases is complete
-		AliasDomains map[ChainAlias][]ChainDomain `json:"domains,omitempty"`
-		Fallback     FallbackSession              `json:"fallback,omitempty"`
-		CreatedAt    time.Time                    `json:"createdAt"`
-		UpdatedAt    time.Time                    `json:"updatedAt"`
-		Deleted      bool                         `json:"deleted"`
+		AliasDomains map[ChainAlias][]ChainDomain   `json:"domains,omitempty"`
+		Overrides    map[ProtocolID]OverrideSession `json:"overrides,omitempty"`
+		CreatedAt    time.Time                      `json:"createdAt"`
+		UpdatedAt    time.Time                      `json:"updatedAt"`
+		Deleted      bool                           `json:"deleted"`
 
 		// GigastakeApps are set inside PHD
 		GigastakeApps map[ProtocolID]map[GigastakeAppID]*GigastakeApp `json:"gigastakeAppsByProtocol,omitempty"`
@@ -144,12 +144,12 @@ type (
 		Domains []ChainDomain `json:"domains"`
 	}
 
-	FallbackSession struct {
+	OverrideSession struct {
 		GigastakeApp GigastakeApp   `json:"gigastake_app"`
-		Key          string         `json:"key"` // TODO - is key needed?
-		Nodes        []FallbackNode `json:"nodes"`
+		Nodes        []OverrideNode `json:"nodes"`
+		Active       bool           `json:"active"`
 	}
-	FallbackNode struct {
+	OverrideNode struct {
 		Address    string `json:"address"`
 		PublicKey  string `json:"public_key"`
 		ServiceURL string `json:"service_url"`
@@ -261,16 +261,8 @@ func (c *Chain) SetGigastakeApp(gigastakeApp *GigastakeApp) {
 	c.GigastakeApps[gigastakeApp.ProtocolID][gigastakeApp.ID] = gigastakeApp
 }
 
-func (c *Chain) HasFallback() bool {
-	return c.Fallback.GigastakeApp.ID != "" && len(c.Fallback.Nodes) > 0
-}
-
-func (c *Chain) GetFallbackGigastakeApp() GigastakeApp {
-	return c.Fallback.GigastakeApp
-}
-
-func (c *Chain) GetFallbackNodes() []FallbackNode {
-	return c.Fallback.Nodes
+func (c *Chain) HasOverrides() bool {
+	return len(c.Overrides) > 0
 }
 
 // ClearGigastakeApps clears the Chain's GigastakesApps map and returns the updated Chain

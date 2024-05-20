@@ -50,6 +50,7 @@ type (
 		ChainAliases   []string           `json:"chain_aliases"`
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomainsMap []byte `json:"alias_domains_map"`
+		Overrides       []byte `json:"overrides"`
 	}
 )
 
@@ -104,6 +105,7 @@ func (c *SelectChainsRow) ToChainRow() *ChainRow {
 		ChainAliases:   c.ChainAliases,
 		ChainAltruists: c.ChainAltruists,
 		ChainChecks:    c.ChainChecks,
+		Overrides:      c.Overrides,
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomainsMap: c.AliasDomainsMap,
 	}
@@ -129,6 +131,7 @@ func (c *SelectChainRow) ToChainRow() *ChainRow {
 		ChainAliases:   c.ChainAliases,
 		ChainAltruists: c.ChainAltruists,
 		ChainChecks:    c.ChainChecks,
+		Overrides:      c.Overrides,
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomainsMap: c.AliasDomainsMap,
 	}
@@ -152,6 +155,10 @@ func (c *ChainRow) toChain() (*types.Chain, error) {
 	if err != nil {
 		return nil, err
 	}
+	overrides, err := c.toOverrideSession()
+	if err != nil {
+		return nil, err
+	}
 
 	chain := &types.Chain{
 		ID:             types.RelayChainID(c.ID),
@@ -168,6 +175,7 @@ func (c *ChainRow) toChain() (*types.Chain, error) {
 		Aliases:        aliases,
 		Altruists:      altruists,
 		Checks:         checks,
+		Overrides:      overrides,
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomains: domains,
 		CreatedAt:    c.CreatedAt.Time.UTC(),
@@ -243,6 +251,17 @@ func (c *ChainRow) toDomains() (map[types.ChainAlias][]types.ChainDomain, error)
 	}
 
 	return domains, nil
+}
+
+func (c *ChainRow) toOverrideSession() (map[types.ProtocolID]types.OverrideSession, error) {
+	var overrideSessionsMap map[types.ProtocolID]types.OverrideSession
+	if len(c.Overrides) > 0 {
+		if err := json.Unmarshal(c.Overrides, &overrideSessionsMap); err != nil {
+			return nil, fmt.Errorf("error unmarshalling override sessions: %w", err)
+		}
+	}
+
+	return overrideSessionsMap, nil
 }
 
 // /* ----- postgresdriver Chain Create Methods ----- */

@@ -210,6 +210,25 @@ CREATE TABLE chain_aliases (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (chain_id, alias)
 );
+CREATE TABLE chain_override_sessions (
+    id SERIAL PRIMARY KEY,
+    chain_id VARCHAR(4) NOT NULL REFERENCES chains(id) ON DELETE CASCADE,
+    gigastake_application_id VARCHAR(64) NOT NULL,
+    protocol_id protocol_id NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (chain_id, protocol_id)
+);
+CREATE TABLE chain_override_nodes (
+    id SERIAL PRIMARY KEY,
+    override_id INT NOT NULL REFERENCES chain_override_sessions(id) ON DELETE CASCADE,
+    address VARCHAR(255) NOT NULL,
+    public_key VARCHAR(255) NOT NULL,
+    service_url VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (override_id, address)
+);
 -- Portal Application Tables
 CREATE TABLE portal_applications (
     id VARCHAR(24) PRIMARY KEY UNIQUE,
@@ -281,11 +300,14 @@ CREATE TABLE IF NOT EXISTS gigastake_applications (
     client_public_key VARCHAR(64) NOT NULL,
     signature VARCHAR(128) NOT NULL,
     version VARCHAR(10) NOT NULL,
+    override BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
     deleted_at TIMESTAMPTZ NULL
 );
+CREATE UNIQUE INDEX idx_unique_protocol_override ON gigastake_applications (protocol_id)
+WHERE override = TRUE;
 -- Chains and Gigastake Applications Join Table
 CREATE TABLE chains_gigastake_applications (
     chain_id VARCHAR(4) NOT NULL REFERENCES chains(id) ON DELETE CASCADE,

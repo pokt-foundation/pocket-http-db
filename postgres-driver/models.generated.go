@@ -598,6 +598,25 @@ type ChainConfig struct {
 	ArchivalChainID pgtype.Text `json:"archival_chain_id"`
 }
 
+type ChainOverrideNode struct {
+	ID         int32              `json:"id"`
+	OverrideID int32              `json:"override_id"`
+	Address    string             `json:"address"`
+	PublicKey  string             `json:"public_key"`
+	ServiceUrl string             `json:"service_url"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
+type ChainOverrideSession struct {
+	ID                     int32              `json:"id"`
+	ChainID                string             `json:"chain_id"`
+	GigastakeApplicationID string             `json:"gigastake_application_id"`
+	ProtocolID             ProtocolID         `json:"protocol_id"`
+	Active                 bool               `json:"active"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+}
+
 type ChainsGigastakeApplication struct {
 	ChainID                types.RelayChainID   `json:"chain_id"`
 	GigastakeApplicationID types.GigastakeAppID `json:"gigastake_application_id"`
@@ -625,6 +644,7 @@ type GigastakeApplication struct {
 	ClientPublicKey string               `json:"client_public_key"`
 	Signature       string               `json:"signature"`
 	Version         string               `json:"version"`
+	Override        bool                 `json:"override"`
 	CreatedAt       pgtype.Timestamptz   `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz   `json:"updated_at"`
 	Deleted         bool                 `json:"deleted"`
