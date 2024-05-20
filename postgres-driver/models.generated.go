@@ -599,8 +599,8 @@ type ChainConfig struct {
 }
 
 type ChainOverrideNode struct {
-	ID         int32              `json:"id"`
-	OverrideID int32              `json:"override_id"`
+	ChainID    string             `json:"chain_id"`
+	ProtocolID ProtocolID         `json:"protocol_id"`
 	Address    string             `json:"address"`
 	PublicKey  string             `json:"public_key"`
 	ServiceUrl string             `json:"service_url"`
@@ -608,10 +608,9 @@ type ChainOverrideNode struct {
 }
 
 type ChainOverrideSession struct {
-	ID                     int32              `json:"id"`
 	ChainID                string             `json:"chain_id"`
-	GigastakeApplicationID string             `json:"gigastake_application_id"`
 	ProtocolID             ProtocolID         `json:"protocol_id"`
+	GigastakeApplicationID string             `json:"gigastake_application_id"`
 	Active                 bool               `json:"active"`
 	CreatedAt              pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`

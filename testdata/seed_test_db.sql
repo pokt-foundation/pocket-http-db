@@ -1137,6 +1137,7 @@ INSERT INTO gigastake_applications (
         client_public_key,
         signature,
         version,
+        override,
         created_at,
         updated_at
     )
@@ -1149,6 +1150,7 @@ VALUES (
         'test_65c29f0cc82e418b81a528a0c0682a9f',
         'test_f22651fb566346fca30b605e5f46e3ca',
         '0.0.1',
+        false,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -1161,6 +1163,7 @@ VALUES (
         'test_ba4e53dada8f4f939048e56dc8f88f37',
         'test_52e991c26da841bc882ad3a3ee9ee964',
         '0.0.1',
+        false,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -1173,6 +1176,20 @@ VALUES (
         'test_789f9d6adcc846f1a079bf68237b5f5c',
         'test_01eac46efc9242a2be73879f1d09f1dc',
         '0.0.1',
+        false,
+        '2022-11-11 11:11:11.00000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'test_giga_override',
+        'morse-mainnet',
+        'appletun',
+        'test_3a4b6c8d1e2f0a9b8c7d6e5f4a3b2c1d',
+        'test_5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c',
+        'test_9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d',
+        'test_0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c',
+        '0.0.1',
+        true,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
@@ -1180,7 +1197,8 @@ VALUES (
 INSERT INTO chains_gigastake_applications (chain_id, gigastake_application_id)
 VALUES ('0001', 'test_gigastake_app_1'),
     ('0053', 'test_gigastake_app_2'),
-    ('0040', 'test_gigastake_app_3');
+    ('0040', 'test_gigastake_app_3'),
+    ('0021', 'test_giga_override');
 INSERT INTO global_blocked_contracts (blocked_address, created_at, updated_at)
 VALUES (
         '0xtest_6789abcdef0123456789abcdef01234567',
@@ -1205,6 +1223,223 @@ VALUES (
     (
         '0xtest_789abcdef0123456789abcdef0123456789',
         '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    );
+-- Seed data for chain_override_sessions & chain_override_nodes
+INSERT INTO chain_override_sessions (
+        chain_id,
+        protocol_id,
+        gigastake_application_id,
+        active,
+        created_at,
+        updated_at
+    )
+VALUES (
+        '0021',
+        'morse-mainnet',
+        'test_giga_override',
+        true,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    );
+INSERT INTO chain_override_nodes (
+        chain_id,
+        protocol_id,
+        address,
+        public_key,
+        service_url,
+        created_at
+    )
+VALUES (
+        '0021',
+        'morse-mainnet',
+        'test_address_1',
+        'test_public_key_1',
+        'https://simpsons.com/homer',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_2',
+        'test_public_key_2',
+        'https://simpsons.com/marge',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_3',
+        'test_public_key_3',
+        'https://simpsons.com/bart',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_4',
+        'test_public_key_4',
+        'https://simpsons.com/lisa',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_5',
+        'test_public_key_5',
+        'https://simpsons.com/maggie',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_6',
+        'test_public_key_6',
+        'https://simpsons.com/grandpa',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_7',
+        'test_public_key_7',
+        'https://simpsons.com/moe',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_8',
+        'test_public_key_8',
+        'https://simpsons.com/barney',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_9',
+        'test_public_key_9',
+        'https://simpsons.com/krusty',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_10',
+        'test_public_key_10',
+        'https://simpsons.com/milhouse',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_11',
+        'test_public_key_11',
+        'https://simpsons.com/ned',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_12',
+        'test_public_key_12',
+        'https://simpsons.com/nelson',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_13',
+        'test_public_key_13',
+        'https://simpsons.com/apu',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_14',
+        'test_public_key_14',
+        'https://simpsons.com/chiefwiggum',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_15',
+        'test_public_key_15',
+        'https://simpsons.com/skinner',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_16',
+        'test_public_key_16',
+        'https://simpsons.com/edna',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_17',
+        'test_public_key_17',
+        'https://simpsons.com/patty',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_18',
+        'test_public_key_18',
+        'https://simpsons.com/selma',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_19',
+        'test_public_key_19',
+        'https://simpsons.com/burns',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_20',
+        'test_public_key_20',
+        'https://simpsons.com/smithers',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_21',
+        'test_public_key_21',
+        'https://simpsons.com/otto',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_22',
+        'test_public_key_22',
+        'https://simpsons.com/ralph',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_23',
+        'test_public_key_23',
+        'https://simpsons.com/fattony',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        '0021',
+        'morse-mainnet',
+        'test_address_24',
+        'test_public_key_24',
+        'https://simpsons.com/gil',
         '2022-11-11 11:11:11.000000'
     );
 -- Seed data for chain_config

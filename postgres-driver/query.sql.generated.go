@@ -1616,21 +1616,27 @@ SELECT c.id, c.blockchain, c.description, c.enforce_result, c.ticker, c.path, c.
                     ga.updated_at
                 ),
                 'nodes',
-                json_agg(
-                    json_build_object(
-                        'address',
-                        con.address,
-                        'public_key',
-                        con.public_key,
-                        'service_url',
-                        con.service_url
-                    )
+                (
+                    SELECT json_agg(
+                            json_build_object(
+                                'address',
+                                address,
+                                'public_key',
+                                public_key,
+                                'service_url',
+                                service_url
+                            )
+                        )
+                    FROM chain_override_nodes con
+                    WHERE con.chain_id = cos.chain_id
+                        AND con.protocol_id = cos.protocol_id
                 ),
                 'active',
                 cos.active
             )
         ) FILTER (
-            WHERE cos.id IS NOT NULL
+            WHERE cos.chain_id IS NOT NULL
+                AND cos.protocol_id IS NOT NULL
         ),
         '{}'
     )::json AS overrides
@@ -1640,7 +1646,6 @@ FROM chains c
     LEFT JOIN chain_alias_domains cga ON c.id = cga.chain_id
     LEFT JOIN chain_override_sessions cos ON c.id = cos.chain_id
     LEFT JOIN gigastake_applications ga ON cos.gigastake_application_id = ga.id
-    LEFT JOIN chain_override_nodes con ON cos.id = con.override_id
 WHERE c.id = $1
 GROUP BY c.id
 `
@@ -1726,45 +1731,51 @@ SELECT c.id, c.blockchain, c.description, c.enforce_result, c.ticker, c.path, c.
         json_object_agg(
             cos.protocol_id,
             json_build_object(
-                'gigastake_app',
+                'gigastakeApp',
                 json_build_object(
                     'id',
                     ga.id,
-                    'protocol_id',
+                    'protocolID',
                     ga.protocol_id,
                     'name',
                     ga.name,
                     'address',
                     ga.address,
-                    'public_key',
+                    'publicKey',
                     ga.public_key,
-                    'client_public_key',
+                    'clientPublicKey',
                     ga.client_public_key,
                     'signature',
                     ga.signature,
                     'version',
                     ga.version,
-                    'created_at',
+                    'createdAt',
                     ga.created_at,
-                    'updated_at',
+                    'updatedAt',
                     ga.updated_at
                 ),
                 'nodes',
-                json_agg(
-                    json_build_object(
-                        'address',
-                        con.address,
-                        'public_key',
-                        con.public_key,
-                        'service_url',
-                        con.service_url
-                    )
+                (
+                    SELECT json_agg(
+                            json_build_object(
+                                'address',
+                                address,
+                                'publicKey',
+                                public_key,
+                                'serviceURL',
+                                service_url
+                            )
+                        )
+                    FROM chain_override_nodes con
+                    WHERE con.chain_id = cos.chain_id
+                        AND con.protocol_id = cos.protocol_id
                 ),
                 'active',
                 cos.active
             )
         ) FILTER (
-            WHERE cos.id IS NOT NULL
+            WHERE cos.chain_id IS NOT NULL
+                AND cos.protocol_id IS NOT NULL
         ),
         '{}'
     )::json AS overrides
@@ -1774,7 +1785,6 @@ FROM chains c
     LEFT JOIN chain_alias_domains cga ON c.id = cga.chain_id
     LEFT JOIN chain_override_sessions cos ON c.id = cos.chain_id
     LEFT JOIN gigastake_applications ga ON cos.gigastake_application_id = ga.id
-    LEFT JOIN chain_override_nodes con ON cos.id = con.override_id
 WHERE (
         $1::BOOLEAN
         OR c.deleted = false
@@ -1858,7 +1868,8 @@ SELECT ga.id,
     ga.public_key,
     ga.client_public_key,
     ga.signature,
-    ga.version
+    ga.version,
+    ga.override
 FROM gigastake_applications AS ga
     LEFT JOIN chains_gigastake_applications AS cga ON ga.id = cga.gigastake_application_id
 GROUP BY ga.id,
@@ -1870,7 +1881,8 @@ GROUP BY ga.id,
     ga.public_key,
     ga.client_public_key,
     ga.signature,
-    ga.version
+    ga.version,
+    ga.override
 `
 
 type SelectGigastakeApplicationsRow struct {
@@ -1886,6 +1898,7 @@ type SelectGigastakeApplicationsRow struct {
 	ClientPublicKey string               `json:"client_public_key"`
 	Signature       string               `json:"signature"`
 	Version         string               `json:"version"`
+	Override        bool                 `json:"override"`
 }
 
 func (q *Queries) SelectGigastakeApplications(ctx context.Context) ([]SelectGigastakeApplicationsRow, error) {
@@ -1910,6 +1923,7 @@ func (q *Queries) SelectGigastakeApplications(ctx context.Context) ([]SelectGiga
 			&i.ClientPublicKey,
 			&i.Signature,
 			&i.Version,
+			&i.Override,
 		); err != nil {
 			return nil, err
 		}

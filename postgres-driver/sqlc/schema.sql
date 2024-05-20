@@ -211,23 +211,23 @@ CREATE TABLE chain_aliases (
     PRIMARY KEY (chain_id, alias)
 );
 CREATE TABLE chain_override_sessions (
-    id SERIAL PRIMARY KEY,
     chain_id VARCHAR(4) NOT NULL REFERENCES chains(id) ON DELETE CASCADE,
-    gigastake_application_id VARCHAR(64) NOT NULL,
     protocol_id protocol_id NOT NULL,
+    gigastake_application_id VARCHAR(64) NOT NULL,
     active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (chain_id, protocol_id)
+    PRIMARY KEY (chain_id, protocol_id)
 );
 CREATE TABLE chain_override_nodes (
-    id SERIAL PRIMARY KEY,
-    override_id INT NOT NULL REFERENCES chain_override_sessions(id) ON DELETE CASCADE,
+    chain_id VARCHAR(4) NOT NULL,
+    protocol_id protocol_id NOT NULL,
     address VARCHAR(255) NOT NULL,
     public_key VARCHAR(255) NOT NULL,
     service_url VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (override_id, address)
+    FOREIGN KEY (chain_id, protocol_id) REFERENCES chain_override_sessions(chain_id, protocol_id) ON DELETE CASCADE,
+    UNIQUE (chain_id, protocol_id, address)
 );
 -- Portal Application Tables
 CREATE TABLE portal_applications (
@@ -522,6 +522,18 @@ INSERT
     OR
 UPDATE
     OR DELETE ON chain_checks FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER chain_override_sessions_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON chain_override_sessions FOR EACH ROW EXECUTE PROCEDURE notify_event();
+CREATE TRIGGER chain_override_nodes_notify_event
+AFTER
+INSERT
+    OR
+UPDATE
+    OR DELETE ON chain_override_nodes FOR EACH ROW EXECUTE PROCEDURE notify_event();
 CREATE TRIGGER chains_gigastake_applications_notify_event
 AFTER
 INSERT

@@ -145,14 +145,14 @@ type (
 	}
 
 	OverrideSession struct {
-		GigastakeApp GigastakeApp   `json:"gigastake_app"`
+		GigastakeApp GigastakeApp   `json:"gigastakeApp"`
 		Nodes        []OverrideNode `json:"nodes"`
 		Active       bool           `json:"active"`
 	}
 	OverrideNode struct {
 		Address    string `json:"address"`
-		PublicKey  string `json:"public_key"`
-		ServiceURL string `json:"service_url"`
+		PublicKey  string `json:"publicKey"`
+		ServiceURL string `json:"serviceURL"`
 	}
 
 	// NewChainInput is used for creating a new Chain, including its Gigastake App
