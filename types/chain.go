@@ -145,14 +145,19 @@ type (
 	}
 
 	OverrideSession struct {
-		GigastakeApp GigastakeApp   `json:"gigastakeApp"`
-		Nodes        []OverrideNode `json:"nodes"`
-		Active       bool           `json:"active"`
+		ChainID        RelayChainID   `json:"chainID,omitempty"`
+		ProtocolID     ProtocolID     `json:"protocolID,omitempty"`
+		GigastakeAppID GigastakeAppID `json:"gigastakeAppID,omitempty"`
+		GigastakeApp   GigastakeApp   `json:"gigastakeApp"`
+		Nodes          []OverrideNode `json:"nodes"`
+		Active         bool           `json:"active"`
 	}
 	OverrideNode struct {
-		Address    string `json:"address"`
-		PublicKey  string `json:"publicKey"`
-		ServiceURL string `json:"serviceURL"`
+		ChainID    RelayChainID `json:"chainID,omitempty"`
+		ProtocolID ProtocolID   `json:"protocolID,omitempty"`
+		Address    string       `json:"address"`
+		PublicKey  string       `json:"publicKey"`
+		ServiceURL string       `json:"serviceURL"`
 	}
 
 	// NewChainInput is used for creating a new Chain, including its Gigastake App
@@ -291,4 +296,12 @@ func (c *Alias) Table() Table {
 // DEPRECATED - TODO remove when move to only store aliases is complete
 func (c *AliasDomains) Table() Table {
 	return TableChainAliasDomains
+}
+
+func (c *OverrideSession) Table() Table {
+	return TableChainOverrideSessions
+}
+
+func (c *OverrideNode) Table() Table {
+	return TableChainOverrideNodes
 }

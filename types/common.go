@@ -98,7 +98,9 @@ const (
 	TableChainChecks    Table = "chain_checks"
 	TableChainAliases   Table = "chain_aliases"
 	// DEPRECATED - TODO remove when move to only store aliases is complete
-	TableChainAliasDomains Table = "chain_alias_domains"
+	TableChainAliasDomains     Table = "chain_alias_domains"
+	TableChainOverrideSessions Table = "chain_override_sessions"
+	TableChainOverrideNodes    Table = "chain_override_nodes"
 
 	TableChainGigastakeApps Table = "chains_gigastake_applications"
 

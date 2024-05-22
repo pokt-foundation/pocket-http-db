@@ -773,6 +773,25 @@ func (json dbChainAliasDomains) toOutput() *types.AliasDomains {
 	}
 }
 
+func (json dbChainOverrideSession) toOutput() *types.OverrideSession {
+	return &types.OverrideSession{
+		ChainID:        json.ChainID,
+		ProtocolID:     json.ProtocolID,
+		GigastakeAppID: json.GigastakeAppID,
+		Active:         json.Active,
+	}
+}
+
+func (json dbChainOverrideNode) toOutput() *types.OverrideNode {
+	return &types.OverrideNode{
+		ChainID:    json.ChainID,
+		ProtocolID: json.ProtocolID,
+		Address:    json.Address,
+		PublicKey:  json.PublicKey,
+		ServiceURL: json.ServiceURL,
+	}
+}
+
 type dbChain struct {
 	ID                       types.RelayChainID  `json:"id"`
 	IconURL                  string              `json:"icon_url"`
@@ -825,4 +844,19 @@ type dbChainAliasDomains struct {
 	ChainID types.RelayChainID  `json:"chain_id"`
 	Alias   types.ChainAlias    `json:"alias"`
 	Domains []types.ChainDomain `json:"domains"`
+}
+
+type dbChainOverrideSession struct {
+	ChainID        types.RelayChainID   `json:"chain_id"`
+	ProtocolID     types.ProtocolID     `json:"protocol_id"`
+	GigastakeAppID types.GigastakeAppID `json:"gigastake_application_id"`
+	Active         bool                 `json:"active"`
+}
+
+type dbChainOverrideNode struct {
+	ChainID    types.RelayChainID `json:"chain_id"`
+	ProtocolID types.ProtocolID   `json:"protocol_id"`
+	Address    string             `json:"address"`
+	PublicKey  string             `json:"public_key"`
+	ServiceURL string             `json:"service_url"`
 }

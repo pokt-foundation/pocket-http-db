@@ -79,6 +79,10 @@ func (c *Cache) parseNotification(n types.Notification) {
 		c.parseChainAliasDomainsNotification(n)
 	case types.TableChainChecks:
 		c.parseChainCheckNotification(n)
+	case types.TableChainOverrideSessions:
+		c.parseChainOverrideSessionNotification(n)
+	case types.TableChainOverrideNodes:
+		c.parseChainOverrideNodeNotification(n)
 
 	case types.TableUsers:
 		c.parseUsersNotification(n)
@@ -272,6 +276,36 @@ func (c *Cache) parseChainCheckNotification(n types.Notification) {
 	}
 	if n.Action == types.ActionDelete {
 		c.deleteCheck(*chainCheck)
+	}
+}
+
+func (c *Cache) parseChainOverrideSessionNotification(n types.Notification) {
+	chainOverrideSession, ok := n.Data.(*types.OverrideSession)
+	if !ok {
+		c.logger.Error("parseChainOverrideSessionNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert || n.Action == types.ActionUpdate {
+		c.upsertChainOverrideSession(*chainOverrideSession)
+	}
+	if n.Action == types.ActionDelete {
+		c.deleteChainOverrideSession(*chainOverrideSession)
+	}
+}
+
+func (c *Cache) parseChainOverrideNodeNotification(n types.Notification) {
+	chainOverrideNode, ok := n.Data.(*types.OverrideNode)
+	if !ok {
+		c.logger.Error("parseChainOverrideNodeNotification failed")
+		return
+	}
+
+	if n.Action == types.ActionInsert {
+		c.insertChainOverrideNode(*chainOverrideNode)
+	}
+	if n.Action == types.ActionDelete {
+		c.removeChainOverrideNode(*chainOverrideNode)
 	}
 }
 

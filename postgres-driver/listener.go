@@ -121,6 +121,10 @@ func (n notification) parseNotification() *types.Notification {
 		return n.parseChainAliasDomainsNotification()
 	case types.TableChainChecks:
 		return n.parseChainCheckNotification()
+	case types.TableChainOverrideSessions:
+		return n.parseChainOverrideSessionNotification()
+	case types.TableChainOverrideNodes:
+		return n.parseChainOverrideNodeNotification()
 
 	case types.TableUsers:
 		return n.parseUsersNotification()
@@ -301,6 +305,30 @@ func (n notification) parseChainCheckNotification() *types.Notification {
 		Table:  n.Table,
 		Action: n.Action,
 		Data:   dbChainCheck.toOutput(),
+	}
+}
+
+func (n notification) parseChainOverrideSessionNotification() *types.Notification {
+	rawData, _ := json.Marshal(n.Data)
+	var dbChainOverrideSession dbChainOverrideSession
+	_ = json.Unmarshal(rawData, &dbChainOverrideSession)
+
+	return &types.Notification{
+		Table:  n.Table,
+		Action: n.Action,
+		Data:   dbChainOverrideSession.toOutput(),
+	}
+}
+
+func (n notification) parseChainOverrideNodeNotification() *types.Notification {
+	rawData, _ := json.Marshal(n.Data)
+	var dbChainOverrideNode dbChainOverrideNode
+	_ = json.Unmarshal(rawData, &dbChainOverrideNode)
+
+	return &types.Notification{
+		Table:  n.Table,
+		Action: n.Action,
+		Data:   dbChainOverrideNode.toOutput(),
 	}
 }
 
