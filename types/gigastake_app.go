@@ -17,6 +17,7 @@ type (
 		ClientPublicKey string                    `json:"clientPublicKey"`
 		Signature       string                    `json:"signature"`
 		Version         string                    `json:"version"`
+		Override        bool                      `json:"override"`
 		CreatedAt       time.Time                 `json:"createdAt"`
 		UpdatedAt       time.Time                 `json:"updatedAt"`
 		Deleted         bool                      `json:"deleted"`

@@ -988,6 +988,41 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 				"eth-mainnet": {},
 				"eth-rpc":     {},
 			},
+			Overrides: map[types.ProtocolID]types.OverrideSession{
+				types.ProtocolMorseMainnet: {
+					ChainID:        "0021",
+					ProtocolID:     types.ProtocolMorseMainnet,
+					GigastakeAppID: "test_giga_override",
+					GigastakeApp:   *GigastakeApps()["test_giga_override"],
+					Active:         true,
+					Nodes: []types.OverrideNode{
+						{Address: "test_address_1", PublicKey: "test_public_key_1", ServiceURL: "https://simpsons.com/homer"},
+						{Address: "test_address_2", PublicKey: "test_public_key_2", ServiceURL: "https://simpsons.com/marge"},
+						{Address: "test_address_3", PublicKey: "test_public_key_3", ServiceURL: "https://simpsons.com/bart"},
+						{Address: "test_address_4", PublicKey: "test_public_key_4", ServiceURL: "https://simpsons.com/lisa"},
+						{Address: "test_address_5", PublicKey: "test_public_key_5", ServiceURL: "https://simpsons.com/maggie"},
+						{Address: "test_address_6", PublicKey: "test_public_key_6", ServiceURL: "https://simpsons.com/grandpa"},
+						{Address: "test_address_7", PublicKey: "test_public_key_7", ServiceURL: "https://simpsons.com/moe"},
+						{Address: "test_address_8", PublicKey: "test_public_key_8", ServiceURL: "https://simpsons.com/barney"},
+						{Address: "test_address_9", PublicKey: "test_public_key_9", ServiceURL: "https://simpsons.com/krusty"},
+						{Address: "test_address_10", PublicKey: "test_public_key_10", ServiceURL: "https://simpsons.com/milhouse"},
+						{Address: "test_address_11", PublicKey: "test_public_key_11", ServiceURL: "https://simpsons.com/ned"},
+						{Address: "test_address_12", PublicKey: "test_public_key_12", ServiceURL: "https://simpsons.com/nelson"},
+						{Address: "test_address_13", PublicKey: "test_public_key_13", ServiceURL: "https://simpsons.com/apu"},
+						{Address: "test_address_14", PublicKey: "test_public_key_14", ServiceURL: "https://simpsons.com/chiefwiggum"},
+						{Address: "test_address_15", PublicKey: "test_public_key_15", ServiceURL: "https://simpsons.com/skinner"},
+						{Address: "test_address_16", PublicKey: "test_public_key_16", ServiceURL: "https://simpsons.com/edna"},
+						{Address: "test_address_17", PublicKey: "test_public_key_17", ServiceURL: "https://simpsons.com/patty"},
+						{Address: "test_address_18", PublicKey: "test_public_key_18", ServiceURL: "https://simpsons.com/selma"},
+						{Address: "test_address_19", PublicKey: "test_public_key_19", ServiceURL: "https://simpsons.com/burns"},
+						{Address: "test_address_20", PublicKey: "test_public_key_20", ServiceURL: "https://simpsons.com/smithers"},
+						{Address: "test_address_21", PublicKey: "test_public_key_21", ServiceURL: "https://simpsons.com/otto"},
+						{Address: "test_address_22", PublicKey: "test_public_key_22", ServiceURL: "https://simpsons.com/ralph"},
+						{Address: "test_address_23", PublicKey: "test_public_key_23", ServiceURL: "https://simpsons.com/fattony"},
+						{Address: "test_address_24", PublicKey: "test_public_key_24", ServiceURL: "https://simpsons.com/gil"},
+					},
+				},
+			},
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -1091,6 +1126,9 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 
 	if len(opts) > 0 && opts[0].IncludeGigastakeApps {
 		for _, gigastakeApp := range GigastakeApps() {
+			if gigastakeApp.Override {
+				continue
+			}
 			for chainID := range gigastakeApp.ChainIDs {
 				chains[chainID].SetGigastakeApp(gigastakeApp)
 			}
@@ -1104,7 +1142,7 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 	return map[types.GigastakeAppID]*types.GigastakeApp{
 		"test_gigastake_app_1": {
 			ID:              "test_gigastake_app_1",
-			ProtocolID:      "morse-mainnet",
+			ProtocolID:      types.ProtocolMorseMainnet,
 			ChainIDs:        map[types.RelayChainID]struct{}{"0001": {}},
 			Name:            "pikachu",
 			Address:         "test_8d4f6a5b0c6e9f1db12c1f662e5ec8c5",
@@ -1117,7 +1155,7 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 		},
 		"test_gigastake_app_2": {
 			ID:              "test_gigastake_app_2",
-			ProtocolID:      "morse-mainnet",
+			ProtocolID:      types.ProtocolMorseMainnet,
 			ChainIDs:        map[types.RelayChainID]struct{}{"0053": {}},
 			Name:            "eevee",
 			Address:         "test_5c60d434db4e42d2b5d2ea6eeb8933c4",
@@ -1130,7 +1168,7 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 		},
 		"test_gigastake_app_3": {
 			ID:              "test_gigastake_app_3",
-			ProtocolID:      "morse-mainnet",
+			ProtocolID:      types.ProtocolMorseMainnet,
 			ChainIDs:        map[types.RelayChainID]struct{}{"0040": {}},
 			Name:            "snorlax",
 			Address:         "test_e570c841d5cd4f6197e0428ed7c517fd",
@@ -1138,6 +1176,20 @@ func GigastakeApps() map[types.GigastakeAppID]*types.GigastakeApp {
 			ClientPublicKey: "test_789f9d6adcc846f1a079bf68237b5f5c",
 			Signature:       "test_01eac46efc9242a2be73879f1d09f1dc",
 			Version:         "0.0.1",
+			CreatedAt:       MockTimestamp,
+			UpdatedAt:       MockTimestamp,
+		},
+		"test_giga_override": {
+			ID:              "test_giga_override",
+			ProtocolID:      types.ProtocolMorseMainnet,
+			ChainIDs:        map[types.RelayChainID]struct{}{"0021": {}},
+			Name:            "appletun",
+			Address:         "test_3a4b6c8d1e2f0a9b8c7d6e5f4a3b2c1d",
+			PublicKey:       types.GigastakeAppPublicKey("test_5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c"),
+			ClientPublicKey: "test_9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d",
+			Signature:       "test_0f1e2d3c4b5a6f7e8d9c0b1a2f3e4d5c",
+			Version:         "0.0.1",
+			Override:        true,
 			CreatedAt:       MockTimestamp,
 			UpdatedAt:       MockTimestamp,
 		},

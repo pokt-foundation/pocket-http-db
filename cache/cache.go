@@ -345,7 +345,7 @@ func (c *Cache) fetchChainsData(ctx context.Context) (chainsData, error) {
 
 	// Set pointers to Chain GigastakeApps
 	for _, gigastakeApp := range gigastakeApps {
-		if gigastakeApp.Deleted {
+		if gigastakeApp.Deleted || gigastakeApp.Override {
 			continue
 		}
 
@@ -1228,16 +1228,22 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		}
 
 		for _, session := range pendingSessions {
-			if protocolOverride, ok := chain.Overrides[session.ProtocolID]; ok {
+			protocolID := session.ProtocolID
+			session.ProtocolID = ""
+			gigastakeAppID := session.GigastakeAppID
+			session.GigastakeAppID = ""
+
+			if gigastakeApp, ok := c.gigastakeApps[gigastakeAppID]; ok {
+				session.GigastakeApp = *gigastakeApp
+			}
+
+			if protocolOverride, ok := chain.Overrides[protocolID]; ok {
 				if len(protocolOverride.Nodes) > 0 {
 					session.Nodes = protocolOverride.Nodes
 				}
 			}
-			if gigastakeApp, ok := c.gigastakeApps[session.GigastakeAppID]; ok {
-				session.GigastakeApp = *gigastakeApp
-			}
 
-			chain.Overrides[session.ProtocolID] = session
+			chain.Overrides[protocolID] = session
 		}
 		delete(c.pendingSessions, chain.ID)
 	}
@@ -1248,8 +1254,13 @@ func (c *Cache) upsertChain(chain types.Chain) {
 		}
 
 		for _, node := range pendingNodes {
-			session := chain.Overrides[node.ProtocolID]
+			protocolID := node.ProtocolID
+			node.ProtocolID = ""
+			node.ChainID = ""
+
+			session := chain.Overrides[protocolID]
 			session.Nodes = append(session.Nodes, node)
+			chain.Overrides[protocolID] = session
 		}
 		delete(c.pendingNodes, chain.ID)
 	}
@@ -1421,7 +1432,17 @@ func (c *Cache) upsertChainOverrideSession(session types.OverrideSession) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	if chain, ok := c.chains[session.ChainID]; ok {
+	chainID := session.ChainID
+	session.ChainID = ""
+
+	if chain, ok := c.chains[chainID]; ok {
+		gigastakeAppID := session.GigastakeAppID
+		session.GigastakeAppID = ""
+
+		if gigastakeApp, ok := c.gigastakeApps[gigastakeAppID]; ok {
+			session.GigastakeApp = *gigastakeApp
+		}
+
 		if chain.Overrides == nil {
 			chain.Overrides = make(map[types.ProtocolID]types.OverrideSession)
 		}
@@ -1431,15 +1452,12 @@ func (c *Cache) upsertChainOverrideSession(session types.OverrideSession) {
 				session.Nodes = protocolOverride.Nodes
 			}
 		}
-		if gigastakeApp, ok := c.gigastakeApps[session.GigastakeAppID]; ok {
-			session.GigastakeApp = *gigastakeApp
-		}
 
 		chain.Overrides[session.ProtocolID] = session
 		return
 	}
 
-	c.pendingSessions[session.ChainID] = append(c.pendingSessions[session.ChainID], session)
+	c.pendingSessions[chainID] = append(c.pendingSessions[chainID], session)
 }
 
 func (c *Cache) deleteChainOverrideSession(session types.OverrideSession) {
@@ -1455,14 +1473,17 @@ func (c *Cache) insertChainOverrideNode(node types.OverrideNode) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	if chain, ok := c.chains[node.ChainID]; ok {
+	chainID := node.ChainID
+	node.ChainID = ""
+
+	if chain, ok := c.chains[chainID]; ok {
 		if session, ok := chain.Overrides[node.ProtocolID]; ok {
 			session.Nodes = append(session.Nodes, node)
 		}
 		return
 	}
 
-	c.pendingNodes[node.ChainID] = append(c.pendingNodes[node.ChainID], node)
+	c.pendingNodes[chainID] = append(c.pendingNodes[chainID], node)
 }
 
 func (c *Cache) removeChainOverrideNode(node types.OverrideNode) {

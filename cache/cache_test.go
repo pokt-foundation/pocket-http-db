@@ -1131,12 +1131,14 @@ func Test_upsertGigastakeApp(t *testing.T) {
 
 func Test_upsertChain(t *testing.T) {
 	tests := []struct {
-		name                string
-		chain               types.Chain
-		pendingAltruists    map[types.RelayChainID][]types.Altruist
-		pendingAliasDomains map[types.RelayChainID][]types.AliasDomains
-		pendingChecks       map[types.RelayChainID][]types.Check
-		update, delete      bool
+		name                    string
+		chain                   types.Chain
+		pendingAltruists        map[types.RelayChainID][]types.Altruist
+		pendingAliasDomains     map[types.RelayChainID][]types.AliasDomains
+		pendingChecks           map[types.RelayChainID][]types.Check
+		pendingOverrideSessions map[types.RelayChainID][]types.OverrideSession
+		pendingOverrideNodes    map[types.RelayChainID][]types.OverrideNode
+		update, delete          bool
 	}{
 		{
 			name: "Should add a new Chain to cache with no pending side table data",
@@ -1207,6 +1209,27 @@ func Test_upsertChain(t *testing.T) {
 			},
 		},
 		{
+			name:  "Should update an existing Chain with pending Overrides",
+			chain: *testdata.Chains()["0021"],
+			pendingOverrideSessions: map[types.RelayChainID][]types.OverrideSession{
+				"0021": {
+					{
+						ChainID:        "0021",
+						ProtocolID:     "morse-mainnet",
+						GigastakeAppID: "test_giga_override",
+						Active:         true,
+					},
+				},
+			},
+			pendingOverrideNodes: map[types.RelayChainID][]types.OverrideNode{
+				"0021": {
+					{ChainID: "0021", ProtocolID: "morse-mainnet", Address: "0x111111111111111", PublicKey: "0xaaaaaaaabbbbbbbb", ServiceURL: "https://planetexpress.com:1234"},
+					{ChainID: "0021", ProtocolID: "morse-mainnet", Address: "0x222222222222222", PublicKey: "0xccccccccdddddddd", ServiceURL: "https://newnewyork.com:1234"},
+					{ChainID: "0021", ProtocolID: "morse-mainnet", Address: "0x333333333333333", PublicKey: "0xeeeeeeeeffffffff", ServiceURL: "https://momcorp.com:1234"},
+				},
+			},
+		},
+		{
 			name:  "Should update an existing Chain in cache with all side tables",
 			chain: *testdata.Chains()["0021"],
 			pendingAltruists: map[types.RelayChainID][]types.Altruist{
@@ -1243,6 +1266,23 @@ func Test_upsertChain(t *testing.T) {
 						Payload:   `{"method":"eth_Chonky","id":1,"jsonrpc":"2.0"}`,
 						ResultKey: "id400",
 					},
+				},
+			},
+			pendingOverrideSessions: map[types.RelayChainID][]types.OverrideSession{
+				"0021": {
+					{
+						ChainID:        "0021",
+						ProtocolID:     "morse-mainnet",
+						GigastakeAppID: "test_giga_override",
+						Active:         true,
+					},
+				},
+			},
+			pendingOverrideNodes: map[types.RelayChainID][]types.OverrideNode{
+				"0021": {
+					{ChainID: "0021", ProtocolID: "morse-mainnet", Address: "0x111111111111111", PublicKey: "0xaaaaaaaabbbbbbbb", ServiceURL: "https://planetexpress.com:1234"},
+					{ChainID: "0021", ProtocolID: "morse-mainnet", Address: "0x222222222222222", PublicKey: "0xccccccccdddddddd", ServiceURL: "https://newnewyork.com:1234"},
+					{ChainID: "0021", ProtocolID: "morse-mainnet", Address: "0x333333333333333", PublicKey: "0xeeeeeeeeffffffff", ServiceURL: "https://momcorp.com:1234"},
 				},
 			},
 		},
@@ -1291,11 +1331,32 @@ func Test_upsertChain(t *testing.T) {
 					expectedChain.Checks[check.Type] = check
 				}
 			}
+			if overrideSessions, ok := test.pendingOverrideSessions[chain.ID]; ok {
+				expectedChain.Overrides = make(map[types.ProtocolID]types.OverrideSession)
+				for _, overrideSession := range overrideSessions {
+					overrideSession.GigastakeApp = *testdata.GigastakeApps()[overrideSession.GigastakeAppID]
+					overrideSession.GigastakeAppID = ""
+					protocolID := overrideSession.ProtocolID
+					overrideSession.ProtocolID = ""
+					expectedChain.Overrides[protocolID] = overrideSession
+				}
+				nodes := test.chain.Overrides[types.ProtocolMorseMainnet].Nodes
+				for _, overrideNode := range test.pendingOverrideNodes[chain.ID] {
+					overrideNode.ProtocolID = ""
+					overrideNode.ChainID = ""
+					nodes = append(nodes, overrideNode)
+				}
+				overrideSession := expectedChain.Overrides[types.ProtocolMorseMainnet]
+				overrideSession.Nodes = nodes
+				expectedChain.Overrides[types.ProtocolMorseMainnet] = overrideSession
+			}
 
 			// Add pending data to cache
 			cache.pendingAltruists = test.pendingAltruists
 			cache.pendingAliasDomains = test.pendingAliasDomains
 			cache.pendingChecks = test.pendingChecks
+			cache.pendingSessions = test.pendingOverrideSessions
+			cache.pendingNodes = test.pendingOverrideNodes
 
 			// Add or update Chain
 			cache.upsertChain(chain)
@@ -1308,6 +1369,7 @@ func Test_upsertChain(t *testing.T) {
 
 				// Check Chain in cache
 				storedChain := cache.GetChain(chain.ID, Options{})
+
 				c.Equal(expectedChain, storedChain, "Chain should be added to cache")
 			}
 
