@@ -1,4 +1,4 @@
-name: Lint, Test, Publish New Go Version, Push Test Database Image and Push Docker Image to GAR
+name: Lint, Test, Tag, Push Test Database Image and Push Docker Image to GAR
 
 on:
   push:
@@ -11,77 +11,53 @@ env:
   REGISTRY: us-central1-docker.pkg.dev
 
 jobs:
-  pre-commit-checks:
-    name: Lint, Unit Test and Pre-commit Checks
+  golangci-lint:
+    name: Run golangci-lint
     runs-on: ubuntu-22.04
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Check for disabled pre-commit checks in .pre-commit-config.yaml
-        run: |
-          if grep '^[[:space:]]*#' .pre-commit-config.yaml; then
-            echo "Found commented lines in .pre-commit-config.yaml. Please remove them to proceed."
-            exit 1
-          fi
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: 1.21
 
-      - name: Cache Go and pre-commit data
-        uses: actions/cache@v3
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-            ~/.cache/pip
-            ~/pre-commit-2.20.0.pyz
-            $(go env GOPATH)/bin
-          key: ${{ runner.os }}-go-precommit-${{ hashFiles('**/go.sum', '**/requirements*.txt', 'pre-commit-2.20.0.pyz') }}
-          restore-keys: |
-            ${{ runner.os }}-go-precommit-
+          version: latest
+          args: --timeout 10m --verbose
 
-      - name: Install Go tools
+  gocritic:
+    name: Run gocritic
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
+
+      - name: Run gocritic
         run: |
-          PATH="$(go env GOPATH)/bin:$PATH"
-          if ! command -v goimports &> /dev/null; then
-            go install golang.org/x/tools/cmd/goimports@v0.6.0
-          fi
-          if ! command -v golangci-lint &> /dev/null; then
-            go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0
-          fi
-          if ! command -v gocritic &> /dev/null; then
-            go install github.com/go-critic/go-critic/cmd/gocritic@v0.6.5
-          fi
-        env:
-          PATH: $(go env GOPATH)/bin:$PATH
+          go install github.com/go-critic/go-critic/cmd/gocritic@v0.11.2
+          gocritic check -disable=sloppyTypeAssert ./...
 
-      - name: Download pre-commit if not cached
-        run: |
-          if [ ! -f ~/pre-commit-2.20.0.pyz ]; then
-            echo "Downloading pre-commit..."
-            wget -P ~ https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz
-          else
-            echo "Using cached pre-commit."
-          fi
+  unit-test:
+    name: Run unit tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Comment out 'no-commit-to-branch' in .pre-commit-config.yaml
-        run: |
-          sed -i 's/^\(\s*- id: no-commit-to-branch\)/# \1/' .pre-commit-config.yaml
-        working-directory: ${{ github.workspace }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
 
-      - name: Run pre-commit checks on all files
-        run: python3 ~/pre-commit-2.20.0.pyz run --all-files
+      - name: Run unit tests
+        run: make test_unit_ci
 
-  test:
+  e2e-test:
     name: Test
     runs-on: ubuntu-22.04
-    needs: [pre-commit-checks]
     steps:
       - uses: actions/checkout@v3
 
@@ -89,16 +65,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.21
-
-      - name: Set up cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
 
       - name: Set up Docker test stack
         run: make test_env_up
@@ -112,10 +78,23 @@ jobs:
       - name: Run E2E tests
         run: make run_e2e_tests_ci
 
+  test-docker-build:
+    name: Test build of Docker image
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: docker/build-push-action@v2
+        with:
+          build-args: |
+            IMAGE_TAG=test
+            GITHUB_TOKEN=${{ secrets.POKT_BOT_GITHUB_TOKEN }}
+          push: false
+          load: true
+          tags: test-build
+
   tag:
     name: Semantic Release Tag
     runs-on: ubuntu-22.04
-    needs: [pre-commit-checks, test]
+    needs: [golangci-lint, gocritic, unit-test, e2e-test, test-docker-build]
     outputs:
       new: ${{ steps.semantic.outputs.new-release-published }}
       version: ${{ steps.semantic.outputs.release-version }}
@@ -141,31 +120,11 @@ jobs:
           plugins: |
             ['@semantic-release/commit-analyzer']
 
-  release-client:
-    if: needs.tag.outputs.new == 'true'
-    name: Release New Go Version
-    runs-on: ubuntu-22.04
-    needs: [pre-commit-checks, test, tag]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-go@v4
-        with:
-          go-version: 1.21
-
-      - name: Setup Git Authentication
-        run: |
-          git config --global url."https://${{ secrets.POKT_BOT_GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
-      - name: Go List
-        run: GOPRIVATE=github.com/pokt-foundation/* go list -m github.com/pokt-foundation/portal-http-db/v2@v${{ needs.tag.outputs.version }}
-
   publish-test-db:
     if: needs.tag.outputs.new == 'true'
     name: Push Test Database Image to Dockerhub
     runs-on: ubuntu-22.04
-    needs: [pre-commit-checks, test, tag]
+    needs: [golangci-lint, gocritic, unit-test, e2e-test, test-docker-build, tag]
 
     steps:
       - uses: actions/checkout@v3
@@ -192,7 +151,7 @@ jobs:
     if: needs.tag.outputs.new == 'true'
     name: Push Docker Image to Google Artifact Registry
     runs-on: ubuntu-22.04
-    needs: [pre-commit-checks, test, tag]
+    needs: [golangci-lint, gocritic, unit-test, e2e-test, test-docker-build, tag]
 
     steps:
       - uses: actions/checkout@v3

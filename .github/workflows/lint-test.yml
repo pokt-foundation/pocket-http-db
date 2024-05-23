@@ -1,76 +1,57 @@
-name: Lint & Test
+name: Lint & Unit Test
 
 on:
   pull_request:
     branches: [master]
 
 jobs:
-  pre-commit-checks:
-    name: Lint, Unit Test and Pre-commit Checks
+  golangci-lint:
+    name: Run golangci-lint
     runs-on: ubuntu-22.04
-
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Check for disabled pre-commit checks in .pre-commit-config.yaml
-      run: |
-        if grep '^[[:space:]]*#' .pre-commit-config.yaml; then
-          echo "Found commented lines in .pre-commit-config.yaml. Please remove them to proceed."
-          exit 1
-        fi
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout 10m --verbose
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: 1.21
+  gocritic:
+    name: Run gocritic
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Cache Go and pre-commit data
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-          ~/.cache/pip
-          ~/pre-commit-2.20.0.pyz
-          $(go env GOPATH)/bin
-        key: ${{ runner.os }}-go-precommit-${{ hashFiles('**/go.sum', '**/requirements*.txt', 'pre-commit-2.20.0.pyz') }}
-        restore-keys: |
-          ${{ runner.os }}-go-precommit-
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
 
-    - name: Install Go tools
-      run: |
-        PATH="$(go env GOPATH)/bin:$PATH"
-        if ! command -v goimports &> /dev/null; then
-          go install golang.org/x/tools/cmd/goimports@v0.6.0
-        fi
-        if ! command -v golangci-lint &> /dev/null; then
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.51.0
-        fi
-        if ! command -v gocritic &> /dev/null; then
-          go install github.com/go-critic/go-critic/cmd/gocritic@v0.6.5
-        fi
-      env:
-        PATH: $(go env GOPATH)/bin:$PATH
+      - name: Run gocritic
+        run: |
+          go install github.com/go-critic/go-critic/cmd/gocritic@v0.11.2
+          gocritic check -disable=sloppyTypeAssert ./...
 
-    - name: Download pre-commit if not cached
-      run: |
-        if [ ! -f ~/pre-commit-2.20.0.pyz ]; then
-          echo "Downloading pre-commit..."
-          wget -P ~ https://github.com/pre-commit/pre-commit/releases/download/v2.20.0/pre-commit-2.20.0.pyz
-        else
-          echo "Using cached pre-commit."
-        fi
+  unit-test:
+    name: Run unit tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Run pre-commit checks on all files
-      run: python3 ~/pre-commit-2.20.0.pyz run --all-files
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.21
 
-  test:
+      - name: Run unit tests
+        run: make test_unit_ci
+
+  e2e-test:
     name: Test
     runs-on: ubuntu-22.04
-    needs: [pre-commit-checks]
     steps:
       - uses: actions/checkout@v3
 
@@ -78,16 +59,6 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.21
-
-      - name: Set up cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
 
       - name: Set up Docker test stack
         run: make test_env_up
@@ -100,3 +71,16 @@ jobs:
 
       - name: Run E2E tests
         run: make run_e2e_tests_ci
+
+  test-docker-build:
+    name: Test build of Docker image
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: docker/build-push-action@v2
+        with:
+          build-args: |
+            IMAGE_TAG=test
+            GITHUB_TOKEN=${{ secrets.POKT_BOT_GITHUB_TOKEN }}
+          push: false
+          load: true
+          tags: test-build
