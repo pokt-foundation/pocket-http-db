@@ -184,7 +184,7 @@ func main() {
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
-			logger.Error("Failed to clean up: %v", err)
+			logger.Error(fmt.Sprintf("Failed to clean up: %v", err))
 		}
 	}()
 
@@ -227,7 +227,7 @@ func main() {
 	// Start pprof server only if profiler flag set
 	if options.profiler {
 		go func() {
-			logger.Info("pprof:", http.ListenAndServe("localhost:6060", nil))
+			logger.Info(fmt.Sprintf("pprof: %v", http.ListenAndServe("localhost:6060", nil)))
 		}()
 	}
 
