@@ -2,10 +2,8 @@ package postgresdriver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/pokt-foundation/portal-http-db/v2/types"
@@ -108,14 +106,7 @@ func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, 
 		chainIDs = append(chainIDs, string(chainID))
 	}
 
-	gigastakesCount, err := pg.GetGigastakeApplicationsCount(ctx)
-	if err != nil {
-		return err
-	}
-
-	gigastakeApp.Name = pg.getNextGigastakeName(gigastakesCount, gigastakeApp.ID)
-
-	err = qtx.InsertGigastakeApp(ctx, InsertGigastakeAppParams{
+	err := qtx.InsertGigastakeApp(ctx, InsertGigastakeAppParams{
 		ID:              gigastakeApp.ID,
 		ProtocolID:      gigastakeApp.ProtocolID,
 		ChainIDs:        chainIDs,
@@ -142,48 +133,6 @@ func (pg *PostgresDriver) insertGigastakeApp(ctx context.Context, qtx *Queries, 
 	}
 
 	return nil
-}
-
-// getNextGigastakeName generates a new gigastake name and checks if the name already exists in the DB
-// getNextGigastakeName generates a new gigastake name and checks if the name already exists in the DB
-// If the name can't be fetched, it returns the fallback name so it will always return a string
-func (pg *PostgresDriver) getNextGigastakeName(latestEntry int64, fallback types.GigastakeAppID) string {
-	number := latestEntry + 1
-
-	for i := 0; i < 10; i++ {
-		name, err := generateNextGigastakeName(number, fallback)
-		if err == nil {
-			exists, err := pg.CheckGigastakeAppNameExists(context.Background(), name)
-			if err == nil && !exists {
-				return name
-			}
-		}
-
-		number++
-	}
-
-	return string(fallback)
-}
-
-// generateNextGigastakeName gets the next name for a gigastake. This field is only for human readability.
-// If the name can't be fetched, the calling function returns the fallback name so it will always return a string
-func generateNextGigastakeName(entry int64, fallback types.GigastakeAppID) (string, error) {
-	// I want to be the very best, like no one ever was
-	// To catch them is my real test; to train them is my cause!
-	resp, err := http.Get(fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%d", entry))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var response struct {
-		Name string `json:"name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return string(fallback), nil
-	}
-
-	return response.Name, nil
 }
 
 // validateGigastakeAppInput performs all necessary data validation checks on incoming GigastakeApp data

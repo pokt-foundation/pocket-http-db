@@ -1071,6 +1071,3 @@ SELECT EXISTS (
         FROM gigastake_applications
         WHERE name = $1
     );
--- name: GetGigastakeApplicationsCount :one
-SELECT COUNT(*)
-FROM gigastake_applications;
