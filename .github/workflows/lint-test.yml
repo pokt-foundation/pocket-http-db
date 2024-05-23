@@ -50,7 +50,7 @@ jobs:
         run: make test_unit_ci
 
   e2e-test:
-    name: Test
+    name: Run End-to-End tests
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
