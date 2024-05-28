@@ -623,18 +623,6 @@ func (q *Queries) GetAccountOwner(ctx context.Context, accountID types.AccountID
 	return i, err
 }
 
-const getGigastakeApplicationsCount = `-- name: GetGigastakeApplicationsCount :one
-SELECT COUNT(*)
-FROM gigastake_applications
-`
-
-func (q *Queries) GetGigastakeApplicationsCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, getGigastakeApplicationsCount)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const getInvitedUserID = `-- name: GetInvitedUserID :one
 SELECT id
 FROM users
