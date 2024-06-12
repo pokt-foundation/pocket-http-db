@@ -37,6 +37,7 @@ CREATE TYPE protocol_id AS ENUM (
     'shannon-mainnet',
     'shannon-testnet'
 );
+CREATE TYPE chain_scheme AS ENUM ('https', 'wss');
 -- Plans Tables
 CREATE TABLE pay_plans (
     name VARCHAR(255),
@@ -149,6 +150,7 @@ CREATE TABLE chains (
     log_limit_blocks INT,
     allowed_methods VARCHAR(10) ARRAY,
     active BOOLEAN NOT NULL DEFAULT false,
+    scheme chain_scheme NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN DEFAULT false,
