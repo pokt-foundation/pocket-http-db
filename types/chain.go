@@ -15,6 +15,7 @@ type (
 	AltruistURL string
 	ChainAlias  string
 	ChainDomain string
+	ChainScheme string
 )
 
 const (
@@ -26,6 +27,9 @@ const (
 	ChainCheckTypeChain    ChainCheckType = "chain"
 	ChainCheckTypeMerge    ChainCheckType = "merge"
 	ChainCheckTypeSync     ChainCheckType = "sync"
+
+	ChainSchemeHTTPS ChainScheme = "https"
+	ChainSchemeWSS   ChainScheme = "wss"
 )
 
 func (c ChainAuthType) IsValid() bool {
@@ -89,11 +93,21 @@ func (d ChainDomain) GetAlias() ChainAlias {
 	return ChainAlias(domainComponents[0])
 }
 
+func (s ChainScheme) IsValid() bool {
+	switch s {
+	case ChainSchemeHTTPS, ChainSchemeWSS:
+		return true
+	default:
+		return false
+	}
+}
+
 /* Chain Struct and Methods */
 type (
 	Chain struct {
 		ID             RelayChainID             `json:"id"`
 		Blockchain     ChainAlias               `json:"blockchain"`
+		Scheme         ChainScheme              `json:"scheme"`
 		Description    string                   `json:"description"`
 		IconURL        string                   `json:"iconURL"`
 		EnforceResult  string                   `json:"enforceResult"`
@@ -152,6 +166,7 @@ type (
 		ID             RelayChainID              `json:"id"`
 		IconURL        *string                   `json:"iconURL"`
 		Blockchain     *ChainAlias               `json:"blockchain"`
+		Scheme         *ChainScheme              `json:"scheme"`
 		Description    *string                   `json:"description"`
 		EnforceResult  *string                   `json:"enforceResult"`
 		Path           *string                   `json:"path"`
@@ -253,6 +268,14 @@ func (c *Chain) SetGigastakeApp(gigastakeApp *GigastakeApp) {
 func (c Chain) ClearGigastakeApps() Chain {
 	c.GigastakeApps = nil
 	return c
+}
+
+func (c *Chain) IsHTTPS() bool {
+	return c.Scheme == ChainSchemeHTTPS
+}
+
+func (c *Chain) IsWSS() bool {
+	return c.Scheme == ChainSchemeWSS
 }
 
 func (c *Chain) Table() Table {
