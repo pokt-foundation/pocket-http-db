@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.22
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
@@ -35,7 +35,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.22
 
       - name: Run gocritic
         run: |
@@ -50,7 +50,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21
+          go-version: 1.22
 
       - name: Run unit tests
         run: make test_unit_ci
@@ -64,7 +64,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.21
+          go-version: 1.22
 
       - name: Set up Docker test stack
         run: make test_env_up
@@ -146,6 +146,22 @@ jobs:
           tags: |
             pocketfoundation/test-portal-postgres:latest
             pocketfoundation/test-portal-postgres:${{ needs.tag.outputs.version }}
+
+  release-client:
+    if: needs.tag.outputs.new == 'true'
+    name: Release New Go Version
+    runs-on: ubuntu-22.04
+    needs: [golangci-lint, gocritic, unit-test, e2e-test, test-docker-build, tag]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: 1.22
+
+      - name: Go List
+        run: GOPROXY=proxy.golang.org go list -m github.com/pokt-foundation/portal-http-db/v2@v${{ needs.tag.outputs.version }}
 
   push:
     if: needs.tag.outputs.new == 'true'

@@ -1,6 +1,6 @@
 module github.com/pokt-foundation/portal-http-db/v2
 
-go 1.21
+go 1.22
 
 require (
 	cloud.google.com/go/cloudsqlconn v1.3.0
