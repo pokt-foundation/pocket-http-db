@@ -1313,6 +1313,7 @@ var (
 		ID:            "0006",
 		IconURL:       "https://picsum.photos/200",
 		Blockchain:    "solana-mainnet",
+		Scheme:        types.ChainSchemeHTTPS,
 		Description:   "Solana",
 		EnforceResult: "JSON",
 		Ticker:        "SOL",
@@ -1358,6 +1359,7 @@ var (
 		Chain: &types.Chain{
 			ID:            "0007",
 			Blockchain:    "cardano-mainnet",
+			Scheme:        types.ChainSchemeHTTPS,
 			Description:   "Cardano",
 			EnforceResult: "JSON",
 			Ticker:        "ADA",
@@ -1469,6 +1471,7 @@ var (
 		ID:            "0001",
 		IconURL:       newString("https://picsum.photos/246"),
 		Blockchain:    newChainAlias("mainnet-NEW"),
+		Scheme:        newChainScheme(types.ChainSchemeHTTPS),
 		Description:   newString("Pocket Network Mainnet Update"),
 		EnforceResult: newString("JSON"),
 		Path:          newString("/v1/query/height/wow"),
@@ -1519,6 +1522,7 @@ var (
 		ID:            "0001",
 		IconURL:       newString("https://picsum.photos/200"),
 		Blockchain:    newChainAlias("mainnet-ULTRA"),
+		Scheme:        newChainScheme(types.ChainSchemeWSS),
 		Description:   newString("Pocket Network Mainnet Original"),
 		EnforceResult: newString("JSON"),
 		Path:          newString("/v1/query/height/wow"),
@@ -1548,6 +1552,7 @@ var (
 	UpdateChainThree = types.UpdateChain{
 		ID:            "0001",
 		Blockchain:    newChainAlias("mainnet-ULTRA"),
+		Scheme:        newChainScheme(types.ChainSchemeHTTPS),
 		Description:   newString("Pocket Network Mainnet Original"),
 		EnforceResult: newString("JSON"),
 		Path:          newString("/v1/query/height/wow"),
@@ -1599,4 +1604,8 @@ func newChainAlias(a types.ChainAlias) *types.ChainAlias {
 
 func newBool(b bool) *bool {
 	return &b
+}
+
+func newChainScheme(s types.ChainScheme) *types.ChainScheme {
+	return &s
 }

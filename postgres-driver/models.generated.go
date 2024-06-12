@@ -183,6 +183,48 @@ func (ns NullChainCheckType) Value() (driver.Value, error) {
 	return string(ns.ChainCheckType), nil
 }
 
+type ChainScheme string
+
+const (
+	ChainSchemeHttps ChainScheme = "https"
+	ChainSchemeWss   ChainScheme = "wss"
+)
+
+func (e *ChainScheme) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ChainScheme(s)
+	case string:
+		*e = ChainScheme(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ChainScheme: %T", src)
+	}
+	return nil
+}
+
+type NullChainScheme struct {
+	ChainScheme ChainScheme `json:"chain_scheme"`
+	Valid       bool        `json:"valid"` // Valid is true if ChainScheme is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullChainScheme) Scan(value interface{}) error {
+	if value == nil {
+		ns.ChainScheme, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ChainScheme.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullChainScheme) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ChainScheme), nil
+}
+
 type Environment string
 
 const (
@@ -549,6 +591,7 @@ type Chain struct {
 	LogLimitBlocks pgtype.Int4        `json:"log_limit_blocks"`
 	AllowedMethods []string           `json:"allowed_methods"`
 	Active         bool               `json:"active"`
+	Scheme         types.ChainScheme  `json:"scheme"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	Deleted        pgtype.Bool        `json:"deleted"`
