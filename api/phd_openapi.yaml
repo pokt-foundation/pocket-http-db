@@ -52,6 +52,11 @@ paths:
                       type: string
                     blockchain:
                       type: string
+                    scheme:
+                      type: string
+                      enum:
+                        - "https"
+                        - "wss"
                     description:
                       type: string
                     iconURL:
@@ -93,6 +98,7 @@ paths:
                   value:
                     - id: "0001"
                       blockchain: "mainnet"
+                      scheme: "https"
                       description: "POKT Network Mainnet"
                       iconURL: ""
                       enforceResult: "REST"
@@ -175,6 +181,11 @@ paths:
                     blockchain:
                       type: string
                       example: mainnet
+                    scheme:
+                      type: string
+                      enum:
+                        - "https"
+                        - "wss"
                     chainChecks:
                       type: object
                       properties:
@@ -320,6 +331,11 @@ paths:
                         type: string
                       blockchain:
                         type: string
+                      scheme:
+                        type: string
+                        enum:
+                          - "https"
+                          - "wss"
                       description:
                         type: string
                       iconURL:
@@ -460,6 +476,11 @@ paths:
                     type: string
                   blockchain:
                     type: string
+                  scheme:
+                    type: string
+                    enum:
+                      - "https"
+                      - "wss"
                   description:
                     type: string
                   iconURL:
@@ -501,6 +522,7 @@ paths:
                   value:
                     id: "0001"
                     blockchain: "mainnet"
+                    scheme: "https"
                     description: "POKT Network Mainnet"
                     iconURL: ""
                     enforceResult: "REST"
@@ -561,6 +583,12 @@ paths:
                 blockchain:
                   type: string
                   example: pokt-testnet
+                scheme:
+                  type: string
+                  enum:
+                    - "https"
+                    - "wss"
+                  example: "https"
                 description:
                   type: string
                   example: Pocket Network Testnet
@@ -619,6 +647,7 @@ paths:
               Update Chain:
                 value:
                   blockchain: pokt-testnet
+                  scheme: "https"
                   description: Pocket Network Testnet
                   enforceResult: JSON
                   path: /v1/query/test-height
@@ -649,6 +678,11 @@ paths:
                     type: string
                   blockchain:
                     type: string
+                  scheme:
+                    type: string
+                    enum:
+                      - "https"
+                      - "wss"
                   description:
                     type: string
                   iconURL:
@@ -690,6 +724,7 @@ paths:
                   value:
                     id: "0001"
                     blockchain: "mainnet"
+                    scheme: "https"
                     description: "POKT Network Mainnet"
                     iconURL: ""
                     enforceResult: "REST"

@@ -33,6 +33,7 @@ type (
 		ID             types.RelayChainID `json:"id"`
 		IconURL        string             `json:"icon_url"`
 		Blockchain     string             `json:"blockchain"`
+		Scheme         types.ChainScheme  `json:"scheme"`
 		Description    string             `json:"description"`
 		EnforceResult  string             `json:"enforce_result"`
 		Ticker         string             `json:"ticker"`
@@ -89,6 +90,7 @@ func (c *SelectChainsRow) ToChainRow() *ChainRow {
 		ID:             c.ID,
 		IconURL:        c.IconURL.String,
 		Blockchain:     c.Blockchain.String,
+		Scheme:         c.Scheme,
 		Description:    c.Description.String,
 		EnforceResult:  c.EnforceResult.String,
 		Ticker:         c.Ticker.String,
@@ -114,6 +116,7 @@ func (c *SelectChainRow) ToChainRow() *ChainRow {
 		ID:             c.ID,
 		IconURL:        c.IconURL.String,
 		Blockchain:     c.Blockchain.String,
+		Scheme:         c.Scheme,
 		Description:    c.Description.String,
 		EnforceResult:  c.EnforceResult.String,
 		Ticker:         c.Ticker.String,
@@ -157,6 +160,7 @@ func (c *ChainRow) toChain() (*types.Chain, error) {
 		ID:             types.RelayChainID(c.ID),
 		IconURL:        c.IconURL,
 		Blockchain:     types.ChainAlias(c.Blockchain),
+		Scheme:         c.Scheme,
 		Description:    c.Description,
 		EnforceResult:  c.EnforceResult,
 		Ticker:         c.Ticker,
@@ -391,6 +395,7 @@ func (pg *PostgresDriver) insertChain(ctx context.Context, qtx *Queries, chain t
 		ID:             chain.ID,
 		IconURL:        newText(chain.IconURL),
 		Blockchain:     newText(string(chain.Blockchain)),
+		Scheme:         chain.Scheme,
 		Description:    newText(chain.Description),
 		EnforceResult:  newText(chain.EnforceResult),
 		Ticker:         newText(chain.Ticker),
@@ -474,6 +479,7 @@ func (pg *PostgresDriver) updateChain(ctx context.Context, qtx *Queries, update 
 		ID:             update.ID,
 		IconURL:        newNullString(update.IconURL),
 		Blockchain:     newNullString((*string)(update.Blockchain)),
+		Scheme:         *update.Scheme,
 		Description:    newNullString(update.Description),
 		EnforceResult:  newNullString(update.EnforceResult),
 		Ticker:         newNullString(update.Ticker),
@@ -705,6 +711,7 @@ func (json dbChain) toOutput() *types.Chain {
 		ID:             json.ID,
 		IconURL:        json.IconURL,
 		Blockchain:     json.Blockchain,
+		Scheme:         json.Scheme,
 		Description:    json.Description,
 		EnforceResult:  json.EnforceResult,
 		Path:           json.Path,
@@ -758,6 +765,7 @@ type dbChain struct {
 	ID                       types.RelayChainID  `json:"id"`
 	IconURL                  string              `json:"icon_url"`
 	Blockchain               types.ChainAlias    `json:"blockchain"`
+	Scheme                   types.ChainScheme   `json:"scheme"`
 	Description              string              `json:"description"`
 	EnforceResult            string              `json:"enforce_result"`
 	Ticker                   string              `json:"ticker"`

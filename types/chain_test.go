@@ -484,3 +484,55 @@ func Test_ClearGigastakeApps(t *testing.T) {
 		})
 	}
 }
+
+func Test_Chain_IsHTTPS(t *testing.T) {
+	tests := []struct {
+		name     string
+		chain    Chain
+		expected bool
+	}{
+		{
+			name:     "should return true for HTTPS scheme",
+			chain:    Chain{Scheme: ChainSchemeHTTPS},
+			expected: true,
+		},
+		{
+			name:     "should return false for non-HTTPS scheme",
+			chain:    Chain{Scheme: ChainSchemeWSS},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.chain.IsHTTPS()
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
+func Test_Chain_IsWSS(t *testing.T) {
+	tests := []struct {
+		name     string
+		chain    Chain
+		expected bool
+	}{
+		{
+			name:     "should return true for WSS scheme",
+			chain:    Chain{Scheme: ChainSchemeWSS},
+			expected: true,
+		},
+		{
+			name:     "should return false for non-WSS scheme",
+			chain:    Chain{Scheme: ChainSchemeHTTPS},
+			expected: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.chain.IsWSS()
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}

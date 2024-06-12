@@ -1,6 +1,4 @@
 # This Docker compose only used for E2E testing the Portal HTTP DB
-version: "3"
-
 services:
   portal-http-db-1:
     build:
