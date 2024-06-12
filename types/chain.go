@@ -55,7 +55,7 @@ func (a AltruistURL) IsValid() bool {
 	if err != nil {
 		return false
 	}
-	if parsedURL.Scheme == "http" || parsedURL.Scheme == "https" {
+	if parsedURL.Scheme == "http" || parsedURL.Scheme == "https" || parsedURL.Scheme == "ws" || parsedURL.Scheme == "wss" {
 		return true
 	}
 	return false
