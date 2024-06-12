@@ -911,6 +911,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 			Aliases: map[types.ChainAlias]struct{}{
 				"pokt-mainnet": {},
 			},
+			Scheme:    types.ChainSchemeHTTPS,
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -947,6 +948,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 				"optimism-mainnet": {},
 				"optimism-rpc":     {},
 			},
+			Scheme:    types.ChainSchemeHTTPS,
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -988,6 +990,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 				"eth-mainnet": {},
 				"eth-rpc":     {},
 			},
+			Scheme:    types.ChainSchemeHTTPS,
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -1019,6 +1022,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 			Aliases: map[types.ChainAlias]struct{}{
 				"sui-testnet": {},
 			},
+			Scheme:    types.ChainSchemeHTTPS,
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -1052,6 +1056,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 			Aliases: map[types.ChainAlias]struct{}{
 				"harmony-0": {},
 			},
+			Scheme:    types.ChainSchemeHTTPS,
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 		},
@@ -1083,6 +1088,7 @@ func Chains(opts ...ChainOptions) map[types.RelayChainID]*types.Chain {
 					Allowance: 1,
 				},
 			},
+			Scheme:    types.ChainSchemeHTTPS,
 			CreatedAt: MockTimestamp,
 			UpdatedAt: MockTimestamp,
 			Deleted:   false,
