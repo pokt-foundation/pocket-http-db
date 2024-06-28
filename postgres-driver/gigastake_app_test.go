@@ -14,6 +14,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadGigastakeApps() {
 		name          string
 		gigastakeApps map[types.GigastakeAppID]*types.GigastakeApp
 		options       types.DriverOptions
+		testNoChains  bool
 		err           error
 	}{
 		{
@@ -26,15 +27,50 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadGigastakeApps() {
 			options: types.DriverOptions{},
 			err:     nil,
 		},
+		{
+			name: "Should work even if gigastake app has no chains associated",
+			gigastakeApps: map[types.GigastakeAppID]*types.GigastakeApp{
+				testdata.GigastakeApps()["test_gigastake_app_1"].ID: testdata.GigastakeApps()["test_gigastake_app_1"],
+				testdata.GigastakeApps()["test_gigastake_app_2"].ID: testdata.GigastakeApps()["test_gigastake_app_2"],
+				testdata.GigastakeApps()["test_gigastake_app_3"].ID: {
+					ID:              "test_gigastake_app_3",
+					ProtocolID:      "morse-mainnet",
+					ChainIDs:        map[types.RelayChainID]struct{}{},
+					Name:            "snorlax",
+					Address:         "test_e570c841d5cd4f6197e0428ed7c517fd",
+					PublicKey:       types.GigastakeAppPublicKey("test_4f805bbbf96c4a649efc3f4f95616f2e"),
+					ClientPublicKey: "test_789f9d6adcc846f1a079bf68237b5f5c",
+					Signature:       "test_01eac46efc9242a2be73879f1d09f1dc",
+					Version:         "0.0.1",
+					CreatedAt:       testdata.MockTimestamp,
+					UpdatedAt:       testdata.MockTimestamp,
+				},
+			},
+			options:      types.DriverOptions{},
+			testNoChains: true,
+			err:          nil,
+		},
 	}
 
 	for _, test := range tests {
 		ts.Run(test.name, func() {
+			if test.testNoChains {
+				ts.NoError(ts.deleteChainsForGigastakeApp3())
+			}
+
 			gigastakeApps, err := ts.driver.ReadGigastakeApps(context.Background(), test.options)
 			ts.Equal(test.err, err)
 			ts.Equal(test.gigastakeApps, gigastakeApps)
 		})
 	}
+}
+
+func (ts *PGDriverTestSuite) deleteChainsForGigastakeApp3() error {
+	_, err := ts.driver.db.Exec(context.Background(), `
+		DELETE FROM chains_gigastake_applications
+		WHERE gigastake_application_id = 'test_gigastake_app_3'
+	`)
+	return err
 }
 
 func (ts *PGDriverTestSuite) Test_PGDriver_WriteGigastakeApp() {
