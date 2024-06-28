@@ -1744,7 +1744,12 @@ const selectGigastakeApplications = `-- name: SelectGigastakeApplications :many
 SELECT ga.id,
     ga.name,
     ga.protocol_id,
-    ARRAY_AGG(cga.chain_id)::VARCHAR [] AS chain_ids,
+    COALESCE(
+        ARRAY_AGG(cga.chain_id) FILTER (
+            WHERE cga.chain_id IS NOT NULL
+        ),
+        '{}'
+    )::VARCHAR [] AS chain_ids,
     ga.created_at,
     ga.updated_at,
     ga.deleted,
