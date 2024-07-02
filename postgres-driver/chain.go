@@ -30,25 +30,26 @@ type (
 	}
 
 	ChainRow struct {
-		ID             types.RelayChainID `json:"id"`
-		IconURL        string             `json:"icon_url"`
-		Blockchain     string             `json:"blockchain"`
-		Scheme         types.ChainScheme  `json:"scheme"`
-		Description    string             `json:"description"`
-		EnforceResult  string             `json:"enforce_result"`
-		Ticker         string             `json:"ticker"`
-		Path           pgtype.Text        `json:"path"`
-		RequestTimeout pgtype.Int4        `json:"request_timeout"`
-		LogLimitBlocks pgtype.Int4        `json:"log_limit_blocks"`
-		AllowedMethods []string           `json:"allowed_methods"`
-		Active         bool               `json:"active"`
-		CreatedAt      pgtype.Timestamptz `json:"created_at"`
-		UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-		Deleted        pgtype.Bool        `json:"deleted"`
-		DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
-		ChainAltruists []byte             `json:"chain_altruists"`
-		ChainChecks    []byte             `json:"chain_checks"`
-		ChainAliases   []string           `json:"chain_aliases"`
+		ID                 types.RelayChainID `json:"id"`
+		IconURL            string             `json:"icon_url"`
+		Blockchain         string             `json:"blockchain"`
+		Scheme             types.ChainScheme  `json:"scheme"`
+		Description        string             `json:"description"`
+		EnforceResult      string             `json:"enforce_result"`
+		Ticker             string             `json:"ticker"`
+		Path               pgtype.Text        `json:"path"`
+		RequestTimeout     pgtype.Int4        `json:"request_timeout"`
+		NodeRequestTimeout pgtype.Int4        `json:"node_request_timeout"`
+		LogLimitBlocks     pgtype.Int4        `json:"log_limit_blocks"`
+		AllowedMethods     []string           `json:"allowed_methods"`
+		Active             bool               `json:"active"`
+		CreatedAt          pgtype.Timestamptz `json:"created_at"`
+		UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+		Deleted            pgtype.Bool        `json:"deleted"`
+		DeletedAt          pgtype.Timestamptz `json:"deleted_at"`
+		ChainAltruists     []byte             `json:"chain_altruists"`
+		ChainChecks        []byte             `json:"chain_checks"`
+		ChainAliases       []string           `json:"chain_aliases"`
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomainsMap []byte `json:"alias_domains_map"`
 	}
@@ -87,25 +88,26 @@ func (pg *PostgresDriver) ReadChains(ctx context.Context, options types.DriverOp
 
 func (c *SelectChainsRow) ToChainRow() *ChainRow {
 	return &ChainRow{
-		ID:             c.ID,
-		IconURL:        c.IconURL.String,
-		Blockchain:     c.Blockchain.String,
-		Scheme:         c.Scheme,
-		Description:    c.Description.String,
-		EnforceResult:  c.EnforceResult.String,
-		Ticker:         c.Ticker.String,
-		Path:           c.Path,
-		RequestTimeout: c.RequestTimeout,
-		LogLimitBlocks: c.LogLimitBlocks,
-		AllowedMethods: c.AllowedMethods,
-		Active:         c.Active,
-		CreatedAt:      c.CreatedAt,
-		UpdatedAt:      c.UpdatedAt,
-		Deleted:        c.Deleted,
-		DeletedAt:      c.DeletedAt,
-		ChainAliases:   c.ChainAliases,
-		ChainAltruists: c.ChainAltruists,
-		ChainChecks:    c.ChainChecks,
+		ID:                 c.ID,
+		IconURL:            c.IconURL.String,
+		Blockchain:         c.Blockchain.String,
+		Scheme:             c.Scheme,
+		Description:        c.Description.String,
+		EnforceResult:      c.EnforceResult.String,
+		Ticker:             c.Ticker.String,
+		Path:               c.Path,
+		RequestTimeout:     c.RequestTimeout,
+		NodeRequestTimeout: c.NodeRequestTimeout,
+		LogLimitBlocks:     c.LogLimitBlocks,
+		AllowedMethods:     c.AllowedMethods,
+		Active:             c.Active,
+		CreatedAt:          c.CreatedAt,
+		UpdatedAt:          c.UpdatedAt,
+		Deleted:            c.Deleted,
+		DeletedAt:          c.DeletedAt,
+		ChainAliases:       c.ChainAliases,
+		ChainAltruists:     c.ChainAltruists,
+		ChainChecks:        c.ChainChecks,
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomainsMap: c.AliasDomainsMap,
 	}
@@ -113,25 +115,26 @@ func (c *SelectChainsRow) ToChainRow() *ChainRow {
 
 func (c *SelectChainRow) ToChainRow() *ChainRow {
 	return &ChainRow{
-		ID:             c.ID,
-		IconURL:        c.IconURL.String,
-		Blockchain:     c.Blockchain.String,
-		Scheme:         c.Scheme,
-		Description:    c.Description.String,
-		EnforceResult:  c.EnforceResult.String,
-		Ticker:         c.Ticker.String,
-		Path:           c.Path,
-		RequestTimeout: c.RequestTimeout,
-		LogLimitBlocks: c.LogLimitBlocks,
-		AllowedMethods: c.AllowedMethods,
-		Active:         c.Active,
-		CreatedAt:      c.CreatedAt,
-		UpdatedAt:      c.UpdatedAt,
-		Deleted:        c.Deleted,
-		DeletedAt:      c.DeletedAt,
-		ChainAliases:   c.ChainAliases,
-		ChainAltruists: c.ChainAltruists,
-		ChainChecks:    c.ChainChecks,
+		ID:                 c.ID,
+		IconURL:            c.IconURL.String,
+		Blockchain:         c.Blockchain.String,
+		Scheme:             c.Scheme,
+		Description:        c.Description.String,
+		EnforceResult:      c.EnforceResult.String,
+		Ticker:             c.Ticker.String,
+		Path:               c.Path,
+		RequestTimeout:     c.RequestTimeout,
+		NodeRequestTimeout: c.NodeRequestTimeout,
+		LogLimitBlocks:     c.LogLimitBlocks,
+		AllowedMethods:     c.AllowedMethods,
+		Active:             c.Active,
+		CreatedAt:          c.CreatedAt,
+		UpdatedAt:          c.UpdatedAt,
+		Deleted:            c.Deleted,
+		DeletedAt:          c.DeletedAt,
+		ChainAliases:       c.ChainAliases,
+		ChainAltruists:     c.ChainAltruists,
+		ChainChecks:        c.ChainChecks,
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomainsMap: c.AliasDomainsMap,
 	}
@@ -157,21 +160,22 @@ func (c *ChainRow) toChain() (*types.Chain, error) {
 	}
 
 	chain := &types.Chain{
-		ID:             types.RelayChainID(c.ID),
-		IconURL:        c.IconURL,
-		Blockchain:     types.ChainAlias(c.Blockchain),
-		Scheme:         c.Scheme,
-		Description:    c.Description,
-		EnforceResult:  c.EnforceResult,
-		Ticker:         c.Ticker,
-		AllowedMethods: c.AllowedMethods,
-		Path:           c.Path.String,
-		LogLimitBlocks: c.LogLimitBlocks.Int32,
-		RequestTimeout: c.RequestTimeout.Int32,
-		Active:         c.Active,
-		Aliases:        aliases,
-		Altruists:      altruists,
-		Checks:         checks,
+		ID:                 types.RelayChainID(c.ID),
+		IconURL:            c.IconURL,
+		Blockchain:         types.ChainAlias(c.Blockchain),
+		Scheme:             c.Scheme,
+		Description:        c.Description,
+		EnforceResult:      c.EnforceResult,
+		Ticker:             c.Ticker,
+		AllowedMethods:     c.AllowedMethods,
+		Path:               c.Path.String,
+		LogLimitBlocks:     c.LogLimitBlocks.Int32,
+		RequestTimeout:     c.RequestTimeout.Int32,
+		NodeRequestTimeout: c.NodeRequestTimeout.Int32,
+		Active:             c.Active,
+		Aliases:            aliases,
+		Altruists:          altruists,
+		Checks:             checks,
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomains: domains,
 		CreatedAt:    c.CreatedAt.Time.UTC(),
@@ -392,19 +396,20 @@ func (pg *PostgresDriver) insertChain(ctx context.Context, qtx *Queries, chain t
 	}
 
 	createdChainID, err := qtx.InsertChain(ctx, InsertChainParams{
-		ID:             chain.ID,
-		IconURL:        newText(chain.IconURL),
-		Blockchain:     newText(string(chain.Blockchain)),
-		Scheme:         chain.Scheme,
-		Description:    newText(chain.Description),
-		EnforceResult:  newText(chain.EnforceResult),
-		Ticker:         newText(chain.Ticker),
-		Path:           newText(chain.Path),
-		RequestTimeout: newInt4(chain.RequestTimeout, true),
-		LogLimitBlocks: newInt4(chain.LogLimitBlocks, true),
-		AllowedMethods: chain.AllowedMethods,
-		CreatedAt:      newTimestamptz(chain.CreatedAt),
-		UpdatedAt:      newTimestamptz(chain.UpdatedAt),
+		ID:                 chain.ID,
+		IconURL:            newText(chain.IconURL),
+		Blockchain:         newText(string(chain.Blockchain)),
+		Scheme:             chain.Scheme,
+		Description:        newText(chain.Description),
+		EnforceResult:      newText(chain.EnforceResult),
+		Ticker:             newText(chain.Ticker),
+		Path:               newText(chain.Path),
+		RequestTimeout:     newInt4(chain.RequestTimeout, true),
+		NodeRequestTimeout: newInt4(chain.NodeRequestTimeout, true),
+		LogLimitBlocks:     newInt4(chain.LogLimitBlocks, true),
+		AllowedMethods:     chain.AllowedMethods,
+		CreatedAt:          newTimestamptz(chain.CreatedAt),
+		UpdatedAt:          newTimestamptz(chain.UpdatedAt),
 	})
 	if err != nil {
 		return err
@@ -476,18 +481,19 @@ func (pg *PostgresDriver) updateChain(ctx context.Context, qtx *Queries, update 
 	}
 
 	createdChainID, err := qtx.UpdateChain(ctx, UpdateChainParams{
-		ID:             update.ID,
-		IconURL:        newNullString(update.IconURL),
-		Blockchain:     newNullString((*string)(update.Blockchain)),
-		Scheme:         *update.Scheme,
-		Description:    newNullString(update.Description),
-		EnforceResult:  newNullString(update.EnforceResult),
-		Ticker:         newNullString(update.Ticker),
-		Path:           newNullString(update.Path),
-		RequestTimeout: newNullInt(update.RequestTimeout, true),
-		LogLimitBlocks: newNullInt(update.LogLimitBlocks, true),
-		AllowedMethods: update.AllowedMethods,
-		UpdatedAt:      newTimestamptz(updatedAt),
+		ID:                 update.ID,
+		IconURL:            newNullString(update.IconURL),
+		Blockchain:         newNullString((*string)(update.Blockchain)),
+		Scheme:             *update.Scheme,
+		Description:        newNullString(update.Description),
+		EnforceResult:      newNullString(update.EnforceResult),
+		Ticker:             newNullString(update.Ticker),
+		Path:               newNullString(update.Path),
+		RequestTimeout:     newNullInt(update.RequestTimeout, true),
+		NodeRequestTimeout: newNullInt(update.NodeRequestTimeout, true),
+		LogLimitBlocks:     newNullInt(update.LogLimitBlocks, true),
+		AllowedMethods:     update.AllowedMethods,
+		UpdatedAt:          newTimestamptz(updatedAt),
 	})
 	if err != nil {
 		return err
@@ -708,20 +714,21 @@ func (pg *PostgresDriver) SetChainActiveStatus(ctx context.Context, chainID type
 /* ----- Used by Listener ----- */
 func (json dbChain) toOutput() *types.Chain {
 	return &types.Chain{
-		ID:             json.ID,
-		IconURL:        json.IconURL,
-		Blockchain:     json.Blockchain,
-		Scheme:         json.Scheme,
-		Description:    json.Description,
-		EnforceResult:  json.EnforceResult,
-		Path:           json.Path,
-		Ticker:         json.Ticker,
-		AllowedMethods: json.AllowedMethods,
-		LogLimitBlocks: json.LogLimitBlocks,
-		RequestTimeout: json.RequestTimeout,
-		Active:         json.Active,
-		CreatedAt:      json.CreatedAt,
-		UpdatedAt:      json.UpdatedAt,
+		ID:                 json.ID,
+		IconURL:            json.IconURL,
+		Blockchain:         json.Blockchain,
+		Scheme:             json.Scheme,
+		Description:        json.Description,
+		EnforceResult:      json.EnforceResult,
+		Path:               json.Path,
+		Ticker:             json.Ticker,
+		AllowedMethods:     json.AllowedMethods,
+		LogLimitBlocks:     json.LogLimitBlocks,
+		RequestTimeout:     json.RequestTimeout,
+		NodeRequestTimeout: json.NodeRequestTimeout,
+		Active:             json.Active,
+		CreatedAt:          json.CreatedAt,
+		UpdatedAt:          json.UpdatedAt,
 	}
 }
 
@@ -771,6 +778,7 @@ type dbChain struct {
 	Ticker                   string              `json:"ticker"`
 	Path                     string              `json:"path"`
 	RequestTimeout           int32               `json:"request_timeout"`
+	NodeRequestTimeout       int32               `json:"node_request_timeout"`
 	LogLimitBlocks           int32               `json:"log_limit_blocks"`
 	ChainAliases             []string            `json:"chain_aliases"`
 	AllowedMethods           []string            `json:"allowed_methods"`

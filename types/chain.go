@@ -105,21 +105,22 @@ func (s ChainScheme) IsValid() bool {
 /* Chain Struct and Methods */
 type (
 	Chain struct {
-		ID             RelayChainID             `json:"id"`
-		Blockchain     ChainAlias               `json:"blockchain"`
-		Scheme         ChainScheme              `json:"scheme"`
-		Description    string                   `json:"description"`
-		IconURL        string                   `json:"iconURL"`
-		EnforceResult  string                   `json:"enforceResult"`
-		Path           string                   `json:"path"`
-		Ticker         string                   `json:"ticker"`
-		AllowedMethods []string                 `json:"allowedMethods"`
-		LogLimitBlocks int32                    `json:"logLimitBlocks"`
-		RequestTimeout int32                    `json:"requestTimeout"`
-		Active         bool                     `json:"active"`
-		Altruists      map[AltruistURL]Altruist `json:"altruists,omitempty"`
-		Checks         map[ChainCheckType]Check `json:"chainChecks,omitempty"`
-		Aliases        map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
+		ID                 RelayChainID             `json:"id"`
+		Blockchain         ChainAlias               `json:"blockchain"`
+		Scheme             ChainScheme              `json:"scheme"`
+		Description        string                   `json:"description"`
+		IconURL            string                   `json:"iconURL"`
+		EnforceResult      string                   `json:"enforceResult"`
+		Path               string                   `json:"path"`
+		Ticker             string                   `json:"ticker"`
+		AllowedMethods     []string                 `json:"allowedMethods"`
+		LogLimitBlocks     int32                    `json:"logLimitBlocks"`
+		RequestTimeout     int32                    `json:"requestTimeout"`
+		NodeRequestTimeout int32                    `json:"nodeRequestTimeout"`
+		Active             bool                     `json:"active"`
+		Altruists          map[AltruistURL]Altruist `json:"altruists,omitempty"`
+		Checks             map[ChainCheckType]Check `json:"chainChecks,omitempty"`
+		Aliases            map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomains map[ChainAlias][]ChainDomain `json:"domains,omitempty"`
 		CreatedAt    time.Time                    `json:"createdAt"`
@@ -163,21 +164,22 @@ type (
 	}
 
 	UpdateChain struct {
-		ID             RelayChainID              `json:"id"`
-		IconURL        *string                   `json:"iconURL"`
-		Blockchain     *ChainAlias               `json:"blockchain"`
-		Scheme         *ChainScheme              `json:"scheme"`
-		Description    *string                   `json:"description"`
-		EnforceResult  *string                   `json:"enforceResult"`
-		Path           *string                   `json:"path"`
-		Ticker         *string                   `json:"ticker"`
-		AllowedMethods []string                  `json:"allowedMethods"`
-		LogLimitBlocks *int32                    `json:"logLimitBlocks"`
-		RequestTimeout *int32                    `json:"requestTimeout"`
-		Active         *bool                     `json:"active"`
-		Aliases        *map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
-		Altruists      *map[AltruistURL]Altruist `json:"altruists,omitempty"`
-		Checks         *map[ChainCheckType]Check `json:"chainChecks,omitempty"`
+		ID                 RelayChainID              `json:"id"`
+		IconURL            *string                   `json:"iconURL"`
+		Blockchain         *ChainAlias               `json:"blockchain"`
+		Scheme             *ChainScheme              `json:"scheme"`
+		Description        *string                   `json:"description"`
+		EnforceResult      *string                   `json:"enforceResult"`
+		Path               *string                   `json:"path"`
+		Ticker             *string                   `json:"ticker"`
+		AllowedMethods     []string                  `json:"allowedMethods"`
+		LogLimitBlocks     *int32                    `json:"logLimitBlocks"`
+		RequestTimeout     *int32                    `json:"requestTimeout"`
+		NodeRequestTimeout *int32                    `json:"nodeRequestTimeout"`
+		Active             *bool                     `json:"active"`
+		Aliases            *map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
+		Altruists          *map[AltruistURL]Altruist `json:"altruists,omitempty"`
+		Checks             *map[ChainCheckType]Check `json:"chainChecks,omitempty"`
 		// DEPRECATED - TODO remove when move to only store aliases is complete
 		AliasDomains *map[ChainAlias][]ChainDomain `json:"domains,omitempty"`
 	}

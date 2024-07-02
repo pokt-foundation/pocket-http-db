@@ -1388,6 +1388,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 							ts.Equal(initialChain.RequestTimeout, updatedChain.RequestTimeout)
 						}
 
+						if test.chainUpdate.NodeRequestTimeout != nil {
+							ts.Equal(*test.chainUpdate.NodeRequestTimeout, updatedChain.NodeRequestTimeout)
+						} else {
+							ts.Equal(initialChain.NodeRequestTimeout, updatedChain.NodeRequestTimeout)
+						}
+
 						if test.chainUpdate.Active != nil {
 							ts.Equal(*test.chainUpdate.Active, updatedChain.Active)
 						} else {
