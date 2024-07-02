@@ -105,17 +105,19 @@ func (s ChainScheme) IsValid() bool {
 /* Chain Struct and Methods */
 type (
 	Chain struct {
-		ID                 RelayChainID             `json:"id"`
-		Blockchain         ChainAlias               `json:"blockchain"`
-		Scheme             ChainScheme              `json:"scheme"`
-		Description        string                   `json:"description"`
-		IconURL            string                   `json:"iconURL"`
-		EnforceResult      string                   `json:"enforceResult"`
-		Path               string                   `json:"path"`
-		Ticker             string                   `json:"ticker"`
-		AllowedMethods     []string                 `json:"allowedMethods"`
-		LogLimitBlocks     int32                    `json:"logLimitBlocks"`
-		RequestTimeout     int32                    `json:"requestTimeout"`
+		ID             RelayChainID `json:"id"`
+		Blockchain     ChainAlias   `json:"blockchain"`
+		Scheme         ChainScheme  `json:"scheme"`
+		Description    string       `json:"description"`
+		IconURL        string       `json:"iconURL"`
+		EnforceResult  string       `json:"enforceResult"`
+		Path           string       `json:"path"`
+		Ticker         string       `json:"ticker"`
+		AllowedMethods []string     `json:"allowedMethods"`
+		LogLimitBlocks int32        `json:"logLimitBlocks"`
+		// RequestTimeout is the timeout from the user perspective
+		RequestTimeout int32 `json:"requestTimeout"`
+		// NodeRequestTimeout is the timeout for the node response
 		NodeRequestTimeout int32                    `json:"nodeRequestTimeout"`
 		Active             bool                     `json:"active"`
 		Altruists          map[AltruistURL]Altruist `json:"altruists,omitempty"`
