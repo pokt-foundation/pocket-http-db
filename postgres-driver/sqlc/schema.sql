@@ -147,6 +147,7 @@ CREATE TABLE chains (
     path VARCHAR(100),
     icon_url VARCHAR,
     request_timeout INT,
+    node_request_timeout INT,
     log_limit_blocks INT,
     allowed_methods VARCHAR(10) ARRAY,
     active BOOLEAN NOT NULL DEFAULT false,
