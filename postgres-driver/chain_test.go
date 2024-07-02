@@ -374,6 +374,12 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateChain() {
 					ts.Equal(initialChain.RequestTimeout, updatedChain.RequestTimeout)
 				}
 
+				if test.update.NodeRequestTimeout != nil {
+					ts.Equal(*test.update.NodeRequestTimeout, updatedChain.NodeRequestTimeout)
+				} else {
+					ts.Equal(initialChain.NodeRequestTimeout, updatedChain.NodeRequestTimeout)
+				}
+
 				if test.update.Active != nil {
 					ts.Equal(*test.update.Active, updatedChain.Active)
 				} else {

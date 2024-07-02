@@ -870,6 +870,7 @@ INSERT INTO chains (
         path,
         ticker,
         request_timeout,
+        node_request_timeout,
         log_limit_blocks,
         allowed_methods,
         created_at,
@@ -888,7 +889,8 @@ VALUES (
         $10,
         $11,
         $12,
-        $13
+        $13,
+        $14
     )
 RETURNING id;
 -- name: UpdateChain :one
@@ -901,9 +903,10 @@ SET blockchain = COALESCE($2, chains.blockchain),
     path = COALESCE($7, chains.path),
     ticker = COALESCE($8, chains.ticker),
     request_timeout = COALESCE($9, chains.request_timeout),
-    log_limit_blocks = COALESCE($10, chains.log_limit_blocks),
-    allowed_methods = COALESCE($11, chains.allowed_methods),
-    updated_at = $12
+    node_request_timeout = COALESCE($10, chains.node_request_timeout),
+    log_limit_blocks = COALESCE($11, chains.log_limit_blocks),
+    allowed_methods = COALESCE($12, chains.allowed_methods),
+    updated_at = $13
 WHERE id = $1
 RETURNING id;
 -- name: UpsertChainAltruist :exec
