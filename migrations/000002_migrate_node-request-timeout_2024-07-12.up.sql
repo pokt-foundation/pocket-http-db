@@ -1,2 +1,4 @@
+BEGIN
 ALTER TABLE public.chains
-DROP COLUMN node_request_timeout;
+ADD COLUMN node_request_timeout integer DEFAULT 0;
+COMMIT;
