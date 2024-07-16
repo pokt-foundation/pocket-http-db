@@ -1,0 +1,2 @@
+ALTER TABLE public.chains
+DROP COLUMN node_request_timeout;
