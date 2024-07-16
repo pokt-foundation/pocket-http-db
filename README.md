@@ -6,15 +6,17 @@
 <br/>
 
 # Table of Contents
-  - [PHD API](#phd-api)
-  - [PHD Client](#phd-client)
-  - [DB Driver](#db-driver)
-    - [Postgres Driver](#2-postgres-driver)
-    - [Types Package](#3-types)
-  - [Development](#development)
-    - [Code Generation](#code-generation)
-    - [Modifying PHD Functionality](#modifying-phd-functionality)
-    - [Pre-Commit](#pre-commit-installation)
+
+- [PHD API](#phd-api)
+- [PHD Client](#phd-client)
+- [DB Driver](#db-driver)
+  - [Postgres Driver](#2-postgres-driver)
+  - [Types Package](#3-types)
+- [Development](#development)
+  - [Executing Database Migrations](#executing-database-migrations)
+  - [Code Generation](#code-generation)
+  - [Modifying PHD Functionality](#modifying-phd-functionality)
+  - [Pre-Commit](#pre-commit-installation)
 
 # PHD API
 
@@ -87,7 +89,86 @@ Contains all database structs and their associated methods which are used across
 
 # Development
 
+## Executing Database Migrations
+
+<big> ⚠️ IMPORTANT - **ALL changes to the database MUST be done through a migration** ⚠️
+
+To manage and execute database migrations, follow the steps below:</big>
+
+### Install go-migrate
+
+You need to install `go-migrate` to manage your database migrations.
+
+For detailed instructions, visit the [go-migrate GitHub page installation instructions](https://github.com/golang-migrate/migrate/blob/master/cmd/migrate/README.md#installation).
+
+### Create a New Migration
+
+Once `go-migrate` is installed, you can create a new migration by running:
+
+```sh
+migrate create -ext sql -dir migrations/ -seq migrate_<NAME>_<DATE>
+```
+
+Replace `<NAME>` with a short description of the migration and `<DATE>` with the date in YYYY-MM-DD format.
+
+For example:
+
+```sh
+migrate create -ext sql -dir migrations/ -seq migrate_node-request-timeout_2024-07-12
+```
+
+This command will create the necessary files in the `./migrations` directory:
+
+`000002_migrate_node-request-timeout_2024-07-12.up.sql`
+
+`000002_migrate_node-request-timeout_2024-07-12.down.sql`.
+
+### Write the Migrations
+
+After creating the migration files, you need to write your SQL migration scripts. For the up migration, write the SQL statements to apply the migration.
+
+Migrations should always be wrapped in a transaction.
+
+**Examples:**
+
+Up - `000002_migrate_node-request-timeout_2024-07-12.up.sql`
+
+```sql
+BEGIN;
+ALTER TABLE chains
+ADD COLUMN node_request_timeout integer;
+COMMIT;
+```
+
+Down - `000002_migrate_node-request-timeout_2024-07-12.down.sql`
+
+```sql
+BEGIN;
+ALTER TABLE chains
+DROP COLUMN node_request_timeout;
+COMMIT;
+```
+
+### Execute the Migrations
+
+To execute the latest (highest numbered) migration, run:
+
+```sh
+migrate -path migrations/ -database "postgresql://postgres:<PASSWORD>@<POSTGRES IP>:5432/<DB NAME>?sslmode=verify-ca&sslcert=<FILEPATH>/ssl_cert.pem&sslkey=<FILEPATH>/ssl_key.pem&sslrootcert=<FILEPATH>/ssl_root_cert.pem" -verbose up
+```
+
+You will need the credentials files `ssl_cert.pem`, `ssl_key.pem`, and `ssl_root_cert.pem` to connect to the database. They will need user permissions set to `0600`.
+
+You may set these permissions with:
+
+```sh
+chmod 0600 <FILEPATH>/ssl_*.pem
+```
+
+Replace the placeholders `<PASSWORD>`, `<POSTGRES IP>`, `<DB NAME>`, `<FILEPATH>` with your actual database credentials and file paths.
+
 ## Code Generation
+
 ⚠️ IMPORTANT - Before any commit the `make gen` target **MUST** be run. ⚠️
 
 In order for this target to properly generate the Go code and mocks the following dependencies **MUST** be installed:
@@ -99,12 +180,12 @@ In order for this target to properly generate the Go code and mocks the followin
 
 When adding or updating functionality to PHD, there is a order of operations that must be followed for best results.
 
-1. **Add changes to the `types` package *(if necessary)***
+1. **Add changes to the `types` package _(if necessary)_**
 
 - All structs used throughout the Portal backend are located inside `./types`
 - Unit tests for the the `types` package must also be updated
 
-2. **Add changes to the `driver` and/or `postgresdriver` packages *(if necessary)***
+2. **Add changes to the `driver` and/or `postgresdriver` packages _(if necessary)_**
 
 - Start by updating the `postgresdrver/sqlc/schema.yml` and/or `postgresdrver/sqlc/query.yml` files
 - Generate the SQLC Go code from these SQL files using `make gen`
