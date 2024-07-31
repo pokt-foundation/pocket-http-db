@@ -16,12 +16,8 @@ func (ts *PGDriverTestSuite) Test_PGDriver_ReadPlans() {
 		{
 			name: "Should return all plans from the database",
 			plans: map[types.PayPlanType]*types.Plan{
-				"FREETIER_V0":      testdata.PayPlans()["FREETIER_V0"],
-				"PAY_AS_YOU_GO_V0": testdata.PayPlans()["PAY_AS_YOU_GO_V0"],
-				"ENTERPRISE":       testdata.PayPlans()["ENTERPRISE"],
-				"TEST_PLAN_V0":     testdata.PayPlans()["TEST_PLAN_V0"],
-				"TEST_PLAN_90K":    testdata.PayPlans()["TEST_PLAN_90K"],
-				"TEST_PLAN_10K":    testdata.PayPlans()["TEST_PLAN_10K"],
+				types.PlanFree:      testdata.PayPlans()[types.PlanFree],
+				types.PlanUnlimited: testdata.PayPlans()[types.PlanUnlimited],
 			},
 			err: nil,
 		},

@@ -12,76 +12,28 @@ INSERT INTO pay_plans (
         daily_limit
     )
 VALUES (
-        'Free Tier',
+        'Free',
         'Ideal for small projects and testing',
-        'FREETIER_V0',
+        'PLAN_FREE',
         ARRAY ['0001', '0053'],
-        5000000,
-        5000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        250000
-    ),
-    (
-        'Pay As You Go',
-        'Pay only for what you use',
-        'PAY_AS_YOU_GO_V0',
-        ARRAY ['0001', '0053'],
-        10000000,
-        10000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        0
-    ),
-    (
-        'Enterprise',
-        'Premium plan for large businesses',
-        'ENTERPRISE',
-        ARRAY ['0001', '0053'],
-        10000000,
-        10000,
+        100000,
+        30,
         0,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000',
         0
     ),
     (
-        'Test Plan',
-        'For testing purposes',
-        'TEST_PLAN_V0',
+        'Unlimited',
+        'Ideal for large projects and production use',
+        'PLAN_UNLIMITED',
         ARRAY ['0001', '0053'],
-        10000000,
-        10000,
-        5,
+        0,
+        0,
+        0,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000',
         0
-    ),
-    (
-        'Test Plan 10K',
-        'Test plan with 10K daily limit for testing purposes',
-        'TEST_PLAN_10K',
-        ARRAY ['0001', '0053'],
-        10000000,
-        10000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        10000
-    ),
-    (
-        'Test Plan 90K',
-        'Test plan with 90K daily limit for testing purposes',
-        'TEST_PLAN_90K',
-        ARRAY ['0001', '0053'],
-        90000000,
-        10000,
-        5,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        90000
     );
 -- Insert users
 INSERT INTO users (
@@ -340,7 +292,6 @@ INSERT INTO accounts (
         partner_chain_ids,
         partner_throughput_limit,
         partner_application_limit,
-        enterprise_limit,
         created_at,
         updated_at
     )
@@ -348,11 +299,10 @@ VALUES (
         'account_1',
         'The Brave Voyager',
         'https://picsum.photos/200',
-        'FREETIER_V0',
+        'PLAN_FREE',
         ARRAY ['0001', '0053'],
         2000,
         1,
-        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -360,11 +310,10 @@ VALUES (
         'account_2',
         'Dragonborn Explorer',
         'https://picsum.photos/200',
-        'ENTERPRISE',
+        'PLAN_UNLIMITED',
         ARRAY ['0001', '0053','0021', '0064'],
         5000,
         0,
-        3000000,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -372,11 +321,10 @@ VALUES (
         'account_3',
         'Fellowship Startup',
         'https://picsum.photos/200',
-        'PAY_AS_YOU_GO_V0',
+        'PLAN_UNLIMITED',
         ARRAY ['0001', '0053', '0064', '0034'],
         1000,
         3,
-        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -384,11 +332,10 @@ VALUES (
         'account_4',
         'Iron Throne Enterprise',
         'https://picsum.photos/200',
-        'FREETIER_V0',
+        'PLAN_FREE',
         ARRAY ['0001'],
         1000,
         2,
-        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     ),
@@ -396,11 +343,10 @@ VALUES (
         'account_5',
         'Nomad Wanderer',
         'https://picsum.photos/200',
-        'PAY_AS_YOU_GO_V0',
+        'PLAN_UNLIMITED',
         ARRAY ['0006', '0040'],
         6000,
         1,
-        NULL,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );

@@ -60,7 +60,6 @@ type (
 		PartnerThroughputLimit int32                                    `json:"partnerThroughputLimit"`
 		PartnerAppLimit        int32                                    `json:"partnerAppLimit"`
 		Integrations           AccountIntegrations                      `json:"integrations"`
-		EnterpriseLimit        int32                                    `json:"enterpriseLimit"`
 		Notifications          map[NotificationType]AccountNotification `json:"notifications"`
 		CreatedAt              time.Time                                `json:"createdAt"`
 		UpdatedAt              time.Time                                `json:"updatedAt"`
@@ -112,7 +111,6 @@ type (
 		Name                 string                       `json:"name"`
 		IconURL              string                       `json:"iconURL"`
 		PlanType             PayPlanType                  `json:"planType"`
-		EnterpriseLimit      int32                        `json:"enterpriseLimit"`
 		StripeSubscriptionID *string                      `json:"stripeSubscriptionID"`
 		Notifications        []UpdateAccountNotifications `json:"notificationSettings,omitempty"`
 	}
@@ -161,12 +159,10 @@ func (a *Account) AssignAccountUsers(usersForAccountID map[UserID]*User) {
 	}
 }
 
-// GetDailyLimit returns the Account's daily relay limit
-func (a *Account) GetDailyLimit() int {
-	if a.PlanType == Enterprise {
-		return int(a.EnterpriseLimit)
-	}
-	return int(a.Plan.DailyLimit)
+// GetMonthlyLimit returns the Account's monthly relay limit
+// 0 means unlimited relays.
+func (a *Account) GetMonthlyLimit() int {
+	return int(a.Plan.MonthlyRelayLimit)
 }
 
 // GetOwner returns the Account OWNER

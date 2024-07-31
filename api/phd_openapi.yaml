@@ -1326,7 +1326,7 @@ paths:
                       example: "2023-06-08T00:00:00Z"
                     planType:
                       type: string
-                      example: FREETIER_V0
+                      example: PLAN_FREE
                     requestTimeout:
                       type: number
                       example: 15000
@@ -1390,7 +1390,7 @@ paths:
                     customLimit: 0
                     dailyLimit: 250000
                     firstDateSurpassed: "2023-06-08T00:00:00Z"
-                    planType: FREETIER_V0
+                    planType: PLAN_FREE
                     requestTimeout: 15000
                   name: test_staging_June_29
                   notifications:
@@ -1592,7 +1592,7 @@ paths:
                           "0068":
                             Ethernet: {}
                       plan:
-                        planType: "FREETIER_V0"
+                        planType: "PLAN_FREE"
                         throughputLimit: 30
   /v2/portal_app/{portalAppID}:
     parameters:
@@ -2210,7 +2210,7 @@ paths:
                     - id: "1a2b3c4d"
                       name: "Tyrion's Account"
                       iconURL: ""
-                      planType: "FREETIER_V0"
+                      planType: "PLAN_FREE"
                       partnerBlockchainIDs: null
                       partnerThroughputLimit: 0
                       partnerAppLimit: 0
@@ -2256,12 +2256,12 @@ paths:
                   example: AvasaralasEnterpriseAccount
                 planType:
                   type: string
-                  example: FREETIER_V0
+                  example: PLAN_FREE
             examples:
               Create Account:
                 value:
                   name: AvasaralasEnterpriseAccount
-                  planType: FREETIER_V0
+                  planType: PLAN_FREE
       responses:
         "200":
           description: Success
@@ -2273,7 +2273,7 @@ paths:
                     id: "1a2b3c4d"
                     name: "Tyrion's Account"
                     iconURL: ""
-                    planType: "FREETIER_V0"
+                    planType: "PLAN_FREE"
                     partnerBlockchainIDs: null
                     partnerThroughputLimit: 0
                     partnerAppLimit: 0
@@ -2323,7 +2323,7 @@ paths:
                       id: ""
                       name: ""
                       description: ""
-                      planType: "FREETIER_V0"
+                      planType: "PLAN_FREE"
                       chainIDs: {}
                       dailyLimit: 100000
                       throughputLimit: 30
@@ -2386,7 +2386,7 @@ paths:
                     id: "1a2b3c4d"
                     name: "Tyrion's Account"
                     iconURL: ""
-                    planType: "FREETIER_V0"
+                    planType: "PLAN_FREE"
                     partnerBlockchainIDs: null
                     partnerThroughputLimit: 0
                     partnerAppLimit: 0
@@ -2436,7 +2436,7 @@ paths:
                       id: ""
                       name: ""
                       description: ""
-                      planType: "FREETIER_V0"
+                      planType: "PLAN_FREE"
                       chainIDs: {}
                       dailyLimit: 100000
                       throughputLimit: 30
@@ -2500,7 +2500,7 @@ paths:
                     id: "1a2b3c4d"
                     name: "Tyrion's Account"
                     iconURL: ""
-                    planType: "FREETIER_V0"
+                    planType: "PLAN_FREE"
                     partnerBlockchainIDs: null
                     partnerThroughputLimit: 0
                     partnerAppLimit: 0
@@ -2550,7 +2550,7 @@ paths:
                       id: ""
                       name: ""
                       description: ""
-                      planType: "FREETIER_V0"
+                      planType: "PLAN_FREE"
                       chainIDs: {}
                       dailyLimit: 100000
                       throughputLimit: 30
@@ -3197,31 +3197,21 @@ paths:
                     - id: ""
                       name: ""
                       description: ""
-                      planType: "ENTERPRISE"
+                      planType: "PLAN_FREE"
+                      chainIDs: {}
+                      dailyLimit: 0
+                      throughputLimit: 30
+                      appLimit: 0
+                      monthlyRelayLimit: 100000
+                      createdAt: "2023-07-06T16:20:56.57922Z"
+                    - id: ""
+                      name: ""
+                      description: ""
+                      planType: "PLAN_UNLIMITED"
                       chainIDs: {}
                       dailyLimit: 0
                       throughputLimit: 0
                       appLimit: 0
-                      monthlyRelayLimit: 0
-                      createdAt: "2023-07-06T16:20:56.57922Z"
-                    - id: ""
-                      name: ""
-                      description: ""
-                      planType: "FREETIER_V0"
-                      chainIDs: {}
-                      dailyLimit: 100000
-                      throughputLimit: 30
-                      appLimit: 2
-                      monthlyRelayLimit: 0
-                      createdAt: "2023-07-06T16:20:56.57922Z"
-                    - id: ""
-                      name: ""
-                      description: ""
-                      planType: "PAY_AS_YOU_GO_V0"
-                      chainIDs: {}
-                      dailyLimit: 0
-                      throughputLimit: 0
-                      appLimit: 2
                       monthlyRelayLimit: 0
                       createdAt: "2023-07-06T16:20:56.57922Z"
   /v2/config/gateway/production:

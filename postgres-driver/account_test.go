@@ -126,12 +126,14 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpsertAccountIntegration() {
 		{
 			name: "Should update an existing account integrations row with covalent API key",
 			integrationsInput: types.AccountIntegrations{
-				AccountID:          "account_1",
-				CovalentAPIKeyFree: "updated_covalent_api_key_1",
+				AccountID:            "account_1",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_1",
+				StripeSubscriptionID: "stripe_id_update_456",
 			},
 			expectedIntegrations: types.AccountIntegrations{
-				AccountID:          "account_1",
-				CovalentAPIKeyFree: "updated_covalent_api_key_1",
+				AccountID:            "account_1",
+				CovalentAPIKeyFree:   "updated_covalent_api_key_1",
+				StripeSubscriptionID: "stripe_id_update_456",
 			},
 		},
 		{
@@ -196,39 +198,29 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 		err                      error
 	}{
 		{
-			name: "Should update the account's PlanType field to Enterprise",
-			update: types.UpdateAccount{
-				AccountID:       "account_1",
-				PlanType:        types.Enterprise,
-				EnterpriseLimit: 3_000_000,
-			},
-			account: testdata.Accounts()["account_1"],
-			err:     nil,
-		},
-		{
-			name: "Should update the account's PlanType field to non-Enterprise",
+			name: "Should update the account's PlanType field to PlanFree",
 			update: types.UpdateAccount{
 				AccountID: "account_1",
-				PlanType:  types.FreetierV0,
+				PlanType:  types.PlanFree,
 			},
 			account: testdata.Accounts()["account_1"],
 			err:     nil,
 		},
 		{
-			name: "Should update the account's PlanType field to PayAsYouGo",
+			name: "Should update the account's PlanType field to PlanUnlimited",
 			update: types.UpdateAccount{
 				AccountID:            "account_1",
-				PlanType:             types.PayAsYouGoV0,
+				PlanType:             types.PlanUnlimited,
 				StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
 			},
 			account: testdata.Accounts()["account_1"],
 			err:     nil,
 		},
 		{
-			name: "Should update the account's PlanType field from PayAsYouGo",
+			name: "Should update the account's PlanType field from PlanUnlimited",
 			update: types.UpdateAccount{
 				AccountID: "account_3",
-				PlanType:  types.FreetierV0,
+				PlanType:  types.PlanFree,
 			},
 			account: testdata.Accounts()["account_3"],
 			err:     nil,
@@ -246,7 +238,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should update the account's StripeSubscriptionID field",
 			update: types.UpdateAccount{
 				AccountID:            "account_3",
-				PlanType:             types.PayAsYouGoV0,
+				PlanType:             types.PlanUnlimited,
 				StripeSubscriptionID: testdata.StringToPointer("stripe_id_update_123"),
 			},
 			account: testdata.Accounts()["account_3"],
@@ -302,10 +294,11 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 		{
 			name: "Should update all fields",
 			update: types.UpdateAccount{
-				AccountID: "account_1",
-				PlanType:  types.TestPlan10K,
-				Name:      "Willy Wonka",
-				IconURL:   "https://picsum.photos/444",
+				AccountID:            "account_1",
+				PlanType:             types.PlanUnlimited,
+				Name:                 "Willy Wonka",
+				IconURL:              "https://picsum.photos/444",
+				StripeSubscriptionID: testdata.StringToPointer("stripe_id_update_456"),
 			},
 			account: testdata.Accounts()["account_1"],
 			err:     nil,
@@ -314,7 +307,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should fail if update Account has an invalid icon URL set",
 			update: types.UpdateAccount{
 				AccountID: "account_8823",
-				PlanType:  types.Enterprise,
+				PlanType:  types.PlanUnlimited,
 				IconURL:   "who_did(this)",
 			},
 			err: fmt.Errorf(errInvalidIconURL.Error(), "who_did(this)"),
@@ -323,7 +316,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			name: "Should fail if update Account does not exist in the db",
 			update: types.UpdateAccount{
 				AccountID: "account_8823",
-				PlanType:  types.FreetierV0,
+				PlanType:  types.PlanFree,
 			},
 			err: fmt.Errorf(errAccountDoesntExist.Error(), "account_8823"),
 		},
@@ -336,23 +329,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			err: fmt.Errorf(errPayPlanDoesntExist.Error(), types.PayPlanType("turbo_ultra_mega_plan")),
 		},
 		{
-			name: "Should fail if update Account has plan type Enterprise but no EnterpriseLimit",
-			update: types.UpdateAccount{
-				AccountID: "account_1",
-				PlanType:  types.Enterprise,
-			},
-			err: errEnterpriseMustHaveLimit,
-		},
-		{
-			name: "Should fail if update Account has a non-Enterprise plan type but has an EnterpriseLimit",
-			update: types.UpdateAccount{
-				AccountID:       "account_1",
-				PlanType:        types.FreetierV0,
-				EnterpriseLimit: 123,
-			},
-			err: errNonEnterpriseMustNotHaveLimit,
-		},
-		{
 			name: "Should fail if update Account has a Stripe subscription ID but is not setting plan type",
 			update: types.UpdateAccount{
 				AccountID:            "account_1",
@@ -361,21 +337,21 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			err: errCannotSetStripeSubIDWithoutPlanType,
 		},
 		{
-			name: "Should fail if update Account has a non-PayAsYouGo plan type but has a Stripe subscription ID",
+			name: "Should fail if update Account has a PlanFree plan type but has a Stripe subscription ID",
 			update: types.UpdateAccount{
 				AccountID:            "account_1",
-				PlanType:             types.FreetierV0,
+				PlanType:             types.PlanFree,
 				StripeSubscriptionID: testdata.StringToPointer("stripe_id_1"),
 			},
-			err: errOnlyAutoScaleCanHaveStripeSubID,
+			err: errOnlyUnlimitedCanHaveStripeSubID,
 		},
 		{
-			name: "Should fail if update Account has a PayAsYouGo plan type but has no Stripe subscription ID",
+			name: "Should fail if update Account has a PlanUnlimited plan type but has no Stripe subscription ID",
 			update: types.UpdateAccount{
 				AccountID: "account_1",
-				PlanType:  types.PayAsYouGoV0,
+				PlanType:  types.PlanUnlimited,
 			},
-			err: errAutoScaleMustHaveStripeSubID,
+			err: errUnlimitedMustHaveStripeSubID,
 		},
 	}
 
@@ -387,9 +363,6 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			if test.err == nil {
 				if test.update.PlanType != "" {
 					ts.Equal(test.update.PlanType, account.PlanType)
-					if test.update.PlanType == types.Enterprise {
-						ts.Equal(test.update.EnterpriseLimit, account.EnterpriseLimit)
-					}
 				}
 				if test.update.StripeSubscriptionID != nil {
 					ts.Equal(test.update.StripeSubscriptionID, &account.Integrations.StripeSubscriptionID)

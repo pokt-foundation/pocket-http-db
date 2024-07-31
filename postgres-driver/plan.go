@@ -40,7 +40,6 @@ func (p *SelectPlansRow) toPlan() (*types.Plan, error) {
 		ThroughputLimit:   p.ThroughputLimit,
 		AppLimit:          p.ApplicationLimit,
 		DailyLimit:        p.DailyLimit.Int32,
-		CreatedAt:         p.CreatedAt.Time.UTC(),
 	}
 
 	for _, chainID := range p.ChainIDs {
