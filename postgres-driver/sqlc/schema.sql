@@ -88,21 +88,10 @@ CREATE TABLE accounts (
     partner_chain_ids VARCHAR(4) ARRAY,
     partner_throughput_limit INT,
     partner_application_limit INT,
-    enterprise_limit INT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
-    deleted_at TIMESTAMPTZ NULL,
-    CONSTRAINT check_enterprise_limit CHECK (
-        (
-            plan_type = 'ENTERPRISE'
-            AND enterprise_limit IS NOT NULL
-        )
-        OR (
-            plan_type != 'ENTERPRISE'
-            AND enterprise_limit IS NULL
-        )
-    )
+    deleted_at TIMESTAMPTZ NULL
 );
 CREATE TABLE IF NOT EXISTS account_integrations (
     id INT GENERATED ALWAYS AS IDENTITY,

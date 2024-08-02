@@ -330,7 +330,7 @@ func (pg *PostgresDriver) createDefaultAccountForNewUser(ctx context.Context, qt
 
 	_, err = qtx.InsertAccount(ctx, InsertAccountParams{
 		ID:        accountID,
-		PlanType:  newText(string(types.FreetierV0)),
+		PlanType:  newText(string(types.PlanFree)),
 		CreatedAt: newTimestamptz(createdAt),
 		UpdatedAt: newTimestamptz(createdAt),
 	})

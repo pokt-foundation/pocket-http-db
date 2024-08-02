@@ -13,7 +13,7 @@ var testAccount = Account{
 	ID:       "account_1",
 	Name:     "The Brave Voyager",
 	IconURL:  "https://picsum.photos/200",
-	PlanType: FreetierV0,
+	PlanType: PlanFree,
 	Plan: &Plan{
 		AppLimit: 2,
 	},

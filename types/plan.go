@@ -1,14 +1,14 @@
 package types
 
-import "time"
-
 /* Enums */
 type PayPlanType string
 
 var (
-	TestPlanV0   PayPlanType = "TEST_PLAN_V0"
-	TestPlan10K  PayPlanType = "TEST_PLAN_10K"
-	TestPlan90k  PayPlanType = "TEST_PLAN_90K"
+	// CURRENT PLAN TYPES
+	PlanFree      PayPlanType = "PLAN_FREE"
+	PlanUnlimited PayPlanType = "PLAN_UNLIMITED"
+
+	// DEPRECATED PLAN TYPES - Remove Eventually
 	FreetierV0   PayPlanType = "FREETIER_V0"
 	PayAsYouGoV0 PayPlanType = "PAY_AS_YOU_GO_V0"
 	Enterprise   PayPlanType = "ENTERPRISE"
@@ -22,15 +22,16 @@ type (
 		Description string                    `json:"description"`
 		Type        PayPlanType               `json:"planType"`
 		ChainIDs    map[RelayChainID]struct{} `json:"chainIDs"`
-		// DailyLimit is the daily relay limit for a pay plan
-		DailyLimit int32 `json:"dailyLimit"`
+		// MonthlyRelayLimit is the number of relays-per-month for a pay plan
+		MonthlyRelayLimit int32 `json:"monthlyRelayLimit"`
 		// ThroughputLimit is the number of relays-per-second for a pay plan
 		ThroughputLimit int32 `json:"throughputLimit"`
 		// AppLimit is the number of apps permitted for a pay plan
 		AppLimit int32 `json:"appLimit"`
-		// CURRENTLY UNUSED - MonthlyRelayLimit is the number of relays-per-month for a pay plan
-		MonthlyRelayLimit int32     `json:"monthlyRelayLimit"`
-		CreatedAt         time.Time `json:"createdAt"`
+
+		// DEPRECATED - Remove Eventually
+		// DailyLimit is the daily relay limit for a pay plan
+		DailyLimit int32 `json:"dailyLimit"`
 	}
 )
 
@@ -44,7 +45,11 @@ func (p *Plan) Table() Table {
 
 func (p PayPlanType) Valid() bool {
 	switch p {
-	case TestPlanV0, TestPlan10K, TestPlan90k, FreetierV0, PayAsYouGoV0, Enterprise:
+	case
+		// CURRENT PLAN TYPES
+		PlanFree, PlanUnlimited,
+		// DEPRECATED PLAN TYPES - Remove Eventually
+		FreetierV0, PayAsYouGoV0, Enterprise:
 		return true
 	default:
 		return false

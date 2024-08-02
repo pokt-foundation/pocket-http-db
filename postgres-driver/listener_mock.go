@@ -152,7 +152,6 @@ func accountInputs(mainTableAction, sideTablesAction types.Action, content types
 				PartnerChainIDs:         partnerChainIDs,
 				PartnerThroughputLimit:  account.PartnerThroughputLimit,
 				PartnerApplicationLimit: account.PartnerAppLimit,
-				EnterpriseLimit:         account.EnterpriseLimit,
 				CreatedAt:               account.CreatedAt,
 				UpdatedAt:               account.UpdatedAt,
 				Deleted:                 account.Deleted,

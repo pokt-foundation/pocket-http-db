@@ -53,13 +53,11 @@ var (
 	}
 
 	testPlan = &Plan{
-		Type:              PayPlanType("FREETIER_V0"),
+		Type:              PlanUnlimited,
 		ChainIDs:          map[RelayChainID]struct{}{"0001": {}, "0053": {}},
-		MonthlyRelayLimit: 5_000_000,
-		ThroughputLimit:   5_000,
+		MonthlyRelayLimit: 0,
+		ThroughputLimit:   0,
 		AppLimit:          5,
-		DailyLimit:        250_000,
-		CreatedAt:         time.Date(2023, time.February, 14, 11, 11, 11, 0, time.UTC),
 	}
 
 	testPortalAppLite = PortalAppLite{
@@ -87,9 +85,9 @@ var (
 			},
 		},
 		Plan: PlanLite{
-			PlanType:        PayPlanType("FREETIER_V0"),
+			PlanType:        PlanUnlimited,
 			ChainIDs:        map[RelayChainID]struct{}{"0001": {}, "0053": {}},
-			ThroughputLimit: 5_000,
+			ThroughputLimit: 0,
 		},
 	}
 )
@@ -155,7 +153,7 @@ func Test_PortalAppLite_PlanType(t *testing.T) {
 		{
 			name:          "Should correctly return PlanType",
 			portalAppLite: testPortalAppLite,
-			expectedType:  "FREETIER_V0",
+			expectedType:  "PLAN_UNLIMITED",
 		},
 	}
 
@@ -207,7 +205,7 @@ func Test_PortalAppLite_ThroughputLimit(t *testing.T) {
 		{
 			name:          "Should correctly return ThroughputLimit",
 			portalAppLite: testPortalAppLite,
-			expectedLimit: 5_000,
+			expectedLimit: 0,
 		},
 	}
 

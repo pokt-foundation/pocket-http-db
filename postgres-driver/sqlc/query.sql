@@ -393,12 +393,8 @@ SET name = COALESCE($1, name),
     partner_chain_ids = COALESCE($4, partner_chain_ids),
     partner_throughput_limit = COALESCE($5, partner_throughput_limit),
     partner_application_limit = COALESCE($6, partner_application_limit),
-    enterprise_limit = CASE
-        WHEN COALESCE($3, plan_type) = 'ENTERPRISE' THEN COALESCE($7, enterprise_limit)
-        ELSE NULL
-    END,
-    updated_at = $8
-WHERE id = $9;
+    updated_at = $7
+WHERE id = $8;
 -- name: UpsertAccountIntegrations :one
 INSERT INTO account_integrations (
         account_id,

@@ -24,11 +24,9 @@ var (
 	errAcceptNoAccountID                   = errors.New("error must provide account ID when accepting user")
 	errCannotTransferNotAccepted           = errors.New("error cannot transfer ownership to user ID '%s' for account ID '%s' because the user has not accepted their invite")
 	errCannotDeclineAlreadyAccepted        = errors.New("error user ID '%s' cannot decline invite for account ID '%s' because they have already accepted it")
-	errEnterpriseMustHaveLimit             = errors.New("error enterprise plan must have a limit set")
 	errCannotSetStripeSubIDWithoutPlanType = errors.New("error cannot set stripe subscription ID without setting plan type")
-	errOnlyAutoScaleCanHaveStripeSubID     = errors.New("error only auto-scale plan can have a stripe subscription ID")
-	errAutoScaleMustHaveStripeSubID        = errors.New("error auto-scale plan must have a stripe subscription ID")
-	errNonEnterpriseMustNotHaveLimit       = errors.New("error non-enterprise plan must not have a limit set")
+	errOnlyUnlimitedCanHaveStripeSubID     = errors.New("error only unlimited plan can have a stripe subscription ID")
+	errUnlimitedMustHaveStripeSubID        = errors.New("error unlimited plan must have a stripe subscription ID")
 	errUnmarshallingNotifications          = errors.New("error unmarshalling notifications")
 )
 
@@ -93,7 +91,6 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 		PartnerChainIDs:        partnerChainIDs,
 		PartnerThroughputLimit: a.PartnerThroughputLimit.Int32,
 		PartnerAppLimit:        a.PartnerApplicationLimit.Int32,
-		EnterpriseLimit:        a.EnterpriseLimit.Int32,
 		Integrations: types.AccountIntegrations{
 			StripeSubscriptionID: a.StripeSubscriptionID.String,
 			CovalentAPIKeyFree:   a.CovalentAPIKeyFree.String,
@@ -276,14 +273,10 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		UpdatedAt: newTimestamptz(updatedAt),
 	}
 	if update.PlanType != "" {
-		if update.PlanType == types.Enterprise {
-			updateAccount.EnterpriseLimit = newInt4(update.EnterpriseLimit, false)
-		}
-
 		// If updating to an autoscale plan set the Stripe subscription
 		// ID to the provided value otherwise set it to null.
 		stripeSubscriptionID := ""
-		if update.PlanType == types.PayAsYouGoV0 {
+		if update.PlanType == types.PlanUnlimited {
 			stripeSubscriptionID = *update.StripeSubscriptionID
 		}
 		err = qtx.UpsertStripeSubID(ctx, UpsertStripeSubIDParams{
@@ -345,7 +338,6 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		Name:                    accountResult.Name,
 		IconURL:                 accountResult.IconURL,
 		PlanType:                accountResult.PlanType,
-		EnterpriseLimit:         accountResult.EnterpriseLimit,
 		PartnerChainIDs:         accountResult.PartnerChainIDs,
 		PartnerThroughputLimit:  accountResult.PartnerThroughputLimit,
 		PartnerApplicationLimit: accountResult.PartnerApplicationLimit,
@@ -375,12 +367,6 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 		}
 	}
 
-	if update.PlanType == types.Enterprise && update.EnterpriseLimit == 0 {
-		return errEnterpriseMustHaveLimit
-	} else if update.PlanType != types.Enterprise && update.EnterpriseLimit != 0 {
-		return errNonEnterpriseMustNotHaveLimit
-	}
-
 	accountExists, err := pg.CheckAccountExists(ctx, update.AccountID)
 	if err != nil {
 		return err
@@ -394,11 +380,11 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 	}
 
 	if update.PlanType != "" {
-		if update.PlanType != types.PayAsYouGoV0 && update.StripeSubscriptionID != nil && *update.StripeSubscriptionID != "" {
-			return errOnlyAutoScaleCanHaveStripeSubID
+		if update.PlanType != types.PlanUnlimited && update.StripeSubscriptionID != nil && *update.StripeSubscriptionID != "" {
+			return errOnlyUnlimitedCanHaveStripeSubID
 		}
-		if update.PlanType == types.PayAsYouGoV0 && (update.StripeSubscriptionID == nil || *update.StripeSubscriptionID == "") {
-			return errAutoScaleMustHaveStripeSubID
+		if update.PlanType == types.PlanUnlimited && (update.StripeSubscriptionID == nil || *update.StripeSubscriptionID == "") {
+			return errUnlimitedMustHaveStripeSubID
 		}
 		planExists, err := pg.CheckPlanTypeExists(ctx, update.PlanType)
 		if err != nil {
@@ -774,7 +760,6 @@ func (json dbAccount) toOutput() *types.Account {
 		PartnerChainIDs:        partnerChainIDs,
 		PartnerThroughputLimit: json.PartnerThroughputLimit,
 		PartnerAppLimit:        json.PartnerApplicationLimit,
-		EnterpriseLimit:        json.EnterpriseLimit,
 		CreatedAt:              json.CreatedAt,
 		UpdatedAt:              json.UpdatedAt,
 		Deleted:                json.Deleted,
@@ -826,7 +811,6 @@ type dbAccount struct {
 	PartnerChainIDs         []string          `json:"partner_chain_ids"`
 	PartnerThroughputLimit  int32             `json:"partner_throughput_limit"`
 	PartnerApplicationLimit int32             `json:"partner_application_limit"`
-	EnterpriseLimit         int32             `json:"enterprise_limit"`
 	CreatedAt               time.Time         `json:"created_at"`
 	UpdatedAt               time.Time         `json:"updated_at"`
 	Deleted                 bool              `json:"deleted"`
