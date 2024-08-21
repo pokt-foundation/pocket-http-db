@@ -816,7 +816,7 @@ INSERT INTO accounts (
         updated_at
     )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, created_at, updated_at, deleted, deleted_at
+RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, monthly_user_limit, created_at, updated_at, deleted, deleted_at
 `
 
 type InsertAccountParams struct {
@@ -846,6 +846,7 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 		&i.PartnerChainIDs,
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
+		&i.MonthlyUserLimit,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
@@ -1326,7 +1327,7 @@ func (q *Queries) RemoveGlobalBlockedContract(ctx context.Context, blockedAddres
 }
 
 const selectAccount = `-- name: SelectAccount :one
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.monthly_user_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1372,6 +1373,7 @@ type SelectAccountRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	MonthlyUserLimit        pgtype.Int4        `json:"monthly_user_limit"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -1393,6 +1395,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 		&i.PartnerChainIDs,
 		&i.PartnerThroughputLimit,
 		&i.PartnerApplicationLimit,
+		&i.MonthlyUserLimit,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Deleted,
@@ -1406,7 +1409,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 }
 
 const selectAccounts = `-- name: SelectAccounts :many
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.monthly_user_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1455,6 +1458,7 @@ type SelectAccountsRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	MonthlyUserLimit        pgtype.Int4        `json:"monthly_user_limit"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -1482,6 +1486,7 @@ func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAc
 			&i.PartnerChainIDs,
 			&i.PartnerThroughputLimit,
 			&i.PartnerApplicationLimit,
+			&i.MonthlyUserLimit,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Deleted,

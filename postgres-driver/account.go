@@ -91,6 +91,7 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 		PartnerChainIDs:        partnerChainIDs,
 		PartnerThroughputLimit: a.PartnerThroughputLimit.Int32,
 		PartnerAppLimit:        a.PartnerApplicationLimit.Int32,
+		MonthlyUserLimit:       a.MonthlyUserLimit.Int32,
 		Integrations: types.AccountIntegrations{
 			StripeSubscriptionID: a.StripeSubscriptionID.String,
 			CovalentAPIKeyFree:   a.CovalentAPIKeyFree.String,
@@ -760,6 +761,7 @@ func (json dbAccount) toOutput() *types.Account {
 		PartnerChainIDs:        partnerChainIDs,
 		PartnerThroughputLimit: json.PartnerThroughputLimit,
 		PartnerAppLimit:        json.PartnerApplicationLimit,
+		MonthlyUserLimit:       json.MonthlyUserLimit,
 		CreatedAt:              json.CreatedAt,
 		UpdatedAt:              json.UpdatedAt,
 		Deleted:                json.Deleted,
@@ -811,6 +813,7 @@ type dbAccount struct {
 	PartnerChainIDs         []string          `json:"partner_chain_ids"`
 	PartnerThroughputLimit  int32             `json:"partner_throughput_limit"`
 	PartnerApplicationLimit int32             `json:"partner_application_limit"`
+	MonthlyUserLimit        int32             `json:"monthly_user_limit"`
 	CreatedAt               time.Time         `json:"created_at"`
 	UpdatedAt               time.Time         `json:"updated_at"`
 	Deleted                 bool              `json:"deleted"`

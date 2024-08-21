@@ -195,6 +195,49 @@ func Test_GetOwnerID(t *testing.T) {
 	}
 }
 
+func Test_GetMonthlyLimit(t *testing.T) {
+	tests := []struct {
+		name     string
+		account  Account
+		expected int
+	}{
+		{
+			name: "Should return monthly user threshold when plan type is unlimited and threshold is set",
+			account: Account{
+				PlanType:         PlanUnlimited,
+				MonthlyUserLimit: 100000,
+				Plan:             &Plan{MonthlyRelayLimit: 50000},
+			},
+			expected: 100000,
+		},
+		{
+			name: "Should return plan monthly relay limit when plan type is not unlimited",
+			account: Account{
+				PlanType:         PlanFree,
+				MonthlyUserLimit: 100000,
+				Plan:             &Plan{MonthlyRelayLimit: 50000},
+			},
+			expected: 50000,
+		},
+		{
+			name: "Should return plan monthly relay limit when plan type is unlimited but threshold is not set",
+			account: Account{
+				PlanType:         PlanUnlimited,
+				MonthlyUserLimit: 0,
+				Plan:             &Plan{MonthlyRelayLimit: 50000},
+			},
+			expected: 50000,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.account.GetMonthlyLimit()
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
 func Test_GetPortalAppLimit(t *testing.T) {
 	tests := []struct {
 		name     string
