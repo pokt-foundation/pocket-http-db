@@ -92,7 +92,11 @@ CREATE TABLE accounts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
-    deleted_at TIMESTAMPTZ NULL
+    deleted_at TIMESTAMPTZ NULL,
+    CONSTRAINT monthly_user_limit_check CHECK (
+        plan_type = 'PLAN_UNLIMITED'
+        OR monthly_user_limit IS NULL
+    )
 );
 CREATE TABLE IF NOT EXISTS account_integrations (
     id INT GENERATED ALWAYS AS IDENTITY,
