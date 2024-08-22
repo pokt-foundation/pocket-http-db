@@ -113,6 +113,7 @@ type (
 		IconURL              string                       `json:"iconURL"`
 		PlanType             PayPlanType                  `json:"planType"`
 		StripeSubscriptionID *string                      `json:"stripeSubscriptionID"`
+		MonthlyUserLimit     int32                        `json:"monthlyUserLimit"`
 		Notifications        []UpdateAccountNotifications `json:"notificationSettings,omitempty"`
 	}
 

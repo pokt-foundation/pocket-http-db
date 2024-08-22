@@ -96,6 +96,8 @@ CREATE TABLE accounts (
     CONSTRAINT monthly_user_limit_check CHECK (
         plan_type = 'PLAN_UNLIMITED'
         OR monthly_user_limit IS NULL
+        OR monthly_user_limit = 0
+        OR monthly_user_limit % 1000000 = 0
     )
 );
 CREATE TABLE IF NOT EXISTS account_integrations (

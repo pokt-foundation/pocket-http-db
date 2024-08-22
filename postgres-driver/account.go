@@ -12,22 +12,23 @@ import (
 )
 
 var (
-	errNoRoleName                          = errors.New("error no role name set")
-	errInvalidRoleName                     = errors.New("error invalid role name set")
-	errInvalidIconURL                      = errors.New("error icon URL '%s' is not a valid URL")
-	errPayPlanDoesntExist                  = errors.New("error pay plan '%s' does not exist")
-	errAccountDoesntExist                  = errors.New("error account does not exist for account ID '%s'")
-	errAccountUserDoesntExist              = errors.New("error user ID '%s' does not exist for account ID '%s'")
-	errCannotDeleteOwner                   = errors.New("error cannot delete user ID '%s' for account ID '%s' because this user is the current account owner")
-	errCreateNoAccountID                   = errors.New("error must provide account ID when creating user")
-	errTransferNoAccountID                 = errors.New("error must provide account ID when transferring user")
-	errAcceptNoAccountID                   = errors.New("error must provide account ID when accepting user")
-	errCannotTransferNotAccepted           = errors.New("error cannot transfer ownership to user ID '%s' for account ID '%s' because the user has not accepted their invite")
-	errCannotDeclineAlreadyAccepted        = errors.New("error user ID '%s' cannot decline invite for account ID '%s' because they have already accepted it")
-	errCannotSetStripeSubIDWithoutPlanType = errors.New("error cannot set stripe subscription ID without setting plan type")
-	errOnlyUnlimitedCanHaveStripeSubID     = errors.New("error only unlimited plan can have a stripe subscription ID")
-	errUnlimitedMustHaveStripeSubID        = errors.New("error unlimited plan must have a stripe subscription ID")
-	errUnmarshallingNotifications          = errors.New("error unmarshalling notifications")
+	errNoRoleName                                 = errors.New("error no role name set")
+	errInvalidRoleName                            = errors.New("error invalid role name set")
+	errInvalidIconURL                             = errors.New("error icon URL '%s' is not a valid URL")
+	errPayPlanDoesntExist                         = errors.New("error pay plan '%s' does not exist")
+	errAccountDoesntExist                         = errors.New("error account does not exist for account ID '%s'")
+	errAccountUserDoesntExist                     = errors.New("error user ID '%s' does not exist for account ID '%s'")
+	errCannotDeleteOwner                          = errors.New("error cannot delete user ID '%s' for account ID '%s' because this user is the current account owner")
+	errCreateNoAccountID                          = errors.New("error must provide account ID when creating user")
+	errTransferNoAccountID                        = errors.New("error must provide account ID when transferring user")
+	errAcceptNoAccountID                          = errors.New("error must provide account ID when accepting user")
+	errCannotTransferNotAccepted                  = errors.New("error cannot transfer ownership to user ID '%s' for account ID '%s' because the user has not accepted their invite")
+	errCannotDeclineAlreadyAccepted               = errors.New("error user ID '%s' cannot decline invite for account ID '%s' because they have already accepted it")
+	errCannotSetStripeSubIDWithoutPlanType        = errors.New("error cannot set stripe subscription ID without setting plan type")
+	errOnlyUnlimitedCanHaveStripeSubID            = errors.New("error only unlimited plan can have a stripe subscription ID")
+	errUnlimitedMustHaveStripeSubID               = errors.New("error unlimited plan must have a stripe subscription ID")
+	errUnmarshallingNotifications                 = errors.New("error unmarshalling notifications")
+	errMonthlyUserLimitMustBeMultipleOfOneMillion = errors.New("error monthly user limit must be a multiple of one million")
 )
 
 var defaultAccountNotifications = []types.NotificationEvent{
@@ -267,11 +268,12 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 	qtx := pg.WithTx(tx)
 
 	updateAccount := UpdateAccountFieldsParams{
-		ID:        update.AccountID,
-		Name:      newText(update.Name),
-		IconURL:   newText(update.IconURL),
-		PlanType:  newText(string(update.PlanType)),
-		UpdatedAt: newTimestamptz(updatedAt),
+		ID:               update.AccountID,
+		Name:             newText(update.Name),
+		IconURL:          newText(update.IconURL),
+		PlanType:         newText(string(update.PlanType)),
+		MonthlyUserLimit: newInt4(update.MonthlyUserLimit, true),
+		UpdatedAt:        newTimestamptz(updatedAt),
 	}
 	if update.PlanType != "" {
 		// If updating to an autoscale plan set the Stripe subscription
@@ -295,7 +297,7 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		return nil, err
 	}
 
-	if update.Notifications != nil && len(update.Notifications) > 0 {
+	if len(update.Notifications) > 0 {
 		for _, appNotification := range update.Notifications {
 			// Upsert notification row for application_id & type if active: true in update struct
 			err := qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
@@ -342,6 +344,7 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		PartnerChainIDs:         accountResult.PartnerChainIDs,
 		PartnerThroughputLimit:  accountResult.PartnerThroughputLimit,
 		PartnerApplicationLimit: accountResult.PartnerApplicationLimit,
+		MonthlyUserLimit:        accountResult.MonthlyUserLimit,
 		StripeSubscriptionID:    accountResult.StripeSubscriptionID,
 		CovalentAPIKeyFree:      accountResult.CovalentAPIKeyFree,
 		CovalentAPIKeyPaid:      accountResult.CovalentAPIKeyPaid,
@@ -365,6 +368,12 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 		_, err := url.ParseRequestURI(update.IconURL)
 		if err != nil {
 			return fmt.Errorf(errInvalidIconURL.Error(), update.IconURL)
+		}
+	}
+
+	if update.MonthlyUserLimit != 0 {
+		if update.MonthlyUserLimit%1_000_000 != 0 {
+			return errMonthlyUserLimitMustBeMultipleOfOneMillion
 		}
 	}
 

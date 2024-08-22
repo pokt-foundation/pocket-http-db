@@ -2272,8 +2272,9 @@ SET name = COALESCE($1, name),
     partner_chain_ids = COALESCE($4, partner_chain_ids),
     partner_throughput_limit = COALESCE($5, partner_throughput_limit),
     partner_application_limit = COALESCE($6, partner_application_limit),
-    updated_at = $7
-WHERE id = $8
+    monthly_user_limit = COALESCE($7, monthly_user_limit),
+    updated_at = $8
+WHERE id = $9
 `
 
 type UpdateAccountFieldsParams struct {
@@ -2283,6 +2284,7 @@ type UpdateAccountFieldsParams struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
+	MonthlyUserLimit        pgtype.Int4        `json:"monthly_user_limit"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	ID                      types.AccountID    `json:"id"`
 }
@@ -2295,6 +2297,7 @@ func (q *Queries) UpdateAccountFields(ctx context.Context, arg UpdateAccountFiel
 		arg.PartnerChainIDs,
 		arg.PartnerThroughputLimit,
 		arg.PartnerApplicationLimit,
+		arg.MonthlyUserLimit,
 		arg.UpdatedAt,
 		arg.ID,
 	)

@@ -393,8 +393,9 @@ SET name = COALESCE($1, name),
     partner_chain_ids = COALESCE($4, partner_chain_ids),
     partner_throughput_limit = COALESCE($5, partner_throughput_limit),
     partner_application_limit = COALESCE($6, partner_application_limit),
-    updated_at = $7
-WHERE id = $8;
+    monthly_user_limit = COALESCE($7, monthly_user_limit),
+    updated_at = $8
+WHERE id = $9;
 -- name: UpsertAccountIntegrations :one
 INSERT INTO account_integrations (
         account_id,
