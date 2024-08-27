@@ -2041,7 +2041,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name:                "Should update the account's MonthlyUserLimit field to a proper multiple of 3 million",
+				name:                "Should be able to update the account's MonthlyUserLimit field to a proper multiple 1 million (specifically 3)",
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID:        "account_1",
@@ -2055,7 +2055,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				err: nil,
 			},
 			{
-				name: "Should fail if MonthlyUserLimit is set to an invalid number",
+				name: "Should fail if MonthlyUserLimit is set to a number that's not a multiple of 1 million",
 				update: types.UpdateAccount{
 					AccountID:        "account_1",
 					MonthlyUserLimit: 1234567,
@@ -2064,7 +2064,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error monthly user limit must be a multiple of one million"),
 			},
 			{
-				name:                "Should update the account's MonthlyUserLimit field to 0",
+				name:                "Should be able to successfully update the account's MonthlyUserLimit field to 0",
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
 					AccountID:        "account_1",

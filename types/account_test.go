@@ -197,43 +197,43 @@ func Test_GetOwnerID(t *testing.T) {
 
 func Test_GetMonthlyLimit(t *testing.T) {
 	tests := []struct {
-		name     string
-		account  Account
-		expected int
+		name               string
+		account            Account
+		expectedRelayLimit int
 	}{
 		{
-			name: "Should return monthly user threshold when plan type is unlimited and threshold is set",
+			name: "Should return monthly relay limit when plan type is PLAN_UNLIMITED and limit is set",
 			account: Account{
 				PlanType:         PlanUnlimited,
-				MonthlyUserLimit: 100000,
-				Plan:             &Plan{MonthlyRelayLimit: 50000},
+				MonthlyUserLimit: 100_000,
+				Plan:             &Plan{MonthlyRelayLimit: 50_000},
 			},
-			expected: 100000,
+			expectedRelayLimit: 100_000,
 		},
 		{
-			name: "Should return plan monthly relay limit when plan type is not unlimited",
+			name: "Should return monthly relay limit when plan type is PLAN_FREE and limit is set",
 			account: Account{
 				PlanType:         PlanFree,
-				MonthlyUserLimit: 100000,
-				Plan:             &Plan{MonthlyRelayLimit: 50000},
+				MonthlyUserLimit: 100_000,
+				Plan:             &Plan{MonthlyRelayLimit: 50_000},
 			},
-			expected: 50000,
+			expectedRelayLimit: 50_000,
 		},
 		{
-			name: "Should return plan monthly relay limit when plan type is unlimited but threshold is not set",
+			name: "Should return monthly relay limit when plan type is PLAN_UNLIMITED and limit is NOT set (0)",
 			account: Account{
 				PlanType:         PlanUnlimited,
 				MonthlyUserLimit: 0,
-				Plan:             &Plan{MonthlyRelayLimit: 50000},
+				Plan:             &Plan{MonthlyRelayLimit: 50_000},
 			},
-			expected: 50000,
+			expectedRelayLimit: 50_000,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := test.account.GetMonthlyLimit()
-			assert.Equal(t, test.expected, result)
+			assert.Equal(t, test.expectedRelayLimit, result)
 		})
 	}
 }

@@ -371,10 +371,9 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 		}
 	}
 
-	if update.MonthlyUserLimit != 0 {
-		if update.MonthlyUserLimit%1_000_000 != 0 {
-			return errMonthlyUserLimitMustBeMultipleOfOneMillion
-		}
+	// Non-zero monthly user limit must be a multiple of 1M
+	if update.MonthlyUserLimit != 0 && update.MonthlyUserLimit%1_000_000 != 0 {
+		return errMonthlyUserLimitMustBeMultipleOfOneMillion
 	}
 
 	accountExists, err := pg.CheckAccountExists(ctx, update.AccountID)

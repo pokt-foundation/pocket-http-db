@@ -93,6 +93,7 @@ CREATE TABLE accounts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
     deleted_at TIMESTAMPTZ NULL,
+    -- Non-zero monthly user limit must be a multiple of 1M
     CONSTRAINT monthly_user_limit_check CHECK (
         plan_type = 'PLAN_UNLIMITED'
         OR monthly_user_limit IS NULL
