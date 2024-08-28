@@ -353,6 +353,32 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 			},
 			err: errUnlimitedMustHaveStripeSubID,
 		},
+		{
+			name: "Should be able to update the account's MonthlyUserLimit field to a proper multiple 1 million (specifically 3)",
+			update: types.UpdateAccount{
+				AccountID:        "account_1",
+				MonthlyUserLimit: 3_000_000,
+			},
+			account: testdata.Accounts()["account_1"],
+			err:     nil,
+		},
+		{
+			name: "Should fail if MonthlyUserLimit is set to a number that's not a multiple of 1 million",
+			update: types.UpdateAccount{
+				AccountID:        "account_1",
+				MonthlyUserLimit: 1234567,
+			},
+			err: fmt.Errorf("error monthly user limit must be a multiple of one million"),
+		},
+		{
+			name: "Should be able to successfully update the account's MonthlyUserLimit field to 0",
+			update: types.UpdateAccount{
+				AccountID:        "account_1",
+				MonthlyUserLimit: 0,
+			},
+			account: testdata.Accounts()["account_1"],
+			err:     nil,
+		},
 	}
 
 	for _, test := range tests {
@@ -375,6 +401,9 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 				}
 				if test.update.Notifications != nil {
 					ts.Equal(test.testUpdatedNotifications, account.Notifications)
+				}
+				if test.update.MonthlyUserLimit != 0 {
+					ts.Equal(test.update.MonthlyUserLimit, account.MonthlyUserLimit)
 				}
 			}
 		})

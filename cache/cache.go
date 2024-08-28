@@ -627,7 +627,7 @@ func (c *Cache) GetUserAccounts(userID types.UserID, options Options) []types.Ac
 		}
 
 		// Skip if role name filters are passed and the user's role isn't in the filters slice
-		if options.FilterAccounts != nil && len(options.FilterAccounts) > 0 {
+		if len(options.FilterAccounts) > 0 {
 			if accountUsers, ok := c.usersByAccountID[account.ID]; ok {
 				if user, ok := accountUsers[userID]; ok {
 					userRole := user.GetAccountRole(account.ID)

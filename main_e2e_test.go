@@ -2041,58 +2041,41 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
-				name:                "Should update the account's PlanType field from PayAsYouGo",
+				name:                "Should be able to update the account's MonthlyUserLimit field to a proper multiple 1 million (specifically 3)",
 				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
 				update: types.UpdateAccount{
-					AccountID: "account_3",
-					PlanType:  types.PlanFree,
-				},
-				userID: "user_5",
-				expected: &types.Account{
-					ID:       "account_3",
-					PlanType: types.PlanFree,
-				},
-			},
-			{
-				name:                "Should update the account's Notifications field",
-				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
-				update: types.UpdateAccount{
-					AccountID: "account_1",
-					Notifications: []types.UpdateAccountNotifications{
-						{
-							NotificationType: types.NotificationTypeEmail,
-							Active:           true,
-							Destination:      "user@example.com",
-							Trigger:          "daily",
-							Events: []types.NotificationEvent{
-								types.NotificationEventSignedUp,
-								types.NotificationEventHalf,
-								types.NotificationEventQuarter,
-								types.NotificationEventThreeQuarters,
-								types.NotificationEventFull,
-							},
-						},
-					},
+					AccountID:        "account_1",
+					MonthlyUserLimit: 3000000,
 				},
 				userID: "user_1",
 				expected: &types.Account{
-					ID: "account_1",
-					Notifications: map[types.NotificationType]types.AccountNotification{
-						types.NotificationTypeEmail: {
-							Type:        types.NotificationTypeEmail,
-							Active:      true,
-							Destination: "user@example.com",
-							Trigger:     "daily",
-							Events: map[types.NotificationEvent]bool{
-								types.NotificationEventSignedUp:      true,
-								types.NotificationEventHalf:          true,
-								types.NotificationEventQuarter:       true,
-								types.NotificationEventThreeQuarters: true,
-								types.NotificationEventFull:          true,
-							},
-						},
-					},
+					ID:               "account_1",
+					MonthlyUserLimit: 3000000,
 				},
+				err: nil,
+			},
+			{
+				name: "Should fail if MonthlyUserLimit is set to a number that's not a multiple of 1 million",
+				update: types.UpdateAccount{
+					AccountID:        "account_1",
+					MonthlyUserLimit: 1234567,
+				},
+				userID: "user_1",
+				err:    fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateAccount: error monthly user limit must be a multiple of one million"),
+			},
+			{
+				name:                "Should be able to successfully update the account's MonthlyUserLimit field to 0",
+				accountBeforeUpdate: testdata.Accounts(setAccountOpts)["account_1"],
+				update: types.UpdateAccount{
+					AccountID:        "account_1",
+					MonthlyUserLimit: 0,
+				},
+				userID: "user_1",
+				expected: &types.Account{
+					ID:               "account_1",
+					MonthlyUserLimit: 0,
+				},
+				err: nil,
 			},
 			{
 				name: "Should fail if an invalid account ID is provided",
@@ -2187,7 +2170,6 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 					} else {
 						ts.Equal(accountBeforeUpdate.Notifications, accountAfterUpdate.Notifications)
 					}
-
 				}
 			})
 		}

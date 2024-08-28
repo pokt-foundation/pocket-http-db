@@ -88,10 +88,18 @@ CREATE TABLE accounts (
     partner_chain_ids VARCHAR(4) ARRAY,
     partner_throughput_limit INT,
     partner_application_limit INT,
+    monthly_user_limit INT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
-    deleted_at TIMESTAMPTZ NULL
+    deleted_at TIMESTAMPTZ NULL,
+    -- Non-zero monthly user limit must be a multiple of 1M
+    CONSTRAINT monthly_user_limit_check CHECK (
+        plan_type = 'PLAN_UNLIMITED'
+        OR monthly_user_limit IS NULL
+        OR monthly_user_limit = 0
+        OR monthly_user_limit % 1000000 = 0
+    )
 );
 CREATE TABLE IF NOT EXISTS account_integrations (
     id INT GENERATED ALWAYS AS IDENTITY,

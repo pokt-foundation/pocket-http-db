@@ -59,6 +59,7 @@ type (
 		PartnerChainIDs        map[RelayChainID]struct{}                `json:"partnerBlockchainIDs"`
 		PartnerThroughputLimit int32                                    `json:"partnerThroughputLimit"`
 		PartnerAppLimit        int32                                    `json:"partnerAppLimit"`
+		MonthlyUserLimit       int32                                    `json:"monthlyUserLimit"`
 		Integrations           AccountIntegrations                      `json:"integrations"`
 		Notifications          map[NotificationType]AccountNotification `json:"notifications"`
 		CreatedAt              time.Time                                `json:"createdAt"`
@@ -112,6 +113,7 @@ type (
 		IconURL              string                       `json:"iconURL"`
 		PlanType             PayPlanType                  `json:"planType"`
 		StripeSubscriptionID *string                      `json:"stripeSubscriptionID"`
+		MonthlyUserLimit     int32                        `json:"monthlyUserLimit"`
 		Notifications        []UpdateAccountNotifications `json:"notificationSettings,omitempty"`
 	}
 
@@ -162,6 +164,9 @@ func (a *Account) AssignAccountUsers(usersForAccountID map[UserID]*User) {
 // GetMonthlyLimit returns the Account's monthly relay limit
 // 0 means unlimited relays.
 func (a *Account) GetMonthlyLimit() int {
+	if a.PlanType == PlanUnlimited && a.MonthlyUserLimit != 0 {
+		return int(a.MonthlyUserLimit)
+	}
 	return int(a.Plan.MonthlyRelayLimit)
 }
 

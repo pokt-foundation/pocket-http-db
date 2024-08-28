@@ -287,7 +287,7 @@ func (pg *PostgresDriver) WriteChainAndGigastakeApps(ctx context.Context, input 
 		}
 
 		gigastakeApp.ID = types.GigastakeAppID(gigastakeAppID)
-		if gigastakeApp.ChainIDs != nil && len(gigastakeApp.ChainIDs) > 0 {
+		if len(gigastakeApp.ChainIDs) > 0 {
 			gigastakeApp.ChainIDs[chain.ID] = struct{}{}
 		} else {
 			gigastakeApp.ChainIDs = map[types.RelayChainID]struct{}{chain.ID: {}}
