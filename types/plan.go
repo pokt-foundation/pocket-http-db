@@ -4,14 +4,9 @@ package types
 type PayPlanType string
 
 var (
-	// CURRENT PLAN TYPES
-	PlanFree      PayPlanType = "PLAN_FREE"
-	PlanUnlimited PayPlanType = "PLAN_UNLIMITED"
-
-	// DEPRECATED PLAN TYPES - Remove Eventually
-	FreetierV0   PayPlanType = "FREETIER_V0"
-	PayAsYouGoV0 PayPlanType = "PAY_AS_YOU_GO_V0"
-	Enterprise   PayPlanType = "ENTERPRISE"
+	PlanFree       PayPlanType = "PLAN_FREE"
+	PlanUnlimited  PayPlanType = "PLAN_UNLIMITED"
+	PlanEnterprise PayPlanType = "ENTERPRISE" // Kept as a legacy plan type for some accounts
 )
 
 /* Pay Plan Type and Methods */
@@ -46,10 +41,7 @@ func (p *Plan) Table() Table {
 func (p PayPlanType) Valid() bool {
 	switch p {
 	case
-		// CURRENT PLAN TYPES
-		PlanFree, PlanUnlimited,
-		// DEPRECATED PLAN TYPES - Remove Eventually
-		FreetierV0, PayAsYouGoV0, Enterprise:
+		PlanFree, PlanUnlimited, PlanEnterprise:
 		return true
 	default:
 		return false
