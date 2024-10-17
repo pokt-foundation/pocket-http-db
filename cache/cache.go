@@ -35,6 +35,7 @@ type (
 		usersByAccountID  map[types.AccountID]UsersForAccount
 
 		accounts                    map[types.AccountID]*types.Account
+		pendingGCPAccounts          map[types.GCPAccountID]*types.Account
 		pendingAccountNotifications map[types.AccountID]types.AccountNotification
 		accountsByUserID            map[types.UserID]AccountsForUser
 		pendingAccountUsers         map[types.UserID][]types.AccountUser
@@ -109,6 +110,7 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		logger: config.Logger,
 
+		pendingGCPAccounts:          make(map[types.GCPAccountID]*types.Account),
 		pendingAccountNotifications: make(map[types.AccountID]types.AccountNotification),
 		pendingAccountUsers:         make(map[types.UserID][]types.AccountUser),
 		pendingUserAuthProviders:    make(map[types.UserID]types.UserAuthProvider),
@@ -672,6 +674,11 @@ func (c *Cache) userAcceptedAccountInvite(a *types.Account, userID types.UserID)
 func (c *Cache) upsertAccount(account types.Account) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
+
+	if account.IsGCPAccount() {
+		c.pendingGCPAccounts[account.GCPAccountID] = &account
+		return
+	}
 
 	// If marked as deleted, remove Account from map
 	// and from all user ID maps of all Account users
