@@ -4,10 +4,10 @@ ALTER TABLE accounts
     ADD COLUMN billing_type billing_type;
 
 ALTER TABLE accounts
-    ADD COLUMN gcp_account_id VARCHAR(255);
+    ADD COLUMN gcp_account_id VARCHAR(255) UNIQUE;
 
 ALTER TABLE accounts
-    ADD COLUMN gcp_entitlement_id VARCHAR(255);
+    ADD COLUMN gcp_entitlement_id VARCHAR(255) UNIQUE;
 
 UPDATE accounts
     SET billing_type = 'stripe';

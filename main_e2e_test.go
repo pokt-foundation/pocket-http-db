@@ -537,7 +537,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:           "Should get all accounts",
-				expectedAccNum: 5,
+				expectedAccNum: 6,
 			},
 		}
 
@@ -580,6 +580,36 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 					ts.Equal(account, test.expectedAccount)
 
 					account, err = ts.client2.GetAccountByID(context.Background(), test.accountID)
+					ts.Equal(test.err, err)
+					ts.Equal(account, test.expectedAccount)
+				}
+			})
+		}
+	})
+
+	ts.Run("Test_GetGCPAccount", func() {
+		tests := []struct {
+			name            string
+			gcpAccountID    types.GCPAccountID
+			expectedAccount *types.Account
+			err             error
+		}{
+			{
+				name:            "Should get one account",
+				gcpAccountID:    "gcp_account_123",
+				expectedAccount: testdata.Accounts(setAccountOpts)["account_6"],
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				account, err := ts.client1.GetGCPAccountByID(context.Background(), test.gcpAccountID)
+				ts.Equal(test.err, err)
+
+				if err == nil {
+					ts.Equal(account, test.expectedAccount)
+
+					account, err = ts.client2.GetGCPAccountByID(context.Background(), test.gcpAccountID)
 					ts.Equal(test.err, err)
 					ts.Equal(account, test.expectedAccount)
 				}
@@ -1899,11 +1929,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				ownerID:      "user_1",
 				accountInput: testdata.TestCreateAccount,
 				expected: &types.Account{
-					PlanType:  types.PlanFree,
-					Name:      "Protogen Corp",
-					IconURL:   "https://picsum.photos/200",
-					CreatedAt: testdata.MockTimestamp,
-					UpdatedAt: testdata.MockTimestamp,
+					PlanType:    types.PlanFree,
+					Name:        "Protogen Corp",
+					BillingType: types.BillingTypeStripe,
+					IconURL:     "https://picsum.photos/200",
+					CreatedAt:   testdata.MockTimestamp,
+					UpdatedAt:   testdata.MockTimestamp,
 					Users: map[types.UserID]types.AccountUser{
 						"user_1": {
 							ID:       "user_1",

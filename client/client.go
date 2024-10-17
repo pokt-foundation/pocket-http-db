@@ -66,6 +66,8 @@ type (
 		GetAllAccounts(ctx context.Context, options ...AccountOptions) ([]*types.Account, error)
 		// GetAccountByID returns a single Account by its ID - GET `/v2/account/{id}`
 		GetAccountByID(ctx context.Context, accountID types.AccountID) (*types.Account, error)
+		// GetGCPAccountByID returns a single GCP Account by its ID - GET `/v2/account/gcp/{gcp_account_id}`
+		GetGCPAccountByID(ctx context.Context, gcpAccountID types.GCPAccountID) (*types.Account, error)
 		// GetUserAccounts returns all Accounts for a given user ID - GET `/v2/user/{userID}/account`
 		GetUserAccounts(ctx context.Context, userID types.UserID, options ...AccountOptions) ([]*types.Account, error)
 		// GetUserAccount returns a single user Account by its account ID and user ID - GET `/v2/user/{userID}/account/{id}`
@@ -216,7 +218,7 @@ const (
 	gatewayConfigPath   subPath  = "gateway"
 	validatorConfigPath basePath = "validator"
 	openAPIConfigPath   subPath  = "openapi"
-	gcpAccountPath      subPath  = "gcp"
+	gcpPath             subPath  = "gcp"
 )
 
 var (
@@ -523,6 +525,12 @@ func (db *DBClient) GetAccountByID(ctx context.Context, accountID types.AccountI
 	return getReq[*types.Account](endpoint, db.getAuthHeaderForRead(), db.httpClient)
 }
 
+// GetGCPAccountByID returns a single GCP Account by its ID - GET `/v2/account/gcp/{gcp_account_id}`
+func (db *DBClient) GetGCPAccountByID(ctx context.Context, gcpAccountID types.GCPAccountID) (*types.Account, error) {
+	endpoint := fmt.Sprintf("%s/%s/%s", db.v2BasePath(accountPath), gcpPath, gcpAccountID)
+	return getReq[*types.Account](endpoint, db.getAuthHeaderForRead(), db.httpClient)
+}
+
 // GetUserAccounts returns all Accounts for a given user ID - GET `/v2/user/{userID}/account`
 func (db *DBClient) GetUserAccounts(ctx context.Context, userID types.UserID, optionParams ...AccountOptions) ([]*types.Account, error) {
 	if userID == "" {
@@ -826,7 +834,7 @@ func (db *DBClient) CreateGCPAccount(ctx context.Context, input types.CreateGCPA
 		return nil, errNoEntitlementID
 	}
 
-	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), gcpAccountPath)
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), gcpPath)
 
 	inputJSON, err := json.Marshal(input)
 	if err != nil {

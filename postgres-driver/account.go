@@ -809,6 +809,9 @@ func (json dbAccount) toOutput() *types.Account {
 	return &types.Account{
 		ID:                     json.ID,
 		Name:                   json.Name,
+		BillingType:            json.BillingType,
+		GCPAccountID:           json.GCPAccountID,
+		GCPEntitlementID:       json.GCPEntitlementID,
 		IconURL:                json.IconURL,
 		PlanType:               json.PlanType,
 		PartnerChainIDs:        partnerChainIDs,
@@ -859,18 +862,21 @@ func (json dbAccountNotification) mapEvents() map[types.NotificationEvent]bool {
 }
 
 type dbAccount struct {
-	ID                      types.AccountID   `json:"id"`
-	Name                    string            `json:"name"`
-	IconURL                 string            `json:"icon_url"`
-	PlanType                types.PayPlanType `json:"plan_type"`
-	PartnerChainIDs         []string          `json:"partner_chain_ids"`
-	PartnerThroughputLimit  int32             `json:"partner_throughput_limit"`
-	PartnerApplicationLimit int32             `json:"partner_application_limit"`
-	MonthlyUserLimit        int32             `json:"monthly_user_limit"`
-	CreatedAt               time.Time         `json:"created_at"`
-	UpdatedAt               time.Time         `json:"updated_at"`
-	Deleted                 bool              `json:"deleted"`
-	DeletedAt               time.Time         `json:"deleted_at"`
+	ID                      types.AccountID    `json:"id"`
+	Name                    string             `json:"name"`
+	BillingType             types.BillingType  `json:"billing_type"`
+	GCPAccountID            types.GCPAccountID `json:"gcp_account_id"`
+	GCPEntitlementID        string             `json:"gcp_entitlement_id"`
+	IconURL                 string             `json:"icon_url"`
+	PlanType                types.PayPlanType  `json:"plan_type"`
+	PartnerChainIDs         []string           `json:"partner_chain_ids"`
+	PartnerThroughputLimit  int32              `json:"partner_throughput_limit"`
+	PartnerApplicationLimit int32              `json:"partner_application_limit"`
+	MonthlyUserLimit        int32              `json:"monthly_user_limit"`
+	CreatedAt               time.Time          `json:"created_at"`
+	UpdatedAt               time.Time          `json:"updated_at"`
+	Deleted                 bool               `json:"deleted"`
+	DeletedAt               time.Time          `json:"deleted_at"`
 }
 
 type dbAccountIntegration struct {

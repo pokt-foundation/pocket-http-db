@@ -1,4 +1,3 @@
-BEGIN;
 -- Remove the NOT NULL constraint from the scheme column
 ALTER TABLE chains
 ALTER COLUMN scheme DROP NOT NULL;
@@ -6,4 +5,3 @@ ALTER COLUMN scheme DROP NOT NULL;
 ALTER TABLE chains DROP COLUMN scheme;
 -- Drop the enum type chain_scheme
 DROP TYPE chain_scheme;
-COMMIT;
