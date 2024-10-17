@@ -1081,6 +1081,55 @@ func TestRouter_createAccount(t *testing.T) {
 	}
 }
 
+func TestRouter_createGCPAccount(t *testing.T) {
+	tests := []struct {
+		name             string
+		gcpAccountInput  types.CreateGCPAccount
+		expectedStatus   int
+		expectedResponse map[string]string
+	}{
+		{
+			name: "Should create a new GCP Account",
+			gcpAccountInput: types.CreateGCPAccount{
+				GCPAccountID:  "gcp_account_1",
+				EntitlementID: "entitlement_1",
+				PlanType:      types.PlanFree,
+			},
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]string{"status": "created"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("WriteGCPAccount", mock.Anything, test.gcpAccountInput, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			gcpAccountInputBytes, err := json.Marshal(test.gcpAccountInput)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPost, "/v2/account/gcp", bytes.NewBuffer(gcpAccountInputBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var response map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, response)
+		})
+	}
+}
+
 func TestRouter_updateAccount(t *testing.T) {
 	tests := []struct {
 		name               string
