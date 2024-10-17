@@ -945,6 +945,52 @@ func TestRouter_getAccount(t *testing.T) {
 	}
 }
 
+func TestRouter_getGCPAccount(t *testing.T) {
+	tests := []struct {
+		name           string
+		accountID      types.AccountID
+		expectedStatus int
+		expectedID     types.AccountID
+	}{
+		{
+			name:           "Should get a GCP account by its ID",
+			accountID:      "gcp_account_123",
+			expectedStatus: http.StatusOK,
+			expectedID:     "account_6",
+		},
+		{
+			name:           "Should return 404 for nonexistent GCP account",
+			accountID:      "nonexistent_gcp_account",
+			expectedStatus: http.StatusNotFound,
+			expectedID:     "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			rr := httptest.NewRecorder()
+
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("/v2/account/gcp/%s", test.accountID), nil)
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			if test.expectedID != "" {
+				var accountResp types.Account
+				err = json.Unmarshal(rr.Body.Bytes(), &accountResp)
+				c.NoError(err)
+				c.Equal(test.expectedID, accountResp.ID)
+			}
+		})
+	}
+}
+
 func TestRouter_getUserAccounts(t *testing.T) {
 	setAccountOpts := testdata.AccountOptions{IncludePortalApps: true, IncludePlans: true, AssignUsers: true}
 

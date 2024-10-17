@@ -828,6 +828,24 @@ func (_m *MockDriver) WriteChainAndGigastakeApps(ctx context.Context, input type
 	return r0, r1
 }
 
+// WriteGCPAccount provides a mock function with given fields: ctx, input, createdAt
+func (_m *MockDriver) WriteGCPAccount(ctx context.Context, input types.CreateGCPAccount, createdAt time.Time) error {
+	ret := _m.Called(ctx, input, createdAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WriteGCPAccount")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateGCPAccount, time.Time) error); ok {
+		r0 = rf(ctx, input, createdAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // WriteGigastakeApp provides a mock function with given fields: ctx, gigastakeApp, createdAt
 func (_m *MockDriver) WriteGigastakeApp(ctx context.Context, gigastakeApp *types.GigastakeApp, createdAt time.Time) (*types.GigastakeApp, error) {
 	ret := _m.Called(ctx, gigastakeApp, createdAt)

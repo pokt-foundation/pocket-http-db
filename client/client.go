@@ -114,6 +114,8 @@ type (
 
 		// CreateAccount creates a new Account in the database for a single user - POST `/v2/user/{userID}/account`
 		CreateAccount(ctx context.Context, userID types.UserID, account types.Account, timestamp time.Time) (*types.Account, error)
+		// CreateGCPAccount creates a new Account in the database for a single user - POST `/v2/account/gcp`
+		CreateGCPAccount(ctx context.Context, input types.CreateGCPAccount, timestamp time.Time) (*types.Account, error)
 		// UpdateAccount updates an existing account in the DB - PUT `/v2/account/{id}`
 		UpdateAccount(ctx context.Context, account types.UpdateAccount) (*types.Account, error)
 		// CreateAccountIntegration creates a new integration for an account - POST `/v2/account/{id}/integration`
@@ -214,6 +216,7 @@ const (
 	gatewayConfigPath   subPath  = "gateway"
 	validatorConfigPath basePath = "validator"
 	openAPIConfigPath   subPath  = "openapi"
+	gcpAccountPath      subPath  = "gcp"
 )
 
 var (
@@ -246,6 +249,8 @@ var (
 	errNoProviderUserID   error = errors.New("no provider user ID")
 	errNoEmail            error = errors.New("no email")
 	errNoPlanTypeSet      error = errors.New("no plan type set")
+	errNoGCPAccountID     error = errors.New("no GCP account ID")
+	errNoEntitlementID    error = errors.New("no entitlement ID")
 	errNoBlockedAddress   error = errors.New("no blocked address provided")
 	errNoEnvironment      error = errors.New("no environment provided")
 	errInvalidEnvironment error = errors.New("invalid environment provided: %s")
@@ -807,6 +812,28 @@ func (db *DBClient) CreateAccount(ctx context.Context, userID types.UserID, acco
 	endpoint := fmt.Sprintf("%s/%s/%s", db.v2BasePath(userPath), userID, accountPath)
 
 	return postReq[*types.Account](endpoint, db.getAuthHeaderForWrite(), accountJSON, db.httpClient)
+}
+
+// CreateGCPAccount creates a new Account in the database for a single user - POST `/v2/account/gcp`
+func (db *DBClient) CreateGCPAccount(ctx context.Context, input types.CreateGCPAccount, timestamp time.Time) (*types.Account, error) {
+	if input.PlanType == "" {
+		return nil, errNoPlanTypeSet
+	}
+	if input.GCPAccountID == "" {
+		return nil, errNoGCPAccountID
+	}
+	if input.EntitlementID == "" {
+		return nil, errNoEntitlementID
+	}
+
+	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), gcpAccountPath)
+
+	inputJSON, err := json.Marshal(input)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", errInvalidAccountJSON, err)
+	}
+
+	return postReq[*types.Account](endpoint, db.getAuthHeaderForWrite(), inputJSON, db.httpClient)
 }
 
 // UpdateAccount updates an Account in the DB - PUT `/v2/account/{id}`

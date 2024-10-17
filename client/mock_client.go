@@ -136,6 +136,36 @@ func (_m *MockIDBClient) CreateChainAndGigastakeApps(ctx context.Context, newCha
 	return r0, r1
 }
 
+// CreateGCPAccount provides a mock function with given fields: ctx, input, timestamp
+func (_m *MockIDBClient) CreateGCPAccount(ctx context.Context, input types.CreateGCPAccount, timestamp time.Time) (*types.Account, error) {
+	ret := _m.Called(ctx, input, timestamp)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateGCPAccount")
+	}
+
+	var r0 *types.Account
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateGCPAccount, time.Time) (*types.Account, error)); ok {
+		return rf(ctx, input, timestamp)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, types.CreateGCPAccount, time.Time) *types.Account); ok {
+		r0 = rf(ctx, input, timestamp)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Account)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, types.CreateGCPAccount, time.Time) error); ok {
+		r1 = rf(ctx, input, timestamp)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // CreateGigastakeApp provides a mock function with given fields: ctx, gigastakeAppInput
 func (_m *MockIDBClient) CreateGigastakeApp(ctx context.Context, gigastakeAppInput types.GigastakeApp) (*types.GigastakeApp, error) {
 	ret := _m.Called(ctx, gigastakeAppInput)

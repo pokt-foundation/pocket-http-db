@@ -320,6 +320,12 @@ func (c *Cache) fetchAppsData(ctx context.Context, usersByAccountID map[types.Ac
 		}
 	}
 
+	for _, account := range accounts {
+		if account.IsGCPAccount() && len(account.Users) == 0 {
+			c.pendingGCPAccounts[account.GCPAccountID] = account
+		}
+	}
+
 	return appsData{
 		plans,
 		accounts,
@@ -584,6 +590,18 @@ func (c *Cache) GetAccount(accountID types.AccountID) types.Account {
 			account.AssignAccountUsers(usersForAccount)
 		}
 
+		return *account
+	}
+
+	return types.Account{}
+}
+
+// GetGCPAccount returns one GCP Account by gcpAccountID
+func (c *Cache) GetGCPAccount(gcpAccountID types.GCPAccountID) types.Account {
+	c.rwMutex.RLock()
+	defer c.rwMutex.RUnlock()
+
+	if account, ok := c.pendingGCPAccounts[gcpAccountID]; ok {
 		return *account
 	}
 

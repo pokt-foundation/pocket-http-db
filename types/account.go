@@ -109,6 +109,14 @@ type (
 		Events      map[NotificationEvent]bool `json:"events"`
 	}
 
+	// CreateGCPAccount contains all fields required to create a new GCP Account
+	// in response to a user's subscription request in the GCP Marketplace.
+	CreateGCPAccount struct {
+		GCPAccountID  GCPAccountID
+		EntitlementID string
+		PlanType      PayPlanType
+	}
+
 	// CreateAccountUser contains all fields required to create a new Account User
 	CreateAccountUser struct {
 		AccountID AccountID `json:"accountID"`
