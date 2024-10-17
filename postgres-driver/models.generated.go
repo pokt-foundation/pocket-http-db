@@ -96,6 +96,48 @@ func (ns NullAuthType) Value() (driver.Value, error) {
 	return string(ns.AuthType), nil
 }
 
+type BillingType string
+
+const (
+	BillingTypeStripe BillingType = "stripe"
+	BillingTypeGoogle BillingType = "google"
+)
+
+func (e *BillingType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = BillingType(s)
+	case string:
+		*e = BillingType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for BillingType: %T", src)
+	}
+	return nil
+}
+
+type NullBillingType struct {
+	BillingType BillingType `json:"billing_type"`
+	Valid       bool        `json:"valid"` // Valid is true if BillingType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullBillingType) Scan(value interface{}) error {
+	if value == nil {
+		ns.BillingType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.BillingType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullBillingType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.BillingType), nil
+}
+
 type ChainAuthType string
 
 const (
@@ -536,6 +578,9 @@ func (ns NullWhitelistType) Value() (driver.Value, error) {
 type Account struct {
 	ID                      types.AccountID    `json:"id"`
 	Name                    pgtype.Text        `json:"name"`
+	BillingType             BillingType        `json:"billing_type"`
+	GcpAccountID            pgtype.Text        `json:"gcp_account_id"`
+	GcpEntitlementID        pgtype.Text        `json:"gcp_entitlement_id"`
 	IconURL                 pgtype.Text        `json:"icon_url"`
 	PlanType                pgtype.Text        `json:"plan_type"`
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`

@@ -816,7 +816,7 @@ INSERT INTO accounts (
         updated_at
     )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, monthly_user_limit, created_at, updated_at, deleted, deleted_at
+RETURNING id, name, billing_type, gcp_account_id, gcp_entitlement_id, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, monthly_user_limit, created_at, updated_at, deleted, deleted_at
 `
 
 type InsertAccountParams struct {
@@ -841,6 +841,9 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.BillingType,
+		&i.GcpAccountID,
+		&i.GcpEntitlementID,
 		&i.IconURL,
 		&i.PlanType,
 		&i.PartnerChainIDs,
@@ -1327,7 +1330,7 @@ func (q *Queries) RemoveGlobalBlockedContract(ctx context.Context, blockedAddres
 }
 
 const selectAccount = `-- name: SelectAccount :one
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.monthly_user_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.billing_type, a.gcp_account_id, a.gcp_entitlement_id, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.monthly_user_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1368,6 +1371,9 @@ WHERE a.id = $1
 type SelectAccountRow struct {
 	ID                      types.AccountID    `json:"id"`
 	Name                    pgtype.Text        `json:"name"`
+	BillingType             BillingType        `json:"billing_type"`
+	GcpAccountID            pgtype.Text        `json:"gcp_account_id"`
+	GcpEntitlementID        pgtype.Text        `json:"gcp_entitlement_id"`
 	IconURL                 pgtype.Text        `json:"icon_url"`
 	PlanType                pgtype.Text        `json:"plan_type"`
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
@@ -1390,6 +1396,9 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.BillingType,
+		&i.GcpAccountID,
+		&i.GcpEntitlementID,
 		&i.IconURL,
 		&i.PlanType,
 		&i.PartnerChainIDs,
@@ -1409,7 +1418,7 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 }
 
 const selectAccounts = `-- name: SelectAccounts :many
-SELECT a.id, a.name, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.monthly_user_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
+SELECT a.id, a.name, a.billing_type, a.gcp_account_id, a.gcp_entitlement_id, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.monthly_user_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,
     ai.covalent_api_key_free,
     ai.covalent_api_key_paid,
@@ -1453,6 +1462,9 @@ WHERE (
 type SelectAccountsRow struct {
 	ID                      types.AccountID    `json:"id"`
 	Name                    pgtype.Text        `json:"name"`
+	BillingType             BillingType        `json:"billing_type"`
+	GcpAccountID            pgtype.Text        `json:"gcp_account_id"`
+	GcpEntitlementID        pgtype.Text        `json:"gcp_entitlement_id"`
 	IconURL                 pgtype.Text        `json:"icon_url"`
 	PlanType                pgtype.Text        `json:"plan_type"`
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
@@ -1481,6 +1493,9 @@ func (q *Queries) SelectAccounts(ctx context.Context, dollar_1 bool) ([]SelectAc
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.BillingType,
+			&i.GcpAccountID,
+			&i.GcpEntitlementID,
 			&i.IconURL,
 			&i.PlanType,
 			&i.PartnerChainIDs,

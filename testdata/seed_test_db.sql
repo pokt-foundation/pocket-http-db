@@ -178,6 +178,17 @@ VALUES (
         false,
         true,
         false
+    ),
+    (
+        'user_13',
+        'daemon.targaryen@test.com',
+        true,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000',
+        'https://picsum.photos/200',
+        true,
+        true,
+        false
     );
 INSERT INTO user_auth_providers (
         user_id,
@@ -282,11 +293,22 @@ VALUES (
         'auth0|bernard_marx',
         false,
         '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'user_13',
+        'auth0',
+        'auth0_username',
+        'auth0|daemon_targaryen',
+        false,
+        '2022-11-11 11:11:11.000000'
     );
 -- Insert accounts
 INSERT INTO accounts (
         id,
         name,
+        billing_type,
+        gcp_account_id,
+        gcp_entitlement_id,
         icon_url,
         plan_type,
         partner_chain_ids,
@@ -299,6 +321,9 @@ INSERT INTO accounts (
 VALUES (
         'account_1',
         'The Brave Voyager',
+        'stripe',
+        NULL,
+        NULL,
         'https://picsum.photos/200',
         'PLAN_FREE',
         ARRAY ['0001', '0053'],
@@ -311,6 +336,9 @@ VALUES (
     (
         'account_2',
         'Dragonborn Explorer',
+        'stripe',
+        NULL,
+        NULL,
         'https://picsum.photos/200',
         'PLAN_UNLIMITED',
         ARRAY ['0001', '0053','0021', '0064'],
@@ -323,6 +351,9 @@ VALUES (
     (
         'account_3',
         'Fellowship Startup',
+        'stripe',
+        NULL,
+        NULL,
         'https://picsum.photos/200',
         'PLAN_UNLIMITED',
         ARRAY ['0001', '0053', '0064', '0034'],
@@ -335,6 +366,9 @@ VALUES (
     (
         'account_4',
         'Iron Throne Enterprise',
+        'stripe',
+        NULL,
+        NULL,
         'https://picsum.photos/200',
         'PLAN_FREE',
         ARRAY ['0001'],
@@ -347,12 +381,30 @@ VALUES (
     (
         'account_5',
         'Nomad Wanderer',
+        'stripe',
+        NULL,
+        NULL,
         'https://picsum.photos/200',
         'PLAN_UNLIMITED',
         ARRAY ['0006', '0040'],
         6000,
         1,
         1000000000,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'account_6',
+        'Google Cloud Pioneer',
+        'google',
+        'gcp_account_123',
+        'gcp_entitlement_456',
+        'https://picsum.photos/200',
+        'PLAN_UNLIMITED',
+        ARRAY ['0007', '0041'],
+        7000,
+        2,
+        2000000,
         '2022-11-11 11:11:11.000000',
         '2022-11-11 11:11:11.000000'
     );
@@ -596,6 +648,14 @@ VALUES (
     (
         'user_4',
         'account_5',
+        'OWNER',
+        true,
+        '2022-11-11 11:11:11.000000',
+        '2022-11-11 11:11:11.000000'
+    ),
+    (
+        'user_13',
+        'account_6',
         'OWNER',
         true,
         '2022-11-11 11:11:11.000000',

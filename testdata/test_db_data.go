@@ -377,6 +377,37 @@ func Users() map[types.UserID]*types.User {
 			CreatedAt:        MockTimestamp,
 			UpdatedAt:        MockTimestamp,
 		},
+		"user_13": {
+			ID:               "user_13",
+			Email:            "daemon.targaryen@test.com",
+			SignedUp:         true,
+			IconURL:          "https://picsum.photos/200",
+			UpdatesProduct:   true,
+			UpdatesMarketing: true,
+			BetaTester:       false,
+			AuthProviders: map[types.AuthType]types.UserAuthProvider{
+				types.AuthTypeAuth0Username: {
+					ProviderUserID: "auth0|daemon_targaryen",
+					Type:           types.AuthTypeAuth0Username,
+					Provider:       "auth0",
+					Federated:      false,
+				},
+			},
+			Permissions: map[types.AccountID]types.AccountPermissions{
+				"account_6": types.AccountPermissions{
+					Accepted: true,
+					RoleName: types.RoleOwner,
+					Permissions: []types.Permissions{
+						types.PermReadEndpoint,
+						types.PermWriteEndpoint,
+						types.PermDeleteEndpoint,
+						types.PermTransferEndpoint,
+					},
+				},
+			},
+			CreatedAt: MockTimestamp,
+			UpdatedAt: MockTimestamp,
+		},
 	}
 }
 
@@ -384,6 +415,7 @@ func UserIDs() map[types.ProviderUserID]types.UserID {
 	return map[types.ProviderUserID]types.UserID{
 		"auth0|amos_burton":        "user_6",
 		"auth0|bernard_marx":       "user_11",
+		"auth0|daemon_targaryen":   "user_13",
 		"auth0|chrisjen_avasarala": "user_5",
 		"auth0|ellen_ripley":       "user_3",
 		"auth0|frodo_baggins":      "user_7",
@@ -418,6 +450,8 @@ func AccountUsers() map[int]types.AccountUser {
 		13: {ID: "user_11", Email: "bernard.marx@test.com"},
 		// Winston has not signed up yet and is used to create a new AccountUser row
 		14: {Email: "winston.smith@test.com"},
+		// Daemon is the OWNER of Account 6
+		15: {ID: "user_13", Email: "daemon.targaryen@test.com", RoleName: types.RoleOwner, Accepted: true},
 	}
 }
 
@@ -430,10 +464,11 @@ type AccountOptions struct {
 func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 	accounts := map[types.AccountID]*types.Account{
 		"account_1": {
-			ID:       "account_1",
-			Name:     "The Brave Voyager",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PlanFree,
+			ID:          "account_1",
+			Name:        "The Brave Voyager",
+			BillingType: types.BillingTypeStripe,
+			IconURL:     "https://picsum.photos/200",
+			PlanType:    types.PlanFree,
 			Integrations: types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_1",
 			},
@@ -459,10 +494,11 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			UpdatedAt:              MockTimestamp,
 		},
 		"account_2": {
-			ID:       "account_2",
-			Name:     "Dragonborn Explorer",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PlanUnlimited,
+			ID:          "account_2",
+			Name:        "Dragonborn Explorer",
+			BillingType: types.BillingTypeStripe,
+			IconURL:     "https://picsum.photos/200",
+			PlanType:    types.PlanUnlimited,
 			Integrations: types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_2",
 			},
@@ -487,10 +523,11 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			UpdatedAt:              MockTimestamp,
 		},
 		"account_3": {
-			ID:       "account_3",
-			Name:     "Fellowship Startup",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PlanUnlimited,
+			ID:          "account_3",
+			Name:        "Fellowship Startup",
+			BillingType: types.BillingTypeStripe,
+			IconURL:     "https://picsum.photos/200",
+			PlanType:    types.PlanUnlimited,
 			Integrations: types.AccountIntegrations{
 				StripeSubscriptionID: "stripe_id_3",
 				CovalentAPIKeyFree:   "covalent_api_key_3",
@@ -517,10 +554,11 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			UpdatedAt:              MockTimestamp,
 		},
 		"account_4": {
-			ID:       "account_4",
-			Name:     "Iron Throne Enterprise",
-			IconURL:  "https://picsum.photos/200",
-			PlanType: types.PlanFree,
+			ID:          "account_4",
+			Name:        "Iron Throne Enterprise",
+			BillingType: types.BillingTypeStripe,
+			IconURL:     "https://picsum.photos/200",
+			PlanType:    types.PlanFree,
 			Integrations: types.AccountIntegrations{
 				CovalentAPIKeyFree: "covalent_api_key_4",
 			},
@@ -535,6 +573,7 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 		"account_5": {
 			ID:                     "account_5",
 			Name:                   "Nomad Wanderer",
+			BillingType:            types.BillingTypeStripe,
 			IconURL:                "https://picsum.photos/200",
 			PlanType:               types.PlanUnlimited,
 			Users:                  map[types.UserID]types.AccountUser{},
@@ -542,6 +581,23 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 			PartnerThroughputLimit: 6_000,
 			PartnerAppLimit:        1,
 			MonthlyUserLimit:       1_000_000_000,
+			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
+			CreatedAt:              MockTimestamp,
+			UpdatedAt:              MockTimestamp,
+		},
+		"account_6": {
+			ID:                     "account_6",
+			Name:                   "Google Cloud Pioneer",
+			BillingType:            types.BillingTypeGoogle,
+			GCPAccountID:           "gcp_account_123",
+			GCPEntitlementID:       "gcp_entitlement_456",
+			IconURL:                "https://picsum.photos/200",
+			PlanType:               types.PlanUnlimited,
+			Users:                  map[types.UserID]types.AccountUser{},
+			PartnerChainIDs:        map[types.RelayChainID]struct{}{"0007": {}, "0041": {}},
+			PartnerThroughputLimit: 7_000,
+			PartnerAppLimit:        2,
+			MonthlyUserLimit:       2_000_000,
 			PortalApps:             map[types.PortalAppID]*types.PortalApp{},
 			CreatedAt:              MockTimestamp,
 			UpdatedAt:              MockTimestamp,
@@ -583,6 +639,9 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 				},
 				"account_5": {
 					"user_4": Users()["user_4"],
+				},
+				"account_6": {
+					"user_13": Users()["user_13"],
 				},
 			}
 
@@ -1203,11 +1262,12 @@ var (
 	/* ----- Create Data ----- */
 
 	TestCreateAccount = &types.Account{
-		ID:         "create_account_id",
-		Name:       "Protogen Corp",
-		IconURL:    "https://picsum.photos/200",
-		PlanType:   types.PlanFree,
-		PortalApps: map[types.PortalAppID]*types.PortalApp{},
+		ID:          "create_account_id",
+		Name:        "Protogen Corp",
+		BillingType: types.BillingTypeStripe,
+		IconURL:     "https://picsum.photos/200",
+		PlanType:    types.PlanFree,
+		PortalApps:  map[types.PortalAppID]*types.PortalApp{},
 		Notifications: map[types.NotificationType]types.AccountNotification{
 			types.NotificationTypeEmail: types.AccountNotification{
 				Type:        types.NotificationTypeEmail,

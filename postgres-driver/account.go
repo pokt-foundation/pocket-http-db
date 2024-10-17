@@ -87,6 +87,9 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 	return &types.Account{
 		ID:                     a.ID,
 		Name:                   a.Name.String,
+		BillingType:            types.BillingType(a.BillingType),
+		GCPAccountID:           types.GCPAccountID(a.GcpAccountID.String),
+		GCPEntitlementID:       a.GcpEntitlementID.String,
 		IconURL:                a.IconURL.String,
 		PlanType:               types.PayPlanType(a.PlanType.String),
 		PartnerChainIDs:        partnerChainIDs,
