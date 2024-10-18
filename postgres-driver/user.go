@@ -269,7 +269,7 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 		return nil, "", err
 	}
 
-	// If a new user is created they need to have a default account
+	// Both of these cases create a new user which means they need a default account
 	// so we also create a default Account for them using the free tier plan.
 	if newUserCase == newUser || newUserCase == invitedUser {
 
@@ -285,14 +285,13 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 		}
 	}
 
-	// If the user is signing up via GCP, their Account has already been created
-	// by the GCP pub/sub message and they must be added to it as the OWNER,
-	// so we need to get the internal Account ID from the GCP Account ID.
-	//
-	// Also, we need to create the Account Notification row for the new user.
+	// If the user is signing up via GCP, their Account has already been created by the GCP pub/sub message.
+	// We need to look up the internal Account ID from the GCP Account ID and add them as the OWNER.
+	// We also need to create the Account Notification row for the new user.
 	if newUserCase == gcpUser {
 
-		accountIDFromGCPAccountID, err := pg.SelectAccountIDFromGCPAccountID(ctx, pgtype.Text{String: string(user.GCPAccountID), Valid: true})
+		idPGText := pgtype.Text{String: string(user.GCPAccountID), Valid: true}
+		accountIDFromGCPAccountID, err := pg.SelectAccountIDFromGCPAccountID(ctx, idPGText)
 		if err != nil {
 			return nil, "", err
 		}
