@@ -250,7 +250,7 @@ var (
 	errNoEmail            error = errors.New("no email")
 	errNoPlanTypeSet      error = errors.New("no plan type set")
 	errNoGCPAccountID     error = errors.New("no GCP account ID")
-	errNoEntitlementID    error = errors.New("no entitlement ID")
+	errNoEntitlementID    error = errors.New("no GCP entitlement ID")
 	errNoBlockedAddress   error = errors.New("no blocked address provided")
 	errNoEnvironment      error = errors.New("no environment provided")
 	errInvalidEnvironment error = errors.New("invalid environment provided: %s")
@@ -822,7 +822,7 @@ func (db *DBClient) CreateGCPAccount(ctx context.Context, input types.CreateGCPA
 	if input.GCPAccountID == "" {
 		return nil, errNoGCPAccountID
 	}
-	if input.EntitlementID == "" {
+	if input.GCPEntitlementID == "" {
 		return nil, errNoEntitlementID
 	}
 

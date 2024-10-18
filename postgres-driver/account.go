@@ -230,7 +230,11 @@ func (pg *PostgresDriver) validateWriteAccountInput(ctx context.Context, creator
 }
 
 // WriteAccount creates a single Account in the database when a user creates a subscription using the GCP marketplace
-func (pg *PostgresDriver) WriteGCPAccount(ctx context.Context, input types.CreateGCPAccount, createdAt time.Time) error {
+func (pg *PostgresDriver) WriteGCPAccount(
+	ctx context.Context,
+	input types.CreateGCPAccount,
+	createdAt time.Time,
+) error {
 	err := pg.validateWriteGCPAccountInput(ctx, input)
 	if err != nil {
 		return err
@@ -246,7 +250,7 @@ func (pg *PostgresDriver) WriteGCPAccount(ctx context.Context, input types.Creat
 		PlanType:         newText(string(input.PlanType)),
 		BillingType:      BillingType(types.BillingTypeGoogle),
 		GcpAccountID:     newText(string(input.GCPAccountID)),
-		GcpEntitlementID: newText(input.EntitlementID),
+		GcpEntitlementID: newText(input.GCPEntitlementID),
 		CreatedAt:        newTimestamptz(createdAt),
 		UpdatedAt:        newTimestamptz(createdAt),
 	})

@@ -1091,9 +1091,9 @@ func TestRouter_createGCPAccount(t *testing.T) {
 		{
 			name: "Should create a new GCP Account",
 			gcpAccountInput: types.CreateGCPAccount{
-				GCPAccountID:  "gcp_account_1",
-				EntitlementID: "entitlement_1",
-				PlanType:      types.PlanFree,
+				GCPAccountID:     "gcp_account_1",
+				GCPEntitlementID: "entitlement_1",
+				PlanType:         types.PlanFree,
 			},
 			expectedStatus:   http.StatusOK,
 			expectedResponse: map[string]string{"status": "created"},
