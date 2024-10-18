@@ -288,6 +288,8 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 
 	// If the user is signing up via GCP, their Account has already been created
 	// by the GCP pub/sub message and they must be added to it as the OWNER.
+	//
+	// Also, we need to create the Account Notification row for the new user.
 	if newUserCase == gcpUser {
 
 		_, err = qtx.InsertAccountUser(ctx, InsertAccountUserParams{
@@ -298,6 +300,18 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 			Accepted:  true,
 			CreatedAt: newTimestamptz(createdAt),
 			UpdatedAt: newTimestamptz(createdAt),
+		})
+		if err != nil {
+			return nil, "", err
+		}
+
+		err = qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
+			AccountID:   user.AccountID,
+			Type:        types.NotificationTypeEmail,
+			Active:      true,
+			Destination: string(user.Email),
+			Events:      defaultAccountNotifications,
+			UpdatedAt:   newTimestamptz(createdAt),
 		})
 		if err != nil {
 			return nil, "", err
