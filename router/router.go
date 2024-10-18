@@ -122,7 +122,6 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.createAccountIntegration).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.updateAccountIntegration).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.deleteAccount).Methods(http.MethodDelete)
-	rt.Router.HandleFunc("/v2/account/gcp/{gcp_account_id}", rt.getGCPAccount).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/account/gcp", rt.createGCPAccount).Methods(http.MethodPost)
 
 	rt.Router.HandleFunc("/v2/account/user", rt.writeAccountUser).Methods(http.MethodPost)
@@ -822,23 +821,6 @@ func (rt *Router) deleteAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
-}
-
-// GET /v2/account/gcp/{gcp_account_id} - Get one GCP Account.
-func (rt *Router) getGCPAccount(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	gcpAccountID := types.GCPAccountID(vars["gcp_account_id"])
-	if gcpAccountID == "" {
-		rt.handleError(w, "getGCPAccount", http.StatusBadRequest, fmt.Errorf("GCP account ID must be provided"))
-	}
-
-	account := rt.cache.GetPendingGCPAccount(gcpAccountID)
-	if account.ID == "" {
-		rt.handleError(w, "getGCPAccount", http.StatusNotFound, errAccountNotFound)
-		return
-	}
-
-	jsonresponse.RespondWithJSON(w, http.StatusOK, account)
 }
 
 // POST /v2/account/gcp - Create a single GCP Account.

@@ -1472,6 +1472,19 @@ func (q *Queries) SelectAccount(ctx context.Context, id types.AccountID) (Select
 	return i, err
 }
 
+const selectAccountIDFromGCPAccountID = `-- name: SelectAccountIDFromGCPAccountID :one
+SELECT id
+FROM accounts
+WHERE gcp_account_id = $1
+`
+
+func (q *Queries) SelectAccountIDFromGCPAccountID(ctx context.Context, gcpAccountID pgtype.Text) (types.AccountID, error) {
+	row := q.db.QueryRow(ctx, selectAccountIDFromGCPAccountID, gcpAccountID)
+	var id types.AccountID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const selectAccounts = `-- name: SelectAccounts :many
 SELECT a.id, a.name, a.billing_type, a.gcp_account_id, a.gcp_entitlement_id, a.icon_url, a.plan_type, a.partner_chain_ids, a.partner_throughput_limit, a.partner_application_limit, a.monthly_user_limit, a.created_at, a.updated_at, a.deleted, a.deleted_at,
     ai.stripe_subscription_id,

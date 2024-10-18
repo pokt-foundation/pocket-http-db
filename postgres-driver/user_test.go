@@ -186,7 +186,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 			createUser: types.CreateUser{
 				Email:          "yennefer.of.vengerberg@example.com",
 				ProviderUserID: "auth0|yennefer_of_vengerberg",
-				AccountID:      "account_6",
+				GCPAccountID:   "gcp_account_123",
 			},
 			user: &types.User{
 				ID:       "", // user ID set in test case

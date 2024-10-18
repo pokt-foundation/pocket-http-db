@@ -112,9 +112,9 @@ type (
 	// CreateGCPAccount contains all fields required to create a new GCP Account
 	// in response to a user's subscription request in the GCP Marketplace.
 	CreateGCPAccount struct {
-		GCPAccountID  GCPAccountID
-		EntitlementID string
-		PlanType      PayPlanType
+		GCPAccountID  GCPAccountID `json:"gcpAccountID"`
+		EntitlementID string       `json:"entitlementID"`
+		PlanType      PayPlanType  `json:"planType"`
 	}
 
 	// CreateAccountUser contains all fields required to create a new Account User

@@ -53,6 +53,7 @@ var (
 	errNoAuthProviderType       = errors.New("error no auth provider type")
 	errInvalidAuthProviderType  = errors.New("error invalid auth provider type '%s'")
 	errAuthProviderTypeNotFound = errors.New("error no auth provider type found")
+	errGCPAccountNotFound       = errors.New("error GCP account not found for GCP account ID '%s'")
 )
 
 // /* ----- postgresdriver User Read Methods ----- */
@@ -287,13 +288,22 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 	}
 
 	// If the user is signing up via GCP, their Account has already been created
-	// by the GCP pub/sub message and they must be added to it as the OWNER.
+	// by the GCP pub/sub message and they must be added to it as the OWNER,
+	// so we need to get the internal Account ID from the GCP Account ID.
 	//
 	// Also, we need to create the Account Notification row for the new user.
 	if newUserCase == gcpUser {
 
+		accountIDFromGCPAccountID, err := pg.SelectAccountIDFromGCPAccountID(ctx, pgtype.Text{String: string(user.GCPAccountID), Valid: true})
+		if err != nil {
+			return nil, "", err
+		}
+		if accountIDFromGCPAccountID == "" {
+			return nil, "", fmt.Errorf(errGCPAccountNotFound.Error(), user.GCPAccountID)
+		}
+
 		_, err = qtx.InsertAccountUser(ctx, InsertAccountUserParams{
-			AccountID: user.AccountID,
+			AccountID: accountIDFromGCPAccountID,
 			UserID:    userID,
 			Email:     user.Email,
 			RoleName:  types.RoleOwner,
@@ -306,7 +316,7 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 		}
 
 		err = qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
-			AccountID:   user.AccountID,
+			AccountID:   accountIDFromGCPAccountID,
 			Type:        types.NotificationTypeEmail,
 			Active:      true,
 			Destination: string(user.Email),
@@ -317,7 +327,7 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 			return nil, "", err
 		}
 
-		accountID = user.AccountID
+		accountID = accountIDFromGCPAccountID
 	}
 
 	err = tx.Commit(ctx)
@@ -338,7 +348,7 @@ func (pg *PostgresDriver) determineNewUserCase(ctx context.Context, user types.C
 
 	// If the user is signing up via GCP, a specific Account ID will be provided.
 	// This is the Account created by the GCP pub/sub message and the user must be added to it.
-	if user.AccountID != "" {
+	if user.GCPAccountID != "" {
 		return gcpUser, nil
 	}
 

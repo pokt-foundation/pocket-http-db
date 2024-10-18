@@ -587,36 +587,6 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}
 	})
 
-	ts.Run("Test_GetGCPAccount", func() {
-		tests := []struct {
-			name            string
-			gcpAccountID    types.GCPAccountID
-			expectedAccount *types.Account
-			err             error
-		}{
-			{
-				name:            "Should get one account",
-				gcpAccountID:    "gcp_account_123",
-				expectedAccount: testdata.Accounts(setAccountOpts)["account_6"],
-			},
-		}
-
-		for _, test := range tests {
-			ts.Run(test.name, func() {
-				account, err := ts.client1.GetGCPAccountByID(context.Background(), test.gcpAccountID)
-				ts.Equal(test.err, err)
-
-				if err == nil {
-					ts.Equal(account, test.expectedAccount)
-
-					account, err = ts.client2.GetGCPAccountByID(context.Background(), test.gcpAccountID)
-					ts.Equal(test.err, err)
-					ts.Equal(account, test.expectedAccount)
-				}
-			})
-		}
-	})
-
 	ts.Run("Test_GetUserAccounts", func() {
 		tests := []struct {
 			name         string
@@ -2928,7 +2898,7 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				userInput: types.CreateUser{
 					Email:          "yennefer.of.vengerberg@example.com",
 					ProviderUserID: "auth0|yennefer_of_vengerberg",
-					AccountID:      "account_6",
+					GCPAccountID:   "gcp_account_123",
 				},
 				expectedResponse: &types.CreateUserResponse{
 					User: types.User{
