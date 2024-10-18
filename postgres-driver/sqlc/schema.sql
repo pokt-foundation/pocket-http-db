@@ -104,6 +104,7 @@ CREATE TABLE accounts (
         OR monthly_user_limit = 0
         OR monthly_user_limit % 1000000 = 0
     ),
+    -- GCP fields must be set when billing_type is google and may not be set when billing_type is stripe
     CONSTRAINT gcp_account_id_check CHECK (
         (billing_type = 'google' AND gcp_account_id IS NOT NULL AND gcp_entitlement_id IS NOT NULL) 
         OR
