@@ -1,4 +1,3 @@
-BEGIN;
 -- Re-create the enum type for chain_scheme
 CREATE TYPE chain_scheme AS ENUM ('https', 'wss');
 -- Add the scheme column to the chains table, allowing NULL initially
@@ -11,4 +10,3 @@ SET scheme = 'https';
 ALTER TABLE chains
 ALTER COLUMN scheme
 SET NOT NULL;
-COMMIT;

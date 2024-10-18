@@ -537,7 +537,7 @@ func (ts *phdE2EReadTestSuite) Test_ReadTests() {
 		}{
 			{
 				name:           "Should get all accounts",
-				expectedAccNum: 5,
+				expectedAccNum: 6,
 			},
 		}
 
@@ -1899,11 +1899,12 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				ownerID:      "user_1",
 				accountInput: testdata.TestCreateAccount,
 				expected: &types.Account{
-					PlanType:  types.PlanFree,
-					Name:      "Protogen Corp",
-					IconURL:   "https://picsum.photos/200",
-					CreatedAt: testdata.MockTimestamp,
-					UpdatedAt: testdata.MockTimestamp,
+					PlanType:    types.PlanFree,
+					Name:        "Protogen Corp",
+					BillingType: types.BillingTypeStripe,
+					IconURL:     "https://picsum.photos/200",
+					CreatedAt:   testdata.MockTimestamp,
+					UpdatedAt:   testdata.MockTimestamp,
 					Users: map[types.UserID]types.AccountUser{
 						"user_1": {
 							ID:       "user_1",

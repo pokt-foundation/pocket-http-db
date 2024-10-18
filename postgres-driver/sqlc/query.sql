@@ -463,6 +463,18 @@ INSERT INTO accounts (
     )
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
+-- name: InsertGCPAccount :one
+INSERT INTO accounts (
+        id,
+        plan_type,
+        billing_type,
+        gcp_account_id,
+        gcp_entitlement_id,
+        created_at,
+        updated_at
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
 -- name: DeleteAccount :exec
 UPDATE accounts
 SET deleted = true,

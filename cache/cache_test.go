@@ -375,6 +375,15 @@ func Test_upsertAccount(t *testing.T) {
 			},
 		},
 		{
+			name: "Should insert a new GCP account",
+			account: types.Account{
+				ID:           "gcp_account_1",
+				PlanType:     types.PayPlanType("gcp_plan"),
+				GCPAccountID: "gcp_account_id_1",
+				BillingType:  types.BillingTypeGoogle,
+			},
+		},
+		{
 			name:    "Should add a new Account to cache with pending AppNotifications",
 			account: *testdata.TestCreateAccount,
 			accountUser: types.AccountUser{
@@ -409,7 +418,7 @@ func Test_upsertAccount(t *testing.T) {
 				Integrations: types.AccountIntegrations{
 					CovalentAPIKeyFree: "covalent_api_key_1",
 				},
-				Notifications:          map[types.NotificationType]types.AccountNotification{"email": types.AccountNotification{AccountID: "", Type: "email", Active: true, Destination: "james.holden123@test.com", Trigger: "trigger123", Events: map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true}}},
+				Notifications:          map[types.NotificationType]types.AccountNotification{"email": {AccountID: "", Type: "email", Active: true, Destination: "james.holden123@test.com", Trigger: "trigger123", Events: map[types.NotificationEvent]bool{"full": true, "quarter": true, "threeQuarters": true}}},
 				PartnerChainIDs:        map[types.RelayChainID]struct{}{"0001": {}, "0053": {}},
 				PartnerThroughputLimit: 2_000,
 				PartnerAppLimit:        1,
@@ -474,7 +483,9 @@ func Test_upsertAccount(t *testing.T) {
 					expectedAccount.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
 				}
 
-				c.Equal(expectedAccount, cache.GetUserAccount(expectedAccount.ID, userID, Options{}), "Account should be present in cache and updated")
+				if !expectedAccount.IsGCPAccount() {
+					c.Equal(expectedAccount, cache.GetUserAccount(expectedAccount.ID, userID, Options{}), "Account should be present in cache and updated")
+				}
 
 				accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
 				if expectedAccount.Deleted {

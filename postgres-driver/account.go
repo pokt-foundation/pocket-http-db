@@ -229,6 +229,52 @@ func (pg *PostgresDriver) validateWriteAccountInput(ctx context.Context, creator
 	return nil
 }
 
+// WriteAccount creates a single Account in the database when a user creates a subscription using the GCP marketplace
+func (pg *PostgresDriver) WriteGCPAccount(
+	ctx context.Context,
+	input types.CreateGCPAccount,
+	createdAt time.Time,
+) error {
+	err := pg.validateWriteGCPAccountInput(ctx, input)
+	if err != nil {
+		return err
+	}
+
+	accountID, err := pg.generateID(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = pg.InsertGCPAccount(ctx, InsertGCPAccountParams{
+		ID:               types.AccountID(accountID),
+		PlanType:         newText(string(input.PlanType)),
+		BillingType:      BillingType(types.BillingTypeGoogle),
+		GcpAccountID:     newText(string(input.GCPAccountID)),
+		GcpEntitlementID: newText(input.GCPEntitlementID),
+		CreatedAt:        newTimestamptz(createdAt),
+		UpdatedAt:        newTimestamptz(createdAt),
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateWriteAccountInput validates the input to create a new Account
+func (pg *PostgresDriver) validateWriteGCPAccountInput(ctx context.Context, input types.CreateGCPAccount) error {
+
+	planExists, err := pg.CheckPlanTypeExists(ctx, input.PlanType)
+	if err != nil {
+		return err
+	}
+	if !planExists {
+		return fmt.Errorf(errPayPlanDoesntExist.Error(), input.PlanType)
+	}
+
+	return nil
+}
+
 /* UpsertAccountIntegration saves or updates input AccountIntegrations in the database */
 func (pg *PostgresDriver) UpsertAccountIntegration(ctx context.Context, integrations types.AccountIntegrations) (*types.AccountIntegrations, error) {
 	time := time.Now()
@@ -767,6 +813,9 @@ func (json dbAccount) toOutput() *types.Account {
 	return &types.Account{
 		ID:                     json.ID,
 		Name:                   json.Name,
+		BillingType:            json.BillingType,
+		GCPAccountID:           json.GCPAccountID,
+		GCPEntitlementID:       json.GCPEntitlementID,
 		IconURL:                json.IconURL,
 		PlanType:               json.PlanType,
 		PartnerChainIDs:        partnerChainIDs,
@@ -817,18 +866,21 @@ func (json dbAccountNotification) mapEvents() map[types.NotificationEvent]bool {
 }
 
 type dbAccount struct {
-	ID                      types.AccountID   `json:"id"`
-	Name                    string            `json:"name"`
-	IconURL                 string            `json:"icon_url"`
-	PlanType                types.PayPlanType `json:"plan_type"`
-	PartnerChainIDs         []string          `json:"partner_chain_ids"`
-	PartnerThroughputLimit  int32             `json:"partner_throughput_limit"`
-	PartnerApplicationLimit int32             `json:"partner_application_limit"`
-	MonthlyUserLimit        int32             `json:"monthly_user_limit"`
-	CreatedAt               time.Time         `json:"created_at"`
-	UpdatedAt               time.Time         `json:"updated_at"`
-	Deleted                 bool              `json:"deleted"`
-	DeletedAt               time.Time         `json:"deleted_at"`
+	ID                      types.AccountID    `json:"id"`
+	Name                    string             `json:"name"`
+	BillingType             types.BillingType  `json:"billing_type"`
+	GCPAccountID            types.GCPAccountID `json:"gcp_account_id"`
+	GCPEntitlementID        string             `json:"gcp_entitlement_id"`
+	IconURL                 string             `json:"icon_url"`
+	PlanType                types.PayPlanType  `json:"plan_type"`
+	PartnerChainIDs         []string           `json:"partner_chain_ids"`
+	PartnerThroughputLimit  int32              `json:"partner_throughput_limit"`
+	PartnerApplicationLimit int32              `json:"partner_application_limit"`
+	MonthlyUserLimit        int32              `json:"monthly_user_limit"`
+	CreatedAt               time.Time          `json:"created_at"`
+	UpdatedAt               time.Time          `json:"updated_at"`
+	Deleted                 bool               `json:"deleted"`
+	DeletedAt               time.Time          `json:"deleted_at"`
 }
 
 type dbAccountIntegration struct {

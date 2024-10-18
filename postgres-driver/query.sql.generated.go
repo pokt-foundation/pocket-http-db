@@ -1063,6 +1063,61 @@ func (q *Queries) InsertChainAlias(ctx context.Context, arg InsertChainAliasPara
 	return err
 }
 
+const insertGCPAccount = `-- name: InsertGCPAccount :one
+INSERT INTO accounts (
+        id,
+        plan_type,
+        billing_type,
+        gcp_account_id,
+        gcp_entitlement_id,
+        created_at,
+        updated_at
+    )
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, billing_type, gcp_account_id, gcp_entitlement_id, icon_url, plan_type, partner_chain_ids, partner_throughput_limit, partner_application_limit, monthly_user_limit, created_at, updated_at, deleted, deleted_at
+`
+
+type InsertGCPAccountParams struct {
+	ID               types.AccountID    `json:"id"`
+	PlanType         pgtype.Text        `json:"plan_type"`
+	BillingType      BillingType        `json:"billing_type"`
+	GcpAccountID     pgtype.Text        `json:"gcp_account_id"`
+	GcpEntitlementID pgtype.Text        `json:"gcp_entitlement_id"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) InsertGCPAccount(ctx context.Context, arg InsertGCPAccountParams) (Account, error) {
+	row := q.db.QueryRow(ctx, insertGCPAccount,
+		arg.ID,
+		arg.PlanType,
+		arg.BillingType,
+		arg.GcpAccountID,
+		arg.GcpEntitlementID,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.BillingType,
+		&i.GcpAccountID,
+		&i.GcpEntitlementID,
+		&i.IconURL,
+		&i.PlanType,
+		&i.PartnerChainIDs,
+		&i.PartnerThroughputLimit,
+		&i.PartnerApplicationLimit,
+		&i.MonthlyUserLimit,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Deleted,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
 const insertGigastakeApp = `-- name: InsertGigastakeApp :exec
 WITH new_gigastake_application AS (
     INSERT INTO gigastake_applications (
