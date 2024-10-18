@@ -182,6 +182,30 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 			err:          nil,
 		},
 		{
+			name: "Should create a new GCP user and add them to an existing account",
+			createUser: types.CreateUser{
+				Email:          "yennefer.of.vengerberg@example.com",
+				ProviderUserID: "auth0|yennefer_of_vengerberg",
+				AccountID:      "account_6",
+			},
+			user: &types.User{
+				ID:       "", // user ID set in test case
+				Email:    "yennefer.of.vengerberg@example.com",
+				SignedUp: true,
+				AuthProviders: map[types.AuthType]types.UserAuthProvider{
+					types.AuthTypeAuth0Username: {
+						ProviderUserID: "auth0|yennefer_of_vengerberg",
+						Type:           types.AuthTypeAuth0Username,
+						Provider:       types.AuthProviderAuth0,
+						Federated:      false,
+					},
+				},
+				CreatedAt: testdata.MockTimestamp,
+				UpdatedAt: testdata.MockTimestamp,
+			},
+			err: nil,
+		},
+		{
 			name: "Should fail if an invalid email provided",
 			createUser: types.CreateUser{
 				Email: "jar.jar.binks3",
@@ -215,13 +239,13 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteNewUser() {
 				test.user.ID = user.ID
 				ts.Equal(test.user, user)
 
-				if !test.existingUser {
+				if test.existingUser {
+					ts.Empty(accountID)
+				} else {
 					ts.NotEmpty(accountID)
 					account := ts.getAndAssignAccountUsers(accountID)
 					_, err := account.GetUser(user.ID)
 					ts.NoError(err)
-				} else {
-					ts.Empty(accountID)
 				}
 			}
 		})

@@ -78,7 +78,7 @@ func Test_SetCache(t *testing.T) {
 		},
 		{
 			name:     "Should return a GCP account",
-			actual:   cache.GetGCPAccount("gcp_account_123"),
+			actual:   cache.GetPendingGCPAccount("gcp_account_123"),
 			expected: *testdata.Accounts(setAccountOpts)["account_6"],
 		},
 		{

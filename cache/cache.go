@@ -320,6 +320,9 @@ func (c *Cache) fetchAppsData(ctx context.Context, usersByAccountID map[types.Ac
 		}
 	}
 
+	// Add pending GCP accounts to the cache
+	// These accounts will be automatically cleared from the cache when it refreshes
+	// after the user signs up and the len(account.Users) is greater than 0.
 	for _, account := range accounts {
 		if account.IsGCPAccount() && len(account.Users) == 0 {
 			c.pendingGCPAccounts[account.GCPAccountID] = account
@@ -596,8 +599,8 @@ func (c *Cache) GetAccount(accountID types.AccountID) types.Account {
 	return types.Account{}
 }
 
-// GetGCPAccount returns one GCP Account by gcpAccountID
-func (c *Cache) GetGCPAccount(gcpAccountID types.GCPAccountID) types.Account {
+// GetPendingGCPAccount returns one pending GCP Account by gcpAccountID
+func (c *Cache) GetPendingGCPAccount(gcpAccountID types.GCPAccountID) types.Account {
 	c.rwMutex.RLock()
 	defer c.rwMutex.RUnlock()
 
@@ -693,11 +696,6 @@ func (c *Cache) upsertAccount(account types.Account) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
 
-	if account.IsGCPAccount() {
-		c.pendingGCPAccounts[account.GCPAccountID] = &account
-		return
-	}
-
 	// If marked as deleted, remove Account from map
 	// and from all user ID maps of all Account users
 	if account.Deleted {
@@ -713,6 +711,13 @@ func (c *Cache) upsertAccount(account types.Account) {
 		account.PortalApps = existingAccount.PortalApps
 		account.Integrations = existingAccount.Integrations
 		account.Notifications = existingAccount.Notifications
+		account.Users = existingAccount.Users
+	}
+
+	// If the account is a GCP account and has no users, add it to the pending GCP accounts map
+	if account.IsGCPAccount() && len(account.Users) == 0 {
+		c.pendingGCPAccounts[account.GCPAccountID] = &account
+		return
 	}
 
 	if pendingNotification, ok := c.pendingAccountNotifications[account.ID]; ok {

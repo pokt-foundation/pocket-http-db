@@ -832,7 +832,7 @@ func (rt *Router) getGCPAccount(w http.ResponseWriter, r *http.Request) {
 		rt.handleError(w, "getGCPAccount", http.StatusBadRequest, fmt.Errorf("GCP account ID must be provided"))
 	}
 
-	account := rt.cache.GetGCPAccount(gcpAccountID)
+	account := rt.cache.GetPendingGCPAccount(gcpAccountID)
 	if account.ID == "" {
 		rt.handleError(w, "getGCPAccount", http.StatusNotFound, errAccountNotFound)
 		return

@@ -2924,6 +2924,30 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 				},
 			},
 			{
+				name: "Should create a new GCP user and add them to an existing account",
+				userInput: types.CreateUser{
+					Email:          "yennefer.of.vengerberg@example.com",
+					ProviderUserID: "auth0|yennefer_of_vengerberg",
+					AccountID:      "account_6",
+				},
+				expectedResponse: &types.CreateUserResponse{
+					User: types.User{
+						Email: "yennefer.of.vengerberg@example.com",
+						AuthProviders: map[types.AuthType]types.UserAuthProvider{
+							types.AuthTypeAuth0Username: {
+								Type:           types.AuthTypeAuth0Username,
+								ProviderUserID: "auth0|yennefer_of_vengerberg",
+								Provider:       types.AuthProviderAuth0,
+								Federated:      false,
+							},
+						},
+						SignedUp: true,
+					},
+					AccountID: "account_6",
+				},
+				err: nil,
+			},
+			{
 				name: "Should fail if there's no email",
 				userInput: types.CreateUser{
 					ProviderUserID: "auth0|test",
