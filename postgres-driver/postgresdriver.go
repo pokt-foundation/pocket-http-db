@@ -182,6 +182,8 @@ func getCustomDataTypes(ctx context.Context, pool *pgxpool.Pool) ([]*pgtype.Type
 		"_permissions",
 		"whitelist_type",
 		"_whitelist_type",
+		"billing_type",
+		"_billing_type",
 	}
 
 	var typesToRegister []*pgtype.Type

@@ -871,7 +871,7 @@ func TestRouter_getAccounts(t *testing.T) {
 		{
 			name:             "Should get all accounts",
 			expectedStatus:   http.StatusOK,
-			expectedAccounts: 5,
+			expectedAccounts: 6,
 		},
 	}
 

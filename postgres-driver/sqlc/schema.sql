@@ -38,6 +38,7 @@ CREATE TYPE protocol_id AS ENUM (
     'shannon-testnet'
 );
 CREATE TYPE chain_scheme AS ENUM ('https', 'wss');
+CREATE TYPE billing_type AS ENUM ('stripe', 'google');
 -- Plans Tables
 CREATE TABLE pay_plans (
     name VARCHAR(255),
@@ -83,6 +84,9 @@ CREATE TABLE user_roles (
 CREATE TABLE accounts (
     id VARCHAR(10) PRIMARY KEY,
     name VARCHAR(255),
+    billing_type billing_type NOT NULL DEFAULT 'stripe',
+    gcp_account_id VARCHAR(255),
+    gcp_entitlement_id VARCHAR(255),
     icon_url VARCHAR,
     plan_type VARCHAR(25) NOT NULL REFERENCES pay_plans(plan_type),
     partner_chain_ids VARCHAR(4) ARRAY,
@@ -99,6 +103,11 @@ CREATE TABLE accounts (
         OR monthly_user_limit IS NULL
         OR monthly_user_limit = 0
         OR monthly_user_limit % 1000000 = 0
+    ),
+    CONSTRAINT gcp_account_id_check CHECK (
+        (billing_type = 'google' AND gcp_account_id IS NOT NULL AND gcp_entitlement_id IS NOT NULL) 
+        OR
+        (billing_type != 'google' AND gcp_account_id IS NULL AND gcp_entitlement_id IS NULL)
     )
 );
 CREATE TABLE IF NOT EXISTS account_integrations (

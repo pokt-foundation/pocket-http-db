@@ -48,14 +48,24 @@ var (
 	errUserDoesNotExist error = errors.New("user ID %s does not exist")
 )
 
+type BillingType string
+
+const (
+	BillingTypeStripe BillingType = "stripe"
+	BillingTypeGoogle BillingType = "google"
+)
+
 /* Account Struct Definition and Methods */
 type (
 	// Account represents a single account for a single application in the Portal
 	Account struct {
 		ID                     AccountID                                `json:"id"`
+		PlanType               PayPlanType                              `json:"planType"`
+		BillingType            BillingType                              `json:"billingType"`
+		GCPAccountID           GCPAccountID                             `json:"gcpAccountID"`
+		GCPEntitlementID       string                                   `json:"gcpEntitlementID"`
 		Name                   string                                   `json:"name"`
 		IconURL                string                                   `json:"iconURL"`
-		PlanType               PayPlanType                              `json:"planType"`
 		PartnerChainIDs        map[RelayChainID]struct{}                `json:"partnerBlockchainIDs"`
 		PartnerThroughputLimit int32                                    `json:"partnerThroughputLimit"`
 		PartnerAppLimit        int32                                    `json:"partnerAppLimit"`
@@ -148,6 +158,14 @@ type (
 		AccountID AccountID `json:"accountID"`
 	}
 )
+
+func (a *Account) IsGCPAccount() bool {
+	return a.BillingType == BillingTypeGoogle
+}
+
+func (a *Account) IsStripeAccount() bool {
+	return a.BillingType == BillingTypeStripe
+}
 
 // AssignAccountUsers assigns all users for the account
 // Called in the PHD cache when an account is fetched by any account endpoints

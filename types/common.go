@@ -5,6 +5,7 @@ import "regexp"
 /* String ID types */
 type (
 	AccountID      string
+	GCPAccountID   string
 	UserID         string
 	GigastakeAppID string
 	RelayChainID   string
