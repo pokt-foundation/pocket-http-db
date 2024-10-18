@@ -35,7 +35,6 @@ type (
 		usersByAccountID  map[types.AccountID]UsersForAccount
 
 		accounts                    map[types.AccountID]*types.Account
-		pendingGCPAccounts          map[types.GCPAccountID]*types.Account
 		pendingAccountNotifications map[types.AccountID]types.AccountNotification
 		accountsByUserID            map[types.UserID]AccountsForUser
 		pendingAccountUsers         map[types.UserID][]types.AccountUser
@@ -110,7 +109,6 @@ func NewCache(ctx context.Context, config Config) (*Cache, error) {
 		reader: config.Reader,
 		logger: config.Logger,
 
-		pendingGCPAccounts:          make(map[types.GCPAccountID]*types.Account),
 		pendingAccountNotifications: make(map[types.AccountID]types.AccountNotification),
 		pendingAccountUsers:         make(map[types.UserID][]types.AccountUser),
 		pendingUserAuthProviders:    make(map[types.UserID]types.UserAuthProvider),
@@ -317,12 +315,6 @@ func (c *Cache) fetchAppsData(ctx context.Context, usersByAccountID map[types.Ac
 				}
 				accountsByUserID[userID][account.ID] = account
 			}
-		}
-	}
-
-	for _, account := range accounts {
-		if account.IsGCPAccount() && len(account.Users) == 0 {
-			c.pendingGCPAccounts[account.GCPAccountID] = account
 		}
 	}
 
@@ -596,18 +588,6 @@ func (c *Cache) GetAccount(accountID types.AccountID) types.Account {
 	return types.Account{}
 }
 
-// GetGCPAccount returns one GCP Account by gcpAccountID
-func (c *Cache) GetGCPAccount(gcpAccountID types.GCPAccountID) types.Account {
-	c.rwMutex.RLock()
-	defer c.rwMutex.RUnlock()
-
-	if account, ok := c.pendingGCPAccounts[gcpAccountID]; ok {
-		return *account
-	}
-
-	return types.Account{}
-}
-
 // GetUserAccount returns one Account by accountID with portal apps filtered by user ID
 func (c *Cache) GetUserAccount(accountID types.AccountID, userID types.UserID, options Options) types.Account {
 	c.rwMutex.RLock()
@@ -692,11 +672,6 @@ func (c *Cache) userAcceptedAccountInvite(a *types.Account, userID types.UserID)
 func (c *Cache) upsertAccount(account types.Account) {
 	c.rwMutex.Lock()
 	defer c.rwMutex.Unlock()
-
-	if account.IsGCPAccount() {
-		c.pendingGCPAccounts[account.GCPAccountID] = &account
-		return
-	}
 
 	// If marked as deleted, remove Account from map
 	// and from all user ID maps of all Account users

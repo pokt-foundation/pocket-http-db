@@ -77,11 +77,6 @@ func Test_SetCache(t *testing.T) {
 			expected: *testdata.Accounts(setAccountOpts)["account_1"],
 		},
 		{
-			name:     "Should return a GCP account",
-			actual:   cache.GetGCPAccount("gcp_account_123"),
-			expected: *testdata.Accounts(setAccountOpts)["account_6"],
-		},
-		{
 			name:     "Should return account by ID",
 			actual:   cache.GetUserAccount("account_1", "user_1", Options{}),
 			expected: *testdata.Accounts(setAccountOpts)["account_1"],
@@ -463,66 +458,62 @@ func Test_upsertAccount(t *testing.T) {
 			// Upsert account
 			cache.upsertAccount(test.account)
 
-			if test.account.IsGCPAccount() {
-				account, ok := cache.pendingGCPAccounts[test.account.GCPAccountID]
-				c.True(ok, "GCP Account should be present in tempGCPAccounts map")
-				c.Equal(&test.account, account)
+			expectedAccount := test.account
+
+			userID := test.userID
+			if test.accountUser.ID != "" {
+				userID = test.accountUser.ID
+				cache.upsertAccountUser(test.accountUser)
+			}
+			if test.accountNotification.Type != "" {
+				cache.addAccountNotification(test.accountNotification)
+				if expectedAccount.Notifications == nil {
+					expectedAccount.Notifications = make(map[types.NotificationType]types.AccountNotification)
+				}
+				test.accountNotification.AccountID = "" // is unset in the cache TODO will be changed soon
+				expectedAccount.Notifications[test.accountNotification.Type] = test.accountNotification
+			}
+
+			if test.account.Deleted {
+				c.Empty(cache.GetUserAccount(accountID, test.accountUser.ID, Options{}), "Account should be removed from cache")
 			} else {
-				expectedAccount := test.account
-
-				userID := test.userID
+				expectedAccount.Plan = cache.plans[expectedAccount.PlanType]
 				if test.accountUser.ID != "" {
-					userID = test.accountUser.ID
-					cache.upsertAccountUser(test.accountUser)
-				}
-				if test.accountNotification.Type != "" {
-					cache.addAccountNotification(test.accountNotification)
-					if expectedAccount.Notifications == nil {
-						expectedAccount.Notifications = make(map[types.NotificationType]types.AccountNotification)
-					}
-					test.accountNotification.AccountID = "" // is unset in the cache TODO will be changed soon
-					expectedAccount.Notifications[test.accountNotification.Type] = test.accountNotification
+					test.accountUser.AccountID = ""
+					expectedAccount.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
 				}
 
-				if test.account.Deleted {
-					c.Empty(cache.GetUserAccount(accountID, test.accountUser.ID, Options{}), "Account should be removed from cache")
-				} else {
-					expectedAccount.Plan = cache.plans[expectedAccount.PlanType]
-					if test.accountUser.ID != "" {
-						test.accountUser.AccountID = ""
-						expectedAccount.Users = map[types.UserID]types.AccountUser{test.accountUser.ID: test.accountUser}
-					}
-
+				if !expectedAccount.IsGCPAccount() {
 					c.Equal(expectedAccount, cache.GetUserAccount(expectedAccount.ID, userID, Options{}), "Account should be present in cache and updated")
+				}
 
-					accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
+				accountFound := testdata.FindAccountInAccounts(cache.GetAccounts(Options{IncludeDeleted: false}), accountID)
+				if expectedAccount.Deleted {
+					c.False(accountFound, "Account should be removed from accounts map")
+				} else {
+					c.True(accountFound, "Account should be found in accounts map")
+				}
+
+				for _, user := range expectedAccount.Users {
+					accountsForUser := cache.GetUserAccounts(user.ID, Options{
+						Accepted: dbclient.BoolPtr(true),
+					})
+
+					accountInUserAccounts := testdata.FindAccountInAccounts(accountsForUser, accountID)
 					if expectedAccount.Deleted {
-						c.False(accountFound, "Account should be removed from accounts map")
+						c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
 					} else {
-						c.True(accountFound, "Account should be found in accounts map")
-					}
-
-					for _, user := range expectedAccount.Users {
-						accountsForUser := cache.GetUserAccounts(user.ID, Options{
-							Accepted: dbclient.BoolPtr(true),
-						})
-
-						accountInUserAccounts := testdata.FindAccountInAccounts(accountsForUser, accountID)
-						if expectedAccount.Deleted {
-							c.False(accountInUserAccounts, "Account should be removed from accountsByUserID map")
+						if user.Accepted {
+							c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.ID, accountID)
+							c.Equal(expectedAccount, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
 						} else {
-							if user.Accepted {
-								c.True(accountInUserAccounts, "Account should be present in accountsByUserID map", user.ID, accountID)
-								c.Equal(expectedAccount, testdata.GetAccountFromAccounts(accountsForUser, accountID), "Account should be present in the cache and updated")
-							} else {
-								c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
-							}
+							c.False(accountInUserAccounts, "Account should not be present in accountsByUserID map if user not accepted and options param set")
 						}
 					}
-
-					_, ok := cache.pendingAccountNotifications[expectedAccount.ID]
-					c.False(ok, "Pending AccountNotifications should be removed from cache")
 				}
+
+				_, ok := cache.pendingAccountNotifications[expectedAccount.ID]
+				c.False(ok, "Pending AccountNotifications should be removed from cache")
 			}
 		})
 	}
