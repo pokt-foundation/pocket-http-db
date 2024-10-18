@@ -228,11 +228,10 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 
 	switch newUserCase {
 
-	// 1. brand new user - never signed up with with any auth provider.
+	// Generate a new user ID in one of the following two cases:
+	// 1. Brand new user - never signed up with any auth provider on Grove's portal (Github, email, etc...)
 	// -OR-
-	// 4. GCP user - a new user that is signing up after being redirected from the GCP Marketplace.
-	//
-	// In both cases this is a brand new user so a new user ID is generated.
+	// 4. GCP user - a new user who is signing up after being redirected from the GCP Marketplace.
 	case newUser, gcpUser:
 		generatedUserID, err := pg.generateID(ctx)
 		if err != nil {
@@ -240,11 +239,10 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 		}
 		userID = types.UserID(generatedUserID)
 
-	// 2. existing user - signing up with a new auth provider (eg. Email/Password, Github or Google).
+	// Reuse the user's existing ID in one of the following situations:
+	// 2. Existing User - signed up with an auth provider on Grove's portal (Github, email, etc...)
 	// -OR-
-	// 3. invited user - a user that has been invited to a team signing up for the first time.
-	//
-	// In both cases the user is already in the DB so we can use their existing user ID.
+	// 3. Invited User - a user that has been invited to a team signing up for the first time.
 	case existingUser, invitedUser:
 		userID, err = pg.GetUserIDFromEmail(ctx, user.Email)
 		if err != nil {
