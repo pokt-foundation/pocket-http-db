@@ -290,8 +290,8 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 	// We also need to create the Account Notification row for the new user.
 	if newUserCase == gcpUser {
 
-		idPGText := pgtype.Text{String: string(user.GCPAccountID), Valid: true}
-		accountIDFromGCPAccountID, err := pg.SelectAccountIDFromGCPAccountID(ctx, idPGText)
+		postgresTextID := pgtype.Text{String: string(user.GCPAccountID), Valid: true}
+		accountIDFromGCPAccountID, err := pg.SelectAccountIDFromGCPAccountID(ctx, postgresTextID)
 		if err != nil {
 			return nil, "", err
 		}
