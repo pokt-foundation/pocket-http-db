@@ -178,17 +178,6 @@ VALUES (
         false,
         true,
         false
-    ),
-    (
-        'user_13',
-        'daemon.targaryen@test.com',
-        true,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000',
-        'https://picsum.photos/200',
-        true,
-        true,
-        false
     );
 INSERT INTO user_auth_providers (
         user_id,
@@ -291,14 +280,6 @@ VALUES (
         'auth0',
         'auth0_username',
         'auth0|bernard_marx',
-        false,
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
-        'user_13',
-        'auth0',
-        'auth0_username',
-        'auth0|daemon_targaryen',
         false,
         '2022-11-11 11:11:11.000000'
     );
@@ -648,14 +629,6 @@ VALUES (
     (
         'user_4',
         'account_5',
-        'OWNER',
-        true,
-        '2022-11-11 11:11:11.000000',
-        '2022-11-11 11:11:11.000000'
-    ),
-    (
-        'user_13',
-        'account_6',
         'OWNER',
         true,
         '2022-11-11 11:11:11.000000',

@@ -16,6 +16,7 @@ const (
 	newUser      newUserCase = "new"
 	existingUser newUserCase = "existing"
 	invitedUser  newUserCase = "invited"
+	gcpUser      newUserCase = "gcp"
 )
 
 type (
@@ -52,6 +53,7 @@ var (
 	errNoAuthProviderType       = errors.New("error no auth provider type")
 	errInvalidAuthProviderType  = errors.New("error invalid auth provider type '%s'")
 	errAuthProviderTypeNotFound = errors.New("error no auth provider type found")
+	errGCPAccountNotFound       = errors.New("error GCP account not found for GCP account ID '%s'")
 )
 
 // /* ----- postgresdriver User Read Methods ----- */
@@ -197,6 +199,7 @@ func (u *UserRow) toUser() (*types.User, error) {
 
 // WriteUserNewSignUp creates a new portal User and UserAuthProviderin the DB from a CreateUser input when a new user signs up.
 // If a brand new user is created they need to have a default account so we also create a default Account for them using the free tier plan.
+// If the user is signing up via GCP, their Account has already been created by the GCP pub/sub message and they must be added to it.
 // If a new account is created for the user, the account ID is returned; otherwise it is an empty string.
 func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.CreateUser, createdAt time.Time) (*types.User, types.AccountID, error) {
 	var (
@@ -217,32 +220,35 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 
 	qtx := pg.WithTx(tx)
 
-	// A new user creation may be one of 3 types: new, existing, or invited
-	newUserCase, err := pg.determineNewUserCase(ctx, user.Email)
+	// A new user creation may be one of 4 types: new, existing, invited, or GCP Marketplace.
+	newUserCase, err := pg.determineNewUserCase(ctx, user)
 	if err != nil {
 		return nil, "", err
 	}
 
 	switch newUserCase {
-	// 1. brand new user - never signed up with any auth provider
-	case newUser:
+
+	// Generate a new user ID in one of the following two cases:
+	// 1. Brand new user - never signed up with any auth provider on Grove's portal (Github, email, etc...)
+	// -OR-
+	// 4. GCP user - a new user who is signing up after being redirected from the GCP Marketplace.
+	case newUser, gcpUser:
 		generatedUserID, err := pg.generateID(ctx)
 		if err != nil {
 			return nil, "", err
 		}
 		userID = types.UserID(generatedUserID)
-	// 2. existing user - signing up with a new auth provider (eg. Github or Google)
-	case existingUser:
+
+	// Reuse the user's existing ID in one of the following situations:
+	// 2. Existing User - signed up with an auth provider on Grove's portal (Github, email, etc...)
+	// -OR-
+	// 3. Invited User - a user that has been invited to a team signing up for the first time.
+	case existingUser, invitedUser:
 		userID, err = pg.GetUserIDFromEmail(ctx, user.Email)
 		if err != nil {
 			return nil, "", err
 		}
-	// 3. invited user - a user that has been invited to a team signing up for the first time
-	case invitedUser:
-		userID, err = pg.GetUserIDFromEmail(ctx, user.Email)
-		if err != nil {
-			return nil, "", err
-		}
+
 	}
 
 	authType := user.ProviderUserID.AuthType()
@@ -263,9 +269,10 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 		return nil, "", err
 	}
 
-	if newUserCase != existingUser {
-		// If a new user is created they need to have a default account
-		// so we also create a default Account for them using the free tier plan.
+	// Both of these cases create a new user which means they need a default account
+	// so we also create a default Account for them using the free tier plan.
+	if newUserCase == newUser || newUserCase == invitedUser {
+
 		userHasAccount, err := pg.CheckUserHasOwnAccount(ctx, createdUserID)
 		if err != nil {
 			return nil, "", err
@@ -276,6 +283,48 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 				return nil, "", err
 			}
 		}
+	}
+
+	// If the user is signing up via GCP, their Account has already been created by the GCP pub/sub message.
+	// We need to look up the internal Account ID from the GCP Account ID and add them as the OWNER.
+	// We also need to create the Account Notification row for the new user.
+	if newUserCase == gcpUser {
+
+		postgresTextID := pgtype.Text{String: string(user.GCPAccountID), Valid: true}
+		accountIDFromGCPAccountID, err := pg.SelectAccountIDFromGCPAccountID(ctx, postgresTextID)
+		if err != nil {
+			return nil, "", err
+		}
+		if accountIDFromGCPAccountID == "" {
+			return nil, "", fmt.Errorf(errGCPAccountNotFound.Error(), user.GCPAccountID)
+		}
+
+		_, err = qtx.InsertAccountUser(ctx, InsertAccountUserParams{
+			AccountID: accountIDFromGCPAccountID,
+			UserID:    userID,
+			Email:     user.Email,
+			RoleName:  types.RoleOwner,
+			Accepted:  true,
+			CreatedAt: newTimestamptz(createdAt),
+			UpdatedAt: newTimestamptz(createdAt),
+		})
+		if err != nil {
+			return nil, "", err
+		}
+
+		err = qtx.UpdateUpsertAccountNotification(ctx, UpdateUpsertAccountNotificationParams{
+			AccountID:   accountIDFromGCPAccountID,
+			Type:        types.NotificationTypeEmail,
+			Active:      true,
+			Destination: string(user.Email),
+			Events:      defaultAccountNotifications,
+			UpdatedAt:   newTimestamptz(createdAt),
+		})
+		if err != nil {
+			return nil, "", err
+		}
+
+		accountID = accountIDFromGCPAccountID
 	}
 
 	err = tx.Commit(ctx)
@@ -292,8 +341,15 @@ func (pg *PostgresDriver) WriteUserNewSignUp(ctx context.Context, user types.Cre
 }
 
 // determineNewUserCase checks the user's status and returns a string indicating the status.
-func (pg *PostgresDriver) determineNewUserCase(ctx context.Context, email types.Email) (newUserCase, error) {
-	isNewUser, err := pg.IsUserNew(ctx, email)
+func (pg *PostgresDriver) determineNewUserCase(ctx context.Context, user types.CreateUser) (newUserCase, error) {
+
+	// If the user is signing up via GCP, a specific Account ID will be provided.
+	// This is the Account created by the GCP pub/sub message and the user must be added to it.
+	if user.GCPAccountID != "" {
+		return gcpUser, nil
+	}
+
+	isNewUser, err := pg.IsUserNew(ctx, user.Email)
 	if err != nil {
 		return "", err
 	}
@@ -301,7 +357,7 @@ func (pg *PostgresDriver) determineNewUserCase(ctx context.Context, email types.
 		return newUser, nil
 	}
 
-	isExistingUser, err := pg.IsUserExisting(ctx, email)
+	isExistingUser, err := pg.IsUserExisting(ctx, user.Email)
 	if err != nil {
 		return "", err
 	}
@@ -309,7 +365,7 @@ func (pg *PostgresDriver) determineNewUserCase(ctx context.Context, email types.
 		return existingUser, nil
 	}
 
-	isInvitedUser, err := pg.IsUserInvited(ctx, email)
+	isInvitedUser, err := pg.IsUserInvited(ctx, user.Email)
 	if err != nil {
 		return "", err
 	}

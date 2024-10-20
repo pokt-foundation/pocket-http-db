@@ -377,37 +377,6 @@ func Users() map[types.UserID]*types.User {
 			CreatedAt:        MockTimestamp,
 			UpdatedAt:        MockTimestamp,
 		},
-		"user_13": {
-			ID:               "user_13",
-			Email:            "daemon.targaryen@test.com",
-			SignedUp:         true,
-			IconURL:          "https://picsum.photos/200",
-			UpdatesProduct:   true,
-			UpdatesMarketing: true,
-			BetaTester:       false,
-			AuthProviders: map[types.AuthType]types.UserAuthProvider{
-				types.AuthTypeAuth0Username: {
-					ProviderUserID: "auth0|daemon_targaryen",
-					Type:           types.AuthTypeAuth0Username,
-					Provider:       "auth0",
-					Federated:      false,
-				},
-			},
-			Permissions: map[types.AccountID]types.AccountPermissions{
-				"account_6": types.AccountPermissions{
-					Accepted: true,
-					RoleName: types.RoleOwner,
-					Permissions: []types.Permissions{
-						types.PermReadEndpoint,
-						types.PermWriteEndpoint,
-						types.PermDeleteEndpoint,
-						types.PermTransferEndpoint,
-					},
-				},
-			},
-			CreatedAt: MockTimestamp,
-			UpdatedAt: MockTimestamp,
-		},
 	}
 }
 
@@ -415,7 +384,6 @@ func UserIDs() map[types.ProviderUserID]types.UserID {
 	return map[types.ProviderUserID]types.UserID{
 		"auth0|amos_burton":        "user_6",
 		"auth0|bernard_marx":       "user_11",
-		"auth0|daemon_targaryen":   "user_13",
 		"auth0|chrisjen_avasarala": "user_5",
 		"auth0|ellen_ripley":       "user_3",
 		"auth0|frodo_baggins":      "user_7",
@@ -438,7 +406,7 @@ func AccountUsers() map[int]types.AccountUser {
 		5: {ID: "user_5", Email: "chrisjen.avasarala1@test.com", RoleName: types.RoleOwner, Accepted: true},
 		6: {ID: "user_6", Email: "amos.burton789@test.com", RoleName: types.RoleAdmin, Accepted: true},
 		7: {ID: "user_7", Email: "frodo.baggins123@test.com", RoleName: types.RoleMember, Accepted: true},
-		8: {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: true},
+		8: {ID: "user_8", Email: "rick.deckard456@test.com", RoleName: types.RoleAdmin, Accepted: false},
 		9: {ID: "user_9", Email: "tyrion.lannister789@test.com", RoleName: types.RoleMember, Accepted: false},
 		// Paul is an admin of Account 1 as well as a member of Account 2
 		10: {ID: "user_2", Email: "paul.atreides456@test.com", RoleName: types.RoleMember, Accepted: true},
@@ -450,8 +418,6 @@ func AccountUsers() map[int]types.AccountUser {
 		13: {ID: "user_11", Email: "bernard.marx@test.com"},
 		// Winston has not signed up yet and is used to create a new AccountUser row
 		14: {Email: "winston.smith@test.com"},
-		// Daemon is the OWNER of Account 6
-		15: {ID: "user_13", Email: "daemon.targaryen@test.com", RoleName: types.RoleOwner, Accepted: true},
 	}
 }
 
@@ -639,9 +605,6 @@ func Accounts(opts ...AccountOptions) map[types.AccountID]*types.Account {
 				},
 				"account_5": {
 					"user_4": Users()["user_4"],
-				},
-				"account_6": {
-					"user_13": Users()["user_13"],
 				},
 			}
 

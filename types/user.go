@@ -142,6 +142,10 @@ type (
 	CreateUser struct {
 		Email          Email          `json:"email"`
 		ProviderUserID ProviderUserID `json:"providerUserID"`
+		// GCPAccountID may be specified when creating a new user
+		// eg. when a user signs up with GCP and needs to be added to the
+		// Account that was created when PUB received the pub/sub message
+		GCPAccountID GCPAccountID `json:"gcpAccountID"`
 	}
 
 	CreateUserResponse struct {

@@ -475,6 +475,10 @@ INSERT INTO accounts (
     )
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
+-- name: SelectAccountIDFromGCPAccountID :one
+SELECT id
+FROM accounts
+WHERE gcp_account_id = $1;
 -- name: DeleteAccount :exec
 UPDATE accounts
 SET deleted = true,

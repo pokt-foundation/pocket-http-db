@@ -688,6 +688,7 @@ func (c *Cache) upsertAccount(account types.Account) {
 		account.PortalApps = existingAccount.PortalApps
 		account.Integrations = existingAccount.Integrations
 		account.Notifications = existingAccount.Notifications
+		account.Users = existingAccount.Users
 	}
 
 	if pendingNotification, ok := c.pendingAccountNotifications[account.ID]; ok {
