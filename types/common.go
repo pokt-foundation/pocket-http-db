@@ -4,16 +4,17 @@ import "regexp"
 
 /* String ID types */
 type (
-	AccountID      string
-	GCPAccountID   string
-	UserID         string
-	GigastakeAppID string
-	RelayChainID   string
-	PortalAppID    string
-	ProtocolID     string
-	ProtocolAppID  string
-	Email          string
-	BlockedAddress string
+	AccountID        string
+	GCPAccountID     string
+	GCPEntitlementID string
+	UserID           string
+	GigastakeAppID   string
+	RelayChainID     string
+	PortalAppID      string
+	ProtocolID       string
+	ProtocolAppID    string
+	Email            string
+	BlockedAddress   string
 
 	Environment string
 )

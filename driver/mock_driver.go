@@ -596,6 +596,24 @@ func (_m *MockDriver) UpdateChain(ctx context.Context, chain types.UpdateChain, 
 	return r0, r1
 }
 
+// UpdateGCPAccountPlanType provides a mock function with given fields: ctx, entitlementID, newPlanType, updatedAt
+func (_m *MockDriver) UpdateGCPAccountPlanType(ctx context.Context, entitlementID types.GCPEntitlementID, newPlanType types.PayPlanType, updatedAt time.Time) error {
+	ret := _m.Called(ctx, entitlementID, newPlanType, updatedAt)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateGCPAccountPlanType")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, types.GCPEntitlementID, types.PayPlanType, time.Time) error); ok {
+		r0 = rf(ctx, entitlementID, newPlanType, updatedAt)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // UpdateGigastakeApp provides a mock function with given fields: ctx, gigastakeApp, updatedAt
 func (_m *MockDriver) UpdateGigastakeApp(ctx context.Context, gigastakeApp types.UpdateGigastakeApp, updatedAt time.Time) error {
 	ret := _m.Called(ctx, gigastakeApp, updatedAt)

@@ -642,36 +642,6 @@ func (_m *MockIDBClient) GetChainByID(ctx context.Context, chainID types.RelayCh
 	return r0, r1
 }
 
-// GetGCPAccountByID provides a mock function with given fields: ctx, gcpAccountID
-func (_m *MockIDBClient) GetGCPAccountByID(ctx context.Context, gcpAccountID types.GCPAccountID) (*types.Account, error) {
-	ret := _m.Called(ctx, gcpAccountID)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetGCPAccountByID")
-	}
-
-	var r0 *types.Account
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, types.GCPAccountID) (*types.Account, error)); ok {
-		return rf(ctx, gcpAccountID)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, types.GCPAccountID) *types.Account); ok {
-		r0 = rf(ctx, gcpAccountID)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Account)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, types.GCPAccountID) error); ok {
-		r1 = rf(ctx, gcpAccountID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // GetGatewayConfig provides a mock function with given fields: ctx, env
 func (_m *MockIDBClient) GetGatewayConfig(ctx context.Context, env types.Environment) (types.GatewayConfig, error) {
 	ret := _m.Called(ctx, env)

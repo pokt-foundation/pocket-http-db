@@ -63,7 +63,7 @@ type (
 		PlanType               PayPlanType                              `json:"planType"`
 		BillingType            BillingType                              `json:"billingType"`
 		GCPAccountID           GCPAccountID                             `json:"gcpAccountID"`
-		GCPEntitlementID       string                                   `json:"gcpEntitlementID"`
+		GCPEntitlementID       GCPEntitlementID                         `json:"gcpEntitlementID"`
 		Name                   string                                   `json:"name"`
 		IconURL                string                                   `json:"iconURL"`
 		PartnerChainIDs        map[RelayChainID]struct{}                `json:"partnerBlockchainIDs"`

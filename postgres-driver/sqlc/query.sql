@@ -475,6 +475,11 @@ INSERT INTO accounts (
     )
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
+-- name: UpdateGCPAccountPlan :exec
+UPDATE accounts
+SET plan_type = $2,
+    updated_at = $3
+WHERE gcp_entitlement_id = $1;
 -- name: SelectAccountIDFromGCPAccountID :one
 SELECT id
 FROM accounts

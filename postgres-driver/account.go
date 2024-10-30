@@ -29,6 +29,8 @@ var (
 	errUnlimitedMustHaveStripeSubID               = errors.New("error unlimited plan must have a stripe subscription ID")
 	errUnmarshallingNotifications                 = errors.New("error unmarshalling notifications")
 	errMonthlyUserLimitMustBeMultipleOfOneMillion = errors.New("error monthly user limit must be a multiple of one million")
+	errNoEntitlementID                            = errors.New("error entitlement ID must be provided")
+	errNoPlanType                                 = errors.New("error plan type must be provided")
 )
 
 var defaultAccountNotifications = []types.NotificationEvent{
@@ -89,7 +91,7 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 		Name:                   a.Name.String,
 		BillingType:            types.BillingType(a.BillingType),
 		GCPAccountID:           types.GCPAccountID(a.GcpAccountID.String),
-		GCPEntitlementID:       a.GcpEntitlementID.String,
+		GCPEntitlementID:       types.GCPEntitlementID(a.GcpEntitlementID.String),
 		IconURL:                a.IconURL.String,
 		PlanType:               types.PayPlanType(a.PlanType.String),
 		PartnerChainIDs:        partnerChainIDs,
@@ -453,6 +455,37 @@ func (pg *PostgresDriver) validateUpdateAccountInput(ctx context.Context, update
 		}
 	}
 
+	return nil
+}
+
+/* UpdateGCPAccountPlanType updates a single GCP Account's plan type in the database. */
+func (pg *PostgresDriver) UpdateGCPAccountPlanType(ctx context.Context, entitlementID types.GCPEntitlementID, newPlanType types.PayPlanType, updatedAt time.Time) error {
+	err := pg.validateUpdateGCPAccountPlanTypeInput(ctx, entitlementID, newPlanType)
+	if err != nil {
+		return err
+	}
+
+	return pg.UpdateGCPAccountPlan(ctx, UpdateGCPAccountPlanParams{
+		GcpEntitlementID: newText(string(entitlementID)),
+		PlanType:         newText(string(newPlanType)),
+		UpdatedAt:        newTimestamptz(updatedAt),
+	})
+}
+
+func (pg *PostgresDriver) validateUpdateGCPAccountPlanTypeInput(ctx context.Context, entitlementID types.GCPEntitlementID, newPlanType types.PayPlanType) error {
+	if entitlementID == "" {
+		return errNoEntitlementID
+	}
+	if newPlanType == "" {
+		return errNoPlanType
+	}
+	planExists, err := pg.CheckPlanTypeExists(ctx, newPlanType)
+	if err != nil {
+		return err
+	}
+	if !planExists {
+		return fmt.Errorf(errPayPlanDoesntExist.Error(), newPlanType)
+	}
 	return nil
 }
 
@@ -866,21 +899,21 @@ func (json dbAccountNotification) mapEvents() map[types.NotificationEvent]bool {
 }
 
 type dbAccount struct {
-	ID                      types.AccountID    `json:"id"`
-	Name                    string             `json:"name"`
-	BillingType             types.BillingType  `json:"billing_type"`
-	GCPAccountID            types.GCPAccountID `json:"gcp_account_id"`
-	GCPEntitlementID        string             `json:"gcp_entitlement_id"`
-	IconURL                 string             `json:"icon_url"`
-	PlanType                types.PayPlanType  `json:"plan_type"`
-	PartnerChainIDs         []string           `json:"partner_chain_ids"`
-	PartnerThroughputLimit  int32              `json:"partner_throughput_limit"`
-	PartnerApplicationLimit int32              `json:"partner_application_limit"`
-	MonthlyUserLimit        int32              `json:"monthly_user_limit"`
-	CreatedAt               time.Time          `json:"created_at"`
-	UpdatedAt               time.Time          `json:"updated_at"`
-	Deleted                 bool               `json:"deleted"`
-	DeletedAt               time.Time          `json:"deleted_at"`
+	ID                      types.AccountID        `json:"id"`
+	Name                    string                 `json:"name"`
+	BillingType             types.BillingType      `json:"billing_type"`
+	GCPAccountID            types.GCPAccountID     `json:"gcp_account_id"`
+	GCPEntitlementID        types.GCPEntitlementID `json:"gcp_entitlement_id"`
+	IconURL                 string                 `json:"icon_url"`
+	PlanType                types.PayPlanType      `json:"plan_type"`
+	PartnerChainIDs         []string               `json:"partner_chain_ids"`
+	PartnerThroughputLimit  int32                  `json:"partner_throughput_limit"`
+	PartnerApplicationLimit int32                  `json:"partner_application_limit"`
+	MonthlyUserLimit        int32                  `json:"monthly_user_limit"`
+	CreatedAt               time.Time              `json:"created_at"`
+	UpdatedAt               time.Time              `json:"updated_at"`
+	Deleted                 bool                   `json:"deleted"`
+	DeletedAt               time.Time              `json:"deleted_at"`
 }
 
 type dbAccountIntegration struct {
