@@ -1229,6 +1229,36 @@ func (_m *MockIDBClient) UpdateChain(ctx context.Context, chainUpdate types.Upda
 	return r0, r1
 }
 
+// UpdateGCPAccountPlanType provides a mock function with given fields: ctx, entitlementID, newPlanType, timestamp
+func (_m *MockIDBClient) UpdateGCPAccountPlanType(ctx context.Context, entitlementID types.GCPEntitlementID, newPlanType types.PayPlanType, timestamp time.Time) (map[string]string, error) {
+	ret := _m.Called(ctx, entitlementID, newPlanType, timestamp)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateGCPAccountPlanType")
+	}
+
+	var r0 map[string]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, types.GCPEntitlementID, types.PayPlanType, time.Time) (map[string]string, error)); ok {
+		return rf(ctx, entitlementID, newPlanType, timestamp)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, types.GCPEntitlementID, types.PayPlanType, time.Time) map[string]string); ok {
+		r0 = rf(ctx, entitlementID, newPlanType, timestamp)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, types.GCPEntitlementID, types.PayPlanType, time.Time) error); ok {
+		r1 = rf(ctx, entitlementID, newPlanType, timestamp)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // UpdateGigastakeApp provides a mock function with given fields: ctx, id, updateGigastakeApp
 func (_m *MockIDBClient) UpdateGigastakeApp(ctx context.Context, id types.GigastakeAppID, updateGigastakeApp types.UpdateGigastakeApp) (*types.UpdateGigastakeApp, error) {
 	ret := _m.Called(ctx, id, updateGigastakeApp)

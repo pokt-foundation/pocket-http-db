@@ -17,6 +17,7 @@ var (
 	errInvalidIconURL                             = errors.New("error icon URL '%s' is not a valid URL")
 	errPayPlanDoesntExist                         = errors.New("error pay plan '%s' does not exist")
 	errAccountDoesntExist                         = errors.New("error account does not exist for account ID '%s'")
+	errAccountDoesntExistByEntitlementID          = errors.New("error account does not exist for entitlement ID '%s'")
 	errAccountUserDoesntExist                     = errors.New("error user ID '%s' does not exist for account ID '%s'")
 	errCannotDeleteOwner                          = errors.New("error cannot delete user ID '%s' for account ID '%s' because this user is the current account owner")
 	errCreateNoAccountID                          = errors.New("error must provide account ID when creating user")
@@ -252,7 +253,7 @@ func (pg *PostgresDriver) WriteGCPAccount(
 		PlanType:         newText(string(input.PlanType)),
 		BillingType:      BillingType(types.BillingTypeGoogle),
 		GcpAccountID:     newText(string(input.GCPAccountID)),
-		GcpEntitlementID: newText(input.GCPEntitlementID),
+		GcpEntitlementID: newText(string(input.GCPEntitlementID)),
 		CreatedAt:        newTimestamptz(createdAt),
 		UpdatedAt:        newTimestamptz(createdAt),
 	})
@@ -478,6 +479,13 @@ func (pg *PostgresDriver) validateUpdateGCPAccountPlanTypeInput(ctx context.Cont
 	}
 	if newPlanType == "" {
 		return errNoPlanType
+	}
+	accountExists, err := pg.CheckAccountExistsByEntitlementID(ctx, newText(string(entitlementID)))
+	if err != nil {
+		return err
+	}
+	if !accountExists {
+		return fmt.Errorf(errAccountDoesntExistByEntitlementID.Error(), entitlementID)
 	}
 	planExists, err := pg.CheckPlanTypeExists(ctx, newPlanType)
 	if err != nil {

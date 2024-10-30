@@ -453,15 +453,21 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateGCPAccountPlanType() {
 	}{
 		{
 			name:          "Should update the GCP account's plan type to PlanFree",
-			entitlementID: "gcp_entitlement_1",
+			entitlementID: "gcp_entitlement_456",
 			newPlanType:   types.PlanFree,
 			err:           nil,
 		},
 		{
 			name:          "Should update the GCP account's plan type to PlanUnlimited",
-			entitlementID: "gcp_entitlement_2",
+			entitlementID: "gcp_entitlement_456",
 			newPlanType:   types.PlanUnlimited,
 			err:           nil,
+		},
+		{
+			name:          "Should fail if the account does not exist",
+			entitlementID: "gcp_entitlement_666",
+			newPlanType:   types.PlanFree,
+			err:           fmt.Errorf(errAccountDoesntExistByEntitlementID.Error(), "gcp_entitlement_666"),
 		},
 		{
 			name:          "Should fail if the entitlement ID is empty",
@@ -471,7 +477,7 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateGCPAccountPlanType() {
 		},
 		{
 			name:          "Should fail if the plan type does not exist",
-			entitlementID: "gcp_entitlement_3",
+			entitlementID: "gcp_entitlement_456",
 			newPlanType:   types.PayPlanType("non_existent_plan"),
 			err:           fmt.Errorf(errPayPlanDoesntExist.Error(), "non_existent_plan"),
 		},

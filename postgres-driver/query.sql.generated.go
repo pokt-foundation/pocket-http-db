@@ -44,6 +44,22 @@ func (q *Queries) CheckAccountExists(ctx context.Context, id types.AccountID) (b
 	return exists, err
 }
 
+const checkAccountExistsByEntitlementID = `-- name: CheckAccountExistsByEntitlementID :one
+SELECT EXISTS(
+        SELECT 1
+        FROM accounts
+        WHERE gcp_entitlement_id = $1
+            AND deleted = false
+    )
+`
+
+func (q *Queries) CheckAccountExistsByEntitlementID(ctx context.Context, gcpEntitlementID pgtype.Text) (bool, error) {
+	row := q.db.QueryRow(ctx, checkAccountExistsByEntitlementID, gcpEntitlementID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const checkAccountUserAccepted = `-- name: CheckAccountUserAccepted :one
 SELECT accepted
 FROM account_users

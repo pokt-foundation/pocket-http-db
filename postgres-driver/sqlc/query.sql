@@ -524,6 +524,13 @@ SELECT EXISTS(
         WHERE id = $1
             AND deleted = false
     );
+-- name: CheckAccountExistsByEntitlementID :one
+SELECT EXISTS(
+        SELECT 1
+        FROM accounts
+        WHERE gcp_entitlement_id = $1
+            AND deleted = false
+    );
 -- name: CheckPlanExists :one
 SELECT EXISTS(
         SELECT 1
