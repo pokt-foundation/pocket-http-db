@@ -103,6 +103,40 @@ func (ts *PGDriverTestSuite) Test_PGDriver_WriteAccount() {
 	}
 }
 
+func (ts *PGDriverTestSuite) Test_PGDriver_WriteGCPAccount() {
+	tests := []struct {
+		name  string
+		input types.CreateGCPAccount
+		err   error
+	}{
+		{
+			name: "Should create a new GCP Account in the database",
+			input: types.CreateGCPAccount{
+				PlanType:         types.PlanFree,
+				GCPAccountID:     "gcp_account_1",
+				GCPEntitlementID: "gcp_entitlement_1",
+			},
+			err: nil,
+		},
+		{
+			name: "Should fail if the plan type does not exist",
+			input: types.CreateGCPAccount{
+				PlanType:         types.PayPlanType("non_existent_plan"),
+				GCPAccountID:     "gcp_account_2",
+				GCPEntitlementID: "gcp_entitlement_2",
+			},
+			err: fmt.Errorf(errPayPlanDoesntExist.Error(), "non_existent_plan"),
+		},
+	}
+
+	for _, test := range tests {
+		ts.Run(test.name, func() {
+			err := ts.driver.WriteGCPAccount(context.Background(), test.input, testdata.MockTimestamp)
+			ts.Equal(test.err, err)
+		})
+	}
+}
+
 func (ts *PGDriverTestSuite) Test_PGDriver_UpsertAccountIntegration() {
 	tests := []struct {
 		name                 string
@@ -406,6 +440,53 @@ func (ts *PGDriverTestSuite) Test_PGDriver_UpdateAccount() {
 					ts.Equal(test.update.MonthlyUserLimit, account.MonthlyUserLimit)
 				}
 			}
+		})
+	}
+}
+
+func (ts *PGDriverTestSuite) Test_PGDriver_UpdateGCPAccountPlanType() {
+	tests := []struct {
+		name          string
+		entitlementID types.GCPEntitlementID
+		newPlanType   types.PayPlanType
+		err           error
+	}{
+		{
+			name:          "Should update the GCP account's plan type to PlanFree",
+			entitlementID: "gcp_entitlement_456",
+			newPlanType:   types.PlanFree,
+			err:           nil,
+		},
+		{
+			name:          "Should update the GCP account's plan type to PlanUnlimited",
+			entitlementID: "gcp_entitlement_456",
+			newPlanType:   types.PlanUnlimited,
+			err:           nil,
+		},
+		{
+			name:          "Should fail if the account does not exist",
+			entitlementID: "gcp_entitlement_666",
+			newPlanType:   types.PlanFree,
+			err:           fmt.Errorf(errAccountDoesntExistByEntitlementID.Error(), "gcp_entitlement_666"),
+		},
+		{
+			name:          "Should fail if the entitlement ID is empty",
+			entitlementID: "",
+			newPlanType:   types.PlanFree,
+			err:           errNoEntitlementID,
+		},
+		{
+			name:          "Should fail if the plan type does not exist",
+			entitlementID: "gcp_entitlement_456",
+			newPlanType:   types.PayPlanType("non_existent_plan"),
+			err:           fmt.Errorf(errPayPlanDoesntExist.Error(), "non_existent_plan"),
+		},
+	}
+
+	for _, test := range tests {
+		ts.Run(test.name, func() {
+			err := ts.driver.UpdateGCPAccountPlanType(context.Background(), test.entitlementID, test.newPlanType, testdata.MockTimestamp)
+			ts.Equal(test.err, err)
 		})
 	}
 }
