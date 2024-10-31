@@ -1130,6 +1130,54 @@ func TestRouter_createGCPAccount(t *testing.T) {
 	}
 }
 
+func Test_updateGCPAccount(t *testing.T) {
+	tests := []struct {
+		name             string
+		entitlementID    types.GCPEntitlementID
+		newPlanType      types.PayPlanType
+		expectedStatus   int
+		expectedResponse map[string]string
+	}{
+		{
+			name:             "Should update GCP account plan type successfully",
+			entitlementID:    "gcp_entitlement_1",
+			newPlanType:      types.PlanFree,
+			expectedStatus:   http.StatusOK,
+			expectedResponse: map[string]string{"status": "updated"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			c := require.New(t)
+
+			router, err := newTestRouter(t)
+			c.NoError(err)
+
+			// Mock the writer's UpdateGCPAccount method
+			writerMock := driver.NewMockDriver(t)
+			writerMock.On("UpdateGCPAccountPlanType", mock.Anything, test.entitlementID, test.newPlanType, mock.Anything).Return(nil).Once()
+			router.writer = writerMock
+
+			rr := httptest.NewRecorder()
+
+			newPlanTypeBytes, err := json.Marshal(test.newPlanType)
+			c.NoError(err)
+
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("/v2/account/gcp/%s", test.entitlementID), bytes.NewBuffer(newPlanTypeBytes))
+			c.NoError(err)
+
+			router.Router.ServeHTTP(rr, req)
+			c.Equal(test.expectedStatus, rr.Code)
+
+			var response map[string]string
+			err = json.Unmarshal(rr.Body.Bytes(), &response)
+			c.NoError(err)
+			c.Equal(test.expectedResponse, response)
+		})
+	}
+}
+
 func TestRouter_updateAccount(t *testing.T) {
 	tests := []struct {
 		name               string

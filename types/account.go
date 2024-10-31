@@ -63,7 +63,7 @@ type (
 		PlanType               PayPlanType                              `json:"planType"`
 		BillingType            BillingType                              `json:"billingType"`
 		GCPAccountID           GCPAccountID                             `json:"gcpAccountID"`
-		GCPEntitlementID       string                                   `json:"gcpEntitlementID"`
+		GCPEntitlementID       GCPEntitlementID                         `json:"gcpEntitlementID"`
 		Name                   string                                   `json:"name"`
 		IconURL                string                                   `json:"iconURL"`
 		PartnerChainIDs        map[RelayChainID]struct{}                `json:"partnerBlockchainIDs"`
@@ -112,9 +112,9 @@ type (
 	// CreateGCPAccount contains all fields required to create a new GCP Account
 	// in response to a user's subscription request in the GCP Marketplace.
 	CreateGCPAccount struct {
-		GCPAccountID     GCPAccountID `json:"gcpAccountID"`
-		GCPEntitlementID string       `json:"gcpEntitlementID"`
-		PlanType         PayPlanType  `json:"planType"`
+		GCPAccountID     GCPAccountID     `json:"gcpAccountID"`
+		GCPEntitlementID GCPEntitlementID `json:"gcpEntitlementID"`
+		PlanType         PayPlanType      `json:"planType"`
 	}
 
 	// CreateAccountUser contains all fields required to create a new Account User

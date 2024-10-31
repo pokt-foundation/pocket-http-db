@@ -44,6 +44,22 @@ func (q *Queries) CheckAccountExists(ctx context.Context, id types.AccountID) (b
 	return exists, err
 }
 
+const checkAccountExistsByEntitlementID = `-- name: CheckAccountExistsByEntitlementID :one
+SELECT EXISTS(
+        SELECT 1
+        FROM accounts
+        WHERE gcp_entitlement_id = $1
+            AND deleted = false
+    )
+`
+
+func (q *Queries) CheckAccountExistsByEntitlementID(ctx context.Context, gcpEntitlementID pgtype.Text) (bool, error) {
+	row := q.db.QueryRow(ctx, checkAccountExistsByEntitlementID, gcpEntitlementID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const checkAccountUserAccepted = `-- name: CheckAccountUserAccepted :one
 SELECT accepted
 FROM account_users
@@ -2566,6 +2582,24 @@ func (q *Queries) UpdateDeleteWhitelists(ctx context.Context, arg UpdateDeleteWh
 		arg.Values,
 		arg.ChainIDs,
 	)
+	return err
+}
+
+const updateGCPAccountPlan = `-- name: UpdateGCPAccountPlan :exec
+UPDATE accounts
+SET plan_type = $2,
+    updated_at = $3
+WHERE gcp_entitlement_id = $1
+`
+
+type UpdateGCPAccountPlanParams struct {
+	GcpEntitlementID pgtype.Text        `json:"gcp_entitlement_id"`
+	PlanType         pgtype.Text        `json:"plan_type"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) UpdateGCPAccountPlan(ctx context.Context, arg UpdateGCPAccountPlanParams) error {
+	_, err := q.db.Exec(ctx, updateGCPAccountPlan, arg.GcpEntitlementID, arg.PlanType, arg.UpdatedAt)
 	return err
 }
 
