@@ -7,16 +7,28 @@
 
 # Table of Contents
 
+- [Table of Contents](#table-of-contents)
 - [PHD API](#phd-api)
+  - [1. Cache](#1-cache)
+  - [2. Listener](#2-listener)
+  - [3. Router](#3-router)
 - [PHD Client](#phd-client)
 - [DB Driver](#db-driver)
-  - [Postgres Driver](#2-postgres-driver)
-  - [Types Package](#3-types)
+    - [1. Driver](#1-driver)
+    - [2. Postgres Driver](#2-postgres-driver)
+    - [3. Types](#3-types)
 - [Development](#development)
   - [Executing Database Migrations](#executing-database-migrations)
+    - [Install go-migrate](#install-go-migrate)
+    - [Create a New Migration](#create-a-new-migration)
+    - [Write the Migrations](#write-the-migrations)
+    - [Execute the Migrations](#execute-the-migrations)
   - [Code Generation](#code-generation)
-  - [Modifying PHD Functionality](#modifying-phd-functionality)
-  - [Pre-Commit](#pre-commit-installation)
+- [Modifying PHD Functionality](#modifying-phd-functionality)
+  - [Pre-Commit Installation](#pre-commit-installation)
+    - [1. Basic checks](#1-basic-checks)
+    - [2. Go-specific checks](#2-go-specific-checks)
+    - [3. Detect Secrets](#3-detect-secrets)
 
 # PHD API
 
