@@ -1,0 +1,20 @@
+-- DISRUPTIVE TO SERVICE. MUST BE AS CONFIDENT AS POSSIBLE THIS IS CORRECT
+-- PLEASE REVIEW CAREFULLY
+
+-- Step 1: Update all rows to set 'active' to FALSE
+UPDATE chains
+SET active = FALSE;
+
+-- Step 2: Update specific rows to set 'active' to TRUE based on the provided IDs
+UPDATE chains
+SET active = TRUE
+WHERE id IN (
+    'A0CA', 'A0CB', 'A0CC', 'A0CD', 'F000', 'F001', 'F002', 'F003',
+    'F004', 'F005', 'F006', 'F007', 'F008', 'F009', 'F00A', 'F00B',
+    'F00C', 'F00D', 'F00E', 'F00F', 'F010', 'F011', 'F012', 'F013',
+    'F014', 'F015', 'F016', 'F017', 'F018', 'F019', 'F01A', 'F01B',
+    'F01C', 'F01D', 'F01E', 'F01F', 'F020', 'F021', 'F022', 'F023',
+    'F024', 'F025', 'F026', 'F027', 'F028', 'F029', 'F02A', 'F02B'
+);
+
+-- Step 3: Insert chain alias domains rows for all legacy aliases
