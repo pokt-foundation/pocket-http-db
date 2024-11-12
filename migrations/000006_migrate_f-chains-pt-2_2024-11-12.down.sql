@@ -1,5 +1,5 @@
 -- delete F-chain associations
-DELETE FROM chains_gigastakes_applications;
+DELETE FROM chains_gigastake_applications;
 --associate gigastakes with chains
 INSERT INTO public.chains_gigastake_applications (chain_id, gigastake_application_id)
 VALUES ('0021', '5dd60ad9'),
