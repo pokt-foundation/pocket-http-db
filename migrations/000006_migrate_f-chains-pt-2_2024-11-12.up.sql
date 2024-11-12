@@ -3,7 +3,7 @@
 -- PLEASE REVIEW CAREFULLY
 
 -- delete legacy associations
-DELETE FROM chains_gigastakes_applications;
+DELETE FROM chains_gigastake_applications;
 --associate gigastakes with chains
 INSERT into chains_gigastake_applications (chain_id, gigastake_application_id)
 VALUES ('ef37bd12', 'F000'),
