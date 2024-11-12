@@ -2176,6 +2176,63 @@ func (ts *phdE2EWriteTestSuite) Test_WriteTests() {
 		}
 	})
 
+	ts.Run("Test_UpdateGCPAccountPlanType", func() {
+		tests := []struct {
+			name             string
+			entitlementID    types.GCPEntitlementID
+			newPlanType      types.PayPlanType
+			expectedResponse map[string]string
+			err              error
+		}{
+			{
+				name:             "Should update GCP account plan type successfully",
+				entitlementID:    "gcp_entitlement_456",
+				newPlanType:      types.PlanFree,
+				expectedResponse: map[string]string{"status": "updated"},
+				err:              nil,
+			},
+			{
+				name:             "Should fail if the account does not exist",
+				entitlementID:    "gcp_entitlement_666",
+				newPlanType:      types.PlanFree,
+				expectedResponse: nil,
+				err:              fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGCPAccount: error account does not exist for entitlement ID 'gcp_entitlement_666'"),
+			},
+			{
+				name:             "Should fail if plan type does not exist",
+				entitlementID:    "gcp_entitlement_456",
+				newPlanType:      types.PayPlanType("non_existent_plan"),
+				expectedResponse: nil,
+				err:              fmt.Errorf("Response not OK. 500 Internal Server Error: error in updateGCPAccount: error pay plan 'non_existent_plan' does not exist"),
+			},
+		}
+
+		for _, test := range tests {
+			ts.Run(test.name, func() {
+				// Update the GCP account plan type
+				response, err := ts.client1.UpdateGCPAccountPlanType(context.Background(), test.entitlementID, test.newPlanType, time.Now())
+				ts.Equal(test.err, err)
+
+				if test.err == nil {
+					ts.Equal(test.expectedResponse, response)
+
+					// Wait for the update to propagate
+					<-time.After(50 * time.Millisecond)
+
+					// Confirm the update was successful using GetAccountByID on client1
+					account1, err := ts.client1.GetAccountByID(context.Background(), "account_6")
+					ts.NoError(err)
+					ts.Equal(test.newPlanType, account1.PlanType)
+
+					// Confirm the update was successful using GetAccountByID on client2
+					account2, err := ts.client2.GetAccountByID(context.Background(), "account_6")
+					ts.NoError(err)
+					ts.Equal(test.newPlanType, account2.PlanType)
+				}
+			})
+		}
+	})
+
 	ts.Run("Test_CreateAccountIntegration", func() {
 		tests := []struct {
 			name                       string

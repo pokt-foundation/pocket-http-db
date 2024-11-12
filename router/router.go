@@ -123,6 +123,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/account/{id}/integration", rt.updateAccountIntegration).Methods(http.MethodPut)
 	rt.Router.HandleFunc("/v2/account/{id}", rt.deleteAccount).Methods(http.MethodDelete)
 	rt.Router.HandleFunc("/v2/account/gcp", rt.createGCPAccount).Methods(http.MethodPost)
+	rt.Router.HandleFunc("/v2/account/gcp/{entitlement_id}", rt.updateGCPAccount).Methods(http.MethodPut)
 
 	rt.Router.HandleFunc("/v2/account/user", rt.writeAccountUser).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/account/user/update_role", rt.updateAccountUserRole).Methods(http.MethodPut)
@@ -841,6 +842,32 @@ func (rt *Router) createGCPAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "created"})
+}
+
+// PUT /v2/account/gcp/{entitlement_id} - Update a single GCP Account.
+func (rt *Router) updateGCPAccount(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	entitlementID := types.GCPEntitlementID(vars["entitlement_id"])
+	if entitlementID == "" {
+		rt.handleError(w, "updateGCPAccount", http.StatusBadRequest, fmt.Errorf("entitlement ID must be provided"))
+	}
+
+	var newPlanType types.PayPlanType
+
+	err := json.NewDecoder(r.Body).Decode(&newPlanType)
+	if err != nil {
+		rt.handleError(w, "updateGCPAccount", http.StatusBadRequest, err)
+		return
+	}
+	defer r.Body.Close()
+
+	err = rt.writer.UpdateGCPAccountPlanType(r.Context(), entitlementID, newPlanType, time.Now())
+	if err != nil {
+		rt.handleError(w, "updateGCPAccount", http.StatusInternalServerError, err)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
 /* ---------- V2 Account User Handler Methods ---------- */

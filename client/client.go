@@ -118,6 +118,8 @@ type (
 		CreateGCPAccount(ctx context.Context, input types.CreateGCPAccount, timestamp time.Time) (*types.Account, error)
 		// UpdateAccount updates an existing account in the DB - PUT `/v2/account/{id}`
 		UpdateAccount(ctx context.Context, account types.UpdateAccount) (*types.Account, error)
+		// UpdateGCPAccountPlanType updates a single GCP Account's plan type in the database - PUT `/v2/account/gcp/{entitlement_id}`
+		UpdateGCPAccountPlanType(ctx context.Context, entitlementID types.GCPEntitlementID, newPlanType types.PayPlanType, timestamp time.Time) (map[string]string, error)
 		// CreateAccountIntegration creates a new integration for an account - POST `/v2/account/{id}/integration`
 		CreateAccountIntegration(ctx context.Context, accountID types.AccountID, integration types.AccountIntegrations) (*types.AccountIntegrations, error)
 		// UpdateAccountIntegration updates an existing integration for an account - PUT `/v2/account/{id}/integration`
@@ -846,6 +848,18 @@ func (db *DBClient) UpdateAccount(ctx context.Context, account types.UpdateAccou
 	endpoint := fmt.Sprintf("%s/%s", db.v2BasePath(accountPath), account.AccountID)
 
 	return putReq[*types.Account](endpoint, db.getAuthHeaderForWrite(), accountJSON, db.httpClient)
+}
+
+// UpdateGCPAccountPlanType updates a single GCP Account's plan type in the database - PUT `/v2/account/gcp/{entitlement_id}`
+func (db *DBClient) UpdateGCPAccountPlanType(ctx context.Context, entitlementID types.GCPEntitlementID, newPlanType types.PayPlanType, timestamp time.Time) (map[string]string, error) {
+	newPlanTypeJSON, err := json.Marshal(newPlanType)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s", errInvalidAccountJSON, err)
+	}
+
+	endpoint := fmt.Sprintf("%s/%s/%s", db.v2BasePath(accountPath), gcpPath, entitlementID)
+
+	return putReq[map[string]string](endpoint, db.getAuthHeaderForWrite(), newPlanTypeJSON, db.httpClient)
 }
 
 // CreateAccountIntegration creates an AccountIntegration in the DB - POST `/v2/account/{id}/integration`

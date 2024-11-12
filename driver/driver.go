@@ -70,6 +70,8 @@ type (
 		WriteAccount(ctx context.Context, creatorID types.UserID, account types.Account, createdAt time.Time) (*types.Account, error)
 		/* WriteGCPAccount creates a single GCP Account in the database. */
 		WriteGCPAccount(ctx context.Context, input types.CreateGCPAccount, createdAt time.Time) error
+		/* UpdateGCPAccountPlanType updates a single GCP Account's plan type in the database. */
+		UpdateGCPAccountPlanType(ctx context.Context, entitlementID types.GCPEntitlementID, newPlanType types.PayPlanType, updatedAt time.Time) error
 		/* UpdateAccount updates an Account. */
 		UpdateAccount(ctx context.Context, update types.UpdateAccount, updatedAt time.Time) (*types.Account, error)
 		/* UpsertAccountIntegration adds or updates the Account Integrations for a single Account. */

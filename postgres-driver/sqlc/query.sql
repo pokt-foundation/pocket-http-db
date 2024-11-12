@@ -475,6 +475,11 @@ INSERT INTO accounts (
     )
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
+-- name: UpdateGCPAccountPlan :exec
+UPDATE accounts
+SET plan_type = $2,
+    updated_at = $3
+WHERE gcp_entitlement_id = $1;
 -- name: SelectAccountIDFromGCPAccountID :one
 SELECT id
 FROM accounts
@@ -517,6 +522,13 @@ SELECT EXISTS(
         SELECT 1
         FROM accounts
         WHERE id = $1
+            AND deleted = false
+    );
+-- name: CheckAccountExistsByEntitlementID :one
+SELECT EXISTS(
+        SELECT 1
+        FROM accounts
+        WHERE gcp_entitlement_id = $1
             AND deleted = false
     );
 -- name: CheckPlanExists :one
