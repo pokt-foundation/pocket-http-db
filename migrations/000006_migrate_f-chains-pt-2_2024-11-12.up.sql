@@ -5,7 +5,7 @@
 -- delete legacy associations
 DELETE FROM chains_gigastake_applications;
 --associate gigastakes with chains
-INSERT into chains_gigastake_applications (chain_id, gigastake_application_id)
+INSERT into chains_gigastake_applications (gigastake_application_id, chain_id)
 VALUES ('ef37bd12', 'F000'),
     ('ef37bd12', 'F001'),
     ('ef37bd12', 'F002'),
