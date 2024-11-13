@@ -1,9 +1,9 @@
--- F005
+-- F001
 INSERT INTO chain_alias_domains (chain_id, alias, domains)
-SELECT 'F005', alias, ARRAY [alias || '.gateway.grove.city']
-FROM chain_alias_domains WHERE chain_id = '0079'
+SELECT 'F001', alias, ARRAY [alias || '.gateway.grove.city']
+FROM chain_alias_domains WHERE chain_id = '0066'
 ON CONFLICT (chain_id, alias) DO NOTHING;
-UPDATE chains SET active = false WHERE id = '0079';
+UPDATE chains SET active = false WHERE id = '0066';
 
 -- F006
 INSERT INTO chain_alias_domains (chain_id, alias, domains)
