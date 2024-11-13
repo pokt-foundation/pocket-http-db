@@ -3,9 +3,6 @@
 -- To execute on the local test Postgres database:
 -- migrate -path migrations/ -database "postgresql://postgres:pgpassword@localhost:5432/postgres?sslmode=disable" -verbose down 8
 
--- Delete F-chain Ethereum chain alias domains (except 'eth')
-DELETE FROM chain_alias_domains WHERE chain_id = 'F00C' and alias IN ('eth-mainnet', 'eth-trace', 'eth-archival');
-
 -- Disable F-chain Ethereum chain
 UPDATE chains SET active = false WHERE id = 'F00C';
 

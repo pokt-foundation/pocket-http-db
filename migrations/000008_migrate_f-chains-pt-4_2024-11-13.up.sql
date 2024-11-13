@@ -11,11 +11,6 @@ VALUES
 ('F00C', 'eth-trace', ARRAY['eth-trace.gateway.grove.city']),
 ('F00C', 'eth-archival', ARRAY['eth-archival.gateway.grove.city']);
 
--- Delete old chain aliases
-DELETE FROM chain_alias_domains WHERE chain_id = '0021';
-DELETE FROM chain_alias_domains WHERE chain_id = '0028';
-DELETE FROM chain_alias_domains WHERE chain_id = '0022';
-
 -- Disable old chains
 UPDATE chains SET active = false WHERE id = '0021'; -- disable eth-mainnet
 UPDATE chains SET active = false WHERE id = '0028'; -- disable eth-trace
