@@ -29,7 +29,6 @@ WITH f_chain_mapping AS (
     ('F023', ARRAY ['0083']),
     ('F027', ARRAY ['7A00']),
     ('F028', ARRAY ['7A10']),
-    ('F029', ARRAY ['0074']),
     ('F02A', ARRAY ['A091']),
     ('F02B', ARRAY ['0084'])
 ) AS f_chain_mapping(f_chain_id, old_chain_ids)
@@ -69,7 +68,6 @@ WITH f_chain_mapping AS (
     ('F023', ARRAY ['0083']),
     ('F027', ARRAY ['7A00']),
     ('F028', ARRAY ['7A10']),
-    ('F029', ARRAY ['0074']),
     ('F02A', ARRAY ['A091']),
     ('F02B', ARRAY ['0084'])
 ) AS f_chain_mapping(f_chain_id, old_chain_ids)
