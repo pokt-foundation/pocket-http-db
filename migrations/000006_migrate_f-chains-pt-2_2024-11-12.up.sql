@@ -3,9 +3,9 @@
 -- PLEASE REVIEW CAREFULLY
 
 -- delete legacy associations
-DELETE FROM chains_gigastakes_applications;
+DELETE FROM chains_gigastake_applications;
 --associate gigastakes with chains
-INSERT into chains_gigastake_applications (chain_id, gigastake_application_id)
+INSERT into chains_gigastake_applications (gigastake_application_id, chain_id)
 VALUES ('ef37bd12', 'F000'),
     ('ef37bd12', 'F001'),
     ('ef37bd12', 'F002'),
@@ -3098,4 +3098,8 @@ VALUES ('ef37bd12', 'F000'),
     ('8fa45ad9', 'A0CB'),
     ('8fa45ad9', 'A0CC'),
     ('8fa45ad9', 'A0CD'),
+<<<<<<< HEAD
     ('8fa45ad9', 'C006');
+=======
+    ('8fa45ad9', 'C006');
+>>>>>>> f637bf5a6ebed9e929835ecb3e66d3350d876586
