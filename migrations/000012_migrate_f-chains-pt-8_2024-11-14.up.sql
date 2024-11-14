@@ -5,13 +5,6 @@ FROM chain_alias_domains WHERE chain_id = ANY(ARRAY['0077', '0078'])
 ON CONFLICT (chain_id, alias) DO NOTHING;
 UPDATE chains SET active = false WHERE id = ANY(ARRAY['0077', '0078']);
 
--- F00F
-INSERT INTO chain_alias_domains (chain_id, alias, domains)
-SELECT 'F00F', alias, ARRAY [alias || '.gateway.grove.city']
-FROM chain_alias_domains WHERE chain_id = '0046'
-ON CONFLICT (chain_id, alias) DO NOTHING;
-UPDATE chains SET active = false WHERE id = '0046';
-
 -- F012
 INSERT INTO chain_alias_domains (chain_id, alias, domains)
 SELECT 'F012', alias, ARRAY [alias || '.gateway.grove.city']
