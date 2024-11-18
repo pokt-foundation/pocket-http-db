@@ -4,7 +4,7 @@ UPDATE chains SET active = true WHERE id = ANY(ARRAY['0077', '0078']);
 
 -- F012
 DELETE FROM chain_alias_domains WHERE chain_id = 'F012';
-UPDATE chains SET active = true WHERE id = '0005';
+UPDATE chains SET active = true WHERE id = ANY(ARRAY['0005', '000A']);
 
 -- F026
 DELETE FROM chain_alias_domains WHERE chain_id = 'F026';
