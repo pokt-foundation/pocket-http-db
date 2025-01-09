@@ -111,6 +111,9 @@ type (
 		/* RemoveBlockedContract deletes a blocked address from the global blocked contracts table. */
 		RemoveBlockedContract(ctx context.Context, blockedAddress types.BlockedAddress) error
 
+		/* CreateGatewayConfig adds a new gatewat config to the gateway configuration table */
+		CreateGatewayConfig(ctx context.Context, config *types.GatewayConfig) (*types.GatewayConfig, error)
+
 		Ping(ctx context.Context) error
 	}
 )

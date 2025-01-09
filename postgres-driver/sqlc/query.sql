@@ -41,6 +41,15 @@ SELECT DISTINCT ON (environment) environment,
 FROM config_gateway
 ORDER BY environment,
     version DESC;
+-- name: InsertGatewayConfig :one
+INSERT INTO config_gateway (
+	environment,
+	version,
+	description,
+	configuration
+    )
+VALUES ($1, $2, $3, $4)
+RETURNING *;
 -- name: SelectOpenAPISpecs :many
 SELECT *
 FROM config_openapi;

@@ -28,6 +28,7 @@ var (
 	errAccountNotFound              error = errors.New("account not found")
 	errNoAccountsFoundForUserID     error = errors.New("no accounts were found for user ID")
 	errUserNotFoundByID             error = errors.New("user not found for ID: %s")
+	errInvalidConfigEnv             error = errors.New("invalid gaetway config env.: %s")
 )
 
 // router struct handler for router requests
@@ -150,6 +151,7 @@ func NewRouter(config Config) (*Router, error) {
 	rt.Router.HandleFunc("/v2/openapi_specs", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
 	rt.Router.HandleFunc("/v2/config/gateway/{env}", rt.getGatewayConfig).Methods(http.MethodGet)
+	rt.Router.HandleFunc("/v2/config/gateway/{env}", rt.createGatewayConfig).Methods(http.MethodPost)
 	rt.Router.HandleFunc("/v2/config/validator", rt.getValidatorConfig).Methods(http.MethodGet)
 	rt.Router.HandleFunc("/v2/config/openapi", rt.getOpenAPISpecs).Methods(http.MethodGet)
 
@@ -1158,6 +1160,37 @@ func (rt *Router) getGatewayConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonresponse.RespondWithJSON(w, http.StatusOK, config)
+}
+
+// POST /v2/config/gateway/{env} - add a new gateway config entry.
+func (rt *Router) createGatewayConfig(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	env := types.Environment(vars["env"])
+	if env == "" {
+		rt.handleError(w, "createGatewayConfig", http.StatusBadRequest, fmt.Errorf("env must be provided"))
+		return
+	}
+
+	defer r.Body.Close()
+	var configInput *types.GatewayConfig
+	err := json.NewDecoder(r.Body).Decode(&configInput)
+	if err != nil {
+		rt.handleError(w, "createGatewayConfig", http.StatusBadRequest, err)
+		return
+	}
+
+	if configInput.Environment != env {
+		rt.handleError(w, "createGatewayConfig", http.StatusBadRequest, fmt.Errorf(errInvalidConfigEnv.Error(), env))
+		return
+	}
+
+	createdGatewayConfig, err := rt.writer.CreateGatewayConfig(r.Context(), configInput)
+	if err != nil {
+		rt.handleError(w, "createGatewayConfig", http.StatusInternalServerError, err)
+		return
+	}
+
+	jsonresponse.RespondWithJSON(w, http.StatusOK, createdGatewayConfig)
 }
 
 /* ---------- V2 Open API Spec Handler Methods ---------- */
