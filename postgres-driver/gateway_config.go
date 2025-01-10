@@ -9,8 +9,7 @@ import (
 )
 
 var (
-	errGatewayConfigEmptyEnv       = errors.New("Env cannot be empty for gateway config")
-	errGatewayConfigInvalidVersion = errors.New("Version should be greater than 0 for gateway config")
+	errGatewayConfigEmptyEnv = errors.New("Env cannot be empty for gateway config")
 )
 
 // ReadValidatorConfig reads the method validator plugin config from the database
