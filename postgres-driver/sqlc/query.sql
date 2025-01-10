@@ -44,11 +44,10 @@ ORDER BY environment,
 -- name: InsertGatewayConfig :one
 INSERT INTO config_gateway (
 	environment,
-	version,
 	description,
 	configuration
     )
-VALUES ($1, $2, $3, $4)
+VALUES ($1, $2, $3)
 RETURNING *;
 -- name: SelectOpenAPISpecs :many
 SELECT *

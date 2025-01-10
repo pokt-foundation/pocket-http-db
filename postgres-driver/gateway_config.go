@@ -101,7 +101,6 @@ func (pg *PostgresDriver) CreateGatewayConfig(ctx context.Context, config *types
 
 	_, err = qtx.InsertGatewayConfig(ctx, InsertGatewayConfigParams{
 		Environment:   config.Environment,
-		Version:       int32(config.Version),
 		Description:   config.Description,
 		Configuration: config.Config,
 	})

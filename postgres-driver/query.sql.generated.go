@@ -1137,28 +1137,21 @@ func (q *Queries) InsertGCPAccount(ctx context.Context, arg InsertGCPAccountPara
 const insertGatewayConfig = `-- name: InsertGatewayConfig :one
 INSERT INTO config_gateway (
 	environment,
-	version,
 	description,
 	configuration
     )
-VALUES ($1, $2, $3, $4)
+VALUES ($1, $2, $3)
 RETURNING version, environment, description, configuration
 `
 
 type InsertGatewayConfigParams struct {
 	Environment   types.Environment `json:"environment"`
-	Version       int32             `json:"version"`
 	Description   string            `json:"description"`
 	Configuration []byte            `json:"configuration"`
 }
 
 func (q *Queries) InsertGatewayConfig(ctx context.Context, arg InsertGatewayConfigParams) (GatewayConfig, error) {
-	row := q.db.QueryRow(ctx, insertGatewayConfig,
-		arg.Environment,
-		arg.Version,
-		arg.Description,
-		arg.Configuration,
-	)
+	row := q.db.QueryRow(ctx, insertGatewayConfig, arg.Environment, arg.Description, arg.Configuration)
 	var i GatewayConfig
 	err := row.Scan(
 		&i.Version,
