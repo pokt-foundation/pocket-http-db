@@ -165,7 +165,7 @@ jobs:
           git config --global url."https://${{ secrets.POKT_BOT_GITHUB_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
       - name: Go List
-        run: GOPROXY=proxy.golang.org go list -m github.com/pokt-foundation/portal-http-db/v2@v${{ needs.tag.outputs.version }}
+        run: go list -m github.com/pokt-foundation/portal-http-db/v2@v${{ needs.tag.outputs.version }}
 
   push:
     if: needs.tag.outputs.new == 'true'
