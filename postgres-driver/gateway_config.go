@@ -3,8 +3,13 @@ package postgresdriver
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/pokt-foundation/portal-http-db/v2/types"
+)
+
+var (
+	errGatewayConfigEmptyEnv = errors.New("Env cannot be empty for gateway config")
 )
 
 // ReadValidatorConfig reads the method validator plugin config from the database
@@ -74,6 +79,49 @@ func (q *Queries) ReadOpenAPISpecs(ctx context.Context) (map[types.RelayChainID]
 	}
 
 	return chainSpecs, nil
+}
+
+/* ----- postgresdriver Gateway Config Create Methods ----- */
+
+// CreateGatewayConfig creates a new gateway config entry in the database.
+func (pg *PostgresDriver) CreateGatewayConfig(ctx context.Context, config *types.GatewayConfig) (*types.GatewayConfig, error) {
+	err := pg.validateGatewayConfigInput(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := pg.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	qtx := pg.WithTx(tx)
+
+	_, err = qtx.InsertGatewayConfig(ctx, InsertGatewayConfigParams{
+		Environment:   config.Environment,
+		Description:   config.Description,
+		Configuration: config.Config,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+// validateGatewayConfigInput performs all necessary data validation checks on incoming GatewayConfig data
+func (pg *PostgresDriver) validateGatewayConfigInput(ctx context.Context, config *types.GatewayConfig) error {
+	if config.Environment == "" {
+		return errGatewayConfigEmptyEnv
+	}
+
+	return nil
 }
 
 /* ----- Used by Listener ----- */
