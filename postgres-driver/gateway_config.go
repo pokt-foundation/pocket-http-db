@@ -122,10 +122,6 @@ func (pg *PostgresDriver) validateGatewayConfigInput(ctx context.Context, config
 		return errGatewayConfigEmptyEnv
 	}
 
-	if config.Version <= 0 {
-		return errGatewayConfigInvalidVersion
-	}
-
 	return nil
 }
 
