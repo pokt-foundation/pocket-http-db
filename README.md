@@ -18,6 +18,8 @@
     - [2. Postgres Driver](#2-postgres-driver)
     - [3. Types](#3-types)
 - [Development](#development)
+  - [Local Development](#local-development)
+  - [Restoring the Local Database](#restoring-the-local-database)
   - [Executing Database Migrations](#executing-database-migrations)
     - [Install go-migrate](#install-go-migrate)
     - [Create a New Migration](#create-a-new-migration)
@@ -100,6 +102,31 @@ Contains all functionality to interact with Postgres.
 Contains all database structs and their associated methods which are used across the Portal API backend Go repos.
 
 # Development
+
+## Local Development
+
+To deploy locally, run `make test_env_up`. This will deploy all components in a docker container.
+
+See [Makefile](./Makefile) for more information and other commands. 
+
+## Restoring the Local Database
+
+In order to ensure the local database is a copy of PROD, you will need to execute a `pg_dump` and restore it locally.
+
+1. Obtain a `pg_dump` from PROD.
+
+Get the latest data and store it locally
+```sh
+pg_dump --verbose "postgresql://postgres:<GET PASSWORD FROM [1pass](https://start.1password.com/open/i?a=4PU7ZENUCRCRTNSQWQ7PWCV2RM&v=kudw25ob4zcynmzmv2gv4qpkuq&i=qonbihhkmbrgayt3mb5ohvq5wq&h=buildwithgrove.1password.com)>@<[DB PUBLIC IP ADDRESS](https://console.cloud.google.com/sql/instances?project=portal-gb-prod)>:5432/portaldb?sslmode=verify-ca&sslcert=<PATH TO CLIENT CERT>/client-cert.pem&sslkey=<PATH TO CLIENT KEY>/client-key.pem&sslrootcert=<PATH TO ROOT CERT>/server-ca.pem" --file=dump.sql
+```
+> 🛈 Regarding permissions
+> 
+> If you don't use the credentials for the `postgres` user, you will experience permissions issues.
+
+2. Restore from the `.sql` file
+```sh
+psql -h localhost -U postgres -d postgres -f dump.sql
+```
 
 ## Executing Database Migrations
 
