@@ -1,8 +1,9 @@
--- Update Chains <-> Gigastakes Mapping for February 2025 new chains
+-- Rollback Chains <-> Gigastakes Mapping for February 2025 new chains
 BEGIN;
--- Update the chain_id in chains_gigastake_applications based on the mapping
+
+-- Revert the changes for gigastakes
 UPDATE chains_gigastake_applications AS cga
-SET cga.chain_id = CASE
+SET chain_id = CASE
     WHEN ga.address = '3c50afb94de9d9719f9c23bd2976858c74ad44eb' THEN 'F028'
     WHEN ga.address = '5266fa808ed9a6a5e915894570d46e3d451c1267' THEN 'F022'
     WHEN ga.address = '62e344a58a141935e4f00766bce8f8c1c2736d61' THEN 'F028'
@@ -27,7 +28,7 @@ SET cga.chain_id = CASE
     WHEN ga.address = 'f929087a312d0d111118209f814a2bab03179bb6' THEN 'F000'
     WHEN ga.address = 'f950687c021ae45f2df1e5481d22217ea3073d37' THEN 'F000'
     WHEN ga.address = 'fec14897e8427bc025fe4ebc6f7ee6098eac85b8' THEN 'F000'
-    ELSE cga.chain_id -- Keep current value if not matched
+    ELSE chain_id
 END
 FROM gigastake_applications AS ga
 WHERE ga.id = cga.gigastake_application_id
@@ -57,4 +58,21 @@ WHERE ga.id = cga.gigastake_application_id
     'f950687c021ae45f2df1e5481d22217ea3073d37',
     'fec14897e8427bc025fe4ebc6f7ee6098eac85b8'
 );
+
+-- Remove newly created checks
+DELETE FROM chain_checks
+WHERE chain_id IN ('F02C', 'F02D', 'F02E', 'F030', 'F031', 'F032', 'F033', 'F034');
+
+-- Remove newly created chain configs
+DELETE FROM chain_config
+WHERE chain_id IN ('F02C', 'F02D', 'F02E', 'F030', 'F031', 'F032', 'F033', 'F034');
+
+-- Remove newly created chain aliases
+DELETE FROM chain_alias_domains
+WHERE chain_id IN ('F02C', 'F02D', 'F02E', 'F030', 'F031', 'F032', 'F033', 'F034');
+
+-- Remove the new chains
+DELETE FROM chains
+WHERE id IN ('F02C', 'F02D', 'F02E', 'F030', 'F031', 'F032', 'F033', 'F034');
+
 COMMIT;

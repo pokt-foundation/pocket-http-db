@@ -11,19 +11,19 @@ VALUES
   ('F031', 'berachain', 'Berachain', 'JSON', 'BERA', 100000, FALSE, 'https', 0),
   ('F032', 'ink', 'Ink', 'JSON', 'ETH', 100000, FALSE, 'https', 0),
   ('F033', 'mantle', 'Mantle', 'JSON', 'MNT', 100000, FALSE, 'https', 0),
-  ('F034', 'sei', 'Sei', 'JSON', 'SEI', 100000, FALSE, 'https', 0)
+  ('F034', 'sei', 'Sei', 'JSON', 'SEI', 100000, FALSE, 'https', 0);
 
 -- add chain aliases
 INSERT INTO chain_alias_domains (chain_id, alias, domains)
 VALUES
-  ('F02C', 'xrpl-evm', 'xrpl-evm.gateway.grove.city'),
-  ('F02D', 'sonic', 'sonic.gateway.grove.city'),
-  ('F02E', 'tron', 'tron.gateway.grove.city'),
-  ('F030', 'linea', 'linea.gateway.grove.city'),
-  ('F031', 'berachain', 'berachain.gateway.grove.city'),
-  ('F032', 'ink', 'ink.gateway.grove.city'),
-  ('F033', 'mantle', 'mantle.gateway.grove.city'),
-  ('F034', 'sei', 'sei.gateway.grove.city')
+  ('F02C', 'xrpl-evm', '{xrpl-evm.gateway.grove.city}'),
+  ('F02D', 'sonic', '{sonic.gateway.grove.city}'),
+  ('F02E', 'tron', '{tron.gateway.grove.city}'),
+  ('F030', 'linea', '{linea.gateway.grove.city}'),
+  ('F031', 'berachain', '{berachain.gateway.grove.city}'),
+  ('F032', 'ink', '{ink.gateway.grove.city}'),
+  ('F033', 'mantle', '{mantle.gateway.grove.city}'),
+  ('F034', 'sei', '{sei.gateway.grove.city}');
 
 -- add chain configs (mostly legacy)
 INSERT INTO chain_config (chain_id, log_limit_blocks)
@@ -35,35 +35,35 @@ VALUES
   ('F031', 100000),
   ('F032', 100000),
   ('F033', 100000),
-  ('F034', 100000)
+  ('F034', 100000);
 
 -- add eth chain checks
 INSERT INTO chain_checks (chain_id, type, payload, result_key, evm_chain_id)
 VALUES
-  ('F02C', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 1440002),
-  ('F02D', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 146),
-  ('F02E', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 728126428),
-  ('F030', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 59144),
-  ('F031', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 80084),
-  ('F032', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 57073),
-  ('F033', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 5000),
-  ('F034', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', id, 1329)
+  ('F02C', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 1440002),
+  ('F02D', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 146),
+  ('F02E', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 728126428),
+  ('F030', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 59144),
+  ('F031', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 80084),
+  ('F032', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 57073),
+  ('F033', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 5000),
+  ('F034', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 1329);
 
 -- add sync checks
-INSERT INTO chain_checks (chain_id, type, payload, allowance)
+INSERT INTO chain_checks (chain_id, type, payload, result_key, allowance)
 VALUES
-  ('F02C', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
-  ('F02D', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
-  ('F02E', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
-  ('F030', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
-  ('F031', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
-  ('F032', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
-  ('F033', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
-  ('F034', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', id, 2),
+  ('F02C', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2),
+  ('F02D', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2),
+  ('F02E', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2),
+  ('F030', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2),
+  ('F031', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2),
+  ('F032', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2),
+  ('F033', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2),
+  ('F034', 'sync', '{"method":"eth_blockNumber","id":1,"jsonrpc":"2.0"}', 'result', 2);
 
 -- Update the chain_id in chains_gigastake_applications based on the mapping
 UPDATE chains_gigastake_applications AS cga
-SET cga.chain_id = CASE
+SET chain_id = CASE
     WHEN ga.address = '3c50afb94de9d9719f9c23bd2976858c74ad44eb' THEN 'F02C'
     WHEN ga.address = '5266fa808ed9a6a5e915894570d46e3d451c1267' THEN 'F02C'
     WHEN ga.address = '62e344a58a141935e4f00766bce8f8c1c2736d61' THEN 'F02C'
@@ -88,7 +88,7 @@ SET cga.chain_id = CASE
     WHEN ga.address = 'f929087a312d0d111118209f814a2bab03179bb6' THEN 'F034'
     WHEN ga.address = 'f950687c021ae45f2df1e5481d22217ea3073d37' THEN 'F034'
     WHEN ga.address = 'fec14897e8427bc025fe4ebc6f7ee6098eac85b8' THEN 'F034'
-    ELSE cga.chain_id -- Keep current value if not matched
+    ELSE chain_id -- Keep current value if not matched
 END
 FROM gigastake_applications AS ga
 WHERE ga.id = cga.gigastake_application_id
