@@ -128,6 +128,12 @@ pg_dump --verbose "postgresql://postgres:<GET PASSWORD FROM [1pass](https://star
 psql -h localhost -U postgres -d postgres -f dump.sql
 ```
 
+3. Reset the local PHD cache
+```sh
+curl -X POST 'http://localhost:8080/reset_cache' \
+-H 'Authorization: <API KEY>'
+```
+
 ## Executing Database Migrations
 
 <big> ⚠️ IMPORTANT - **ALL changes to the database MUST be done through a migration** ⚠️
