@@ -42,4 +42,16 @@ WHERE alias = 'xrpl-evm-devnet';
 DELETE FROM chains 
 WHERE id = 'F035';
 
+UPDATE chains
+SET 
+    blockchain = 'berachain',
+    description = 'Berachain'
+WHERE alias = 'F031';
+
+UPDATE chains
+SET 
+    blockchain = 'xrpl-evm',
+    description = 'XRPL EVM Sidechain'
+WHERE alias = 'F02C';
+
 COMMIT;

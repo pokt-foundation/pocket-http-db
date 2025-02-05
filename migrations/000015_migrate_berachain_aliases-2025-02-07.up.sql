@@ -1,6 +1,19 @@
 -- Update Chains <-> Gigastakes Mapping for February 2025 new chains
 BEGIN;
--- add the new chains
+-- update the existing chains
+UPDATE chains
+SET
+  blockchain = 'xrpl-evm-devnet',
+  description = 'XRPL EVM Devnet'
+WHERE id = 'F02C';
+
+UPDATE chains
+SET
+  blockchain = 'berachain-bartio-testnet',
+  description = 'Berachain bArtio Testnet'
+WHERE id = 'F031';
+
+-- add the new chain
 INSERT INTO chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active, 
 scheme, node_request_timeout)
 VALUES
