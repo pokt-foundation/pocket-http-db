@@ -45,7 +45,7 @@ VALUES
 -- add eth chain checks
 INSERT INTO chain_checks (chain_id, type, payload, result_key, evm_chain_id)
 VALUES
-  ('F035', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 80085);
+  ('F035', 'chain', '{"method":"eth_chainId","id":1,"jsonrpc":"2.0"}', 'id', 80094);
 
 -- add sync checks
 INSERT INTO chain_checks (chain_id, type, payload, result_key, allowance)
