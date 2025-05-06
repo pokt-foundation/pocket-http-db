@@ -29,6 +29,9 @@ BEGIN
         IF TG_OP = 'DELETE' THEN
             is_delete := TRUE;
             portal_app_ids := array_append(portal_app_ids, OLD.id);
+        ELSIF TG_OP = 'UPDATE' AND NEW.deleted = true THEN
+            is_delete := TRUE;
+            portal_app_ids := array_append(portal_app_ids, NEW.id);
         ELSE
             portal_app_ids := array_append(portal_app_ids, NEW.id);
         END IF;
