@@ -4,9 +4,9 @@ build:
 	CGO_ENABLED=0 GOOS=linux go build -a -o bin/portal-http-db ./main.go
 
 gen:
-	@echo "🧪 Generating SQLC code and Mocks ..."
-	@make gen_sql gen_mocks 1>/dev/null
-	@echo "✅ SQLC and Mocks generated successfully!"
+	@echo "🧪 Generating SQLC code, Mocks, and Postman collection ..."
+	@make gen_sql gen_mocks gen_postman 1>/dev/null
+	@echo "✅ SQLC, Mocks, and Postman collection generated successfully!"
 
 gen_sql:
 	sqlc generate -f ./postgres-driver/sqlc/sqlc.yaml
@@ -20,6 +20,14 @@ gen_reader:
 	mockery --name=IDBReader --filename=mock_reader.go --recursive --inpackage
 gen_writer:
 	mockery --name=IDBWriter --filename=mock_writer.go --recursive --inpackage
+
+check_openapi2postmanv2:
+	@command -v openapi2postmanv2 >/dev/null 2>&1 || { echo "⚠️ openapi2postmanv2 is not installed. Please install it with 'npm i -g openapi-to-postmanv2'."; exit 1; }
+
+gen_postman: check_openapi2postmanv2
+	@echo "🧪 Generating Postman collection ..."
+	@openapi2postmanv2 -s ./api/phd_openapi.yaml -o ./api/phd_postman.json -p -O folderStrategy=Tags,includeAuthInfoInExample=false >/dev/null 2>&1
+	@echo "✅ Postman collection generated successfully!"
 
 # These targets spin up and shut down the E2E test env in docker.
 test_env_up:
