@@ -549,6 +549,9 @@ GRANT SELECT,
 GRANT USAGE,
     SELECT ON ALL SEQUENCES IN SCHEMA public TO portalapprw;
 
+-- Explicitly grant permissions on portal_application_changes table
+GRANT SELECT, INSERT, UPDATE, DELETE ON portal_application_changes TO portalapprw;
+
 -- /*-------------------- PADS Triggers --------------------*/
 
 -- Documentation: https://path.grove.city/operate/helm/grove
