@@ -1,5 +1,7 @@
 -- Add XRPL EVM Testnet to Portal
 BEGIN;
+
+-- TODO #357 - Using placeholder ID 1234 instead of xrplevm
 INSERT INTO chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active, 
 scheme, node_request_timeout)
 VALUES
