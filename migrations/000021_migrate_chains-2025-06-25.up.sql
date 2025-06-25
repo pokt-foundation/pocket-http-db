@@ -116,7 +116,9 @@ FROM (VALUES
     ('F034', 'sei', 'Sei'),
     ('F035', 'bera', 'Berachain'),
     ('F036', 'xrplevm-testnet', 'XRPLEVM Testnet'),
-    ('1234', 'xrplevm', 'XRPLEVM')
+    ('1234', 'xrplevm', 'XRPLEVM'),
+    ('1235', 'pocket-alpha-testnet', 'Pocket Alpha Testnet'),
+    ('1236', 'pocket-beta-testnet', 'Pocket Beta Testnet');
 ) AS v(current_id, new_id, new_description)
 WHERE chains.id = v.current_id;
 
@@ -178,7 +180,9 @@ FROM (VALUES
     ('F034', 'sei'),
     ('F035', 'bera'),
     ('F036', 'xrplevm-testnet'),
-    ('1234', 'xrplevm')
+    ('1234', 'xrplevm'),
+    ('1235', 'pocket-alpha-testnet'),
+    ('1236', 'pocket-beta-testnet');
 ) AS v(current_id, new_id)
 WHERE chain_alias_domains.chain_id = v.current_id;
 
@@ -240,7 +244,10 @@ FROM (VALUES
     ('ink'),
     ('mantle'),
     ('sei'),
-    ('xrplevm-testnet')
+    ('xrplevm-testnet'),
+    ('xrplevm'),
+    ('pocket-alpha-testnet'),
+    ('pocket-beta-testnet');
 ) AS v(new_id)
 WHERE NOT EXISTS (
     SELECT 1 FROM chain_alias_domains 
