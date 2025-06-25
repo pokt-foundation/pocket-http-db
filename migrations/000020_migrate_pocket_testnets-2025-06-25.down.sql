@@ -1,4 +1,4 @@
--- Undo XRPL EVM Testnet chain additions
+-- Undo Pocket Testnets (Alpha, Beta)
 BEGIN;
 
 -- Remove chain aliases
