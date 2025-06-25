@@ -14,6 +14,11 @@ DROP TABLE portal_application_aats;
 DROP TABLE protocols;
 
 -- Clean up chains table
+/* Here we are surgically removing all chains that are legacy (predate F-chains
+   and some duplicate or deprecated F chains. 
+   Notable removals: 
+   - F02C - xrplevm devnet (removed from Portal and no longer supporting)
+   - F031 - Berachain bArtio Testnet (deprecated by Berachain) */
 DELETE FROM chains 
 WHERE id IN (
     '0001', '0003', '0004', '0005', '0006', '0009', '000A', '000B', 
@@ -110,7 +115,8 @@ FROM (VALUES
     ('F033', 'mantle', 'Mantle'),
     ('F034', 'sei', 'Sei'),
     ('F035', 'bera', 'Berachain'),
-    ('F036', 'xrplevm-testnet', 'XRPLEVM Testnet')
+    ('F036', 'xrplevm-testnet', 'XRPLEVM Testnet'),
+    ('1234', 'xrplevm', 'XRPLEVM')
 ) AS v(current_id, new_id, new_description)
 WHERE chains.id = v.current_id;
 
@@ -171,7 +177,8 @@ FROM (VALUES
     ('F033', 'mantle'),
     ('F034', 'sei'),
     ('F035', 'bera'),
-    ('F036', 'xrplevm-testnet')
+    ('F036', 'xrplevm-testnet'),
+    ('1234', 'xrplevm')
 ) AS v(current_id, new_id)
 WHERE chain_alias_domains.chain_id = v.current_id;
 
@@ -239,15 +246,5 @@ WHERE NOT EXISTS (
     SELECT 1 FROM chain_alias_domains 
     WHERE chain_id = v.new_id AND alias = v.new_id
 );
-
--- Add xrplevm to Portal
-INSERT INTO chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active, 
-scheme, node_request_timeout)
-VALUES
-  ('xrplevm', 'xrplevm', 'XRPLEVM', 'JSON', 'XRP', 100000, FALSE, 'https', 0);
-
-INSERT INTO chain_alias_domains (chain_id, alias, domains)
-VALUES
-  ('xrplevm', 'xrplevm', '{xrplevm.gateway.grove.city}');
 
 COMMIT;
