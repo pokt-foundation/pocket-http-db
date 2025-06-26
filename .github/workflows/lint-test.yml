@@ -72,6 +72,23 @@ jobs:
       - name: Reset test env
         run: make reset_test_env_ci
 
+      - name: Wait for services to be healthy
+        run: |
+          echo "⏳ Waiting for PHD services to be ready after reset..."
+          attempts=0
+          until curl -s http://localhost:8080/healthz >/dev/null || [[ $attempts -eq 10 ]]; do 
+            sleep 2
+            ((attempts++))
+          done
+          [[ $attempts -lt 10 ]] && echo "🖥️ portal-http-db-1 is healthy" || (echo "❌ portal-http-db-1 health check failed" && exit 1)
+          
+          attempts=0
+          until curl -s http://localhost:8081/healthz >/dev/null || [[ $attempts -eq 10 ]]; do 
+            sleep 2
+            ((attempts++))
+          done
+          [[ $attempts -lt 10 ]] && echo "🖥️ portal-http-db-2 is healthy" || (echo "❌ portal-http-db-2 health check failed" && exit 1)
+
       - name: Run E2E tests
         run: make run_e2e_tests_ci
 
