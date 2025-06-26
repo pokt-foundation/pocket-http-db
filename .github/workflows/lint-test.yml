@@ -63,6 +63,9 @@ jobs:
       - name: Set up Docker test stack
         run: make test_env_up
 
+      - name: Reset test database
+        run: make reset_test_db_ci
+
       - name: Run Postgres Driver tests
         run: make run_driver_tests_ci
 
