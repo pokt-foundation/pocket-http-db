@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TABLE chains
+ADD COLUMN websockets_enabled BOOLEAN DEFAULT false NOT NULL;
+
+COMMIT;
