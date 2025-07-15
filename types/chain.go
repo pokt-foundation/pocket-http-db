@@ -120,6 +120,7 @@ type (
 		// NodeRequestTimeout is the timeout for the node response
 		NodeRequestTimeout int32                    `json:"nodeRequestTimeout"`
 		Active             bool                     `json:"active"`
+		WebsocketsEnabled  bool                     `json:"websocketsEnabled"`
 		Altruists          map[AltruistURL]Altruist `json:"altruists,omitempty"`
 		Checks             map[ChainCheckType]Check `json:"chainChecks,omitempty"`
 		Aliases            map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
@@ -179,6 +180,7 @@ type (
 		RequestTimeout     *int32                    `json:"requestTimeout"`
 		NodeRequestTimeout *int32                    `json:"nodeRequestTimeout"`
 		Active             *bool                     `json:"active"`
+		WebsocketsEnabled  *bool                     `json:"websocketsEnabled"`
 		Aliases            *map[ChainAlias]struct{}  `json:"chainAliases,omitempty"`
 		Altruists          *map[AltruistURL]Altruist `json:"altruists,omitempty"`
 		Checks             *map[ChainCheckType]Check `json:"chainChecks,omitempty"`

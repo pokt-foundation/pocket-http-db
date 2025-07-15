@@ -159,6 +159,7 @@ CREATE TABLE chains (
     allowed_methods VARCHAR(10) ARRAY,
     active BOOLEAN NOT NULL DEFAULT false,
     scheme chain_scheme NOT NULL,
+    websockets_enabled BOOLEAN DEFAULT false NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN DEFAULT false,
