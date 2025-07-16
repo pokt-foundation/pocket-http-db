@@ -43,6 +43,7 @@ type (
 		LogLimitBlocks     pgtype.Int4        `json:"log_limit_blocks"`
 		AllowedMethods     []string           `json:"allowed_methods"`
 		Active             bool               `json:"active"`
+		WebsocketsEnabled  bool               `json:"websockets_enabled"`
 		CreatedAt          pgtype.Timestamptz `json:"created_at"`
 		UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 		Deleted            pgtype.Bool        `json:"deleted"`
@@ -101,6 +102,7 @@ func (c *SelectChainsRow) ToChainRow() *ChainRow {
 		LogLimitBlocks:     c.LogLimitBlocks,
 		AllowedMethods:     c.AllowedMethods,
 		Active:             c.Active,
+		WebsocketsEnabled:  c.WebsocketsEnabled.Bool,
 		CreatedAt:          c.CreatedAt,
 		UpdatedAt:          c.UpdatedAt,
 		Deleted:            c.Deleted,
@@ -128,6 +130,7 @@ func (c *SelectChainRow) ToChainRow() *ChainRow {
 		LogLimitBlocks:     c.LogLimitBlocks,
 		AllowedMethods:     c.AllowedMethods,
 		Active:             c.Active,
+		WebsocketsEnabled:  c.WebsocketsEnabled.Bool,
 		CreatedAt:          c.CreatedAt,
 		UpdatedAt:          c.UpdatedAt,
 		Deleted:            c.Deleted,
@@ -173,6 +176,7 @@ func (c *ChainRow) toChain() (*types.Chain, error) {
 		RequestTimeout:     c.RequestTimeout.Int32,
 		NodeRequestTimeout: c.NodeRequestTimeout.Int32,
 		Active:             c.Active,
+		WebsocketsEnabled:  c.WebsocketsEnabled,
 		Aliases:            aliases,
 		Altruists:          altruists,
 		Checks:             checks,
@@ -408,6 +412,7 @@ func (pg *PostgresDriver) insertChain(ctx context.Context, qtx *Queries, chain t
 		NodeRequestTimeout: newInt4(chain.NodeRequestTimeout, true),
 		LogLimitBlocks:     newInt4(chain.LogLimitBlocks, true),
 		AllowedMethods:     chain.AllowedMethods,
+		WebsocketsEnabled:  newBool(&chain.WebsocketsEnabled),
 		CreatedAt:          newTimestamptz(chain.CreatedAt),
 		UpdatedAt:          newTimestamptz(chain.UpdatedAt),
 	})
@@ -493,6 +498,7 @@ func (pg *PostgresDriver) updateChain(ctx context.Context, qtx *Queries, update 
 		NodeRequestTimeout: newNullInt(update.NodeRequestTimeout, true),
 		LogLimitBlocks:     newNullInt(update.LogLimitBlocks, true),
 		AllowedMethods:     update.AllowedMethods,
+		WebsocketsEnabled:  newNullBool(update.WebsocketsEnabled),
 		UpdatedAt:          newTimestamptz(updatedAt),
 	})
 	if err != nil {
@@ -727,6 +733,7 @@ func (json dbChain) toOutput() *types.Chain {
 		RequestTimeout:     json.RequestTimeout,
 		NodeRequestTimeout: json.NodeRequestTimeout,
 		Active:             json.Active,
+		WebsocketsEnabled:  json.WebsocketsEnabled,
 		CreatedAt:          json.CreatedAt,
 		UpdatedAt:          json.UpdatedAt,
 	}
@@ -784,6 +791,7 @@ type dbChain struct {
 	AllowedMethods           []string            `json:"allowed_methods"`
 	GigastakeRedirectDomains []types.ChainDomain `json:"gigastake_redirect_domains"`
 	Active                   bool                `json:"active"`
+	WebsocketsEnabled        bool                `json:"websockets_enabled"`
 	CreatedAt                time.Time           `json:"created_at"`
 	UpdatedAt                time.Time           `json:"updated_at"`
 	Deleted                  bool                `json:"deleted"`

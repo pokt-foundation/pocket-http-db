@@ -151,3 +151,5 @@ sql:
             go_type: "github.com/pokt-foundation/portal-http-db/v2/types.RelayChainID"
           - column: "config_gateway.environment"
             go_type: "github.com/pokt-foundation/portal-http-db/v2/types.Environment"
+          - column: "chains.websockets_enabled"
+            go_type: "github.com/jackc/pgx/v5/pgtype.Bool"

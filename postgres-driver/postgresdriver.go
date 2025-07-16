@@ -327,6 +327,17 @@ func newNullInt(i *int32, allowZero bool) pgtype.Int4 {
 	}
 }
 
+func newNullBool(b *bool) pgtype.Bool {
+	if b == nil {
+		return pgtype.Bool{}
+	}
+
+	return pgtype.Bool{
+		Bool:  *b,
+		Valid: true,
+	}
+}
+
 func errNoRows(err error) bool {
 	return strings.Contains(err.Error(), "no rows in result set")
 }
