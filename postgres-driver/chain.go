@@ -412,7 +412,7 @@ func (pg *PostgresDriver) insertChain(ctx context.Context, qtx *Queries, chain t
 		NodeRequestTimeout: newInt4(chain.NodeRequestTimeout, true),
 		LogLimitBlocks:     newInt4(chain.LogLimitBlocks, true),
 		AllowedMethods:     chain.AllowedMethods,
-		WebsocketsEnabled:  pgtype.Bool{Bool: chain.WebsocketsEnabled, Valid: true},
+		WebsocketsEnabled:  newBool(&chain.WebsocketsEnabled),
 		CreatedAt:          newTimestamptz(chain.CreatedAt),
 		UpdatedAt:          newTimestamptz(chain.UpdatedAt),
 	})
