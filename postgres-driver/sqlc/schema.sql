@@ -550,9 +550,6 @@ GRANT SELECT,
 GRANT USAGE,
     SELECT ON ALL SEQUENCES IN SCHEMA public TO portalapprw;
 
--- Explicitly grant permissions on portal_application_changes table
-GRANT SELECT, INSERT, UPDATE, DELETE ON portal_application_changes TO portalapprw;
-
 -- /*-------------------- PADS Triggers --------------------*/
 
 -- Documentation: https://path.grove.city/operate/helm/grove
@@ -571,6 +568,9 @@ CREATE TABLE portal_application_changes (
     is_delete BOOLEAN NOT NULL DEFAULT FALSE,
     changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Explicitly grant permissions on portal_application_changes table
+GRANT SELECT, INSERT, UPDATE, DELETE ON portal_application_changes TO portalapprw;
 
 -- Create the trigger function with 'is_delete' handling
 CREATE OR REPLACE FUNCTION log_portal_application_changes() RETURNS trigger AS $$
