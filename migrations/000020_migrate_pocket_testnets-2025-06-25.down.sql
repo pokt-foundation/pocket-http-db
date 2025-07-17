@@ -7,6 +7,6 @@ WHERE chain_id in ('1235', '1236');
 
 -- Finally, remove the chain itself
 DELETE FROM chains 
-WHERE chain_id in ('1235', '1236');
+WHERE id in ('1235', '1236');
 
 COMMIT;

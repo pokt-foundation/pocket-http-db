@@ -816,7 +816,10 @@ func (ts *PGDriverTestSuite) getAndAssignAccountUsers(accountID types.AccountID)
 	ts.NoError(err)
 
 	account, ok := accounts[accountID]
-	ts.True(ok)
+	if !ok {
+		ts.Failf("Account not found", "Account with ID %s not found in database", accountID)
+		return nil
+	}
 	users, err := ts.driver.ReadAllUsers(context.Background())
 	ts.NoError(err)
 
@@ -831,7 +834,10 @@ func (ts *PGDriverTestSuite) getAndAssignAccountUsers(accountID types.AccountID)
 	}
 
 	usersForAccount, ok := usersForAccountMap[account.ID]
-	ts.True(ok)
+	if !ok {
+		ts.Failf("Users for account not found", "No users found for account with ID %s", account.ID)
+		return nil
+	}
 	account.AssignAccountUsers(usersForAccount)
 
 	return account

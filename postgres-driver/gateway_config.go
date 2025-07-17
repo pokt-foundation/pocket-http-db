@@ -40,7 +40,9 @@ func (q *Queries) ReadValidatorConfig(ctx context.Context) (*types.ValidatorPlug
 	}
 
 	for _, mc := range methodConfigs {
-		config.MethodValidatorsMap[types.Method(mc.Method)] = append(config.MethodValidatorsMap[types.Method(mc.Method)], types.ValidatorMethodStr(mc.Validator.ValidatorMethodStr))
+		if mc.Validator.Valid {
+			config.MethodValidatorsMap[types.Method(mc.Method)] = append(config.MethodValidatorsMap[types.Method(mc.Method)], types.ValidatorMethodStr(mc.Validator.ValidatorMethodStr))
+		}
 	}
 
 	return config, nil
