@@ -1,4 +1,4 @@
--- Add Pocket Alpha and Pocket Beta Testnets to Portal
+-- Add Kleomedes Cosmos Chains to Portal
 BEGIN;
 
 INSERT INTO chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active, 
