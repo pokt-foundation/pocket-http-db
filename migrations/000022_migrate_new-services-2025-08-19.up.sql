@@ -1,10 +1,16 @@
--- Add Kleomedes Cosmos Chains to Portal
+-- Add Kleomedes Cosmos Chains and Hey service to Portal
 BEGIN;
 
-INSERT INTO chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active, 
+-- Insert new chains:
+-- - Soneium (EVM chain)
+-- - 27 Cosmos chains
+-- - Hey service (Grove internal)
+INSERT INTO chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active,
 scheme, node_request_timeout)
 VALUES
+  -- EVM chain
   ('1237', 'soneium', 'Soneium', 'JSON', 'SONY', 100000, FALSE, 'https', 0),
+  -- Cosmos chains
   ('1238', 'atomone', 'AtomOne', 'REST', 'ATONE', 100000, FALSE, 'https', 0),
   ('1239', 'akash', 'Akash Network', 'REST', 'AKT', 100000, FALSE, 'https', 0),
   ('1240', 'fetch', 'ASI Network', 'REST', 'FET', 100000, FALSE, 'https', 0),
@@ -31,8 +37,10 @@ VALUES
   ('1261', 'side-protocol', 'Side Protocol', 'REST', 'SIDE', 100000, FALSE, 'https', 0),
   ('1262', 'stargaze', 'Stargaze', 'REST', 'STARS', 100000, FALSE, 'https', 0),
   ('1263', 'stride', 'Stride', 'REST', 'STRD', 100000, FALSE, 'https', 0),
+  -- Internal Grove service
   ('1264', 'hey', 'Grove hey Service', 'REST', 'HEY', 100000, FALSE, 'https', 0);
 
+-- Insert corresponding chain aliases for gateway domains
 INSERT INTO chain_alias_domains (chain_id, alias, domains)
 VALUES
   ('1237', 'soneium', '{soneium.gateway.grove.city}'),
