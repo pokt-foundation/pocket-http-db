@@ -30,7 +30,8 @@ VALUES
   ('1260', 'quicksilver', 'Quicksilver Protocol', 'REST', 'QCK', 100000, FALSE, 'https', 0),
   ('1261', 'side-protocol', 'Side Protocol', 'REST', 'SIDE', 100000, FALSE, 'https', 0),
   ('1262', 'stargaze', 'Stargaze', 'REST', 'STARS', 100000, FALSE, 'https', 0),
-  ('1263', 'stride', 'Stride', 'REST', 'STRD', 100000, FALSE, 'https', 0);
+  ('1263', 'stride', 'Stride', 'REST', 'STRD', 100000, FALSE, 'https', 0),
+  ('1264', 'hey', 'Grove hey Service', 'REST', 'HEY', 100000, FALSE, 'https', 0);
 
 INSERT INTO chain_alias_domains (chain_id, alias, domains)
 VALUES
@@ -60,6 +61,7 @@ VALUES
   ('1260', 'quicksilver', '{quicksilver.gateway.grove.city}'),
   ('1261', 'side-protocol', '{side-protocol.gateway.grove.city}'),
   ('1262', 'stargaze', '{stargaze.gateway.grove.city}'),
-  ('1263', 'stride', '{stride.gateway.grove.city}');
+  ('1263', 'stride', '{stride.gateway.grove.city}'),
+  ('1264', 'hey', '{hey.gateway.grove.city}');
 
 COMMIT;
