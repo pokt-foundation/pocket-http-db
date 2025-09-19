@@ -2,8 +2,8 @@
 BEGIN;
 
 -- Insert 13 new services:
-INSERT INTO chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active,
-scheme, node_request_timeout)
+INSERT INTO 
+	chains (id, blockchain, description, enforce_result, ticker, log_limit_blocks, active, scheme, node_request_timeout)
 VALUES
   ('1267', 'hyperliquid', 'Hyperliquid', 'JSON', 'HYPE', 100000, FALSE, 'https', 0),
   ('1268', 'unichain', 'Unichain The DeFi Chain by Uniswap', 'JSON', 'ETH', 100000, FALSE, 'https', 0),
