@@ -1,4 +1,4 @@
--- Add Kleomedes Cosmos Chains and Hey service to Portal
+-- Add hyperliquid, unichain, stellar, bittensor, and a few LLM services
 BEGIN;
 
 -- Insert 13 new services:
