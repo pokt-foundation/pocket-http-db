@@ -98,7 +98,7 @@ func (a *SelectAccountsRow) toAccount() (*types.Account, error) {
 		PartnerChainIDs:        partnerChainIDs,
 		PartnerThroughputLimit: a.PartnerThroughputLimit.Int32,
 		PartnerAppLimit:        a.PartnerApplicationLimit.Int32,
-		MonthlyUserLimit:       a.MonthlyUserLimit.Int32,
+		MonthlyUserLimit:       a.MonthlyUserLimit.Int64,
 		Integrations: types.AccountIntegrations{
 			StripeSubscriptionID: a.StripeSubscriptionID.String,
 			CovalentAPIKeyFree:   a.CovalentAPIKeyFree.String,
@@ -324,7 +324,7 @@ func (pg *PostgresDriver) UpdateAccount(ctx context.Context, update types.Update
 		Name:             newText(update.Name),
 		IconURL:          newText(update.IconURL),
 		PlanType:         newText(string(update.PlanType)),
-		MonthlyUserLimit: newInt4(update.MonthlyUserLimit, true),
+		MonthlyUserLimit: newInt8(update.MonthlyUserLimit, true),
 		UpdatedAt:        newTimestamptz(updatedAt),
 	}
 	if update.PlanType != "" {
@@ -917,7 +917,7 @@ type dbAccount struct {
 	PartnerChainIDs         []string               `json:"partner_chain_ids"`
 	PartnerThroughputLimit  int32                  `json:"partner_throughput_limit"`
 	PartnerApplicationLimit int32                  `json:"partner_application_limit"`
-	MonthlyUserLimit        int32                  `json:"monthly_user_limit"`
+	MonthlyUserLimit        int64                  `json:"monthly_user_limit"`
 	CreatedAt               time.Time              `json:"created_at"`
 	UpdatedAt               time.Time              `json:"updated_at"`
 	Deleted                 bool                   `json:"deleted"`

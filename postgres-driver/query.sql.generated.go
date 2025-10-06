@@ -1482,7 +1482,7 @@ type SelectAccountRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
-	MonthlyUserLimit        pgtype.Int4        `json:"monthly_user_limit"`
+	MonthlyUserLimit        pgtype.Int8        `json:"monthly_user_limit"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -1586,7 +1586,7 @@ type SelectAccountsRow struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
-	MonthlyUserLimit        pgtype.Int4        `json:"monthly_user_limit"`
+	MonthlyUserLimit        pgtype.Int8        `json:"monthly_user_limit"`
 	CreatedAt               pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	Deleted                 bool               `json:"deleted"`
@@ -2419,7 +2419,7 @@ type UpdateAccountFieldsParams struct {
 	PartnerChainIDs         []string           `json:"partner_chain_ids"`
 	PartnerThroughputLimit  pgtype.Int4        `json:"partner_throughput_limit"`
 	PartnerApplicationLimit pgtype.Int4        `json:"partner_application_limit"`
-	MonthlyUserLimit        pgtype.Int4        `json:"monthly_user_limit"`
+	MonthlyUserLimit        pgtype.Int8        `json:"monthly_user_limit"`
 	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
 	ID                      types.AccountID    `json:"id"`
 }

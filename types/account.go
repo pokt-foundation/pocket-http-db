@@ -69,7 +69,7 @@ type (
 		PartnerChainIDs        map[RelayChainID]struct{}                `json:"partnerBlockchainIDs"`
 		PartnerThroughputLimit int32                                    `json:"partnerThroughputLimit"`
 		PartnerAppLimit        int32                                    `json:"partnerAppLimit"`
-		MonthlyUserLimit       int32                                    `json:"monthlyUserLimit"`
+		MonthlyUserLimit       int64                                    `json:"monthlyUserLimit"`
 		Integrations           AccountIntegrations                      `json:"integrations"`
 		Notifications          map[NotificationType]AccountNotification `json:"notifications"`
 		CreatedAt              time.Time                                `json:"createdAt"`
@@ -131,7 +131,7 @@ type (
 		IconURL              string                       `json:"iconURL"`
 		PlanType             PayPlanType                  `json:"planType"`
 		StripeSubscriptionID *string                      `json:"stripeSubscriptionID"`
-		MonthlyUserLimit     int32                        `json:"monthlyUserLimit"`
+		MonthlyUserLimit     int64                        `json:"monthlyUserLimit"`
 		Notifications        []UpdateAccountNotifications `json:"notificationSettings,omitempty"`
 	}
 

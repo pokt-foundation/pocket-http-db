@@ -92,7 +92,7 @@ CREATE TABLE accounts (
     partner_chain_ids VARCHAR(4) ARRAY,
     partner_throughput_limit INT,
     partner_application_limit INT,
-    monthly_user_limit INT,
+    monthly_user_limit BIGINT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted BOOLEAN NOT NULL DEFAULT false,
