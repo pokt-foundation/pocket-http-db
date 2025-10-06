@@ -283,6 +283,17 @@ func newInt4(value int32, allowZero bool) pgtype.Int4 {
 	}
 }
 
+func newInt8(value int64, allowZero bool) pgtype.Int8 {
+	if !allowZero && value == 0 {
+		return pgtype.Int8{}
+	}
+
+	return pgtype.Int8{
+		Int64: value,
+		Valid: true,
+	}
+}
+
 func newBool(value *bool) pgtype.Bool {
 	if value == nil {
 		return pgtype.Bool{Valid: false}
